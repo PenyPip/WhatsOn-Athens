@@ -1,25 +1,26 @@
 {
   "name": "whatson-strapi",
+  "private": true,
   "version": "0.1.0",
-  "description": "WhatSON Athens - Strapi 5 CMS",
+  "description": "WhatSON Athens CMS",
   "scripts": {
     "develop": "strapi develop",
     "start": "strapi start",
     "build": "strapi build",
-    "strapi": "strapi"
+    "strapi": "strapi",
+    "seed": "node seed.js"
   },
   "dependencies": {
-    "@strapi/strapi": "5.41.1",
-    "@strapi/plugin-users-permissions": "5.41.1",
-    "mysql2": "^3.9.7",
-    "better-sqlite3": "^9.4.3",
+    "@strapi/strapi": "^5.0.0",
+    "@strapi/plugin-users-permissions": "^5.0.0",
+    "esbuild": "^0.21.0",
+    "mysql2": "^3.9.0",
     "react": "^18.0.0",
     "react-dom": "^18.0.0",
     "react-router-dom": "^6.0.0",
     "styled-components": "^6.0.0"
   },
   "engines": {
-    "node": ">=18.0.0 <=22.x.x",
-    "npm": ">=6.0.0"
+    "node": ">=18.0.0 <=22.x.x"
   }
 }

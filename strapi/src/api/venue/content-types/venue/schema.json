@@ -4,11 +4,7 @@
   "info": {
     "singularName": "venue",
     "pluralName": "venues",
-    "displayName": "Venue",
-    "description": "Cinemas and theater venues"
-  },
-  "options": {
-    "draftAndPublish": true
+    "displayName": "Venue"
   },
   "attributes": {
     "name": {
@@ -25,8 +21,11 @@
     },
     "city": {
       "type": "enumeration",
-      "enum": ["athens", "thessaloniki", "other"],
-      "default": "athens"
+      "enum": [
+        "athens",
+        "thessaloniki",
+        "other"
+      ]
     },
     "google_maps_url": {
       "type": "string"
@@ -36,9 +35,12 @@
     },
     "image": {
       "type": "media",
-      "multiple": false,
-      "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "type": {
+      "type": "string"
     },
     "theater_shows": {
       "type": "relation",

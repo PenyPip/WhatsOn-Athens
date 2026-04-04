@@ -1,78 +1,52 @@
 import { Link } from "react-router-dom";
-import { Star, MapPin } from "lucide-react";
-import { Restaurant } from "@/lib/strapi";
+import { motion } from "framer-motion";
+import { MapPin } from "lucide-react";
+import type { Restaurant } from "@/data/mockData";
+import type { StrapiRestaurant } from "@/lib/api";
 
-const PRICE_LABELS: Record<string, string> = {
-  budget: "€",
-  moderate: "€€",
-  upscale: "€€€",
-  fine_dining: "€€€€",
-};
-
-const RestaurantCard = ({ restaurant }: { restaurant: Restaurant }) => {
-  const posterUrl = restaurant.poster?.url || null;
+const RestaurantCard = ({ restaurant, index = 0 }: { restaurant: Restaurant | StrapiRestaurant; index?: number }) => {
+  const isNew = restaurant.isNew;
 
   return (
-    <Link
-      to={`/dining/${restaurant.slug}`}
-      className="group block glass-card rounded-lg overflow-hidden transition-all duration-300 glass-card-hover"
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.05 }}
     >
-      {/* Poster */}
-      <div
-        className="aspect-[4/3] relative overflow-hidden"
-        style={
-          posterUrl
-            ? undefined
-            : { background: `linear-gradient(135deg, ${restaurant.gradient_from}, ${restaurant.gradient_to})` }
-        }
+      <Link
+        to={`/dining/${restaurant.slug}`}
+        className="group block card-elevated overflow-hidden"
       >
-        {posterUrl && (
-          <img
-            src={posterUrl}
-            alt={restaurant.name}
-            className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
-
-        {/* Badges */}
-        <div className="absolute top-2 left-2 flex gap-1">
-          {restaurant.is_new && (
-            <span className="px-2 py-0.5 text-xs rounded-full bg-primary text-primary-foreground font-semibold">
-              New
+        <div
+          className="aspect-[4/3] relative overflow-hidden"
+          style={{ background: `linear-gradient(135deg, ${restaurant.gradientFrom}, ${restaurant.gradientTo})` }}
+        >
+          {isNew && (
+            <span className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-[#111111] text-white">
+              Νέο
             </span>
           )}
-        </div>
-
-        <div className="absolute bottom-2 left-2 right-2">
-          {restaurant.editorial_score && (
-            <div className="flex items-center gap-1 mb-1">
-              <Star className="w-3 h-3 text-primary fill-primary" />
-              <span className="text-xs font-bold text-primary">{restaurant.editorial_score}</span>
+          {restaurant.editorialScore && (
+            <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-white text-[11px] font-bold text-[#111111] rounded">
+              {restaurant.editorialScore}/10
             </div>
           )}
-          <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-secondary text-secondary-foreground capitalize">
-            {restaurant.cuisine}
-          </span>
         </div>
-      </div>
-
-      {/* Info */}
-      <div className="p-3">
-        <div className="flex items-start justify-between gap-2 mb-1">
-          <h3 className="font-display font-semibold text-sm leading-tight group-hover:text-primary transition-colors line-clamp-1">
+        <div className="p-3">
+          <h3 className="font-display font-semibold text-sm leading-tight mb-1 group-hover:text-primary transition-colors">
             {restaurant.name}
           </h3>
-          <span className="text-xs text-muted-foreground flex-shrink-0 font-medium">
-            {PRICE_LABELS[restaurant.price_range]}
-          </span>
+          <p className="text-xs text-muted-foreground mb-2">{restaurant.cuisine}</p>
+          <div className="flex items-center justify-between">
+            <span className="flex items-center gap-1 text-xs text-muted-foreground">
+              <MapPin className="w-3 h-3" />
+              {restaurant.neighborhood}
+            </span>
+            <span className="text-xs font-medium text-foreground">{restaurant.priceRange}</span>
+          </div>
         </div>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <MapPin className="w-3 h-3 flex-shrink-0" />
-          <span>{restaurant.neighborhood}</span>
-        </div>
-      </div>
-    </Link>
+      </Link>
+    </motion.div>
   );
 };
 

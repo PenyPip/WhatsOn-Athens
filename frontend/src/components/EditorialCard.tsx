@@ -1,27 +1,46 @@
-import { Star } from "lucide-react";
-import { Review } from "@/lib/strapi";
+import { Link } from "react-router-dom";
+import { motion } from "framer-motion";
+import type { EditorialReview } from "@/data/mockData";
+import type { StrapiEditorialReview } from "@/lib/api";
 
-const EditorialCard = ({ review }: { review: Review }) => {
-  const eventTitle = review.movie?.title || review.theater_show?.title || "";
+const categoryLabels: Record<string, string> = {
+  movie: "Ταινία",
+  theater: "Θέατρο",
+  restaurant: "Φαγητό",
+};
 
+const EditorialCard = ({ review, index = 0 }: { review: EditorialReview | StrapiEditorialReview; index?: number }) => {
   return (
-    <div className="glass-card rounded-lg p-5 glass-card-hover transition-all">
-      <div className="flex items-center justify-between mb-3">
-        <span className={`text-xs px-2 py-0.5 rounded-full ${review.is_editorial ? "bg-primary/20 text-primary" : "bg-secondary text-secondary-foreground"}`}>
-          {review.is_editorial ? "Editorial" : "User Review"}
-        </span>
-        <div className="flex items-center gap-1">
-          <Star className="w-3.5 h-3.5 text-primary fill-primary" />
-          <span className="text-sm font-bold text-primary">{review.score}</span>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.08 }}
+    >
+      <Link to={`/reviews/${review.slug}`} className="group block card-elevated overflow-hidden">
+        {review.featuredImageGradientFrom && (
+          <div
+            className="h-44"
+            style={{ background: `linear-gradient(135deg, ${review.featuredImageGradientFrom}, ${review.featuredImageGradientTo})` }}
+          />
+        )}
+        <div className="p-5">
+          <div className="flex items-center gap-3 mb-3">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+              {categoryLabels[review.category] || review.category}
+            </span>
+            {review.score && (
+              <span className="text-[11px] font-bold text-foreground">{review.score}/10</span>
+            )}
+          </div>
+          <h3 className="font-display text-lg font-semibold mb-2 group-hover:text-primary transition-colors leading-snug">{review.title}</h3>
+          <p className="text-sm text-muted-foreground mb-4 line-clamp-2">{review.body}</p>
+          <div className="flex items-center justify-between text-xs text-muted-foreground border-t border-foreground/5 pt-3">
+            <span>{review.contentTitle}</span>
+            <span className="font-medium text-foreground">{review.author}</span>
+          </div>
         </div>
-      </div>
-      <h3 className="font-display font-semibold text-sm leading-tight mb-2">{review.title}</h3>
-      <p className="text-xs text-muted-foreground leading-relaxed line-clamp-3 mb-3">{review.body}</p>
-      <div className="flex items-center justify-between">
-        <span className="text-xs text-muted-foreground">{review.author}</span>
-        {eventTitle && <span className="text-xs text-primary truncate max-w-[120px]">{eventTitle}</span>}
-      </div>
-    </div>
+      </Link>
+    </motion.div>
   );
 };
 

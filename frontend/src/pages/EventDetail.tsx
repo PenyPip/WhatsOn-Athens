@@ -1,288 +1,197 @@
 import { useParams, Link } from "react-router-dom";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Star, Clock, Globe, Users, ArrowLeft, MapPin } from "lucide-react";
+import { motion } from "framer-motion";
+import { Clock, Globe, Users, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useMovies, useTheaterShows, useEditorialReviews, useUserReviews, useShowtimes } from "@/hooks/useStrapi";
 import EventCard from "@/components/EventCard";
 import BookingModal from "@/components/BookingModal";
-import {
-  getMovie, getTheaterShow,
-  getMovies, getTheaterShows,
-  getReviewsForMovie, getReviewsForShow,
-  getShowtimesForMovie, getShowtimesForShow,
-} from "@/lib/strapi";
+import LoadingState from "@/components/LoadingState";
+import Footer from "@/components/Footer";
+import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
 
 const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { slug } = useParams();
   const [bookingOpen, setBookingOpen] = useState(false);
-  const [selectedShowtime, setSelectedShowtime] = useState<number | null>(null);
 
-  const isMovie = type === "movie";
+  const { data: movies, isLoading: moviesLoading } = useMovies();
+  const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows();
+  const { data: editorialReviews } = useEditorialReviews();
+  const { data: userReviews } = useUserReviews();
+  const { data: showtimes } = useShowtimes();
 
-  const { data: event, isLoading } = useQuery({
-    queryKey: [type, slug],
-    queryFn: () => isMovie ? getMovie(slug!) : getTheaterShow(slug!),
-    enabled: !!slug,
-  });
+  const isLoading = type === "movie" ? moviesLoading : theaterLoading;
 
-  const { data: reviews = [] } = useQuery({
-    queryKey: ["reviews", type, event?.id],
-    queryFn: () => isMovie
-      ? getReviewsForMovie(event!.id)
-      : getReviewsForShow(event!.id),
-    enabled: !!event?.id,
-  });
-
-  const { data: showtimes = [] } = useQuery({
-    queryKey: ["showtimes", type, event?.id],
-    queryFn: () => isMovie
-      ? getShowtimesForMovie(event!.id)
-      : getShowtimesForShow(event!.id),
-    enabled: !!event?.id,
-  });
-
-  const { data: relatedMovies = [] } = useQuery({
-    queryKey: ["movies"],
-    queryFn: getMovies,
-    enabled: isMovie,
-  });
-
-  const { data: relatedShows = [] } = useQuery({
-    queryKey: ["theater-shows"],
-    queryFn: getTheaterShows,
-    enabled: !isMovie,
-  });
-
-  const related = isMovie
-    ? relatedMovies.filter((m) => m.slug !== slug).slice(0, 4)
-    : relatedShows.filter((s) => s.slug !== slug).slice(0, 4);
+  const event = type === "movie"
+    ? movies?.find((m) => m.slug === slug)
+    : theaterShows?.find((s) => s.slug === slug);
 
   if (isLoading) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
-        <div className="animate-pulse text-muted-foreground">Loading...</div>
+      <div className="min-h-screen pt-28">
+        <LoadingState />
       </div>
     );
   }
 
   if (!event) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="min-h-screen pt-28 flex items-center justify-center">
         <div className="text-center">
-          <h1 className="font-display text-2xl mb-2">Not Found</h1>
-          <Link to="/" className="text-primary text-sm">Go home</Link>
+          <h1 className="font-display text-2xl mb-2">Δεν βρέθηκε</h1>
+          <Link to="/" className="text-primary text-sm">Αρχική</Link>
         </div>
       </div>
     );
   }
 
-  const gFrom = (event as any).gradient_from || "#1a1a2e";
-  const gTo = (event as any).gradient_to || "#e94560";
-  const criticScore = (event as any).critic_score;
-  const ageRating = (event as any).age_rating;
-  const language = (event as any).language;
-  const venue = (event as any).venue;
-  const cast: string[] = (event as any).cast || [];
-  const posterUrl = (event as any).poster?.url || null;
+  const isMovie = type === "movie";
+  const movie = isMovie ? event as StrapiMovie : null;
+  const related = isMovie
+    ? (movies ?? []).filter((m) => m.slug !== slug).slice(0, 4)
+    : (theaterShows ?? []).filter((s) => s.slug !== slug).slice(0, 4);
 
-  const avgScore = reviews.length > 0
-    ? (reviews.reduce((sum, r) => sum + r.score, 0) / reviews.length).toFixed(1)
-    : null;
+  const eventEditorialReviews = (editorialReviews ?? []).filter((r) => r.contentTitle === event.title);
+  const eventUserReviews = (userReviews ?? []).filter((r) => r.contentTitle === event.title);
 
   return (
     <div className="min-h-screen pb-20 md:pb-8">
-      {/* Hero */}
-      <section className="relative h-[60vh] min-h-[400px] overflow-hidden">
+      <section className="relative min-h-[50vh] overflow-hidden bg-[#111111]">
         <div
-          className="absolute inset-0 scale-110 blur-3xl opacity-50"
-          style={{
-            background: posterUrl
-              ? `url(${posterUrl}) center/cover`
-              : `linear-gradient(135deg, ${gFrom}, ${gTo})`
-          }}
+          className="absolute inset-0 opacity-40"
+          style={{ background: `linear-gradient(135deg, ${event.gradientFrom}, ${event.gradientTo})` }}
         />
-        <div className="absolute inset-0 gradient-hero-overlay" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent" />
 
-        <div className="relative z-10 container h-full flex items-end pb-12">
-          <div className="flex gap-6 items-end max-w-3xl animate-fade-up">
-            {posterUrl ? (
-              <img
-                src={posterUrl}
-                alt={event.title}
-                className="hidden md:block w-48 h-72 rounded-lg flex-shrink-0 shadow-2xl object-cover"
-              />
-            ) : (
-              <div
-                className="hidden md:block w-48 h-72 rounded-lg flex-shrink-0 shadow-2xl"
-                style={{ background: `linear-gradient(135deg, ${gFrom}, ${gTo})` }}
-              />
+        <div className="relative z-10 container h-full flex items-end pb-12 pt-32">
+          <motion.div
+            className="max-w-3xl"
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+          >
+            <Link to={isMovie ? "/movies" : "/theater"} className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors mb-4">
+              <ArrowLeft className="w-3 h-3" /> Πίσω στις {isMovie ? "Ταινίες" : "Παραστάσεις"}
+            </Link>
+
+            {movie && (
+              <div className="flex items-center gap-3 mb-3">
+                <span className="px-2 py-0.5 bg-white text-[11px] font-bold text-[#111111] rounded">{movie.criticScore}/10</span>
+                <span className="text-xs text-white/50">{movie.ageRating}</span>
+              </div>
             )}
-            <div>
-              <Link
-                to={isMovie ? "/movies" : "/theater"}
-                className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-3"
-              >
-                <ArrowLeft className="w-3 h-3" /> Back to {isMovie ? "Movies" : "Theater"}
-              </Link>
 
-              <div className="flex items-center gap-2 mb-3">
-                {criticScore && (
-                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20">
-                    <Star className="w-3 h-3 text-primary fill-primary" />
-                    <span className="text-xs font-semibold text-primary">{criticScore}</span>
-                  </div>
-                )}
-                {ageRating && <span className="text-xs text-muted-foreground">{ageRating}</span>}
-              </div>
+            <h1 className="font-display text-3xl md:text-5xl font-bold mb-4 text-white">{event.title}</h1>
 
-              <h1 className="font-display text-3xl md:text-5xl font-bold mb-3">{event.title}</h1>
-
-              <div className="flex flex-wrap items-center gap-3 text-sm text-muted-foreground mb-4">
-                <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {event.duration} min</span>
-                <span className="capitalize">{event.genre}</span>
-                {language && <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5" /> {language}</span>}
-                {venue && <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {venue.name}</span>}
-              </div>
-
-              <Button onClick={() => setBookingOpen(true)} className="font-semibold px-6">
-                Book Tickets
-              </Button>
+            <div className="flex flex-wrap items-center gap-3 text-sm text-white/50 mb-6">
+              <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5" /> {event.duration} λεπτά</span>
+              <span>{event.genre}</span>
+              {movie && <span className="flex items-center gap-1"><Globe className="w-3.5 h-3.5" /> {movie.language}</span>}
+              {!isMovie && <span className="flex items-center gap-1"><Users className="w-3.5 h-3.5" /> {(event as StrapiTheaterShow).venue}</span>}
             </div>
-          </div>
+
+            <button
+              onClick={() => setBookingOpen(true)}
+              className="inline-flex items-center px-6 py-3 bg-white text-[#111111] text-sm font-semibold rounded hover:bg-white/90 transition-colors"
+            >
+              Κράτηση Εισιτηρίου
+            </button>
+          </motion.div>
         </div>
       </section>
 
-      <div className="container py-10 space-y-12">
-        {/* Synopsis + Details */}
-        <div className="grid md:grid-cols-3 gap-8">
-          <div className="md:col-span-2 space-y-4">
-            <h2 className="font-display text-xl font-semibold">Synopsis</h2>
-            <p className="text-muted-foreground leading-relaxed">{(event as any).synopsis}</p>
+      <div className="container mt-10 space-y-12">
+        <motion.section className="max-w-2xl" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
+          <h2 className="font-display text-xl font-semibold mb-3">Υπόθεση</h2>
+          <p className="text-muted-foreground leading-relaxed">{event.synopsis}</p>
+        </motion.section>
+
+        <section className="card-elevated p-6 max-w-2xl">
+          <h2 className="font-display text-lg font-semibold mb-4">Πληροφορίες</h2>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div><span className="text-muted-foreground text-xs uppercase tracking-wider">Σκηνοθεσία</span><p className="font-medium mt-1">{event.director}</p></div>
+            <div><span className="text-muted-foreground text-xs uppercase tracking-wider">Cast</span><p className="font-medium mt-1">{event.cast?.join(", ")}</p></div>
+            <div><span className="text-muted-foreground text-xs uppercase tracking-wider">Είδος</span><p className="font-medium mt-1">{event.genre}</p></div>
+            <div><span className="text-muted-foreground text-xs uppercase tracking-wider">Διάρκεια</span><p className="font-medium mt-1">{event.duration} λεπτά</p></div>
           </div>
-          <div className="glass-card rounded-lg p-5 space-y-3 h-fit">
-            <div>
-              <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Director</p>
-              <p className="text-sm font-medium">{event.director}</p>
-            </div>
-            {cast.length > 0 && (
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Cast</p>
-                <p className="text-sm">{cast.join(", ")}</p>
-              </div>
-            )}
-            {(event as any).release_date && (
-              <div>
-                <p className="text-xs text-muted-foreground uppercase tracking-wider mb-1">Release</p>
-                <p className="text-sm">{new Date((event as any).release_date).toLocaleDateString('el-GR')}</p>
-              </div>
-            )}
-            {(event as any).tags && (
-              <div className="flex flex-wrap gap-1">
-                {((event as any).tags as string[]).map((tag) => (
-                  <span key={tag} className="px-2 py-0.5 rounded-full text-xs bg-secondary text-secondary-foreground">{tag}</span>
-                ))}
-              </div>
-            )}
+        </section>
+
+        <section>
+          <h2 className="font-display text-xl font-semibold mb-4">Προβολές</h2>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            {(showtimes ?? []).slice(0, 4).map((st) => (
+              <button
+                key={st.id}
+                onClick={() => setBookingOpen(true)}
+                className="rounded border border-border p-4 text-left transition-all hover:border-foreground hover:shadow-sm"
+              >
+                <p className="text-sm font-medium">
+                  {new Date(st.datetime).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" })}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {new Date(st.datetime).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" })} · {st.venue}
+                </p>
+                <p className="text-sm font-bold mt-1">€{st.price}</p>
+              </button>
+            ))}
           </div>
+        </section>
+
+        {eventEditorialReviews.length > 0 && (
+          <section>
+            <h2 className="font-display text-xl font-semibold mb-4">Κριτικές Συντακτών</h2>
+            {eventEditorialReviews.map((r) => (
+              <div key={r.id} className="card-elevated p-6 border-l-4 border-l-[#111111] mb-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="font-bold text-foreground">{r.score}/10</span>
+                </div>
+                <h3 className="font-display font-semibold mb-2">{r.title}</h3>
+                <p className="text-muted-foreground text-sm">{r.body}</p>
+                <p className="text-xs text-muted-foreground mt-3">— {r.author}</p>
+              </div>
+            ))}
+          </section>
+        )}
+
+        {eventUserReviews.length > 0 && (
+          <section>
+            <h2 className="font-display text-xl font-semibold mb-4">Κριτικές Χρηστών</h2>
+            {eventUserReviews.map((r) => (
+              <div key={r.id} className="card-elevated p-4 mb-3">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-sm">{r.userName}</span>
+                  <span className="text-xs font-bold">{r.rating}/5 ★</span>
+                </div>
+                <p className="text-sm text-muted-foreground">{r.body}</p>
+              </div>
+            ))}
+          </section>
+        )}
+
+        <div className="card-elevated p-6 text-center max-w-md mx-auto border-2 border-[#111111]">
+          <h3 className="font-display font-semibold mb-2">Γράψε Κριτική</h3>
+          <p className="text-sm text-muted-foreground mb-3">Σύνδεση για να γράψεις κριτική</p>
+          <Button variant="outline" size="sm" className="border-foreground text-foreground hover:bg-foreground hover:text-background">Σύνδεση</Button>
         </div>
 
-        {/* Showtimes */}
-        {showtimes.length > 0 && (
-          <div>
-            <h2 className="font-display text-xl font-semibold mb-4">Showtimes</h2>
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {showtimes.map((st) => (
-                <button
-                  key={st.id}
-                  onClick={() => { setSelectedShowtime(st.id); setBookingOpen(true); }}
-                  className={`glass-card rounded-lg p-4 text-left transition-all glass-card-hover ${selectedShowtime === st.id ? "border-primary" : ""}`}
-                >
-                  <p className="font-semibold text-sm">
-                    {new Date(st.datetime).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" })}
-                  </p>
-                  <p className="text-primary font-bold text-lg">
-                    {new Date(st.datetime).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" })}
-                  </p>
-                  {st.venue && <p className="text-xs text-muted-foreground mt-1">{st.venue.name}</p>}
-                  <div className="flex items-center justify-between mt-2">
-                    <span className="text-xs text-muted-foreground">{st.available_seats} seats left</span>
-                    <span className="text-sm font-semibold text-primary">€{st.price}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
+        <section>
+          <h2 className="font-display text-xl font-semibold mb-4">Μπορεί να σου αρέσει</h2>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            {related.map((item, i) => (
+              <EventCard
+                key={item.id} slug={item.slug} title={item.title} subtitle={item.director}
+                genre={item.genre} duration={item.duration}
+                score={isMovie ? (item as StrapiMovie).criticScore : undefined}
+                gradientFrom={item.gradientFrom} gradientTo={item.gradientTo}
+                type={type} index={i}
+              />
+            ))}
           </div>
-        )}
-
-        {/* Reviews */}
-        {reviews.length > 0 && (
-          <div>
-            <div className="flex items-center gap-3 mb-4">
-              <h2 className="font-display text-xl font-semibold">Reviews</h2>
-              {avgScore && (
-                <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-primary/20">
-                  <Star className="w-3.5 h-3.5 text-primary fill-primary" />
-                  <span className="text-sm font-bold text-primary">{avgScore}</span>
-                </div>
-              )}
-            </div>
-            <div className="grid md:grid-cols-2 gap-4">
-              {reviews.map((review) => (
-                <div key={review.id} className="glass-card rounded-lg p-5">
-                  <div className="flex items-start justify-between mb-2">
-                    <h3 className="font-semibold text-sm leading-tight">{review.title}</h3>
-                    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
-                      <Star className="w-3 h-3 text-primary fill-primary" />
-                      <span className="text-xs font-bold text-primary">{review.score}</span>
-                    </div>
-                  </div>
-                  <p className="text-xs text-muted-foreground leading-relaxed mb-3 line-clamp-3">{review.body}</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 rounded-full bg-primary/20 flex items-center justify-center">
-                      <Users className="w-3 h-3 text-primary" />
-                    </div>
-                    <span className="text-xs text-muted-foreground">{review.author}</span>
-                    {review.is_editorial && (
-                      <span className="ml-auto text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">Editorial</span>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Related */}
-        {related.length > 0 && (
-          <div>
-            <h2 className="font-display text-xl font-semibold mb-4">You might also like</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              {related.map((item: any) => (
-                <EventCard
-                  key={item.id}
-                  slug={item.slug}
-                  title={item.title}
-                  subtitle={item.director}
-                  genre={item.genre}
-                  duration={item.duration}
-                  score={item.critic_score}
-                  gradientFrom={item.gradient_from || "#1a1a2e"}
-                  gradientTo={item.gradient_to || "#e94560"}
-                  type={type}
-                />
-              ))}
-            </div>
-          </div>
-        )}
+        </section>
       </div>
 
-      <BookingModal
-        open={bookingOpen}
-        onClose={() => setBookingOpen(false)}
-        eventTitle={event.title}
-        showtimes={showtimes}
-        preselectedShowtimeId={selectedShowtime}
-      />
+      <Footer />
+      <BookingModal open={bookingOpen} onClose={() => setBookingOpen(false)} eventTitle={event.title} />
     </div>
   );
 };

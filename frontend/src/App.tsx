@@ -10,18 +10,13 @@ import TheaterPage from "./pages/Theater";
 import EventDetail from "./pages/EventDetail";
 import Venues from "./pages/Venues";
 import Dining from "./pages/Dining";
-import RestaurantDetail from "./pages/RestaurantDetail";
+import DiningDetail from "./pages/DiningDetail";
+import Reviews from "./pages/Reviews";
+import ReviewDetail from "./pages/ReviewDetail";
+import Profile from "./pages/Profile";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: 3,
-      retryDelay: 2000,
-      staleTime: 1000 * 60 * 5,
-    },
-  },
-});
+const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -36,9 +31,12 @@ const App = () => (
           <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
           <Route path="/theater" element={<TheaterPage />} />
           <Route path="/theater/:slug" element={<EventDetail type="theater" />} />
-          <Route path="/dining" element={<Dining />} />
-          <Route path="/dining/:slug" element={<RestaurantDetail />} />
           <Route path="/venues" element={<Venues />} />
+          <Route path="/dining" element={<Dining />} />
+          <Route path="/dining/:slug" element={<DiningDetail />} />
+          <Route path="/reviews" element={<Reviews />} />
+          <Route path="/reviews/:slug" element={<ReviewDetail />} />
+          <Route path="/profile" element={<Profile />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
       </BrowserRouter>

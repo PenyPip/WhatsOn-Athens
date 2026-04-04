@@ -1,0 +1,53 @@
+{
+  "kind": "collectionType",
+  "collectionName": "user_reviews",
+  "info": {
+    "singularName": "user-review",
+    "pluralName": "user-reviews",
+    "displayName": "User Review"
+  },
+  "attributes": {
+    "user_name": {
+      "type": "string",
+      "required": true
+    },
+    "user_email": {
+      "type": "email"
+    },
+    "content_type": {
+      "type": "enumeration",
+      "enum": [
+        "movie",
+        "theater",
+        "restaurant"
+      ],
+      "required": true
+    },
+    "rating": {
+      "type": "decimal",
+      "required": true
+    },
+    "body": {
+      "type": "text",
+      "required": true
+    },
+    "movie": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::movie.movie",
+      "inversedBy": "reviews"
+    },
+    "theater_show": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::theater-show.theater-show",
+      "inversedBy": "reviews"
+    },
+    "restaurant": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::restaurant.restaurant",
+      "inversedBy": "reviews"
+    }
+  }
+}

@@ -4,11 +4,7 @@
   "info": {
     "singularName": "showtime",
     "pluralName": "showtimes",
-    "displayName": "Showtime",
-    "description": "Scheduled screenings and performances"
-  },
-  "options": {
-    "draftAndPublish": true
+    "displayName": "Showtime"
   },
   "attributes": {
     "datetime": {
@@ -16,8 +12,7 @@
       "required": true
     },
     "available_seats": {
-      "type": "integer",
-      "default": 100
+      "type": "integer"
     },
     "price": {
       "type": "decimal"

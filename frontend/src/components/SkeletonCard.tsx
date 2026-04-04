@@ -1,11 +1,11 @@
 import { Skeleton } from "@/components/ui/skeleton";
 
-export const SkeletonCard = () => (
-  <div className="glass-card rounded-lg overflow-hidden">
-    <Skeleton className="aspect-[2/3] w-full bg-secondary" />
+const SkeletonCard = () => (
+  <div className="card-elevated overflow-hidden min-w-[180px]">
+    <Skeleton className="aspect-[2/3] w-full" />
     <div className="p-3 space-y-2">
-      <Skeleton className="h-4 w-3/4 bg-secondary" />
-      <Skeleton className="h-3 w-1/2 bg-secondary" />
+      <Skeleton className="h-4 w-3/4" />
+      <Skeleton className="h-3 w-1/2" />
     </div>
   </div>
 );

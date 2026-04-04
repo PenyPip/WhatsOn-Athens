@@ -1,26 +1,14 @@
 module.exports = [
   'strapi::logger',
   'strapi::errors',
-  {
-    name: 'strapi::security',
-    config: {
-      contentSecurityPolicy: {
-        useDefaults: true,
-        directives: {
-          'connect-src': ["'self'", 'https:'],
-          'img-src': ["'self'", 'data:', 'blob:', 'market-assets.strapi.io'],
-          'media-src': ["'self'", 'data:', 'blob:'],
-          upgradeInsecureRequests: null,
-        },
-      },
-    },
-  },
+  'strapi::security',
   {
     name: 'strapi::cors',
     config: {
-      enabled: true,
-      headers: '*',
-      origin: ['http://localhost', 'http://localhost:80', 'http://localhost:3000', 'http://localhost:5173', 'http://frontend', 'http://nginx'],
+      origin: ['http://localhost:3000', 'http://localhost:5173', '*'],
+      methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'],
+      headers: ['Content-Type', 'Authorization', 'Origin', 'Accept'],
+      keepHeaderOnError: true,
     },
   },
   'strapi::poweredBy',
@@ -28,11 +16,5 @@ module.exports = [
   'strapi::body',
   'strapi::session',
   'strapi::favicon',
-  {
-    name: 'strapi::public',
-    config: {
-      defaultIndex: false,
-      path: './public',
-    },
-  },
+  'strapi::public',
 ];

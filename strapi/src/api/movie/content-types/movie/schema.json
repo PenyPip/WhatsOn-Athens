@@ -4,11 +4,7 @@
   "info": {
     "singularName": "movie",
     "pluralName": "movies",
-    "displayName": "Movie",
-    "description": "Movies showing in cinemas"
-  },
-  "options": {
-    "draftAndPublish": true
+    "displayName": "Movie"
   },
   "attributes": {
     "title": {
@@ -31,8 +27,16 @@
     },
     "genre": {
       "type": "enumeration",
-      "enum": ["action", "drama", "comedy", "thriller", "horror", "documentary", "romance", "sci-fi", "animation", "other"],
-      "default": "other"
+      "enum": [
+        "action",
+        "drama",
+        "comedy",
+        "thriller",
+        "horror",
+        "documentary",
+        "sci-fi",
+        "romance"
+      ]
     },
     "duration": {
       "type": "integer"
@@ -45,9 +49,9 @@
     },
     "poster": {
       "type": "media",
-      "multiple": false,
-      "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "trailer_url": {
       "type": "string"
@@ -59,12 +63,10 @@
       "type": "decimal"
     },
     "gradient_from": {
-      "type": "string",
-      "default": "#1a1a2e"
+      "type": "string"
     },
     "gradient_to": {
-      "type": "string",
-      "default": "#e94560"
+      "type": "string"
     },
     "showtimes": {
       "type": "relation",
@@ -75,7 +77,13 @@
     "reviews": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::review.review",
+      "target": "api::user-review.user-review",
+      "mappedBy": "movie"
+    },
+    "editorial_reviews": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::editorial-review.editorial-review",
       "mappedBy": "movie"
     }
   }

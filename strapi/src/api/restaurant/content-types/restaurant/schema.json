@@ -4,11 +4,7 @@
   "info": {
     "singularName": "restaurant",
     "pluralName": "restaurants",
-    "displayName": "Restaurant",
-    "description": "Restaurants and food openings"
-  },
-  "options": {
-    "draftAndPublish": true
+    "displayName": "Restaurant"
   },
   "attributes": {
     "name": {
@@ -24,22 +20,21 @@
       "type": "text"
     },
     "cuisine": {
-      "type": "enumeration",
-      "enum": ["greek", "italian", "japanese", "mediterranean", "mexican", "french", "american", "asian", "seafood", "vegetarian", "other"],
-      "default": "other"
+      "type": "string"
     },
     "neighborhood": {
       "type": "string"
     },
     "city": {
       "type": "enumeration",
-      "enum": ["athens", "thessaloniki", "other"],
-      "default": "athens"
+      "enum": [
+        "athens",
+        "thessaloniki",
+        "other"
+      ]
     },
     "price_range": {
-      "type": "enumeration",
-      "enum": ["budget", "moderate", "upscale", "fine_dining"],
-      "default": "moderate"
+      "type": "string"
     },
     "address": {
       "type": "string"
@@ -62,32 +57,30 @@
     },
     "poster": {
       "type": "media",
-      "multiple": false,
-      "required": false,
-      "allowedTypes": ["images"]
-    },
-    "gallery": {
-      "type": "media",
-      "multiple": true,
-      "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "gradient_from": {
-      "type": "string",
-      "default": "#1a1a2e"
+      "type": "string"
     },
     "gradient_to": {
-      "type": "string",
-      "default": "#e8a020"
+      "type": "string"
     },
     "editorial_score": {
       "type": "decimal"
     },
-    "editorial_review": {
-      "type": "richtext"
+    "reviews": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::user-review.user-review",
+      "mappedBy": "restaurant"
     },
-    "editorial_author": {
-      "type": "string"
+    "editorial_reviews": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::editorial-review.editorial-review",
+      "mappedBy": "restaurant"
     }
   }
 }

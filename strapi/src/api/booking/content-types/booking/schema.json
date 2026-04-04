@@ -4,28 +4,27 @@
   "info": {
     "singularName": "booking",
     "pluralName": "bookings",
-    "displayName": "Booking",
-    "description": "Ticket bookings"
-  },
-  "options": {
-    "draftAndPublish": false
+    "displayName": "Booking"
   },
   "attributes": {
-    "user_name": {
-      "type": "string",
-      "required": true
-    },
     "user_email": {
       "type": "email",
       "required": true
+    },
+    "user_name": {
+      "type": "string"
     },
     "seat_numbers": {
       "type": "json"
     },
     "status": {
       "type": "enumeration",
-      "enum": ["pending", "confirmed", "cancelled"],
-      "default": "pending"
+      "enum": [
+        "pending",
+        "confirmed",
+        "cancelled"
+      ],
+      "default": "confirmed"
     },
     "qr_code": {
       "type": "string"

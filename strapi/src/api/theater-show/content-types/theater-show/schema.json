@@ -4,11 +4,7 @@
   "info": {
     "singularName": "theater-show",
     "pluralName": "theater-shows",
-    "displayName": "Theater Show",
-    "description": "Theater performances, musicals, dance shows"
-  },
-  "options": {
-    "draftAndPublish": true
+    "displayName": "Theater Show"
   },
   "attributes": {
     "title": {
@@ -31,28 +27,39 @@
     },
     "genre": {
       "type": "enumeration",
-      "enum": ["drama", "comedy", "musical", "dance", "opera", "other"],
-      "default": "drama"
+      "enum": [
+        "drama",
+        "comedy",
+        "musical",
+        "dance",
+        "opera"
+      ]
     },
     "duration": {
       "type": "integer"
     },
     "poster": {
       "type": "media",
-      "multiple": false,
-      "required": false,
-      "allowedTypes": ["images"]
+      "allowedTypes": [
+        "images"
+      ]
     },
     "tags": {
       "type": "json"
     },
     "gradient_from": {
-      "type": "string",
-      "default": "#2c3e50"
+      "type": "string"
     },
     "gradient_to": {
-      "type": "string",
-      "default": "#8e44ad"
+      "type": "string"
+    },
+    "is_premiere": {
+      "type": "boolean",
+      "default": false
+    },
+    "is_last_shows": {
+      "type": "boolean",
+      "default": false
     },
     "venue": {
       "type": "relation",
@@ -69,7 +76,13 @@
     "reviews": {
       "type": "relation",
       "relation": "oneToMany",
-      "target": "api::review.review",
+      "target": "api::user-review.user-review",
+      "mappedBy": "theater_show"
+    },
+    "editorial_reviews": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::editorial-review.editorial-review",
       "mappedBy": "theater_show"
     }
   }

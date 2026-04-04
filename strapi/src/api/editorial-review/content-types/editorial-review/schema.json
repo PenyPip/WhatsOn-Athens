@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "editorial_reviews",
+  "info": {
+    "singularName": "editorial-review",
+    "pluralName": "editorial-reviews",
+    "displayName": "Editorial Review"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true
+    },
+    "body": {
+      "type": "richtext"
+    },
+    "score": {
+      "type": "decimal"
+    },
+    "author": {
+      "type": "string"
+    },
+    "author_image_url": {
+      "type": "string"
+    },
+    "category": {
+      "type": "enumeration",
+      "enum": [
+        "movie",
+        "theater",
+        "restaurant"
+      ],
+      "required": true
+    },
+    "featured_image": {
+      "type": "media",
+      "allowedTypes": [
+        "images"
+      ]
+    },
+    "movie": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::movie.movie",
+      "inversedBy": "editorial_reviews"
+    },
+    "theater_show": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::theater-show.theater-show",
+      "inversedBy": "editorial_reviews"
+    },
+    "restaurant": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::restaurant.restaurant",
+      "inversedBy": "editorial_reviews"
+    }
+  }
+}

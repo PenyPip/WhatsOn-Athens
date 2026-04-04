@@ -1,9 +1,9 @@
 import { useState } from "react";
 
-const cities = ["All", "Athens", "Thessaloniki"];
+const cities = ["Όλα", "Αθήνα", "Θεσσαλονίκη"];
 
 const CityFilter = () => {
-  const [active, setActive] = useState("All");
+  const [active, setActive] = useState("Όλα");
 
   return (
     <div className="flex items-center gap-2 py-4">
@@ -11,10 +11,10 @@ const CityFilter = () => {
         <button
           key={city}
           onClick={() => setActive(city)}
-          className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
+          className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all border ${
             active === city
-              ? "bg-primary text-primary-foreground"
-              : "glass-card text-muted-foreground hover:text-foreground"
+              ? "bg-primary text-primary-foreground border-primary"
+              : "bg-card text-muted-foreground border-border hover:border-primary hover:text-primary"
           }`}
         >
           {city}

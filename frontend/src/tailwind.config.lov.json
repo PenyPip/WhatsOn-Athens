@@ -3230,12 +3230,12 @@
         "monospace"
       ],
       "display": [
-        "\"Playfair Display\"",
+        "Literata",
         "Georgia",
         "serif"
       ],
       "body": [
-        "Inter",
+        "\"DM Sans\"",
         "system-ui",
         "sans-serif"
       ]

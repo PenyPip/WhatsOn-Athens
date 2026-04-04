@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
-import { Star, Clock } from "lucide-react";
+import { motion } from "framer-motion";
+import { Clock } from "lucide-react";
 
 interface EventCardProps {
   slug: string;
@@ -11,44 +12,52 @@ interface EventCardProps {
   gradientFrom: string;
   gradientTo: string;
   type: "movie" | "theater";
+  badge?: string;
   className?: string;
+  index?: number;
 }
 
-const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom, gradientTo, type, className = "" }: EventCardProps) => {
+const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom, gradientTo, type, badge, className = "", index = 0 }: EventCardProps) => {
   return (
-    <Link
-      to={`/${type === "movie" ? "movies" : "theater"}/${slug}`}
-      className={`group block glass-card rounded-lg overflow-hidden transition-all duration-300 glass-card-hover ${className}`}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.4, delay: index * 0.05 }}
     >
-      {/* Gradient Poster Placeholder */}
-      <div
-        className="aspect-[2/3] relative overflow-hidden"
-        style={{ background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` }}
+      <Link
+        to={`/${type === "movie" ? "movies" : "theater"}/${slug}`}
+        className={`group block card-elevated overflow-hidden ${className}`}
       >
-        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-transparent to-transparent" />
-        <div className="absolute bottom-3 left-3 right-3">
+        <div
+          className="aspect-[2/3] relative overflow-hidden"
+          style={{ background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` }}
+        >
+          {badge && (
+            <span className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-[#111111] text-white">
+              {badge}
+            </span>
+          )}
           {score && (
-            <div className="flex items-center gap-1 mb-2">
-              <Star className="w-3.5 h-3.5 text-primary fill-primary" />
-              <span className="text-sm font-semibold text-primary">{score}</span>
+            <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-white text-[11px] font-bold text-[#111111] rounded">
+              {score}/10
             </div>
           )}
-          <span className="inline-block px-2 py-0.5 text-xs rounded-full bg-secondary text-secondary-foreground mb-1">
-            {genre}
-          </span>
         </div>
-      </div>
-      <div className="p-3">
-        <h3 className="font-display font-semibold text-sm leading-tight mb-1 group-hover:text-primary transition-colors line-clamp-2">
-          {title}
-        </h3>
-        <p className="text-xs text-muted-foreground mb-2">{subtitle}</p>
-        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-          <Clock className="w-3 h-3" />
-          <span>{duration} min</span>
+        <div className="p-3">
+          <h3 className="font-display font-semibold text-sm leading-tight mb-1 group-hover:text-primary transition-colors line-clamp-2">
+            {title}
+          </h3>
+          <p className="text-xs text-muted-foreground mb-2">{subtitle}</p>
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{genre}</span>
+            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+              <Clock className="w-3 h-3" />
+              <span>{duration}'</span>
+            </div>
+          </div>
         </div>
-      </div>
-    </Link>
+      </Link>
+    </motion.div>
   );
 };
 
