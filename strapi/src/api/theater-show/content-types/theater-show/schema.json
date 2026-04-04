@@ -1,0 +1,76 @@
+{
+  "kind": "collectionType",
+  "collectionName": "theater_shows",
+  "info": {
+    "singularName": "theater-show",
+    "pluralName": "theater-shows",
+    "displayName": "Theater Show",
+    "description": "Theater performances, musicals, dance shows"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true
+    },
+    "synopsis": {
+      "type": "text"
+    },
+    "director": {
+      "type": "string"
+    },
+    "cast": {
+      "type": "json"
+    },
+    "genre": {
+      "type": "enumeration",
+      "enum": ["drama", "comedy", "musical", "dance", "opera", "other"],
+      "default": "drama"
+    },
+    "duration": {
+      "type": "integer"
+    },
+    "poster": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "tags": {
+      "type": "json"
+    },
+    "gradient_from": {
+      "type": "string",
+      "default": "#2c3e50"
+    },
+    "gradient_to": {
+      "type": "string",
+      "default": "#8e44ad"
+    },
+    "venue": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::venue.venue",
+      "inversedBy": "theater_shows"
+    },
+    "showtimes": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::showtime.showtime",
+      "mappedBy": "theater_show"
+    },
+    "reviews": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::review.review",
+      "mappedBy": "theater_show"
+    }
+  }
+}

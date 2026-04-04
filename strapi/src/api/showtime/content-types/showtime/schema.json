@@ -1,0 +1,50 @@
+{
+  "kind": "collectionType",
+  "collectionName": "showtimes",
+  "info": {
+    "singularName": "showtime",
+    "pluralName": "showtimes",
+    "displayName": "Showtime",
+    "description": "Scheduled screenings and performances"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "datetime": {
+      "type": "datetime",
+      "required": true
+    },
+    "available_seats": {
+      "type": "integer",
+      "default": 100
+    },
+    "price": {
+      "type": "decimal"
+    },
+    "movie": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::movie.movie",
+      "inversedBy": "showtimes"
+    },
+    "theater_show": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::theater-show.theater-show",
+      "inversedBy": "showtimes"
+    },
+    "venue": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::venue.venue",
+      "inversedBy": "showtimes"
+    },
+    "bookings": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::booking.booking",
+      "mappedBy": "showtime"
+    }
+  }
+}
