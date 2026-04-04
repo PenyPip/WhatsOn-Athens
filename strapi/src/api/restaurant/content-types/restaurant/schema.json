@@ -1,0 +1,93 @@
+{
+  "kind": "collectionType",
+  "collectionName": "restaurants",
+  "info": {
+    "singularName": "restaurant",
+    "pluralName": "restaurants",
+    "displayName": "Restaurant",
+    "description": "Restaurants and food openings"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "name": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "name",
+      "required": true
+    },
+    "synopsis": {
+      "type": "text"
+    },
+    "cuisine": {
+      "type": "enumeration",
+      "enum": ["greek", "italian", "japanese", "mediterranean", "mexican", "french", "american", "asian", "seafood", "vegetarian", "other"],
+      "default": "other"
+    },
+    "neighborhood": {
+      "type": "string"
+    },
+    "city": {
+      "type": "enumeration",
+      "enum": ["athens", "thessaloniki", "other"],
+      "default": "athens"
+    },
+    "price_range": {
+      "type": "enumeration",
+      "enum": ["budget", "moderate", "upscale", "fine_dining"],
+      "default": "moderate"
+    },
+    "address": {
+      "type": "string"
+    },
+    "phone": {
+      "type": "string"
+    },
+    "website": {
+      "type": "string"
+    },
+    "instagram": {
+      "type": "string"
+    },
+    "opening_date": {
+      "type": "date"
+    },
+    "is_new": {
+      "type": "boolean",
+      "default": true
+    },
+    "poster": {
+      "type": "media",
+      "multiple": false,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "gallery": {
+      "type": "media",
+      "multiple": true,
+      "required": false,
+      "allowedTypes": ["images"]
+    },
+    "gradient_from": {
+      "type": "string",
+      "default": "#1a1a2e"
+    },
+    "gradient_to": {
+      "type": "string",
+      "default": "#e8a020"
+    },
+    "editorial_score": {
+      "type": "decimal"
+    },
+    "editorial_review": {
+      "type": "richtext"
+    },
+    "editorial_author": {
+      "type": "string"
+    }
+  }
+}

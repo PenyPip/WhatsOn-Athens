@@ -5,7 +5,8 @@ import EventCard from "@/components/EventCard";
 import EditorialCard from "@/components/EditorialCard";
 import CityFilter from "@/components/CityFilter";
 import { SkeletonCard } from "@/components/SkeletonCard";
-import { getMovies, getTheaterShows, getEditorialReviews } from "@/lib/strapi";
+import RestaurantCard from "@/components/RestaurantCard";
+import { getMovies, getTheaterShows, getEditorialReviews, getNewRestaurants } from "@/lib/strapi";
 
 const Index = () => {
   const { data: movies = [], isLoading: moviesLoading } = useQuery({
@@ -21,6 +22,11 @@ const Index = () => {
   const { data: reviews = [], isLoading: reviewsLoading } = useQuery({
     queryKey: ["editorial-reviews"],
     queryFn: getEditorialReviews,
+  });
+
+  const { data: newRestaurants = [], isLoading: restaurantsLoading } = useQuery({
+    queryKey: ["new-restaurants"],
+    queryFn: getNewRestaurants,
   });
 
   return (
@@ -73,6 +79,20 @@ const Index = () => {
                   gradientTo={show.gradient_to || "#8e44ad"}
                   type="theater"
                 />
+              </div>
+            ))}
+      </HorizontalScroll>
+
+      <HorizontalScroll title="New in Town" subtitle="Latest restaurant openings">
+        {restaurantsLoading
+          ? Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="min-w-[200px] max-w-[200px] md:min-w-[240px] md:max-w-[240px] flex-shrink-0">
+                <SkeletonCard />
+              </div>
+            ))
+          : newRestaurants.map((r) => (
+              <div key={r.id} className="min-w-[200px] max-w-[200px] md:min-w-[240px] md:max-w-[240px] flex-shrink-0">
+                <RestaurantCard restaurant={r} />
               </div>
             ))}
       </HorizontalScroll>

@@ -190,3 +190,42 @@ export function getPosterUrl(item: Movie | TheaterShow): string | null {
   }
   return null;
 }
+
+export interface Restaurant {
+  id: number;
+  slug: string;
+  name: string;
+  synopsis: string;
+  cuisine: string;
+  neighborhood: string;
+  city: 'athens' | 'thessaloniki' | 'other';
+  price_range: 'budget' | 'moderate' | 'upscale' | 'fine_dining';
+  address: string;
+  phone?: string;
+  website?: string;
+  instagram?: string;
+  opening_date?: string;
+  is_new: boolean;
+  gradient_from: string;
+  gradient_to: string;
+  editorial_score?: number;
+  editorial_review?: string;
+  editorial_author?: string;
+  poster?: { url: string };
+  gallery?: { url: string }[];
+}
+
+export async function getRestaurants(): Promise<Restaurant[]> {
+  const data = await fetchAPI('/restaurants?populate=poster&sort=opening_date:desc&pagination[limit]=50&status=published');
+  return data.data || [];
+}
+
+export async function getNewRestaurants(): Promise<Restaurant[]> {
+  const data = await fetchAPI('/restaurants?filters[is_new][$eq]=true&populate=poster&sort=opening_date:desc&pagination[limit]=10&status=published');
+  return data.data || [];
+}
+
+export async function getRestaurant(slug: string): Promise<Restaurant | null> {
+  const data = await fetchAPI(`/restaurants?filters[slug][$eq]=${slug}&populate[0]=poster&populate[1]=gallery&status=published`);
+  return data.data?.[0] || null;
+}

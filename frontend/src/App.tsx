@@ -9,6 +9,8 @@ import Movies from "./pages/Movies";
 import TheaterPage from "./pages/Theater";
 import EventDetail from "./pages/EventDetail";
 import Venues from "./pages/Venues";
+import Dining from "./pages/Dining";
+import RestaurantDetail from "./pages/RestaurantDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient({
@@ -16,7 +18,7 @@ const queryClient = new QueryClient({
     queries: {
       retry: 3,
       retryDelay: 2000,
-      staleTime: 1000 * 60 * 5, // 5 minutes
+      staleTime: 1000 * 60 * 5,
     },
   },
 });
@@ -34,6 +36,8 @@ const App = () => (
           <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
           <Route path="/theater" element={<TheaterPage />} />
           <Route path="/theater/:slug" element={<EventDetail type="theater" />} />
+          <Route path="/dining" element={<Dining />} />
+          <Route path="/dining/:slug" element={<RestaurantDetail />} />
           <Route path="/venues" element={<Venues />} />
           <Route path="*" element={<NotFound />} />
         </Routes>

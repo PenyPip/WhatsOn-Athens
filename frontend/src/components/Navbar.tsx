@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Film, Theater, MapPin, Search } from "lucide-react";
+import { Film, Theater, MapPin, Search, UtensilsCrossed } from "lucide-react";
 
 const Navbar = () => {
   const location = useLocation();
@@ -8,6 +8,7 @@ const Navbar = () => {
     { to: "/", label: "Home", icon: null },
     { to: "/movies", label: "Movies", icon: Film },
     { to: "/theater", label: "Theater", icon: Theater },
+    { to: "/dining", label: "Dining", icon: UtensilsCrossed },
     { to: "/venues", label: "Venues", icon: MapPin },
   ];
 
@@ -27,7 +28,10 @@ const Navbar = () => {
                   key={link.to}
                   to={link.to}
                   className={`text-sm font-medium transition-colors hover:text-primary ${
-                    location.pathname === link.to ? "text-primary" : "text-muted-foreground"
+                    location.pathname === link.to ||
+                    (location.pathname.startsWith(link.to + "/") && link.to !== "/")
+                      ? "text-primary"
+                      : "text-muted-foreground"
                   }`}
                 >
                   {link.label}
@@ -43,10 +47,12 @@ const Navbar = () => {
 
       {/* Mobile Bottom Nav */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden glass-card border-t border-[var(--glass-border)]">
-        <div className="flex items-center justify-around h-16 px-4">
+        <div className="flex items-center justify-around h-16 px-2">
           {links.map((link) => {
             const Icon = link.icon;
-            const isActive = location.pathname === link.to;
+            const isActive =
+              location.pathname === link.to ||
+              (location.pathname.startsWith(link.to + "/") && link.to !== "/");
             return (
               <Link
                 key={link.to}
