@@ -74,6 +74,7 @@ const Movies = () => {
                 key={movie.id} slug={movie.slug} title={movie.title} subtitle={movie.director}
                 genre={movie.genre} duration={movie.duration} score={movie.criticScore}
                 gradientFrom={movie.gradientFrom} gradientTo={movie.gradientTo}
+                posterUrl={movie.posterUrl}
                 type="movie" index={i}
               />
             ))}

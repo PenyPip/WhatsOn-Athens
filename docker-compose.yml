@@ -34,6 +34,8 @@ services:
       ADMIN_JWT_SECRET: whatson-admin-jwt
       TRANSFER_TOKEN_SALT: whatson-transfer-salt
       JWT_SECRET: whatson-jwt-secret
+    volumes:
+      - strapi_uploads:/app/public/uploads
     restart: unless-stopped
 
   frontend:
@@ -54,6 +56,7 @@ services:
       - "80:80"
     volumes:
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+      - strapi_uploads:/app/public/uploads:ro
     depends_on:
       - frontend
       - strapi
@@ -61,3 +64,4 @@ services:
 
 volumes:
   mysql_data:
+  strapi_uploads:

@@ -1,7 +1,8 @@
 const API_URL = import.meta.env.VITE_API_URL || "/api";
 
 async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
-  const url = new URL(`${API_URL}${endpoint}`, window.location.origin);
+  const base = window.location.protocol + '//' + window.location.hostname;
+  const url = new URL(`/api${endpoint}`, base);
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   }
@@ -13,7 +14,6 @@ async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): P
   return json.data ?? json;
 }
 
-// Mappers — Strapi 5 returns snake_case
 function mapMovie(m: any): StrapiMovie {
   return {
     id: m.id,
@@ -30,6 +30,11 @@ function mapMovie(m: any): StrapiMovie {
     criticScore: m.critic_score,
     releaseDate: m.release_date,
     trailerUrl: m.trailer_url,
+    posterUrl: m.poster?.url 
+  ? m.poster.url.replace('http://localhost:1337', '').replace('http://strapi:1337', '')
+  : m.poster_url 
+    ? m.poster_url.replace('http://localhost:1337', '').replace('http://strapi:1337', '')
+    : null,
     gradientFrom: m.gradient_from || "#1a1a2e",
     gradientTo: m.gradient_to || "#e94560",
   };
@@ -48,6 +53,9 @@ function mapTheaterShow(s: any): StrapiTheaterShow {
     venue: s.venue?.name || s.venue || "",
     synopsis: s.synopsis,
     tags: s.tags || [],
+    posterUrl: s.poster?.url 
+  ? s.poster.url.replace('http://localhost:1337', '').replace('http://strapi:1337', '')
+  : null,
     gradientFrom: s.gradient_from || "#2c3e50",
     gradientTo: s.gradient_to || "#8e44ad",
     isPremiere: s.is_premiere,
@@ -72,6 +80,9 @@ function mapRestaurant(r: any): StrapiRestaurant {
     instagram: r.instagram,
     openingDate: r.opening_date,
     isNew: r.is_new,
+    posterUrl: r.poster?.url 
+  ? r.poster.url.replace('http://localhost:1337', '').replace('http://strapi:1337', '')
+  : null,
     gradientFrom: r.gradient_from || "#1a1a2e",
     gradientTo: r.gradient_to || "#e8a020",
     editorialScore: r.editorial_score,
@@ -136,7 +147,6 @@ function mapVenue(v: any): StrapiVenue {
   };
 }
 
-// Interfaces
 export interface StrapiMovie {
   id: number;
   documentId: string;
@@ -152,6 +162,7 @@ export interface StrapiMovie {
   criticScore: number;
   releaseDate: string;
   trailerUrl?: string;
+  posterUrl?: string;
   gradientFrom: string;
   gradientTo: string;
 }
@@ -168,6 +179,7 @@ export interface StrapiTheaterShow {
   venue: string;
   synopsis: string;
   tags: string[];
+  posterUrl?: string;
   gradientFrom: string;
   gradientTo: string;
   isPremiere?: boolean;
@@ -190,6 +202,7 @@ export interface StrapiRestaurant {
   instagram?: string;
   openingDate: string;
   isNew: boolean;
+  posterUrl?: string;
   gradientFrom: string;
   gradientTo: string;
   editorialScore?: number;
@@ -245,7 +258,6 @@ export interface StrapiUserReview {
   createdAt: string;
 }
 
-// API functions
 export const api = {
   getMovies: () => fetchAPI<any[]>("/movies").then((d) => d.map(mapMovie)),
   getMovieBySlug: (slug: string) => fetchAPI<any[]>(`/movies`, { "filters[slug][$eq]": slug }).then((d) => d[0] ? mapMovie(d[0]) : undefined),

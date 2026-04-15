@@ -38,6 +38,7 @@ const Index = () => {
                 slug={movie.slug} title={movie.title} subtitle={movie.director}
                 genre={movie.genre} duration={movie.duration} score={movie.criticScore}
                 gradientFrom={movie.gradientFrom} gradientTo={movie.gradientTo}
+                posterUrl={movie.posterUrl}
                 type="movie" index={i}
               />
             </div>
@@ -67,6 +68,7 @@ const Index = () => {
                     slug={show.slug} title={show.title} subtitle={show.director}
                     genre={show.genre} duration={show.duration}
                     gradientFrom={show.gradientFrom} gradientTo={show.gradientTo}
+                    posterUrl={show.posterUrl}
                     type="theater" index={i}
                     badge={show.isPremiere ? "Πρεμιέρα" : show.isLastShows ? "Τελευταίες" : undefined}
                   />
@@ -140,9 +142,12 @@ const Index = () => {
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <span className="font-display text-xl font-bold text-white">WhatSON</span>
-              <span className="text-white/30 text-xs ml-2 uppercase tracking-widest">Athens</span>
-              <p className="text-white/40 text-xs mt-3 leading-relaxed">Ο οδηγός σου για ψυχαγωγία και γαστρονομία στην Αθήνα.</p>
+              <div className="flex items-baseline gap-0.5 mb-2">
+                <span style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 300, fontSize: '1.8rem', letterSpacing: '-2px', color: '#F5F2ED', lineHeight: 1 }}>37</span>
+                <span style={{ fontFamily: 'Courier Prime, monospace', fontSize: '0.75rem', color: '#F5F2ED', alignSelf: 'flex-start', marginTop: '5px' }}>°</span>
+                <span style={{ fontFamily: 'Courier Prime, monospace', fontSize: '0.75rem', fontWeight: 700, color: '#C8512A', alignSelf: 'flex-end', marginBottom: '3px' }}>N</span>
+              </div>
+              <p className="text-white/40 text-xs mt-2 leading-relaxed">Ο οδηγός σου για ψυχαγωγία και γαστρονομία στην Αθήνα.</p>
             </div>
             <div>
               <h4 className="text-xs uppercase tracking-[0.15em] text-white/50 mb-3">Εξερεύνηση</h4>
@@ -168,7 +173,7 @@ const Index = () => {
             </div>
           </div>
           <div className="border-t border-white/10 pt-6 text-center">
-            <p className="text-xs text-white/30">© 2024 WhatSON Athens. Με ❤️ από την Αθήνα.</p>
+            <p className="text-xs text-white/30">© 2025 37°N Athens. Με ❤️ από την Αθήνα.</p>
           </div>
         </div>
       </footer>

@@ -6,6 +6,9 @@
     "pluralName": "venues",
     "displayName": "Venue"
   },
+  "options": {
+    "draftAndPublish": true
+  },
   "attributes": {
     "name": {
       "type": "string",
@@ -21,11 +24,7 @@
     },
     "city": {
       "type": "enumeration",
-      "enum": [
-        "athens",
-        "thessaloniki",
-        "other"
-      ]
+      "enum": ["athens", "thessaloniki", "other"]
     },
     "google_maps_url": {
       "type": "string"
@@ -35,12 +34,13 @@
     },
     "image": {
       "type": "media",
-      "allowedTypes": [
-        "images"
-      ]
+      "allowedTypes": ["images"]
     },
     "type": {
       "type": "string"
+    },
+    "movieglu_cinema_id": {
+      "type": "integer"
     },
     "theater_shows": {
       "type": "relation",

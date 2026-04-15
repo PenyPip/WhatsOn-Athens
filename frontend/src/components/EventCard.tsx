@@ -11,13 +11,14 @@ interface EventCardProps {
   score?: number;
   gradientFrom: string;
   gradientTo: string;
+  posterUrl?: string;
   type: "movie" | "theater";
   badge?: string;
   className?: string;
   index?: number;
 }
 
-const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom, gradientTo, type, badge, className = "", index = 0 }: EventCardProps) => {
+const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom, gradientTo, posterUrl, type, badge, className = "", index = 0 }: EventCardProps) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -30,15 +31,22 @@ const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom
       >
         <div
           className="aspect-[2/3] relative overflow-hidden"
-          style={{ background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` }}
+          style={!posterUrl ? { background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` } : undefined}
         >
+          {posterUrl && (
+            <img
+              src={posterUrl}
+              alt={title}
+              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          )}
           {badge && (
-            <span className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-[#111111] text-white">
+            <span className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-[#111111] text-white z-10">
               {badge}
             </span>
           )}
           {score && (
-            <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-white text-[11px] font-bold text-[#111111] rounded">
+            <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-white text-[11px] font-bold text-[#111111] rounded z-10">
               {score}/10
             </div>
           )}

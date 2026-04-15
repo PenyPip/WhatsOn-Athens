@@ -6,6 +6,9 @@
     "pluralName": "movies",
     "displayName": "Movie"
   },
+  "options": {
+    "draftAndPublish": true
+  },
   "attributes": {
     "title": {
       "type": "string",
@@ -29,13 +32,18 @@
       "type": "enumeration",
       "enum": [
         "action",
-        "drama",
+        "adventure",
+        "animation",
         "comedy",
-        "thriller",
-        "horror",
         "documentary",
+        "drama",
+        "fantasy",
+        "horror",
+        "musical",
+        "romance",
         "sci-fi",
-        "romance"
+        "thriller",
+        "other"
       ]
     },
     "duration": {
@@ -49,9 +57,10 @@
     },
     "poster": {
       "type": "media",
-      "allowedTypes": [
-        "images"
-      ]
+      "allowedTypes": ["images"]
+    },
+    "poster_url": {
+      "type": "string"
     },
     "trailer_url": {
       "type": "string"
@@ -67,6 +76,12 @@
     },
     "gradient_to": {
       "type": "string"
+    },
+    "movieglu_film_id": {
+      "type": "integer"
+    },
+    "movieglu_data": {
+      "type": "text"
     },
     "showtimes": {
       "type": "relation",
