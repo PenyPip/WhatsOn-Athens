@@ -33,9 +33,9 @@ const HorizontalScroll = ({ title, subtitle, children }: HorizontalScrollProps) 
             </button>
           </div>
         </div>
-      </div>
-      <div ref={scrollRef} className="flex gap-4 overflow-x-auto scrollbar-hide px-6 pb-2">
-        {children}
+        <div ref={scrollRef} className="flex items-start gap-4 overflow-x-auto scrollbar-hide pb-2">
+          {children}
+        </div>
       </div>
     </section>
   );

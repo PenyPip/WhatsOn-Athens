@@ -4,7 +4,7 @@ import Footer from "@/components/Footer";
 
 const Profile = () => {
   return (
-    <div className="min-h-screen pt-28 pb-20 md:pb-8">
+    <div className="min-h-screen pt-36 pb-20 md:pb-8">
       <div className="section-black py-10 -mt-28 pt-36 mb-8">
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>

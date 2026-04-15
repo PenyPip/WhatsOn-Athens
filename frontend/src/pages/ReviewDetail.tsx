@@ -11,7 +11,7 @@ const ReviewDetail = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen pt-28">
+      <div className="min-h-screen pt-36">
         <LoadingState />
       </div>
     );
@@ -19,7 +19,7 @@ const ReviewDetail = () => {
 
   if (!review) {
     return (
-      <div className="min-h-screen pt-28 flex items-center justify-center">
+      <div className="min-h-screen pt-36 flex items-center justify-center">
         <div className="text-center">
           <h1 className="font-display text-2xl mb-2">Δεν βρέθηκε</h1>
           <Link to="/reviews" className="text-primary text-sm">Πίσω στις κριτικές</Link>

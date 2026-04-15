@@ -23,22 +23,21 @@ const Navbar = () => {
   return (
     <>
       {/* Desktop Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 hidden md:block bg-[#1a1a1a]">
-        <div className="container flex items-center justify-between h-14">
+      <nav className="fixed top-0 left-0 right-0 z-50 hidden md:block" style={{ background: '#13143E' }}>
+        <div className="container flex items-center justify-between h-28">
+
           {/* Logo */}
-          <Link to="/" className="flex items-baseline gap-0.5">
-            <span style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 300, fontSize: '2rem', letterSpacing: '-2px', color: '#F5F2ED', lineHeight: 1 }}>
-              37
-            </span>
-            <span style={{ fontFamily: 'Courier Prime, monospace', fontSize: '0.85rem', color: '#F5F2ED', alignSelf: 'flex-start', marginTop: '6px' }}>
-              °
-            </span>
-            <span style={{ fontFamily: 'Courier Prime, monospace', fontSize: '0.85rem', fontWeight: 700, color: '#C8512A', alignSelf: 'flex-end', marginBottom: '4px', letterSpacing: '1px' }}>
-              N
-            </span>
-            <span style={{ fontFamily: 'Courier Prime, monospace', fontSize: '0.55rem', letterSpacing: '4px', color: 'rgba(245,242,237,0.35)', marginLeft: '8px', alignSelf: 'center', textTransform: 'uppercase' }}>
-              Athens
-            </span>
+          <Link to="/" className="flex items-center gap-4">
+            <div className="flex items-baseline gap-0.5">
+              <span style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 300, fontSize: '3rem', color: '#F0EDF8', letterSpacing: '-3px', lineHeight: 1 }}>
+                37
+              </span>
+              <sup style={{ fontFamily: 'Cormorant Garamond, serif', fontStyle: 'italic', fontWeight: 300, fontSize: '1.4rem', color: 'rgba(240,237,248,0.7)', verticalAlign: 'super' }}>°N</sup>
+            </div>
+            <div className="flex flex-col gap-1" style={{ borderLeft: '1px solid rgba(240,237,248,0.2)', paddingLeft: '16px' }}>
+              <span style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.8rem', color: '#FFFFFF', letterSpacing: '3px' }}>ATHENS GUIDE</span>
+              <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 400, fontSize: '0.72rem', color: 'rgba(240,237,248,0.65)', letterSpacing: '2.5px', textTransform: 'uppercase' }}>Cinema · Events · Culture</span>
+            </div>
           </Link>
 
           {/* Links */}
@@ -47,17 +46,17 @@ const Navbar = () => {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`text-sm transition-colors relative ${
+                className={`text-base transition-colors relative ${
                   location.pathname === link.to ? "text-white" : "text-white/60 hover:text-white"
                 }`}
-                style={{ fontFamily: 'Courier Prime, monospace' }}
+                style={{ fontFamily: 'DM Sans, sans-serif' }}
               >
                 {link.label}
                 {location.pathname === link.to && (
                   <motion.div
                     layoutId="nav-indicator"
                     className="absolute -bottom-1 left-0 right-0 h-0.5"
-                    style={{ background: '#C8512A' }}
+                    style={{ background: 'linear-gradient(110deg, #7C2B76, #1C1D62)' }}
                     transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   />
                 )}
@@ -66,23 +65,23 @@ const Navbar = () => {
           </div>
 
           <Link to="/profile" className="p-2 rounded-full hover:bg-white/10 transition-colors">
-            <User className="w-4 h-4 text-white/60" />
+            <User className="w-5 h-5 text-white/60" />
           </Link>
         </div>
       </nav>
 
       {/* Categories bar */}
-      <div className="fixed top-14 left-0 right-0 z-40 hidden md:block bg-[#F5F2ED] border-b border-black/10">
-        <div className="container flex items-center gap-6 h-10" style={{ fontFamily: 'Courier Prime, monospace', fontSize: '0.65rem', letterSpacing: '3px', textTransform: 'uppercase' }}>
-          <span className="text-black/30">Εξερεύνησε:</span>
+      <div className="fixed top-28 left-0 right-0 z-40 hidden md:block border-b" style={{ background: '#F0EDF8', borderColor: 'rgba(28,29,98,0.1)' }}>
+        <div className="container flex items-center gap-6 h-10" style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.65rem', letterSpacing: '3px', textTransform: 'uppercase' }}>
+          <span style={{ color: 'rgba(28,29,98,0.35)' }}>Εξερεύνησε:</span>
           {["Δράμα", "Κωμωδία", "Μιούζικαλ", "Νέα Μέρη", "Κριτικές"].map((cat) => (
-            <span key={cat} className="text-black/60 hover:text-black cursor-pointer transition-colors">{cat}</span>
+            <span key={cat} className="cursor-pointer transition-opacity hover:opacity-100" style={{ color: 'rgba(28,29,98,0.65)' }}>{cat}</span>
           ))}
         </div>
       </div>
 
       {/* Mobile Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden bg-[#1a1a1a] border-t border-white/10">
+      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t" style={{ background: '#13143E', borderColor: 'rgba(124,43,118,0.3)' }}>
         <div className="flex items-center justify-around h-16 px-2">
           {mobileLinks.map((link) => {
             const Icon = link.icon;
@@ -91,10 +90,8 @@ const Navbar = () => {
               <Link
                 key={link.to}
                 to={link.to}
-                className={`flex flex-col items-center gap-1 text-xs transition-colors ${
-                  isActive ? "text-[#C8512A]" : "text-white/50"
-                }`}
-                style={{ fontFamily: 'Courier Prime, monospace' }}
+                className="flex flex-col items-center gap-1 text-xs transition-colors"
+                style={{ color: isActive ? '#B47EC8' : 'rgba(240,237,248,0.5)', fontFamily: 'DM Sans, sans-serif' }}
               >
                 <Icon className="w-5 h-5" />
                 <span>{link.label}</span>
@@ -103,10 +100,8 @@ const Navbar = () => {
           })}
           <Link
             to="/profile"
-            className={`flex flex-col items-center gap-1 text-xs transition-colors ${
-              location.pathname === "/profile" ? "text-[#C8512A]" : "text-white/50"
-            }`}
-            style={{ fontFamily: 'Courier Prime, monospace' }}
+            className="flex flex-col items-center gap-1 text-xs transition-colors"
+            style={{ color: location.pathname === "/profile" ? '#B47EC8' : 'rgba(240,237,248,0.5)', fontFamily: 'DM Sans, sans-serif' }}
           >
             <User className="w-5 h-5" />
             <span>Προφίλ</span>

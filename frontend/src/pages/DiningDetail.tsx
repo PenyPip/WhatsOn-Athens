@@ -16,7 +16,7 @@ const DiningDetail = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen pt-28">
+      <div className="min-h-screen pt-36">
         <LoadingState />
       </div>
     );
@@ -24,7 +24,7 @@ const DiningDetail = () => {
 
   if (!restaurant) {
     return (
-      <div className="min-h-screen pt-28 flex items-center justify-center">
+      <div className="min-h-screen pt-36 flex items-center justify-center">
         <div className="text-center">
           <h1 className="font-display text-2xl mb-2">Δεν βρέθηκε</h1>
           <Link to="/dining" className="text-primary text-sm">Πίσω στο Φαγητό</Link>
@@ -44,7 +44,7 @@ const DiningDetail = () => {
           style={{ background: `linear-gradient(135deg, ${restaurant.gradientFrom}, ${restaurant.gradientTo})` }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent" />
-        <div className="relative z-10 container h-full flex items-end pb-12 pt-32">
+        <div className="relative z-10 container h-full flex items-end pb-12 pt-36">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}

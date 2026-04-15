@@ -61,7 +61,7 @@ const Index = () => {
           {theaterLoading ? (
             <LoadingState message="Φόρτωση παραστάσεων..." />
           ) : (
-            <div className="flex gap-4 overflow-x-auto scrollbar-hide pb-2">
+            <div className="flex items-start gap-4 overflow-x-auto scrollbar-hide pb-2">
               {(theaterShows ?? []).map((show, i) => (
                 <div key={show.id} className="min-w-[170px] max-w-[170px] md:min-w-[200px] md:max-w-[200px] flex-shrink-0">
                   <EventCard
@@ -142,10 +142,15 @@ const Index = () => {
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="flex items-baseline gap-0.5 mb-2">
-                <span style={{ fontFamily: 'Cormorant Garamond, serif', fontWeight: 300, fontSize: '1.8rem', letterSpacing: '-2px', color: '#F5F2ED', lineHeight: 1 }}>37</span>
-                <span style={{ fontFamily: 'Courier Prime, monospace', fontSize: '0.75rem', color: '#F5F2ED', alignSelf: 'flex-start', marginTop: '5px' }}>°</span>
-                <span style={{ fontFamily: 'Courier Prime, monospace', fontSize: '0.75rem', fontWeight: 700, color: '#C8512A', alignSelf: 'flex-end', marginBottom: '3px' }}>N</span>
+              <div className="flex items-center gap-3 mb-2">
+                <div className="flex items-baseline gap-0.5">
+                  <span style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 300, fontSize: '1.6rem', color: '#F0EDF8', letterSpacing: '-2px', lineHeight: 1 }}>37</span>
+                  <sup style={{ fontFamily: 'Cormorant Garamond, serif', fontStyle: 'italic', fontWeight: 300, fontSize: '0.8rem', color: 'rgba(240,237,248,0.6)', verticalAlign: 'super' }}>°N</sup>
+                </div>
+                <div className="flex flex-col gap-0.5" style={{ borderLeft: '1px solid rgba(240,237,248,0.15)', paddingLeft: '10px' }}>
+                  <span style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.45rem', color: '#F0EDF8', letterSpacing: '2px' }}>ATHENS GUIDE</span>
+                  <span style={{ fontFamily: 'DM Sans, sans-serif', fontWeight: 300, fontSize: '0.42rem', color: 'rgba(240,237,248,0.45)', letterSpacing: '1.5px', textTransform: 'uppercase' }}>Cinema · Events · Culture</span>
+                </div>
               </div>
               <p className="text-white/40 text-xs mt-2 leading-relaxed">Ο οδηγός σου για ψυχαγωγία και γαστρονομία στην Αθήνα.</p>
             </div>
