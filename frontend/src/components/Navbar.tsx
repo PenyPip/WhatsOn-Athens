@@ -23,7 +23,13 @@ const Navbar = () => {
   return (
     <>
       {/* Desktop Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 hidden md:block" style={{ background: '#13143E' }}>
+      <nav
+        className="fixed top-0 left-0 right-0 z-50 hidden md:block"
+        style={{
+          background:
+            "linear-gradient(95deg, #8D2F8F 0%, #872F8B 18%, #7A2D84 34%, #5A286F 56%, #382154 76%, #13143E 100%)",
+        }}
+      >
         <div className="container flex items-center justify-between h-28">
 
           {/* Logo */}
@@ -81,7 +87,14 @@ const Navbar = () => {
       </div>
 
       {/* Mobile Bottom Nav */}
-      <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t" style={{ background: '#13143E', borderColor: 'rgba(124,43,118,0.3)' }}>
+      <nav
+        className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t"
+        style={{
+          background:
+            "linear-gradient(95deg, #8D2F8F 0%, #872F8B 18%, #7A2D84 34%, #5A286F 56%, #382154 76%, #13143E 100%)",
+          borderColor: "rgba(141,47,143,0.35)",
+        }}
+      >
         <div className="flex items-center justify-around h-16 px-2">
           {mobileLinks.map((link) => {
             const Icon = link.icon;
