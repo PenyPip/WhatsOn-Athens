@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_showtime_show_slots",
+  "info": {
+    "displayName": "show-slot",
+    "icon": "clock"
+  },
+  "options": {},
+  "attributes": {
+    "datetime": {
+      "type": "datetime",
+      "required": true
+    }
+  }
+}

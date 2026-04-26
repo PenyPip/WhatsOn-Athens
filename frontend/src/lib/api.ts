@@ -109,15 +109,24 @@ function mapEditorialReview(r: any): StrapiEditorialReview {
   };
 }
 
-function mapShowtime(s: any): StrapiShowtime {
-  return {
-    id: s.id,
-    documentId: s.documentId,
-    datetime: s.datetime,
-    venue: s.venue?.name || s.venue || "",
-    availableSeats: s.available_seats,
-    price: s.price,
-  };
+function mapShowtime(s: any): StrapiShowtime[] {
+  const venue = s.venue?.name || s.venue || "";
+  const baseId = String(s.id);
+  const slots = Array.isArray(s.show_slots) ? s.show_slots : [];
+
+  return slots
+    .filter((slot: any) => !!slot?.datetime)
+    .map((slot: any, index: number) => ({
+      id: `${baseId}-${index}`,
+      documentId: s.documentId,
+      datetime: slot.datetime,
+      venue,
+      availableSeats: s.available_seats,
+      price: s.price,
+      movieId: s.movie?.id,
+      movieSlug: s.movie?.slug,
+      movieTitle: s.movie?.title,
+    }));
 }
 
 function mapUserReview(r: any): StrapiUserReview {
@@ -239,12 +248,15 @@ export interface StrapiEditorialReview {
 }
 
 export interface StrapiShowtime {
-  id: number;
+  id: string;
   documentId: string;
   datetime: string;
   venue: string;
   availableSeats: number;
   price: number;
+  movieId?: number;
+  movieSlug?: string;
+  movieTitle?: string;
 }
 
 export interface StrapiUserReview {
@@ -273,7 +285,7 @@ export const api = {
   getEditorialReviews: () => fetchAPI<any[]>("/editorial-reviews").then((d) => d.map(mapEditorialReview)),
   getEditorialReviewBySlug: (slug: string) => fetchAPI<any[]>(`/editorial-reviews`, { "filters[slug][$eq]": slug }).then((d) => d[0] ? mapEditorialReview(d[0]) : undefined),
 
-  getShowtimes: () => fetchAPI<any[]>("/showtimes").then((d) => d.map(mapShowtime)),
+  getShowtimes: () => fetchAPI<any[]>("/showtimes").then((d) => d.flatMap(mapShowtime)),
 
   getUserReviews: () => fetchAPI<any[]>("/user-reviews").then((d) => d.map(mapUserReview)),
 };
