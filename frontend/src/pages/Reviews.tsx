@@ -24,7 +24,7 @@ const Reviews = () => {
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Κριτικές</h1>
-            <p className="text-white/50 text-sm">Κριτικές από τη συντακτική ομάδα</p>
+            <p className="text-white/60 text-base">Κριτικές από τη συντακτική ομάδα</p>
           </motion.div>
         </div>
       </div>
@@ -35,8 +35,8 @@ const Reviews = () => {
             <button
               key={c}
               onClick={() => setCategory(c)}
-              className={`px-3 py-1 rounded text-xs font-medium transition-all border ${
-                category === c ? "bg-[#111111] text-white border-[#111111]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+              className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                category === c ? "bg-[#13143E] text-white border-[#13143E]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
               }`}
             >
               {c}
@@ -55,7 +55,7 @@ const Reviews = () => {
         )}
 
         {!isLoading && filtered.length === 0 && (
-          <div className="text-center py-20 text-muted-foreground">
+          <div className="text-center py-20 text-muted-foreground text-base">
             <p>Δεν βρέθηκαν κριτικές για αυτή την κατηγορία.</p>
           </div>
         )}

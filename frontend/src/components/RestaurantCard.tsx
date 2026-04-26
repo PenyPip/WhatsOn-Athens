@@ -22,27 +22,27 @@ const RestaurantCard = ({ restaurant, index = 0 }: { restaurant: Restaurant | St
           style={{ background: `linear-gradient(135deg, ${restaurant.gradientFrom}, ${restaurant.gradientTo})` }}
         >
           {isNew && (
-            <span className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-[#111111] text-white">
+            <span className="absolute top-2 left-2 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider rounded bg-[#13143E] text-white">
               Νέο
             </span>
           )}
           {restaurant.editorialScore && (
-            <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-white text-[11px] font-bold text-[#111111] rounded">
+            <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-white text-sm font-bold text-[#13143E] rounded">
               {restaurant.editorialScore}/10
             </div>
           )}
         </div>
         <div className="p-3">
-          <h3 className="font-display font-semibold text-sm leading-tight mb-1 group-hover:text-primary transition-colors">
+          <h3 className="font-display font-semibold text-base leading-tight mb-1 group-hover:text-primary transition-colors">
             {restaurant.name}
           </h3>
-          <p className="text-xs text-muted-foreground mb-2">{restaurant.cuisine}</p>
+          <p className="text-sm text-muted-foreground mb-2">{restaurant.cuisine}</p>
           <div className="flex items-center justify-between">
-            <span className="flex items-center gap-1 text-xs text-muted-foreground">
-              <MapPin className="w-3 h-3" />
+            <span className="flex items-center gap-1 text-sm text-muted-foreground">
+              <MapPin className="w-3.5 h-3.5" />
               {restaurant.neighborhood}
             </span>
-            <span className="text-xs font-medium text-foreground">{restaurant.priceRange}</span>
+            <span className="text-sm font-medium text-foreground">{restaurant.priceRange}</span>
           </div>
         </div>
       </Link>

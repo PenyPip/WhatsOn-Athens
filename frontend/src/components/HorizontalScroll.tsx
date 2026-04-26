@@ -22,7 +22,7 @@ const HorizontalScroll = ({ title, subtitle, children }: HorizontalScrollProps) 
         <div className="flex items-end justify-between mb-6">
           <div>
             <h2 className="font-display text-2xl font-bold text-foreground">{title}</h2>
-            {subtitle && <p className="text-sm text-muted-foreground mt-1">{subtitle}</p>}
+            {subtitle && <p className="text-base text-muted-foreground mt-1">{subtitle}</p>}
           </div>
           <div className="flex items-center gap-1">
             <button onClick={() => scroll("left")} className="p-2 rounded-full border border-foreground/15 hover:bg-foreground hover:text-background transition-colors">

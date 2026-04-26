@@ -23,20 +23,20 @@ const TheaterPage = () => {
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Θέατρο</h1>
-            <p className="text-white/50 text-sm">Στη σκηνή σε Αθήνα & Θεσσαλονίκη</p>
+            <p className="text-white/60 text-base">Στη σκηνή σε Αθήνα & Θεσσαλονίκη</p>
           </motion.div>
         </div>
       </div>
 
       <div className="container">
         <div className="flex flex-wrap items-center gap-2 mb-8">
-          <span className="text-xs text-muted-foreground mr-1 uppercase tracking-wider">Είδος:</span>
+          <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Είδος:</span>
           {tags.map((t) => (
             <button
               key={t}
               onClick={() => setTag(t)}
-              className={`px-3 py-1 rounded text-xs font-medium transition-all border ${
-                tag === t ? "bg-[#111111] text-white border-[#111111]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+              className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                tag === t ? "bg-[#13143E] text-white border-[#13143E]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
               }`}
             >
               {t}
@@ -53,6 +53,7 @@ const TheaterPage = () => {
                 key={show.id} slug={show.slug} title={show.title} subtitle={show.director}
                 genre={show.genre} duration={show.duration}
                 gradientFrom={show.gradientFrom} gradientTo={show.gradientTo}
+                posterUrl={show.posterUrl}
                 type="theater" index={i}
                 badge={show.isPremiere ? "Πρεμιέρα" : show.isLastShows ? "Τελευταίες" : undefined}
               />

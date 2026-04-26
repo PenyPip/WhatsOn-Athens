@@ -30,20 +30,20 @@ const Movies = () => {
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Ταινίες</h1>
-            <p className="text-white/50 text-sm">Τώρα στα σινεμά σε όλη την Ελλάδα</p>
+            <p className="text-white/60 text-base">Τώρα στα σινεμά σε όλη την Ελλάδα</p>
           </motion.div>
         </div>
       </div>
 
       <div className="container">
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="text-xs text-muted-foreground mr-1 uppercase tracking-wider">Είδος:</span>
+          <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Είδος:</span>
           {genres.map((g) => (
             <button
               key={g}
               onClick={() => setGenre(g)}
-              className={`px-3 py-1 rounded text-xs font-medium transition-all border ${
-                genre === g ? "bg-[#111111] text-white border-[#111111]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+              className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                genre === g ? "bg-[#13143E] text-white border-[#13143E]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
               }`}
             >
               {g}
@@ -51,12 +51,12 @@ const Movies = () => {
           ))}
         </div>
         <div className="flex items-center gap-2 mb-8">
-          <span className="text-xs text-muted-foreground uppercase tracking-wider">Ταξινόμηση:</span>
+          <span className="text-sm text-muted-foreground uppercase tracking-wider">Ταξινόμηση:</span>
           {sortOptions.map((s) => (
             <button
               key={s.value}
               onClick={() => setSort(s.value)}
-              className={`text-xs px-2 py-1 rounded transition-colors ${
+              className={`text-sm px-2 py-1 rounded transition-colors ${
                 sort === s.value ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
               }`}
             >
@@ -82,7 +82,7 @@ const Movies = () => {
         )}
 
         {!isLoading && filtered.length === 0 && (
-          <div className="text-center py-20 text-muted-foreground">
+          <div className="text-center py-20 text-muted-foreground text-base">
             <p>Δεν βρέθηκαν ταινίες για αυτό το φίλτρο.</p>
           </div>
         )}

@@ -29,20 +29,20 @@ const Dining = () => {
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Φαγητό</h1>
-            <p className="text-white/50 text-sm">Εστιατόρια & γαστρονομικές εμπειρίες</p>
+            <p className="text-white/60 text-base">Εστιατόρια & γαστρονομικές εμπειρίες</p>
           </motion.div>
         </div>
       </div>
 
       <div className="container">
         <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="text-xs text-muted-foreground mr-1 uppercase tracking-wider">Κουζίνα:</span>
+          <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Κουζίνα:</span>
           {cuisines.map((c) => (
             <button
               key={c}
               onClick={() => setCuisine(c)}
-              className={`px-3 py-1 rounded text-xs font-medium transition-all border ${
-                cuisine === c ? "bg-[#111111] text-white border-[#111111]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+              className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                cuisine === c ? "bg-[#13143E] text-white border-[#13143E]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
               }`}
             >
               {c}
@@ -51,13 +51,13 @@ const Dining = () => {
         </div>
 
         <div className="flex flex-wrap items-center gap-2 mb-8">
-          <span className="text-xs text-muted-foreground mr-1 uppercase tracking-wider">Τιμή:</span>
+          <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Τιμή:</span>
           {priceRanges.map((p) => (
             <button
               key={p}
               onClick={() => setPrice(p)}
-              className={`px-3 py-1 rounded text-xs font-medium transition-all border ${
-                price === p ? "bg-[#111111] text-white border-[#111111]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+              className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                price === p ? "bg-[#13143E] text-white border-[#13143E]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
               }`}
             >
               {p}
@@ -65,8 +65,8 @@ const Dining = () => {
           ))}
           <button
             onClick={() => setShowNewOnly(!showNewOnly)}
-            className={`px-3 py-1 rounded text-xs font-medium transition-all border ml-2 ${
-              showNewOnly ? "bg-[#111111] text-white border-[#111111]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+            className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ml-2 ${
+              showNewOnly ? "bg-[#13143E] text-white border-[#13143E]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
             }`}
           >
             Νέα Μέρη
@@ -84,7 +84,7 @@ const Dining = () => {
         )}
 
         {!isLoading && filtered.length === 0 && (
-          <div className="text-center py-20 text-muted-foreground">
+          <div className="text-center py-20 text-muted-foreground text-base">
             <p>Δεν βρέθηκαν εστιατόρια για αυτά τα φίλτρα.</p>
           </div>
         )}

@@ -41,25 +41,25 @@ const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom
             />
           )}
           {badge && (
-            <span className="absolute top-2 left-2 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-[#111111] text-white z-10">
+            <span className="absolute top-2 left-2 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider rounded bg-[#13143E] text-white z-10">
               {badge}
             </span>
           )}
           {score && (
-            <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-white text-[11px] font-bold text-[#111111] rounded z-10">
+            <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-white text-xs font-bold text-[#13143E] rounded z-10">
               {score}/10
             </div>
           )}
         </div>
-        <div className="p-3">
-          <h3 className="font-display font-semibold text-sm leading-tight mb-1 group-hover:text-primary transition-colors line-clamp-2">
+        <div className="p-3 bg-white">
+          <h3 className="font-display font-semibold text-base leading-tight mb-1 text-gray-900 group-hover:text-primary transition-colors line-clamp-2">
             {title}
           </h3>
-          <p className="text-xs text-muted-foreground mb-2">{subtitle}</p>
+          <p className="text-sm text-gray-500 mb-2">{subtitle}</p>
           <div className="flex items-center justify-between">
-            <span className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">{genre}</span>
-            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-              <Clock className="w-3 h-3" />
+            <span className="text-xs uppercase tracking-wider text-gray-400 font-medium">{genre}</span>
+            <div className="flex items-center gap-1 text-sm text-gray-400">
+              <Clock className="w-3.5 h-3.5" />
               <span>{duration}'</span>
             </div>
           </div>
