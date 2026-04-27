@@ -27,7 +27,7 @@ const Navbar = () => {
         className="fixed top-0 left-0 right-0 z-50 hidden md:block"
         style={{
           background:
-            "linear-gradient(95deg, #8D2F8F 0%, #872F8B 18%, #7A2D84 34%, #5A286F 56%, #382154 76%, #13143E 100%)",
+            "linear-gradient(95deg, #742374 0%, #872F8B 18%, #7A2D84 34%, #5A286F 56%, #382154 76%, #13143E 100%)",
         }}
       >
         <div className="container flex items-center justify-between h-28">
@@ -91,7 +91,7 @@ const Navbar = () => {
         className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t"
         style={{
           background:
-            "linear-gradient(95deg, #8D2F8F 0%, #872F8B 18%, #7A2D84 34%, #5A286F 56%, #382154 76%, #13143E 100%)",
+            "linear-gradient(95deg, #742374 0%, #872F8B 18%, #7A2D84 34%, #5A286F 56%, #382154 76%, #13143E 100%)",
           borderColor: "rgba(141,47,143,0.35)",
         }}
       >
