@@ -6,6 +6,6 @@ module.exports = ({ env }) => ({
     keys: env.array('APP_KEYS'),
   },
   admin: {
-    allowedHosts: ['the37n.gr', 'www.the37n.gr'],
+    allowedHosts: true,
   },
 });
