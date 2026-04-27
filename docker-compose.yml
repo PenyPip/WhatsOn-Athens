@@ -39,6 +39,7 @@ services:
       TRANSFER_TOKEN_SALT: whatson-transfer-salt
       JWT_SECRET: whatson-jwt-secret
       NODE_ENV: production
+      ENCRYPTION_KEY: whatson-encryption-key-32chars!!
     volumes:
       - strapi_uploads:/app/public/uploads
     restart: unless-stopped
