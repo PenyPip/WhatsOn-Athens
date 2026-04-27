@@ -5,7 +5,7 @@ module.exports = ({ env }) => ({
   app: {
     keys: env.array('APP_KEYS'),
   },
-  admin: {
-    allowedHosts: true,
+  secrets: {
+    encryptionKey: env('ENCRYPTION_KEY'),
   },
 });
