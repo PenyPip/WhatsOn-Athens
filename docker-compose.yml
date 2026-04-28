@@ -27,7 +27,7 @@ services:
       mysql:
         condition: service_healthy
     environment:
-      DATABASE_CLIENT: mysql
+      DATABASE_CLIENT: mysql2
       DATABASE_HOST: mysql
       DATABASE_PORT: 3306
       DATABASE_NAME: whatson
