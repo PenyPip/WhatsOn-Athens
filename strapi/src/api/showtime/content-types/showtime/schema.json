@@ -7,10 +7,9 @@
     "displayName": "Showtime"
   },
   "attributes": {
-    "show_slots": {
-      "type": "component",
-      "repeatable": true,
-      "component": "showtime.show-slot"
+    "datetime": {
+      "type": "datetime",
+      "required": true
     },
     "available_seats": {
       "type": "integer"
