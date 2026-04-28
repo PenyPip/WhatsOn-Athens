@@ -42,6 +42,7 @@ services:
       ENCRYPTION_KEY: whatson-encryption-key-32chars!!
       URL: https://the37n.gr
       STRAPI_ADMIN_BACKEND_URL: https://the37n.gr
+      PUBLIC_URL: https://the37n.gr
     volumes:
       - strapi_uploads:/app/public/uploads
     restart: unless-stopped
