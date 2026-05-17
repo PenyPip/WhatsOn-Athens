@@ -130,6 +130,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </p>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {new Date(st.datetime).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" })} · {st.venue}
+                  {st.venueSummerOutdoor ? <span className="text-amber-600 dark:text-amber-500 font-medium"> · θερινό</span> : null}
                 </p>
                 <p className="text-base font-bold mt-1">€{st.price}</p>
               </button>

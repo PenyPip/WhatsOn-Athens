@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { MapPin, Users } from "lucide-react";
+import { ExternalLink, MapPin, Users } from "lucide-react";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useVenues } from "@/hooks/useStrapi";
@@ -31,17 +31,43 @@ const Venues = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: i * 0.08 }}
               >
-                <div className="flex items-start justify-between mb-3">
+                <div className="flex items-start justify-between gap-3 mb-3">
                   <h3 className="font-display text-lg font-semibold">{venue.name}</h3>
-                  <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider rounded bg-[#111111] text-white font-medium">{venue.type}</span>
+                  <div className="flex flex-wrap justify-end gap-1.5 shrink-0">
+                    <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider rounded bg-[#111111] text-white font-medium">{venue.type}</span>
+                    {venue.summerOutdoor ? (
+                      <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider rounded bg-amber-500/90 text-[#13143E] font-semibold">θερινό</span>
+                    ) : null}
+                  </div>
                 </div>
                 <div className="space-y-2 text-sm text-muted-foreground">
                   <p className="flex items-center gap-2"><MapPin className="w-3.5 h-3.5 flex-shrink-0" /> {venue.address}</p>
                   <p className="flex items-center gap-2"><Users className="w-3.5 h-3.5" /> {venue.seatsTotal} θέσεις</p>
                   <p className="text-xs font-medium text-foreground">{venue.city}</p>
                 </div>
-                <div className="mt-4 h-32 rounded bg-secondary flex items-center justify-center border border-border">
-                  <span className="text-xs text-muted-foreground">Χάρτης</span>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  {venue.moreLink ? (
+                    <a
+                      href={venue.moreLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background px-3 py-2 text-sm font-medium text-foreground hover:border-foreground/40 hover:bg-secondary/80 transition-colors"
+                    >
+                      Περισσότερα
+                      <ExternalLink className="w-3.5 h-3.5 opacity-70" aria-hidden />
+                    </a>
+                  ) : null}
+                  {venue.googleMapsUrl ? (
+                    <a
+                      href={venue.googleMapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:border-foreground/30 transition-colors"
+                    >
+                      Χάρτης
+                      <ExternalLink className="w-3.5 h-3.5 opacity-70" aria-hidden />
+                    </a>
+                  ) : null}
                 </div>
               </motion.div>
             ))}

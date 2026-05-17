@@ -5,7 +5,7 @@
     "singularName": "venue",
     "pluralName": "venues",
     "displayName": "Χώρος / Σινεμά",
-    "description": "Π.χ. Village The Mall, θερινό Αθήνα κ.λπ. Το πεδίο «Τύπος» χρησιμοποίησέ το για Σινεμά ή Θερινό σινεμά."
+    "description": "Π.χ. Village The Mall, θερινό Αθήνα κ.λπ. Τύπος: Σινεμά / Θέατρο κ.λπ. Το «Θερινό (ανοιχτό σινεμά)» ξεχωρίζει τα θερινά από τα κλειστά."
   },
   "options": {
     "draftAndPublish": true
@@ -30,6 +30,10 @@
     "google_maps_url": {
       "type": "string"
     },
+    "more_link": {
+      "type": "string",
+      "description": "URL ιστοσελίδας/κρατήσεων· εμφανίζεται ως «Περισσότερα» στη λίστα χώρων."
+    },
     "seats_total": {
       "type": "integer"
     },
@@ -39,6 +43,10 @@
     },
     "type": {
       "type": "string"
+    },
+    "summer_outdoor": {
+      "type": "boolean",
+      "default": false
     },
     "movieglu_cinema_id": {
       "type": "integer"

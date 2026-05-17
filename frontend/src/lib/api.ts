@@ -131,7 +131,10 @@ function mapEditorialReview(r: any): StrapiEditorialReview {
 }
 
 function mapShowtime(s: any): StrapiShowtime[] {
-  const venue = s.venue?.name || s.venue || "";
+  const venueObj =
+    typeof s.venue === "object" && s.venue !== null && "name" in s.venue ? (s.venue as { name?: string; summer_outdoor?: boolean }) : null;
+  const venue = venueObj?.name ?? (typeof s.venue === "string" ? s.venue : "");
+  const venueSummerOutdoor = venueObj?.summer_outdoor === true;
   const baseId = String(s.id);
   const slots = Array.isArray(s.show_slots) ? s.show_slots : [];
 
@@ -140,6 +143,7 @@ function mapShowtime(s: any): StrapiShowtime[] {
     documentId: s.documentId,
     datetime,
     venue,
+    venueSummerOutdoor,
     availableSeats: s.available_seats,
     price: s.price,
     movieId: s.movie?.id,
@@ -176,8 +180,10 @@ function mapVenue(v: any): StrapiVenue {
     address: v.address,
     city: v.city,
     googleMapsUrl: v.google_maps_url,
+    moreLink: typeof v.more_link === "string" ? v.more_link.trim() : "",
     seatsTotal: v.seats_total,
     type: v.type || "",
+    summerOutdoor: v.summer_outdoor === true,
   };
 }
 
@@ -252,8 +258,11 @@ export interface StrapiVenue {
   address: string;
   city: string;
   googleMapsUrl: string;
+  /** ιστότοπος / κρατήσεις — εμφανίζεται ως «Περισσότερα» */
+  moreLink: string;
   seatsTotal: number;
   type: string;
+  summerOutdoor: boolean;
 }
 
 export interface StrapiEditorialReview {
@@ -277,6 +286,7 @@ export interface StrapiShowtime {
   documentId: string;
   datetime: string;
   venue: string;
+  venueSummerOutdoor: boolean;
   availableSeats: number;
   price: number;
   movieId?: number;

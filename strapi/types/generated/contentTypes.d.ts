@@ -744,7 +744,7 @@ export interface ApiUserReviewUserReview extends Schema.CollectionType {
 export interface ApiVenueVenue extends Schema.CollectionType {
   collectionName: 'venues';
   info: {
-    description: '\u03A0.\u03C7. Village The Mall, \u03B8\u03B5\u03C1\u03B9\u03BD\u03CC \u0391\u03B8\u03AE\u03BD\u03B1 \u03BA.\u03BB\u03C0. \u03A4\u03BF \u03C0\u03B5\u03B4\u03AF\u03BF \u00AB\u03A4\u03CD\u03C0\u03BF\u03C2\u00BB \u03C7\u03C1\u03B7\u03C3\u03B9\u03BC\u03BF\u03C0\u03BF\u03AF\u03B7\u03C3\u03AD \u03C4\u03BF \u03B3\u03B9\u03B1 \u03A3\u03B9\u03BD\u03B5\u03BC\u03AC \u03AE \u0398\u03B5\u03C1\u03B9\u03BD\u03CC \u03C3\u03B9\u03BD\u03B5\u03BC\u03AC.';
+    description: '\u03A0.\u03C7. Village The Mall, \u03B8\u03B5\u03C1\u03B9\u03BD\u03CC \u0391\u03B8\u03AE\u03BD\u03B1 \u03BA.\u03BB\u03C0. \u03A4\u03CD\u03C0\u03BF\u03C2: \u03A3\u03B9\u03BD\u03B5\u03BC\u03AC / \u0398\u03AD\u03B1\u03C4\u03C1\u03BF \u03BA.\u03BB\u03C0. \u03A4\u03BF \u00AB\u0398\u03B5\u03C1\u03B9\u03BD\u03CC (\u03B1\u03BD\u03BF\u03B9\u03C7\u03C4\u03CC \u03C3\u03B9\u03BD\u03B5\u03BC\u03AC)\u00BB \u03BE\u03B5\u03C7\u03C9\u03C1\u03AF\u03B6\u03B5\u03B9 \u03C4\u03B1 \u03B8\u03B5\u03C1\u03B9\u03BD\u03AC \u03B1\u03C0\u03CC \u03C4\u03B1 \u03BA\u03BB\u03B5\u03B9\u03C3\u03C4\u03AC.';
     displayName: '\u03A7\u03CE\u03C1\u03BF\u03C2 / \u03A3\u03B9\u03BD\u03B5\u03BC\u03AC';
     pluralName: 'venues';
     singularName: 'venue';
@@ -764,6 +764,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
       Attribute.Private;
     google_maps_url: Attribute.String;
     image: Attribute.Media<'images'>;
+    more_link: Attribute.String;
     movieglu_cinema_id: Attribute.Integer;
     name: Attribute.String & Attribute.Required;
     publishedAt: Attribute.DateTime;
@@ -774,6 +775,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
       'api::showtime.showtime'
     >;
     slug: Attribute.UID<'api::venue.venue', 'name'> & Attribute.Required;
+    summer_outdoor: Attribute.Boolean & Attribute.DefaultTo<false>;
     theater_shows: Attribute.Relation<
       'api::venue.venue',
       'oneToMany',

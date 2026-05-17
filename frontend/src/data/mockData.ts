@@ -64,6 +64,10 @@ export interface Venue {
   googleMapsUrl: string;
   seatsTotal: number;
   type: string;
+  /** ανοιχτό/θερινό σινεμά */
+  summerOutdoor?: boolean;
+  /** ιστότοπος ή κράτηση από «Περισσότερα» */
+  moreLink?: string;
 }
 
 export interface EditorialReview {
@@ -95,6 +99,7 @@ export interface Showtime {
   id: string;
   datetime: string;
   venue: string;
+  venueSummerOutdoor?: boolean;
   availableSeats: number;
   price: number;
 }
@@ -272,14 +277,16 @@ export const venues: Venue[] = [
   { id: "1", slug: "ethnikó-theatro", name: "Εθνικό Θέατρο", address: "Αγίου Κωνσταντίνου 22-24, Αθήνα", city: "Αθήνα", googleMapsUrl: "https://maps.google.com", seatsTotal: 800, type: "Θέατρο" },
   { id: "2", slug: "megaro-mousikis", name: "Μέγαρο Μουσικής", address: "Βασ. Σοφίας & Κοκκάλη, Αθήνα", city: "Αθήνα", googleMapsUrl: "https://maps.google.com", seatsTotal: 1900, type: "Μουσική Σκηνή" },
   { id: "3", slug: "theatro-akropol", name: "Θέατρο Ακροπόλ", address: "Ιπποκράτους 6, Αθήνα", city: "Αθήνα", googleMapsUrl: "https://maps.google.com", seatsTotal: 600, type: "Θέατρο" },
-  { id: "4", slug: "village-cinemas", name: "Village Cinemas", address: "The Mall Athens, Μαρούσι", city: "Αθήνα", googleMapsUrl: "https://maps.google.com", seatsTotal: 2500, type: "Σινεμά" },
+  { id: "4", slug: "village-cinemas", name: "Village Cinemas", address: "The Mall Athens, Μαρούσι", city: "Αθήνα", googleMapsUrl: "https://maps.google.com", seatsTotal: 2500, type: "Σινεμά", moreLink: "https://www.villagecinemas.gr" },
   { id: "5", slug: "olympion-thessaloniki", name: "Ολύμπιον", address: "Πλατεία Αριστοτέλους 10, Θεσσαλονίκη", city: "Θεσσαλονίκη", googleMapsUrl: "https://maps.google.com", seatsTotal: 400, type: "Σινεμά" },
+  { id: "6", slug: "aigli-zappeio", name: "Αίγλη Ζαππείου", address: "Ζάππειο, Αθήνα", city: "Αθήνα", googleMapsUrl: "https://maps.google.com", seatsTotal: 500, type: "Σινεμά", summerOutdoor: true, moreLink: "https://www.aeglizappeiou.gr" },
 ];
 
 export const showtimes: Showtime[] = [
   { id: "1", datetime: "2024-03-15T19:00", venue: "Village Cinemas", availableSeats: 45, price: 9 },
   { id: "2", datetime: "2024-03-15T21:30", venue: "Village Cinemas", availableSeats: 32, price: 9 },
   { id: "3", datetime: "2024-03-16T17:00", venue: "Ολύμπιον", availableSeats: 80, price: 8 },
+  { id: "7", datetime: "2024-03-16T20:30", venue: "Αίγλη Ζαππείου", venueSummerOutdoor: true, availableSeats: 60, price: 10 },
   { id: "4", datetime: "2024-03-16T20:00", venue: "Εθνικό Θέατρο", availableSeats: 55, price: 15 },
   { id: "5", datetime: "2024-03-16T22:30", venue: "Μέγαρο Μουσικής", availableSeats: 120, price: 20 },
   { id: "6", datetime: "2024-03-17T18:00", venue: "Θέατρο Ακροπόλ", availableSeats: 28, price: 12 },

@@ -81,6 +81,7 @@ const BookingModal = ({ open, onClose, eventTitle }: BookingModalProps) => {
                     <p className="text-xs text-muted-foreground flex items-center gap-1">
                       <MapPin className="w-3 h-3" />
                       {st.venue}
+                      {st.venueSummerOutdoor ? <span className="text-amber-600 font-medium"> · θερινό</span> : null}
                     </p>
                     <p className="text-sm font-semibold text-primary mt-0.5">€{st.price}</p>
                   </div>
@@ -154,7 +155,10 @@ const BookingModal = ({ open, onClose, eventTitle }: BookingModalProps) => {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Χώρος</span>
-                <span>{selectedShow.venue}</span>
+                <span className="text-right">
+                  {selectedShow.venue}
+                  {selectedShow.venueSummerOutdoor ? <span className="text-amber-600"> · θερινό</span> : null}
+                </span>
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-muted-foreground">Θέσεις</span>
