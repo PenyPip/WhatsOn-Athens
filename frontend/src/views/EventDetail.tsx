@@ -1,18 +1,16 @@
 import { useParams, Link } from "react-router-dom";
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Clock, Globe, Users, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useMovies, useTheaterShows, useEditorialReviews, useUserReviews, useShowtimes } from "@/hooks/useStrapi";
 import EventCard from "@/components/EventCard";
-import BookingModal from "@/components/BookingModal";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
 
 const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { slug } = useParams();
-  const [bookingOpen, setBookingOpen] = useState(false);
 
   const { data: movies, isLoading: moviesLoading } = useMovies();
   const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows();
@@ -121,12 +119,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               {!isMovie && <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {(event as StrapiTheaterShow).venue}</span>}
             </div>
 
-            <button
-              onClick={() => setBookingOpen(true)}
+            <a
+              href="#showtimes"
               className="inline-flex items-center px-6 py-3 bg-white text-[#13143E] text-base font-semibold rounded hover:bg-white/90 transition-colors"
             >
-              Κράτηση Εισιτηρίου
-            </button>
+              Προβολές & τιμές
+            </a>
           </motion.div>
         </div>
       </section>
@@ -147,28 +145,23 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           </div>
         </section>
 
-        <section>
+        <section id="showtimes">
           <h2 className="font-display text-xl font-semibold mb-4">Προβολές</h2>
           {eventShowtimes.length === 0 ? (
             <p className="text-muted-foreground text-sm">Δεν έχουν καταχωρηθεί προβολές ακόμη.</p>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
               {eventShowtimes.slice(0, 12).map((st) => (
-                <button
-                  key={st.id}
-                  onClick={() => setBookingOpen(true)}
-                  type="button"
-                  className="rounded border border-border p-4 text-left transition-all hover:border-foreground hover:shadow-sm"
-                >
-                <p className="text-base font-medium">
-                  {new Date(st.datetime).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" })}
-                </p>
-                <p className="text-sm text-muted-foreground mt-0.5">
-                  {new Date(st.datetime).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" })} · {st.venue}
-                  {st.venueSummerOutdoor ? <span className="text-amber-600 dark:text-amber-500 font-medium"> · θερινό</span> : null}
-                </p>
-                <p className="text-base font-bold mt-1">€{st.price}</p>
-                </button>
+                <div key={st.id} className="rounded border border-border p-4 text-left">
+                  <p className="text-base font-medium">
+                    {new Date(st.datetime).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" })}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-0.5">
+                    {new Date(st.datetime).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" })} · {st.venue}
+                    {st.venueSummerOutdoor ? <span className="text-amber-600 dark:text-amber-500 font-medium"> · θερινό</span> : null}
+                  </p>
+                  <p className="text-base font-bold mt-1">€{st.price}</p>
+                </div>
               ))}
             </div>
           )}
@@ -216,13 +209,18 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             {related.map((item, i) => (
               <EventCard
-                key={item.id} slug={item.slug} title={item.title} subtitle={item.director}
-                genre={item.genre} duration={item.duration}
+                key={item.id}
+                slug={item.slug}
+                title={item.title}
+                subtitle={item.director}
+                genre={item.genre}
+                duration={item.duration}
                 score={isMovie ? (item as StrapiMovie).criticScore : undefined}
                 gradientFrom={isMovie ? undefined : (item as StrapiTheaterShow).gradientFrom}
                 gradientTo={isMovie ? undefined : (item as StrapiTheaterShow).gradientTo}
                 posterUrl={isMovie ? (item as StrapiMovie).posterUrl : item.posterUrl}
-                type={type} index={i}
+                type={type}
+                index={i}
               />
             ))}
           </div>
@@ -230,12 +228,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       </div>
 
       <Footer />
-      <BookingModal
-        open={bookingOpen}
-        onClose={() => setBookingOpen(false)}
-        eventTitle={event.title}
-        showtimes={eventShowtimes}
-      />
     </div>
   );
 };

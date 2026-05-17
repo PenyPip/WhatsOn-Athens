@@ -1,0 +1,27 @@
+{
+  "collectionName": "components_home_layout_sections",
+  "info": {
+    "displayName": "Μπλοκ αρχικής",
+    "description": "Πρόσθεσε μόνο όσα θέλεις (2–4 τυπικά). Σειρά = σειρά εμφάνισης. summer_cinema=θερινές προβολές, tours=περιοδείες θεάτρου, new_movies=με τσεκ is_new, movies_week=προβολές αυτής της εβδομάδας."
+  },
+  "attributes": {
+    "section_key": {
+      "type": "enumeration",
+      "required": true,
+      "enum": [
+        "hero",
+        "strip",
+        "summer_cinema",
+        "tours",
+        "new_movies",
+        "movies_week",
+        "dining",
+        "newsletter"
+      ]
+    },
+    "visible": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

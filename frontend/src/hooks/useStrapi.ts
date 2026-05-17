@@ -1,5 +1,21 @@
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { resolveHomepageLayout } from "@/config/home";
+
+export const useHomepage = () =>
+  useQuery({
+    queryKey: ["homepage"],
+    queryFn: api.getHomepage,
+    staleTime: 120_000,
+    retry: 1,
+    throwOnError: false,
+  });
+
+export function useHomeLayout() {
+  const homepage = useHomepage();
+  return useMemo(() => resolveHomepageLayout(homepage.data ?? null), [homepage.data]);
+}
 
 export const useMovies = () =>
   useQuery({ queryKey: ["movies"], queryFn: api.getMovies });

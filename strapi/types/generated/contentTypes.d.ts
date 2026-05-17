@@ -362,42 +362,6 @@ export interface AdminUser extends Schema.CollectionType {
   };
 }
 
-export interface ApiBookingBooking extends Schema.CollectionType {
-  collectionName: 'bookings';
-  info: {
-    displayName: 'Booking';
-    pluralName: 'bookings';
-    singularName: 'booking';
-  };
-  attributes: {
-    createdAt: Attribute.DateTime;
-    createdBy: Attribute.Relation<
-      'api::booking.booking',
-      'oneToOne',
-      'admin::user'
-    > &
-      Attribute.Private;
-    qr_code: Attribute.String;
-    seat_numbers: Attribute.JSON;
-    showtime: Attribute.Relation<
-      'api::booking.booking',
-      'manyToOne',
-      'api::showtime.showtime'
-    >;
-    status: Attribute.Enumeration<['pending', 'confirmed', 'cancelled']> &
-      Attribute.DefaultTo<'confirmed'>;
-    updatedAt: Attribute.DateTime;
-    updatedBy: Attribute.Relation<
-      'api::booking.booking',
-      'oneToOne',
-      'admin::user'
-    > &
-      Attribute.Private;
-    user_email: Attribute.Email & Attribute.Required;
-    user_name: Attribute.String;
-  };
-}
-
 export interface ApiEditorialReviewEditorialReview
   extends Schema.CollectionType {
   collectionName: 'editorial_reviews';
@@ -453,6 +417,55 @@ export interface ApiEditorialReviewEditorialReview
   };
 }
 
+export interface ApiHomepageHomepage extends Schema.SingleType {
+  collectionName: 'homepage';
+  info: {
+    description: '\u03A3\u03B5\u03B9\u03C1\u03AC \u03BC\u03C0\u03BB\u03BF\u03BA \u03C3\u03C4\u03B7\u03BD \u03B1\u03C1\u03C7\u03B9\u03BA\u03AE \u03BA\u03B1\u03B9 \u03C0\u03C1\u03BF\u03C4\u03B5\u03B9\u03BD\u03CC\u03BC\u03B5\u03BD\u03BF hero (\u03C4\u03B1\u03B9\u03BD\u03AF\u03B1/\u03C0\u03B1\u03C1\u03AC\u03C3\u03C4\u03B1\u03C3\u03B7).';
+    displayName: '\u0391\u03C1\u03C7\u03B9\u03BA\u03AE \u03C3\u03B5\u03BB\u03AF\u03B4\u03B1';
+    pluralName: 'homepages';
+    singularName: 'homepage';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::homepage.homepage',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    featured_movie_list_index: Attribute.Integer &
+      Attribute.SetMinMax<
+        {
+          min: 0;
+        },
+        number
+      > &
+      Attribute.DefaultTo<2>;
+    layout_sections: Attribute.Component<'home.layout-section', true>;
+    priority_movie: Attribute.Relation<
+      'api::homepage.homepage',
+      'manyToOne',
+      'api::movie.movie'
+    >;
+    priority_theater_show: Attribute.Relation<
+      'api::homepage.homepage',
+      'manyToOne',
+      'api::theater-show.theater-show'
+    >;
+    publishedAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::homepage.homepage',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiMovieMovie extends Schema.CollectionType {
   collectionName: 'movies';
   info: {
@@ -477,6 +490,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
     critic_score: Attribute.Decimal;
     director: Attribute.String;
     duration: Attribute.Integer;
+    is_new: Attribute.Boolean & Attribute.DefaultTo<false>;
     editorial_reviews: Attribute.Relation<
       'api::movie.movie',
       'oneToMany',
@@ -499,6 +513,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
         'other'
       ]
     >;
+    is_new: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
     poster: Attribute.Media<'images'>;
     poster_url: Attribute.String;
@@ -591,11 +606,6 @@ export interface ApiShowtimeShowtime extends Schema.CollectionType {
   };
   attributes: {
     available_seats: Attribute.Integer;
-    bookings: Attribute.Relation<
-      'api::showtime.showtime',
-      'oneToMany',
-      'api::booking.booking'
-    >;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
       'api::showtime.showtime',
@@ -1223,8 +1233,8 @@ declare module '@strapi/types' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
-      'api::booking.booking': ApiBookingBooking;
       'api::editorial-review.editorial-review': ApiEditorialReviewEditorialReview;
+      'api::homepage.homepage': ApiHomepageHomepage;
       'api::movie.movie': ApiMovieMovie;
       'api::restaurant.restaurant': ApiRestaurantRestaurant;
       'api::showtime.showtime': ApiShowtimeShowtime;

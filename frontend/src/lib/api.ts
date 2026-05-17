@@ -1,4 +1,65 @@
+import type { MappedHomepage, HomeSectionId } from "@/config/home";
+import { FALLBACK_SECTIONS, normalizeHomeSectionId } from "@/config/home";
+
 const API_PREFIX = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
+
+function homepageRelationSlug(rel: unknown): string | null {
+  if (rel === null || rel === undefined) return null;
+  const r = rel as Record<string, unknown>;
+  const d = r.data as unknown;
+  if (d !== null && d !== undefined) {
+    const row = Array.isArray(d) ? d[0] : d;
+    if (row && typeof row === "object") {
+      const inner = row as Record<string, unknown>;
+      const attrs = inner.attributes as Record<string, unknown> | undefined;
+      const slug = (attrs?.slug ?? inner.slug) as unknown;
+      if (typeof slug === "string" && slug) return slug;
+    }
+  }
+  const top = r.slug as unknown;
+  return typeof top === "string" && top ? top : null;
+}
+
+function mapHomepageLayoutSections(layoutSections: unknown): HomeSectionId[] {
+  if (!Array.isArray(layoutSections)) return [];
+
+  const out: HomeSectionId[] = [];
+  const seen = new Set<string>();
+  for (const row of layoutSections) {
+    if (typeof row !== "object" || row === null || Array.isArray(row)) continue;
+    const o = row as Record<string, unknown>;
+    if (o.visible === false) continue;
+
+    const kRaw = (o.section_key ?? o.identifier) as unknown;
+    const k = typeof kRaw === "string" ? kRaw.trim() : "";
+    const norm = normalizeHomeSectionId(k);
+    if (!norm || seen.has(norm)) continue;
+    seen.add(norm);
+    out.push(norm);
+  }
+  return out;
+}
+
+function mapHomeAttributes(attrs: Record<string, unknown>): MappedHomepage {
+  const sections = mapHomepageLayoutSections(attrs.layout_sections);
+  const idxRaw = attrs.featured_movie_list_index;
+  let featuredMovieIndex = 2;
+  if (typeof idxRaw === "number" && Number.isFinite(idxRaw)) {
+    featuredMovieIndex = idxRaw;
+  } else if (idxRaw !== null && idxRaw !== undefined) {
+    const p = parseInt(String(idxRaw), 10);
+    if (Number.isFinite(p)) featuredMovieIndex = p;
+  }
+
+  const resolvedSections = sections.length > 0 ? sections : [...FALLBACK_SECTIONS];
+
+  return {
+    sections: resolvedSections,
+    heroTheaterSlug: homepageRelationSlug(attrs.priority_theater_show),
+    heroMovieSlug: homepageRelationSlug(attrs.priority_movie),
+    featuredMovieIndex,
+  };
+}
 
 async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
   const base = window.location.protocol + "//" + window.location.hostname;
@@ -50,6 +111,7 @@ function mapMovie(m: any): StrapiMovie {
     synopsis: m.synopsis,
     criticScore: m.critic_score,
     releaseDate: m.release_date,
+    isNew: m.is_new === true,
     trailerUrl: m.trailer_url,
     posterUrl: m.poster?.url 
   ? m.poster.url.replace('http://localhost:1337', '').replace('http://strapi:1337', '')
@@ -200,6 +262,8 @@ export interface StrapiMovie {
   synopsis: string;
   criticScore: number;
   releaseDate: string;
+  /** Strapi πεδίο is_new — για μπλοκ «Νέες ταινίες» στην αρχική */
+  isNew?: boolean;
   trailerUrl?: string;
   posterUrl?: string;
 }
@@ -304,7 +368,23 @@ export interface StrapiUserReview {
   createdAt: string;
 }
 
+async function fetchHomepage(): Promise<MappedHomepage | null> {
+  const base = `${window.location.protocol}//${window.location.hostname}`;
+  const url = new URL(`${API_PREFIX}/homepage`, base);
+  url.searchParams.set("populate", "layout_sections,priority_movie,priority_theater_show");
+  const res = await fetch(url.toString());
+  if (res.status === 404 || res.status === 403) return null;
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  const json = (await res.json()) as unknown;
+  const root = json as { data?: { attributes?: Record<string, unknown> } };
+  const attrs = root?.data?.attributes;
+  if (!attrs) return null;
+  return mapHomeAttributes(attrs);
+}
+
 export const api = {
+  getHomepage: () => fetchHomepage(),
+
   getMovies: () => fetchAPI<any[]>("/movies").then((d) => d.map(mapMovie)),
   getMovieBySlug: (slug: string) => fetchAPI<any[]>(`/movies`, { "filters[slug][$eq]": slug }).then((d) => d[0] ? mapMovie(d[0]) : undefined),
 

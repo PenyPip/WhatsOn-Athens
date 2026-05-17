@@ -1,0 +1,35 @@
+{
+  "kind": "singleType",
+  "collectionName": "homepage",
+  "info": {
+    "singularName": "homepage",
+    "pluralName": "homepages",
+    "displayName": "Αρχική σελίδα",
+    "description": "Σειρά μπλοκ στην αρχική και προτεινόμενο hero (ταινία/παράσταση)."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "layout_sections": {
+      "type": "component",
+      "repeatable": true,
+      "component": "home.layout-section"
+    },
+    "featured_movie_list_index": {
+      "type": "integer",
+      "default": 2,
+      "min": 0
+    },
+    "priority_theater_show": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::theater-show.theater-show"
+    },
+    "priority_movie": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::movie.movie"
+    }
+  }
+}

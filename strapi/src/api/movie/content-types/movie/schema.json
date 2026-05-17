@@ -51,6 +51,11 @@
     "duration": {
       "type": "integer"
     },
+    "is_new": {
+      "type": "boolean",
+      "default": false,
+      "description": "Τσεκάρισέ το για «Νέες ταινίες» στην αρχική."
+    },
     "language": {
       "type": "string"
     },

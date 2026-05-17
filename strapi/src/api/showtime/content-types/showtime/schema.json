@@ -35,12 +35,6 @@
       "relation": "manyToOne",
       "target": "api::venue.venue",
       "inversedBy": "showtimes"
-    },
-    "bookings": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::booking.booking",
-      "mappedBy": "showtime"
     }
   }
 }

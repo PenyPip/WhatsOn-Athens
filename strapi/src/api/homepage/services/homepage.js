@@ -1,3 +1,5 @@
 'use strict';
+
 const { createCoreService } = require('@strapi/strapi').factories;
-module.exports = createCoreService('api::booking.booking');
+
+module.exports = createCoreService('api::homepage.homepage');
