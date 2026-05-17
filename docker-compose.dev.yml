@@ -27,11 +27,21 @@ services:
       DATABASE_NAME: whatson
       DATABASE_USERNAME: strapi
       DATABASE_PASSWORD: strapi_pass
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:1337/admin',(r)=>process.exit(r.statusCode!=null&&r.statusCode<500?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 30
+      start_period: 180s
 
   mysql:
     container_name: whatson-db-dev
-    env_file:
-      - .env
     image: mysql:8.0
     restart: unless-stopped
     ports:
@@ -43,12 +53,14 @@ services:
       MYSQL_DATABASE: whatson
       MYSQL_USER: strapi
       MYSQL_PASSWORD: strapi_pass
-      MYSQL_ROOT_PASSWORD: root_pass   
+      MYSQL_ROOT_PASSWORD: root_pass
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "strapi", "-pstrapi_pass"]
+      # Root ping: πάντα διαθέσιμος μετά την init · ο χρήστης strapi μπορεί να αργεί ή να μη συμφωνεί με παλιό volume.
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot_pass"]
       interval: 5s
-      timeout: 10s
-      retries: 12
+      timeout: 5s
+      retries: 30
+      start_period: 75s
 
   frontend:
     container_name: whatson-frontend-dev
@@ -62,7 +74,8 @@ services:
     ports:
       - "3000:3000"
     depends_on:
-      - strapi
+      strapi:
+        condition: service_healthy
     volumes:
       - ./frontend:/front:delegated
       - /front/node_modules

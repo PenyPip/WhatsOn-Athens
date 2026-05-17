@@ -4,7 +4,8 @@
   "info": {
     "singularName": "movie",
     "pluralName": "movies",
-    "displayName": "Movie"
+    "displayName": "Ταινία",
+    "description": "Δημιούργησε πρώτα την ταινία. Οι μέρες και οι ώρες ανά σινεμά προστίθενται με εγγραφές «Προβολή ταινίας»: κάθε μία = ένα Venue + ημερομηνία/ώρα."
   },
   "options": {
     "draftAndPublish": true

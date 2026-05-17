@@ -4,7 +4,8 @@
   "info": {
     "singularName": "venue",
     "pluralName": "venues",
-    "displayName": "Venue"
+    "displayName": "Χώρος / Σινεμά",
+    "description": "Π.χ. Village The Mall, θερινό Αθήνα κ.λπ. Το πεδίο «Τύπος» χρησιμοποίησέ το για Σινεμά ή Θερινό σινεμά."
   },
   "options": {
     "draftAndPublish": true

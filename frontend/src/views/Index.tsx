@@ -166,9 +166,6 @@ const Index = () => {
             <div>
               <h4 className="text-xs uppercase tracking-[0.15em] text-white/50 mb-3">Περιεχόμενο</h4>
               <div className="space-y-2 text-sm">
-                <a href="/reviews" className="block text-white/35 hover:text-white/60 transition-colors text-xs">
-                  Κριτικές συντακτών
-                </a>
                 <a href="/venues" className="block text-white/60 hover:text-white transition-colors">
                   Χώροι
                 </a>

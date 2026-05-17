@@ -19,9 +19,12 @@ const Footer = () => {
           <div>
             <h4 className="text-xs uppercase tracking-[0.15em] text-white/50 mb-3">Περιεχόμενο</h4>
             <div className="space-y-2 text-sm">
-              <a href="/reviews" className="block text-white/35 text-xs hover:text-white/55 transition-colors">Κριτικές</a>
-              <a href="/venues" className="block text-white/60 hover:text-white transition-colors">Χώροι</a>
-              <a href="/profile" className="block text-white/60 hover:text-white transition-colors">Προφίλ</a>
+              <a href="/venues" className="block text-white/60 hover:text-white transition-colors">
+                Χώροι
+              </a>
+              <a href="/profile" className="block text-white/60 hover:text-white transition-colors">
+                Προφίλ
+              </a>
             </div>
           </div>
           <div>

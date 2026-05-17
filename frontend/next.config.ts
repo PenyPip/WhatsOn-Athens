@@ -24,6 +24,20 @@ const nextConfig: NextConfig = {
       { source: "/admin", destination: `${origin}/admin` },
       { source: "/admin/:path*", destination: `${origin}/admin/:path*` },
       { source: "/api/:path*", destination: `${origin}/api/:path*` },
+      // Ίδιο λεξικό διαδρομών με nginx.conf (~ ^/(…)(/.*)?$) — όταν το admin ανοίγει από :3000.
+      ...(
+        [
+          "content-manager",
+          "content-type-builder",
+          "i18n",
+          "users-permissions",
+          "upload",
+          "email",
+        ] as const
+      ).flatMap((seg) => [
+        { source: `/${seg}`, destination: `${origin}/${seg}` },
+        { source: `/${seg}/:path*`, destination: `${origin}/${seg}/:path*` },
+      ]),
       { source: "/uploads/:path*", destination: `${origin}/uploads/:path*` },
     ];
   },

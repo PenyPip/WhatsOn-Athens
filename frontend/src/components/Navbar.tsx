@@ -1,5 +1,5 @@
 import { Link, useLocation } from "react-router-dom";
-import { Film, Theater, UtensilsCrossed, Newspaper, User } from "lucide-react";
+import { Film, Theater, UtensilsCrossed, Building2, User } from "lucide-react";
 import { motion } from "framer-motion";
 
 const Navbar = () => {
@@ -10,14 +10,14 @@ const Navbar = () => {
     { to: "/movies", label: "Ταινίες" },
     { to: "/theater", label: "Θέατρο" },
     { to: "/dining", label: "Φαγητό" },
-    { to: "/reviews", label: "Κριτικές" },
+    { to: "/venues", label: "Χώροι" },
   ];
 
   const mobileLinks = [
     { to: "/movies", label: "Ταινίες", icon: Film },
     { to: "/theater", label: "Θέατρο", icon: Theater },
     { to: "/dining", label: "Φαγητό", icon: UtensilsCrossed },
-    { to: "/reviews", label: "Κριτικές", icon: Newspaper },
+    { to: "/venues", label: "Χώροι", icon: Building2 },
   ];
 
   return (
@@ -80,7 +80,7 @@ const Navbar = () => {
       <div className="fixed top-28 left-0 right-0 z-40 hidden md:block border-b" style={{ background: '#F0EDF8', borderColor: 'rgba(28,29,98,0.1)' }}>
         <div className="container flex items-center gap-6 h-10" style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.65rem', letterSpacing: '3px', textTransform: 'uppercase' }}>
           <span style={{ color: 'rgba(28,29,98,0.35)' }}>Εξερεύνησε:</span>
-          {["Δράμα", "Κωμωδία", "Μιούζικαλ", "Νέα Μέρη", "Κριτικές"].map((cat) => (
+          {["Δράμα", "Κωμωδία", "Μιούζικαλ", "Σινεμά", "Νέα Μέρη"].map((cat) => (
             <span key={cat} className="cursor-pointer transition-opacity hover:opacity-100" style={{ color: 'rgba(28,29,98,0.65)' }}>{cat}</span>
           ))}
         </div>
