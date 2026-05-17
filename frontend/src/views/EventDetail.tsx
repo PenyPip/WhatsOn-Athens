@@ -20,6 +20,16 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { data: userReviews } = useUserReviews();
   const { data: showtimes } = useShowtimes();
 
+  const eventShowtimes = useMemo((): StrapiShowtime[] => {
+    const list = showtimes ?? [];
+    if (!slug) return [];
+    const filtered =
+      type === "movie"
+        ? list.filter((st) => st.movieSlug === slug)
+        : list.filter((st) => st.theaterShowSlug === slug);
+    return [...filtered].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+  }, [showtimes, slug, type]);
+
   const isLoading = type === "movie" ? moviesLoading : theaterLoading;
 
   const event = type === "movie"
@@ -54,16 +64,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const eventEditorialReviews = (editorialReviews ?? []).filter((r) => r.contentTitle === event.title);
   const eventUserReviews = (userReviews ?? []).filter((r) => r.contentTitle === event.title);
 
-  const eventShowtimes = useMemo((): StrapiShowtime[] => {
-    const list = showtimes ?? [];
-    if (!slug) return [];
-    const filtered =
-      type === "movie"
-        ? list.filter((st) => st.movieSlug === slug)
-        : list.filter((st) => st.theaterShowSlug === slug);
-    return [...filtered].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
-  }, [showtimes, slug, type]);
-
   return (
     <div className="min-h-screen pb-20 md:pb-8">
       <section className="relative min-h-[50vh] overflow-hidden bg-[#13143E]">
@@ -75,11 +75,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             }}
           />
         ) : movie?.posterUrl ? (
-          <img
-            src={movie.posterUrl}
-            alt=""
-            className="absolute inset-0 h-full w-full object-cover opacity-35"
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- αφίσες Strapi, static export */}
+            <img
+              src={movie.posterUrl}
+              alt=""
+              className="absolute inset-0 h-full w-full object-cover opacity-35"
+            />
+          </>
         ) : (
           <div className="absolute inset-0 bg-[#13143E]" />
         )}

@@ -12,11 +12,14 @@ const Hero = () => {
     <section className="relative h-[75vh] min-h-[500px] overflow-hidden bg-[#111111]">
       <div className="absolute inset-0">
         {featured.posterUrl ? (
-          <img
-            src={featured.posterUrl}
-            alt=""
-            className="h-full w-full object-cover opacity-55"
-          />
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element -- hero poster Strapi, static export */}
+            <img
+              src={featured.posterUrl}
+              alt=""
+              className="h-full w-full object-cover opacity-55"
+            />
+          </>
         ) : (
           <div className="h-full w-full bg-[#13143E]" />
         )}

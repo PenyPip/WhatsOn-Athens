@@ -44,11 +44,14 @@ const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom
           }
         >
           {posterUrl && (
-            <img
-              src={posterUrl}
-              alt={title}
-              className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-            />
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element -- αφίσες Strapi, static export */}
+              <img
+                src={posterUrl}
+                alt={title}
+                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+              />
+            </>
           )}
           {badge && (
             <span className="absolute top-2 left-2 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider rounded bg-[#13143E] text-white z-10">
@@ -70,7 +73,7 @@ const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom
             <span className="text-xs uppercase tracking-wider text-gray-400 font-medium">{type === "movie" && genre ? `Είδος · ${genre}` : genre}</span>
             <div className="flex items-center gap-1 text-sm text-gray-400">
               <Clock className="w-3.5 h-3.5" />
-              <span>{duration}'</span>
+              <span>{duration}&nbsp;′</span>
             </div>
           </div>
         </div>

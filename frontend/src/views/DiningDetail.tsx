@@ -92,7 +92,9 @@ const DiningDetail = () => {
                 <div className="flex items-center gap-2 mb-3">
                   <span className="font-bold text-foreground text-lg">{restaurant.editorialScore}/10</span>
                 </div>
-                <p className="text-foreground leading-relaxed italic text-lg">"{restaurant.editorialReview}"</p>
+                <p className="text-foreground leading-relaxed italic text-lg">
+                  «{restaurant.editorialReview}»
+                </p>
                 <p className="text-sm text-muted-foreground mt-4">— {restaurant.editorialAuthor}</p>
               </motion.section>
             )}
