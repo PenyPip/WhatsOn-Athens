@@ -1,6 +1,5 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import type { EditorialReview } from "@/data/mockData";
 import type { StrapiEditorialReview } from "@/lib/api";
 
 const categoryLabels: Record<string, string> = {
@@ -9,7 +8,7 @@ const categoryLabels: Record<string, string> = {
   restaurant: "Φαγητό",
 };
 
-const EditorialCard = ({ review, index = 0 }: { review: EditorialReview | StrapiEditorialReview; index?: number }) => {
+const EditorialCard = ({ review, index = 0 }: { review: StrapiEditorialReview; index?: number }) => {
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}

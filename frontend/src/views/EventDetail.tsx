@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { Clock, Globe, Users, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,7 +8,7 @@ import EventCard from "@/components/EventCard";
 import BookingModal from "@/components/BookingModal";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
-import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
+import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
 
 const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { slug } = useParams();
@@ -54,13 +54,35 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const eventEditorialReviews = (editorialReviews ?? []).filter((r) => r.contentTitle === event.title);
   const eventUserReviews = (userReviews ?? []).filter((r) => r.contentTitle === event.title);
 
+  const eventShowtimes = useMemo((): StrapiShowtime[] => {
+    const list = showtimes ?? [];
+    if (!slug) return [];
+    const filtered =
+      type === "movie"
+        ? list.filter((st) => st.movieSlug === slug)
+        : list.filter((st) => st.theaterShowSlug === slug);
+    return [...filtered].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+  }, [showtimes, slug, type]);
+
   return (
     <div className="min-h-screen pb-20 md:pb-8">
       <section className="relative min-h-[50vh] overflow-hidden bg-[#13143E]">
-        <div
-          className="absolute inset-0 opacity-40"
-          style={{ background: `linear-gradient(135deg, ${event.gradientFrom}, ${event.gradientTo})` }}
-        />
+        {!isMovie ? (
+          <div
+            className="absolute inset-0 opacity-40"
+            style={{
+              background: `linear-gradient(135deg, ${(event as StrapiTheaterShow).gradientFrom}, ${(event as StrapiTheaterShow).gradientTo})`,
+            }}
+          />
+        ) : movie?.posterUrl ? (
+          <img
+            src={movie.posterUrl}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover opacity-35"
+          />
+        ) : (
+          <div className="absolute inset-0 bg-[#13143E]" />
+        )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-transparent to-transparent" />
 
         <div className="relative z-10 container h-full flex items-end pb-12 pt-36">
@@ -85,7 +107,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
             <div className="flex flex-wrap items-center gap-3 text-base text-white/60 mb-6">
               <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {event.duration} λεπτά</span>
-              <span>{event.genre}</span>
+              {movie ? (
+                <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white">
+                  Είδος · {movie.genre}
+                </span>
+              ) : (
+                <span>{event.genre}</span>
+              )}
               {movie && <span className="flex items-center gap-1"><Globe className="w-4 h-4" /> {movie.language}</span>}
               {!isMovie && <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {(event as StrapiTheaterShow).venue}</span>}
             </div>
@@ -118,13 +146,17 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
         <section>
           <h2 className="font-display text-xl font-semibold mb-4">Προβολές</h2>
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            {(showtimes ?? []).slice(0, 4).map((st) => (
-              <button
-                key={st.id}
-                onClick={() => setBookingOpen(true)}
-                className="rounded border border-border p-4 text-left transition-all hover:border-foreground hover:shadow-sm"
-              >
+          {eventShowtimes.length === 0 ? (
+            <p className="text-muted-foreground text-sm">Δεν έχουν καταχωρηθεί προβολές ακόμη.</p>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+              {eventShowtimes.slice(0, 12).map((st) => (
+                <button
+                  key={st.id}
+                  onClick={() => setBookingOpen(true)}
+                  type="button"
+                  className="rounded border border-border p-4 text-left transition-all hover:border-foreground hover:shadow-sm"
+                >
                 <p className="text-base font-medium">
                   {new Date(st.datetime).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" })}
                 </p>
@@ -133,9 +165,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   {st.venueSummerOutdoor ? <span className="text-amber-600 dark:text-amber-500 font-medium"> · θερινό</span> : null}
                 </p>
                 <p className="text-base font-bold mt-1">€{st.price}</p>
-              </button>
-            ))}
-          </div>
+                </button>
+              ))}
+            </div>
+          )}
         </section>
 
         {eventEditorialReviews.length > 0 && (
@@ -183,7 +216,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 key={item.id} slug={item.slug} title={item.title} subtitle={item.director}
                 genre={item.genre} duration={item.duration}
                 score={isMovie ? (item as StrapiMovie).criticScore : undefined}
-                gradientFrom={item.gradientFrom} gradientTo={item.gradientTo}
+                gradientFrom={isMovie ? undefined : (item as StrapiTheaterShow).gradientFrom}
+                gradientTo={isMovie ? undefined : (item as StrapiTheaterShow).gradientTo}
+                posterUrl={isMovie ? (item as StrapiMovie).posterUrl : item.posterUrl}
                 type={type} index={i}
               />
             ))}
@@ -192,7 +227,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       </div>
 
       <Footer />
-      <BookingModal open={bookingOpen} onClose={() => setBookingOpen(false)} eventTitle={event.title} />
+      <BookingModal
+        open={bookingOpen}
+        onClose={() => setBookingOpen(false)}
+        eventTitle={event.title}
+        showtimes={eventShowtimes}
+      />
     </div>
   );
 };

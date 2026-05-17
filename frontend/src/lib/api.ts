@@ -56,8 +56,6 @@ function mapMovie(m: any): StrapiMovie {
   : m.poster_url 
     ? m.poster_url.replace('http://localhost:1337', '').replace('http://strapi:1337', '')
     : null,
-    gradientFrom: m.gradient_from || "#1a1a2e",
-    gradientTo: m.gradient_to || "#e94560",
   };
 }
 
@@ -145,10 +143,11 @@ function mapShowtime(s: any): StrapiShowtime[] {
     venue,
     venueSummerOutdoor,
     availableSeats: s.available_seats,
-    price: s.price,
+    price: typeof s.price === "number" ? s.price : Number(s.price ?? 0),
     movieId: s.movie?.id,
     movieSlug: s.movie?.slug,
     movieTitle: s.movie?.title,
+    theaterShowSlug: s.theater_show?.slug,
   });
 
   if (slots.length > 0) {
@@ -203,8 +202,6 @@ export interface StrapiMovie {
   releaseDate: string;
   trailerUrl?: string;
   posterUrl?: string;
-  gradientFrom: string;
-  gradientTo: string;
 }
 
 export interface StrapiTheaterShow {
@@ -292,6 +289,8 @@ export interface StrapiShowtime {
   movieId?: number;
   movieSlug?: string;
   movieTitle?: string;
+  /** όταν η προβολή είναι για παράσταση θεάτρου */
+  theaterShowSlug?: string;
 }
 
 export interface StrapiUserReview {

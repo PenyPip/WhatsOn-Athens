@@ -45,7 +45,8 @@
         "sci-fi",
         "thriller",
         "other"
-      ]
+      ],
+      "description": "Είδος ταινίας (ως επιλογή από λίστα — και το site το δείχνει σαν «Είδος»)."
     },
     "duration": {
       "type": "integer"
@@ -71,18 +72,6 @@
     },
     "critic_score": {
       "type": "decimal"
-    },
-    "gradient_from": {
-      "type": "string"
-    },
-    "gradient_to": {
-      "type": "string"
-    },
-    "movieglu_film_id": {
-      "type": "integer"
-    },
-    "movieglu_data": {
-      "type": "text"
     },
     "showtimes": {
       "type": "relation",

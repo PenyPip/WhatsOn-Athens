@@ -499,11 +499,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
         'other'
       ]
     >;
-    gradient_from: Attribute.String;
-    gradient_to: Attribute.String;
     language: Attribute.String;
-    movieglu_data: Attribute.Text;
-    movieglu_film_id: Attribute.Integer;
     poster: Attribute.Media<'images'>;
     poster_url: Attribute.String;
     publishedAt: Attribute.DateTime;
@@ -765,7 +761,6 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     google_maps_url: Attribute.String;
     image: Attribute.Media<'images'>;
     more_link: Attribute.String;
-    movieglu_cinema_id: Attribute.Integer;
     name: Attribute.String & Attribute.Required;
     publishedAt: Attribute.DateTime;
     seats_total: Attribute.Integer;

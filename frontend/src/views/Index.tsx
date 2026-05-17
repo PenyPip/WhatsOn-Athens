@@ -48,8 +48,6 @@ const Index = () => {
                 genre={movie.genre}
                 duration={movie.duration}
                 score={movie.criticScore}
-                gradientFrom={movie.gradientFrom}
-                gradientTo={movie.gradientTo}
                 posterUrl={movie.posterUrl}
                 type="movie"
                 index={i}

@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface EventCardProps {
   slug: string;
@@ -9,8 +10,9 @@ interface EventCardProps {
   genre: string;
   duration: number;
   score?: number;
-  gradientFrom: string;
-  gradientTo: string;
+  /** Fallback όταν λείπει poster (π.χ. θέατρο) · οι ταινίες χρησιμοποιούν μόνο poster ή ουδέτερο φόντο */
+  gradientFrom?: string;
+  gradientTo?: string;
   posterUrl?: string;
   type: "movie" | "theater";
   badge?: string;
@@ -19,6 +21,9 @@ interface EventCardProps {
 }
 
 const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom, gradientTo, posterUrl, type, badge, className = "", index = 0 }: EventCardProps) => {
+  const showGradientFallback =
+    !posterUrl && typeof gradientFrom === "string" && typeof gradientTo === "string";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -30,8 +35,13 @@ const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom
         className={`group block card-elevated overflow-hidden ${className}`}
       >
         <div
-          className="aspect-[2/3] relative overflow-hidden"
-          style={!posterUrl ? { background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` } : undefined}
+          className={cn(
+            "aspect-[2/3] relative overflow-hidden",
+            !posterUrl && !showGradientFallback && "bg-secondary",
+          )}
+          style={
+            showGradientFallback ? { background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` } : undefined
+          }
         >
           {posterUrl && (
             <img
@@ -57,7 +67,7 @@ const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom
           </h3>
           <p className="text-sm text-gray-500 mb-2">{subtitle}</p>
           <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wider text-gray-400 font-medium">{genre}</span>
+            <span className="text-xs uppercase tracking-wider text-gray-400 font-medium">{type === "movie" && genre ? `Είδος · ${genre}` : genre}</span>
             <div className="flex items-center gap-1 text-sm text-gray-400">
               <Clock className="w-3.5 h-3.5" />
               <span>{duration}'</span>

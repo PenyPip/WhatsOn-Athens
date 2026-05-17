@@ -29,17 +29,5 @@ module.exports = {
       path: '/movies/:id',
       handler: 'movie.delete',
     },
-    {
-      method: 'POST',
-      path: '/movies/sync-movieglu',
-      handler: 'movie.syncMovieglu',
-      config: { auth: false },
-    },
-    {
-      method: 'POST',
-      path: '/movies/:id/sync-showtimes',
-      handler: 'movie.syncShowtimes',
-      config: { auth: false },
-    },
   ],
 };

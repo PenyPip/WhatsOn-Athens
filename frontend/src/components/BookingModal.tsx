@@ -1,13 +1,15 @@
 import { useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { showtimes } from "@/data/mockData";
 import { Calendar, Clock, MapPin, CheckCircle2 } from "lucide-react";
+import type { StrapiShowtime } from "@/lib/api";
 
 interface BookingModalProps {
   open: boolean;
   onClose: () => void;
   eventTitle: string;
+  /** Από το Strapi· κενός πίνακας = καμία προβολή καταχωρημένη */
+  showtimes: StrapiShowtime[];
 }
 
 type Step = 1 | 2 | 3 | 4;
@@ -15,7 +17,7 @@ type Step = 1 | 2 | 3 | 4;
 const SEAT_ROWS = 6;
 const SEAT_COLS = 10;
 
-const BookingModal = ({ open, onClose, eventTitle }: BookingModalProps) => {
+const BookingModal = ({ open, onClose, eventTitle, showtimes }: BookingModalProps) => {
   const [step, setStep] = useState<Step>(1);
   const [selectedShowtime, setSelectedShowtime] = useState<string | null>(null);
   const [selectedSeats, setSelectedSeats] = useState<string[]>([]);
@@ -58,9 +60,15 @@ const BookingModal = ({ open, onClose, eventTitle }: BookingModalProps) => {
 
         {step === 1 && (
           <div className="space-y-3 max-h-[50vh] overflow-y-auto">
-            {showtimes.map((st) => (
+            {showtimes.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-6">
+                Δεν υπάρχουν καταχωρημένες προβολές για αυτή την εκδήλωση.
+              </p>
+            ) : (
+              showtimes.map((st) => (
               <button
                 key={st.id}
+                type="button"
                 onClick={() => { setSelectedShowtime(st.id); setStep(2); }}
                 className={`w-full rounded-lg p-4 text-left transition-all border hover:border-primary ${
                   selectedShowtime === st.id ? "ring-1 ring-primary border-primary" : "border-border"
@@ -78,8 +86,8 @@ const BookingModal = ({ open, onClose, eventTitle }: BookingModalProps) => {
                     </div>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs text-muted-foreground flex items-center gap-1">
-                      <MapPin className="w-3 h-3" />
+                    <p className="text-xs text-muted-foreground flex items-center gap-1 justify-end flex-wrap">
+                      <MapPin className="w-3 h-3 shrink-0" />
                       {st.venue}
                       {st.venueSummerOutdoor ? <span className="text-amber-600 font-medium"> · θερινό</span> : null}
                     </p>
@@ -87,7 +95,8 @@ const BookingModal = ({ open, onClose, eventTitle }: BookingModalProps) => {
                   </div>
                 </div>
               </button>
-            ))}
+              ))
+            )}
           </div>
         )}
 
@@ -109,6 +118,7 @@ const BookingModal = ({ open, onClose, eventTitle }: BookingModalProps) => {
                       return (
                         <button
                           key={seat}
+                          type="button"
                           onClick={() => toggleSeat(seat)}
                           disabled={isUnavailable}
                           className={`w-6 h-6 rounded text-[9px] font-medium transition-all ${
@@ -166,7 +176,7 @@ const BookingModal = ({ open, onClose, eventTitle }: BookingModalProps) => {
               </div>
               <div className="border-t border-border pt-2 mt-2 flex justify-between text-sm font-semibold">
                 <span>Σύνολο</span>
-                <span className="text-primary">€{selectedShow.price * selectedSeats.length}</span>
+                <span className="text-primary">€{(selectedShow.price * selectedSeats.length).toFixed(2)}</span>
               </div>
             </div>
             <Button className="w-full" onClick={() => setStep(4)}>

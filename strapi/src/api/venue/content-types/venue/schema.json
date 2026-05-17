@@ -48,9 +48,6 @@
       "type": "boolean",
       "default": false
     },
-    "movieglu_cinema_id": {
-      "type": "integer"
-    },
     "theater_shows": {
       "type": "relation",
       "relation": "oneToMany",

@@ -1,10 +1,9 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { MapPin } from "lucide-react";
-import type { Restaurant } from "@/data/mockData";
 import type { StrapiRestaurant } from "@/lib/api";
 
-const RestaurantCard = ({ restaurant, index = 0 }: { restaurant: Restaurant | StrapiRestaurant; index?: number }) => {
+const RestaurantCard = ({ restaurant, index = 0 }: { restaurant: StrapiRestaurant; index?: number }) => {
   const isNew = restaurant.isNew;
 
   return (
