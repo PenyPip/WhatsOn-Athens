@@ -11,10 +11,11 @@ services:
     ports:
       - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "strapi", "-pstrapi_pass"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "127.0.0.1", "-uroot", "-proot_pass"]
       interval: 5s
-      timeout: 10s
-      retries: 10
+      timeout: 5s
+      retries: 30
+      start_period: 60s
     restart: unless-stopped
 
   strapi:
@@ -45,6 +46,18 @@ services:
       PUBLIC_URL: https://the37n.gr
     volumes:
       - strapi_uploads:/app/public/uploads
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:1337/',r=>process.exit(r.statusCode!=null&&r.statusCode<500?0:1)).on('error',()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 120s
     restart: unless-stopped
 
   frontend:
