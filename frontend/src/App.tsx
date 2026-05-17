@@ -4,17 +4,17 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import Navbar from "@/components/Navbar";
-import Index from "./pages/Index";
-import Movies from "./pages/Movies";
-import TheaterPage from "./pages/Theater";
-import EventDetail from "./pages/EventDetail";
-import Venues from "./pages/Venues";
-import Dining from "./pages/Dining";
-import DiningDetail from "./pages/DiningDetail";
-import Reviews from "./pages/Reviews";
-import ReviewDetail from "./pages/ReviewDetail";
-import Profile from "./pages/Profile";
-import NotFound from "./pages/NotFound";
+import Index from "./views/Index";
+import Movies from "./views/Movies";
+import TheaterPage from "./views/Theater";
+import EventDetail from "./views/EventDetail";
+import Venues from "./views/Venues";
+import Dining from "./views/Dining";
+import DiningDetail from "./views/DiningDetail";
+import Reviews from "./views/Reviews";
+import ReviewDetail from "./views/ReviewDetail";
+import Profile from "./views/Profile";
+import NotFound from "./views/NotFound";
 
 const queryClient = new QueryClient();
 

@@ -1,8 +1,8 @@
-const API_URL = import.meta.env.VITE_API_URL || "/api";
+const API_PREFIX = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
 
 async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
-  const base = window.location.protocol + '//' + window.location.hostname;
-  const url = new URL(`/api${endpoint}`, base);
+  const base = window.location.protocol + "//" + window.location.hostname;
+  const url = new URL(`${API_PREFIX}${endpoint}`, base);
   if (params) {
     Object.entries(params).forEach(([k, v]) => url.searchParams.set(k, v));
   }
@@ -14,6 +14,27 @@ async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): P
   return json.data ?? json;
 }
 
+const MOVIE_GENRE_LABELS: Record<string, string> = {
+  action: "Δράση",
+  adventure: "Περιπέτεια",
+  animation: "Κινούμενα Σχέδια",
+  comedy: "Κωμωδία",
+  documentary: "Ντοκιμαντέρ",
+  drama: "Δράμα",
+  fantasy: "Φαντασία",
+  horror: "Τρόμος",
+  musical: "Μιούζικαλ",
+  romance: "Ρομάντζο",
+  "sci-fi": "Επιστημονική Φαντασία",
+  thriller: "Θρίλερ",
+  other: "Άλλο",
+};
+
+function movieGenreLabel(apiGenre: string | undefined): string {
+  if (!apiGenre) return "";
+  return MOVIE_GENRE_LABELS[apiGenre] || apiGenre;
+}
+
 function mapMovie(m: any): StrapiMovie {
   return {
     id: m.id,
@@ -22,7 +43,7 @@ function mapMovie(m: any): StrapiMovie {
     title: m.title,
     director: m.director,
     cast: m.cast || [],
-    genre: m.genre,
+    genre: movieGenreLabel(m.genre),
     duration: m.duration,
     language: m.language,
     ageRating: m.age_rating,
@@ -114,19 +135,23 @@ function mapShowtime(s: any): StrapiShowtime[] {
   const baseId = String(s.id);
   const slots = Array.isArray(s.show_slots) ? s.show_slots : [];
 
-  return slots
-    .filter((slot: any) => !!slot?.datetime)
-    .map((slot: any, index: number) => ({
-      id: `${baseId}-${index}`,
-      documentId: s.documentId,
-      datetime: slot.datetime,
-      venue,
-      availableSeats: s.available_seats,
-      price: s.price,
-      movieId: s.movie?.id,
-      movieSlug: s.movie?.slug,
-      movieTitle: s.movie?.title,
-    }));
+  const toRow = (datetime: string, index: number) => ({
+    id: `${baseId}-${index}`,
+    documentId: s.documentId,
+    datetime,
+    venue,
+    availableSeats: s.available_seats,
+    price: s.price,
+    movieId: s.movie?.id,
+    movieSlug: s.movie?.slug,
+    movieTitle: s.movie?.title,
+  });
+
+  if (slots.length > 0) {
+    return slots.filter((slot: any) => !!slot?.datetime).map((slot: any, index: number) => toRow(slot.datetime, index));
+  }
+
+  return s.datetime ? [toRow(s.datetime, 0)] : [];
 }
 
 function mapUserReview(r: any): StrapiUserReview {

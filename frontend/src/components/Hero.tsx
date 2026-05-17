@@ -23,10 +23,13 @@ const Hero = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7, ease: "easeOut" }}
         >
-          <span className="text-xs font-body uppercase tracking-[0.2em] text-white/50 mb-4 block">
-            Προτεινόμενο
+          <span className="mb-3 block font-body text-[10px] uppercase tracking-[0.28em] text-amber-200/90 md:text-[11px]">
+            Καλοκαίρι · θερινά σινεμά & θέατρο που ταξιδεύει
           </span>
-          <div className="w-16 h-0.5 bg-primary mb-6" />
+          <span className="text-xs font-body uppercase tracking-[0.2em] text-white/55 mb-2 block">
+            Προτεινόμενο σε ταινία
+          </span>
+          <div className="w-16 h-0.5 bg-amber-400/85 mb-5" />
           <h1 className="font-display text-4xl md:text-6xl font-bold mb-4 leading-tight text-white">
             {featured.title}
           </h1>
