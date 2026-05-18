@@ -121,6 +121,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const headline = isMovie && movie ? movieTitleLines(movie) : { primary: event.title, secondary: undefined as string | undefined };
 
   const genreLabel = (movie ? movie.genre : event.genre ?? "").trim();
+  const movieGenreParts = isMovie && movie && genreLabel 
+    ? genreLabel.split(/\s*·\s*/).map((s) => s.trim()).filter(Boolean)
+    : [];
   const hasCast = castList.length > 0;
   const showCriticScoreBadge =
     Boolean(movie) && eventEditorialReviews.length > 0 && Number(movie?.criticScore) > 0;
@@ -194,9 +197,22 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </span>
               ) : null}
               {movie && genreLabel ? (
-                <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white">
-                  Είδος · {genreLabel}
-                </span>
+                movieGenreParts.length > 1 ? (
+                  <span className="flex flex-wrap items-center gap-1.5">
+                    {movieGenreParts.map((g, i) => (
+                      <span
+                        key={`${g}-${i}`}
+                        className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white"
+                      >
+                        {g}
+                      </span>
+                    ))}
+                  </span>
+                ) : (
+                  <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white">
+                    Είδος · {genreLabel}
+                  </span>
+                )
               ) : null}
               {!movie && genreLabel ? <span>{genreLabel}</span> : null}
               {movie && <span className="flex items-center gap-1"><Globe className="w-4 h-4" /> {movie.language}</span>}
@@ -234,7 +250,20 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 {genreLabel ? (
                   <div className={hasDirector ? "mt-5" : undefined}>
                     <span className="text-muted-foreground text-sm uppercase tracking-wider">Είδος</span>
-                    <p className="font-medium text-base mt-1">{genreLabel}</p>
+                    {isMovie && movieGenreParts.length > 1 ? (
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {movieGenreParts.map((g, i) => (
+                          <span
+                            key={`${g}-${i}`}
+                            className="inline-flex max-w-full items-center rounded-lg border border-border bg-muted/40 px-3 py-1 text-sm font-medium leading-snug text-foreground"
+                          >
+                            {g}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="mt-1 text-base font-medium">{genreLabel}</p>
+                    )}
                   </div>
                 ) : null}
               </div>

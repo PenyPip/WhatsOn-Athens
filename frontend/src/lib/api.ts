@@ -202,11 +202,11 @@ function movieGenresFromMovieRaw(raw: Record<string, unknown>): { genre: string;
     const labelTrim = typeof labelRaw === "string" ? labelRaw.trim() : "";
     let slug = typeof slugRaw === "string" ? slugRaw.trim().toLowerCase().replace(/^\/+|\/+$/g, "") : "";
     const displayLabel = labelTrim || (slug ? MOVIE_GENRE_LABELS[slug] ?? slug : "");
-    if (!slug && labelTrim) slug = labelTrim.toLowerCase().replace(/\s+/g, "-");
-    if (!displayLabel || !slug) continue;
-    if (seen.has(slug)) continue;
-    seen.add(slug);
-    pairs.push({ label: displayLabel, slug });
+    const slugNorm = slug || labelTrim.toLowerCase().replace(/\s+/g, "-");
+    if (!displayLabel) continue;
+    if (seen.has(slugNorm)) continue;
+    seen.add(slugNorm);
+    pairs.push({ label: displayLabel, slug: slugNorm });
   }
   const genreSlugs = pairs.map((p) => p.slug);
   const genre = pairs.map((p) => p.label).join(" · ");
