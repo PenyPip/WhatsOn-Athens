@@ -13,7 +13,7 @@ import { movieTitleLines } from "@/lib/movieTitles";
 import {
   moviesReleasedInLastDays,
   moviesWithFutureReleaseDate,
-  moviesWithSummerOutdoorShowtime,
+  moviesWithSummerOutdoorShowtimeThisCinemaWeek,
   moviesWithShowtimeThisWeek,
   moviesWithShowtimeToday,
   summerVenuesWithShowtimesOrAll,
@@ -135,7 +135,7 @@ const Index = () => {
     [venueList, stList],
   );
   const summerMoviesForHome = useMemo(
-    () => moviesWithSummerOutdoorShowtime(movieList, stList, venueList),
+    () => moviesWithSummerOutdoorShowtimeThisCinemaWeek(movieList, stList, venueList),
     [movieList, stList, venueList],
   );
   const weekMovies = useMemo(() => moviesWithShowtimeThisWeek(movieList, stList), [movieList, stList]);
@@ -203,7 +203,7 @@ const Index = () => {
                 spotlight
                 eyebrow="Καλοκαίρι · θερινές προβολές"
                 title="Θερινά σινεμά"
-                subtitle="Ταινίες που παίζουν σε ανοιχτό ή θερινό πρόγραμμα."
+                subtitle="Θερινές προβολές της τρέχουσας εβδομάδας προγράμματος (Πέμπτη έως Τετάρτη)."
               />,
             );
           case "summer_venues":

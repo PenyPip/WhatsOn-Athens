@@ -86,9 +86,32 @@ function endOfWeekSunday(d: Date): Date {
   return sun;
 }
 
+/** Εβδομάδα κινηματογράφου (συνηθισμένο πρόγραμμα Ελλάδας): Πέμπτη 00:00 έως Τετάρτη 23:59:59.999, ίδια τοπική ζώνη. */
+function startOfCinemaWeek(d: Date): Date {
+  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const dow = x.getDay();
+  const daysSinceThursday = (dow - 4 + 7) % 7;
+  x.setDate(x.getDate() - daysSinceThursday);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function endOfCinemaWeek(d: Date): Date {
+  const start = startOfCinemaWeek(d);
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return end;
+}
+
 function isoInCalendarWeek(dt: Date, reference: Date): boolean {
   const t = dt.getTime();
   return t >= startOfWeekMonday(reference).getTime() && t <= endOfWeekSunday(reference).getTime();
+}
+
+function isoInCinemaWeek(dt: Date, reference: Date): boolean {
+  const t = dt.getTime();
+  return t >= startOfCinemaWeek(reference).getTime() && t <= endOfCinemaWeek(reference).getTime();
 }
 
 /**
@@ -158,6 +181,24 @@ export function moviesWithSummerOutdoorShowtime(
   venues?: StrapiVenue[],
 ): StrapiMovie[] {
   return moviesFromShowtimesOrdered(movies, showtimes, (st) => showtimeIsSummerOutdoor(st, venues));
+}
+
+/**
+ * Όπως παραπάνω, αλλά μόνο αν η προβολή πέφτει μέσα στην τρέχουσα «εβδομάδα σινεμά»
+ * (Πέμπτη 00:00 έως Τετάρτη τέλος ημέρας — τοπικά).
+ */
+export function moviesWithSummerOutdoorShowtimeThisCinemaWeek(
+  movies: StrapiMovie[],
+  showtimes: StrapiShowtime[],
+  venues?: StrapiVenue[],
+  now = new Date(),
+): StrapiMovie[] {
+  return moviesFromShowtimesOrdered(movies, showtimes, (st) => {
+    const dt = new Date(st.datetime);
+    if (Number.isNaN(dt.getTime())) return false;
+    if (!showtimeIsSummerOutdoor(st, venues)) return false;
+    return isoInCinemaWeek(dt, now);
+  });
 }
 
 /** Ταινίες με προβολή (ημερομηνία) μέσα στην τρέχουσα εβδομάδα (Δευ–Κυρ, τοπικά). */
