@@ -3,8 +3,9 @@ import { motion } from "framer-motion";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
-import { useMovies, useShowtimes, useMovieGenres } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useMovieGenres, useVenues } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
+import { showtimeIsSummerOutdoor } from "@/lib/homeMovieFilters";
 
 const sortOptions = [
   { label: "Ημερομηνία", value: "date" },
@@ -14,9 +15,11 @@ const sortOptions = [
 const Movies = () => {
   const { data: movies, isLoading } = useMovies();
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes();
+  const { data: venues, isLoading: venuesLoading } = useVenues();
   const { data: cmsGenres } = useMovieGenres();
   const [genreSlug, setGenreSlug] = useState<string | null>(null);
   const [sort, setSort] = useState("date");
+  const [summerOutdoorOnly, setSummerOutdoorOnly] = useState(false);
 
   const genreFilters = useMemo(() => {
     if (cmsGenres?.length) return cmsGenres.map((g) => ({ slug: g.slug, label: g.label }));
@@ -53,6 +56,7 @@ const Movies = () => {
 
     showtimes
       .filter((st) => !!st.movieId)
+      .filter((st) => !summerOutdoorOnly || showtimeIsSummerOutdoor(st, venues))
       .filter((st) => new Date(st.datetime) >= todayStart)
       .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
       .forEach((st: StrapiShowtime) => {
@@ -106,7 +110,7 @@ const Movies = () => {
       })
       .filter((section) => section.movies.length > 0)
       .sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [showtimes, movies, filteredMovies, sort]);
+  }, [showtimes, movies, filteredMovies, sort, summerOutdoorOnly, venues]);
 
   return (
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
@@ -120,6 +124,42 @@ const Movies = () => {
       </div>
 
       <div className="container">
+        <div className="mb-6 rounded-xl border border-amber-500/25 bg-gradient-to-r from-amber-500/[0.08] via-transparent to-transparent px-4 py-4 md:px-5 md:py-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-display text-base font-semibold text-foreground md:text-lg">Θερινό σινεμά</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Εμφάνισε μόνο ταινίες με προβολή που σημειώνεται ως θερινή ή σε χώρο θερινού / ανοιχτού ουρανού (όπως στην αρχική).
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={summerOutdoorOnly}
+              onClick={() => setSummerOutdoorOnly((v) => !v)}
+              className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors ${
+                summerOutdoorOnly
+                  ? "border-amber-400/70 bg-amber-500/20 text-amber-950 dark:text-amber-100"
+                  : "border-border bg-card text-muted-foreground hover:border-amber-500/40 hover:text-foreground"
+              }`}
+            >
+              <span
+                className={`relative inline-flex h-6 w-11 shrink-0 rounded-full transition-colors ${
+                  summerOutdoorOnly ? "bg-amber-500" : "bg-muted"
+                }`}
+                aria-hidden
+              >
+                <span
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                    summerOutdoorOnly ? "translate-x-5" : "translate-x-0.5"
+                  }`}
+                />
+              </span>
+              Μόνο θερινές προβολές
+            </button>
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Είδος:</span>
           <button
@@ -163,7 +203,7 @@ const Movies = () => {
           ))}
         </div>
 
-        {isLoading || showtimesLoading ? (
+        {isLoading || showtimesLoading || (summerOutdoorOnly && venuesLoading) ? (
           <LoadingState message="Φόρτωση ταινιών..." />
         ) : (
           <div className="space-y-10">
@@ -193,9 +233,16 @@ const Movies = () => {
           </div>
         )}
 
-        {!isLoading && !showtimesLoading && groupedMovies.length === 0 && (
+        {!isLoading &&
+          !showtimesLoading &&
+          !(summerOutdoorOnly && venuesLoading) &&
+          groupedMovies.length === 0 && (
           <div className="text-center py-20 text-muted-foreground text-base">
-            <p>Δεν βρέθηκαν προβολές για αυτό το φίλτρο.</p>
+            <p>
+              {summerOutdoorOnly
+                ? "Δεν βρέθηκαν μελλοντικές προβολές σε θερινούς χώρους για αυτό το φίλτρο είδους."
+                : "Δεν βρέθηκαν προβολές για αυτό το φίλτρο."}
+            </p>
           </div>
         )}
       </div>

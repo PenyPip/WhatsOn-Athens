@@ -55,7 +55,7 @@ function MovieRowScroll({
   if (fetchErrorMessage) {
     return (
       <section className="relative section-black py-12 md:py-16 border-y border-white/[0.07]">
-        <div className="container">
+        <div className="container max-w-7xl">
           <div className="max-w-xl rounded-xl border border-amber-500/25 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
             <p className="font-display text-lg tracking-tight text-amber-100">{title}</p>
             <p className="mt-3 text-sm leading-relaxed text-amber-100/80 font-body">{fetchErrorMessage}</p>
@@ -67,7 +67,7 @@ function MovieRowScroll({
   if (items.length === 0) {
     return (
       <section className="relative section-black py-12 md:py-16 border-y border-white/[0.07]">
-        <div className="container">
+        <div className="container max-w-7xl">
           <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
             <p className="font-display text-lg tracking-tight text-white">{title}</p>
             {emptyMessage ? (
@@ -194,7 +194,7 @@ const Index = () => {
     <div className="min-h-screen pb-20 md:pb-0">
       {apiSectionFailed ? (
         <div className="section-black border-b border-amber-500/30 bg-amber-950/25 px-4 py-3 md:py-4">
-          <div className="container text-center text-sm text-amber-100/90 font-body md:text-left md:text-[0.9375rem]">
+          <div className="container max-w-7xl text-center text-sm text-amber-100/90 font-body md:text-left md:text-[0.9375rem]">
             Μερικά δεδομένα δεν φορτώθηκαν. Δοκίμασε να ανανεώσεις τη σελίδα.
           </div>
         </div>
@@ -207,7 +207,7 @@ const Index = () => {
             return sectionEl(
               "strip",
               <div className="section-black py-3">
-                <div className="container flex items-center gap-8 overflow-x-auto scrollbar-hide text-xs font-body uppercase tracking-[0.15em]">
+                <div className="container max-w-7xl flex items-center gap-8 overflow-x-auto scrollbar-hide text-xs font-body uppercase tracking-[0.15em]">
                   <span className="text-amber-200/85 flex-shrink-0">Καλοκαίρι:</span>
                   {summerStrip.map((t) => (
                     <span
@@ -258,7 +258,7 @@ const Index = () => {
                   <LoadingState message="Φόρτωση θερινών χώρων..." />
                 ) : venuesError ? (
                   <section className="relative section-black border-y border-white/[0.07] py-12 md:py-16">
-                    <div className="container">
+                    <div className="container max-w-7xl">
                       <div className="max-w-xl rounded-xl border border-amber-500/25 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
                         <p className="font-display text-lg tracking-tight text-amber-100">Τα θερινά σινεμά</p>
                         <p className="mt-3 text-sm leading-relaxed text-amber-100/80 font-body">
@@ -269,7 +269,7 @@ const Index = () => {
                   </section>
                 ) : summerVenueList.length === 0 ? (
                   <section className="relative section-black border-y border-white/[0.07] py-12 md:py-16">
-                    <div className="container">
+                    <div className="container max-w-7xl">
                       <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
                         <p className="font-display text-lg tracking-tight text-white">Τα θερινά σινεμά</p>
                         <p className="mt-3 text-sm leading-relaxed text-white/55 font-body">
@@ -290,7 +290,7 @@ const Index = () => {
                       ))}
                     </HorizontalScroll>
                     <div className="section-black pb-10 pt-0">
-                      <div className="container text-center">
+                      <div className="container max-w-7xl text-center">
                         <a href="/venues" className="text-sm font-medium text-amber-200/90 hover:text-amber-100">
                           Δες όλους τους χώρους →
                         </a>
@@ -305,7 +305,7 @@ const Index = () => {
               "tours",
               <div className="section-black relative overflow-hidden py-14 md:py-20">
                 <div aria-hidden className="pointer-events-none absolute -left-20 top-1/4 h-72 w-72 rounded-full bg-amber-500/10 blur-[90px]" />
-                <div className="container relative z-[1]">
+                <div className="container relative z-[1] max-w-7xl">
                   <motion.div
                     initial={{ opacity: 0, y: 16 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -390,13 +390,13 @@ const Index = () => {
                 <LoadingState message="Φόρτωση εστιατορίων..." />
               ) : restaurantsError ? (
                 <div className="section-black border-y border-amber-500/20 bg-amber-950/15 py-10">
-                  <div className="container max-w-xl text-sm leading-relaxed text-amber-100/85 font-body">
+                  <div className="container max-w-7xl text-sm leading-relaxed text-amber-100/85 font-body">
                     Δεν ήταν δυνατή η φόρτωση.
                   </div>
                 </div>
               ) : diningToShow.length === 0 ? (
                 <div className="section-black border-y border-border/40 bg-muted/10 py-10">
-                  <div className="container max-w-xl text-sm text-muted-foreground font-body">Δεν υπάρχουν προτάσεις.</div>
+                  <div className="container max-w-7xl text-sm text-muted-foreground font-body">Δεν υπάρχουν προτάσεις.</div>
                 </div>
               ) : (
                 <HorizontalScroll muted eyebrow="Περιεχόμενο" title="Φαγητό & μέρη στην πόλη">
@@ -415,7 +415,7 @@ const Index = () => {
             return sectionEl(
               "newsletter",
               <div className="section-black py-10">
-                <div className="container text-center">
+                <div className="container max-w-7xl text-center">
                   <motion.div
                     initial={{ opacity: 0 }}
                     whileInView={{ opacity: 1 }}

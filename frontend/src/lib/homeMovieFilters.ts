@@ -9,7 +9,7 @@ function mappedVenueIsSummerOutdoor(v: StrapiVenue): boolean {
   });
 }
 
-function showtimeIsSummerOutdoor(showtime: StrapiShowtime, venues: StrapiVenue[] | undefined): boolean {
+export function showtimeIsSummerOutdoor(showtime: StrapiShowtime, venues: StrapiVenue[] | undefined): boolean {
   if (showtime.summerScreening) return true;
   if (showtime.venueSummerOutdoor) return true;
   if (!venues?.length || showtime.venueId == null) return false;

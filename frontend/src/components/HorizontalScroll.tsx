@@ -167,7 +167,7 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
           </div>
         </div>
       ) : (
-        <div className="container relative z-[1] min-w-0 max-w-full">{headerAndRail}</div>
+        <div className="container relative z-[1] min-w-0 max-w-7xl">{headerAndRail}</div>
       )}
     </section>
   );

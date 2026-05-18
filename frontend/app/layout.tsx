@@ -2,11 +2,11 @@ import type { Metadata } from "next";
 import "@/index.css";
 
 export const metadata: Metadata = {
-  title: "WhatSON Athens — Movies & Theater in Greece",
+  title: "37Ν",
   description:
     "Your modern guide to movies, theater, and entertainment in Athens & Thessaloniki.",
   openGraph: {
-    title: "WhatSON Athens — Movies & Theater",
+    title: "37Ν",
     description:
       "Your modern guide to movies, theater, and entertainment in Athens & Thessaloniki.",
     type: "website",
