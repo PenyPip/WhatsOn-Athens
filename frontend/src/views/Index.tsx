@@ -325,7 +325,6 @@ const Index = () => {
                 loadingMessage="Φόρτωση ταινιών..."
                 fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={newMoviesList}
-                emptyMessage="Δεν υπάρχουν ταινίες με κυκλοφορία στις τελευταίες 10 ημέρες."
                 muted
                 eyebrow="Τελευταίες κυκλοφορίες"
                 title="Νέες ταινίες"
