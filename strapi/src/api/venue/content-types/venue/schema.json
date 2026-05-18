@@ -5,7 +5,7 @@
     "singularName": "venue",
     "pluralName": "venues",
     "displayName": "Χώρος / Σινεμά",
-    "description": "Π.χ. Village The Mall, θερινό Αθήνα κ.λπ. Τύπος: Σινεμά / Θέατρο κ.λπ. Το «Θερινό (ανοιχτό σινεμά)» ξεχωρίζει τα θερινά από τα κλειστά."
+    "description": "Π.χ. Village The Mall, θερινό Αθήνα κ.λπ. Τύπος: Σινεμά / Θέατρο κ.λπ. Το πεδίο «Θερινό» ξεχωρίζει τα θερινά σινεμά από τα κλειστά."
   },
   "options": {
     "draftAndPublish": true

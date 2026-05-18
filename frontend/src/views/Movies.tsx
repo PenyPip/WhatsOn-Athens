@@ -1,11 +1,19 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
+import { useSearchParams } from "react-router-dom";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useMovies, useShowtimes, useMovieGenres, useVenues } from "@/hooks/useStrapi";
-import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
+import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { showtimeIsSummerOutdoor } from "@/lib/homeMovieFilters";
+
+function showtimeMatchesVenue(st: StrapiShowtime, venue: StrapiVenue): boolean {
+  if (st.venueId != null && Number(st.venueId) === Number(venue.id)) return true;
+  const vn = typeof st.venue === "string" ? st.venue.trim() : "";
+  if (vn && venue.name.trim() === vn) return true;
+  return false;
+}
 
 const sortOptions = [
   { label: "Ημερομηνία", value: "date" },
@@ -13,6 +21,9 @@ const sortOptions = [
 ];
 
 const Movies = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const venueSlug = searchParams.get("venue")?.trim() || "";
+
   const { data: movies, isLoading } = useMovies();
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes();
   const { data: venues, isLoading: venuesLoading } = useVenues();
@@ -38,6 +49,11 @@ const Movies = () => {
     return result;
   }, [movies, genreSlug, sort]);
 
+  const venueFilter = useMemo((): StrapiVenue | null => {
+    if (!venueSlug || !venues?.length) return null;
+    return venues.find((v) => v.slug === venueSlug) ?? null;
+  }, [venues, venueSlug]);
+
   const groupedMovies = useMemo(() => {
     if (!showtimes || !movies) return [];
 
@@ -57,6 +73,7 @@ const Movies = () => {
     showtimes
       .filter((st) => !!st.movieId)
       .filter((st) => !summerOutdoorOnly || showtimeIsSummerOutdoor(st, venues))
+      .filter((st) => !venueFilter || showtimeMatchesVenue(st, venueFilter))
       .filter((st) => new Date(st.datetime) >= todayStart)
       .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
       .forEach((st: StrapiShowtime) => {
@@ -110,7 +127,13 @@ const Movies = () => {
       })
       .filter((section) => section.movies.length > 0)
       .sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [showtimes, movies, filteredMovies, sort, summerOutdoorOnly, venues]);
+  }, [showtimes, movies, filteredMovies, sort, summerOutdoorOnly, venues, venueFilter]);
+
+  function clearVenueFilter() {
+    const next = new URLSearchParams(searchParams);
+    next.delete("venue");
+    setSearchParams(next);
+  }
 
   return (
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
@@ -124,12 +147,38 @@ const Movies = () => {
       </div>
 
       <div className="container">
+        {venueFilter ? (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-4">
+            <p className="text-sm md:text-base text-foreground">
+              Προβολές για: <strong className="font-semibold">{venueFilter.name}</strong>
+            </p>
+            <button
+              type="button"
+              onClick={clearVenueFilter}
+              className="shrink-0 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary/80"
+            >
+              Όλοι οι χώροι
+            </button>
+          </div>
+        ) : venueSlug && !venuesLoading ? (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/35 bg-amber-950/15 px-4 py-4">
+            <p className="text-sm text-amber-100/90">Ο σύνδεσμος χώρου δεν αντιστοιχεί σε καταχωρημένο venue.</p>
+            <button
+              type="button"
+              onClick={clearVenueFilter}
+              className="shrink-0 rounded-lg border border-amber-500/40 bg-black/40 px-3 py-2 text-sm font-medium text-amber-50 hover:bg-black/55"
+            >
+              Επαναφορά
+            </button>
+          </div>
+        ) : null}
+
         <div className="mb-6 rounded-xl border border-amber-500/25 bg-gradient-to-r from-amber-500/[0.08] via-transparent to-transparent px-4 py-4 md:px-5 md:py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-display text-base font-semibold text-foreground md:text-lg">Θερινό σινεμά</p>
               <p className="mt-1 text-sm text-muted-foreground">
-                Εμφάνισε μόνο ταινίες με προβολή που σημειώνεται ως θερινή ή σε χώρο θερινού / ανοιχτού ουρανού (όπως στην αρχική).
+                Εμφάνισε μόνο ταινίες με προβολή που έχουν σήμα «θερινής» στην καταχώρηση ή το venue είναι σημειωμένο ως θερινό.
               </p>
             </div>
             <button
@@ -203,7 +252,7 @@ const Movies = () => {
           ))}
         </div>
 
-        {isLoading || showtimesLoading || (summerOutdoorOnly && venuesLoading) ? (
+        {isLoading || showtimesLoading || (summerOutdoorOnly && venuesLoading) || (!!venueSlug && venuesLoading) ? (
           <LoadingState message="Φόρτωση ταινιών..." />
         ) : (
           <div className="space-y-10">
@@ -236,12 +285,17 @@ const Movies = () => {
         {!isLoading &&
           !showtimesLoading &&
           !(summerOutdoorOnly && venuesLoading) &&
+          !(!!venueSlug && venuesLoading) &&
           groupedMovies.length === 0 && (
           <div className="text-center py-20 text-muted-foreground text-base">
             <p>
-              {summerOutdoorOnly
-                ? "Δεν βρέθηκαν μελλοντικές προβολές σε θερινούς χώρους για αυτό το φίλτρο είδους."
-                : "Δεν βρέθηκαν προβολές για αυτό το φίλτρο."}
+              {venueSlug && !venueFilter && !venuesLoading
+                ? "Δεν βρέθηκε ο χώρος του συνδέσμου."
+                : venueFilter
+                  ? `Δεν βρέθηκαν προβολές στο ${venueFilter.name} για αυτό το φίλτρο.`
+                  : summerOutdoorOnly
+                    ? "Δεν βρέθηκαν μελλοντικές προβολές σε θερινούς χώρους για αυτό το φίλτρο είδους."
+                    : "Δεν βρέθηκαν προβολές για αυτό το φίλτρο."}
             </p>
           </div>
         )}

@@ -8,19 +8,18 @@ import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues } from "@/hooks/useStrapi";
 import type { HomeSectionId } from "@/config/home";
-import type { StrapiMovie, StrapiVenue } from "@/lib/api";
+import type { StrapiMovie } from "@/lib/api";
 import {
   moviesReleasedInLastDays,
   moviesWithShowtimeThisWeek,
   moviesWithShowtimeToday,
-  moviesWithSummerOutdoorShowtime,
+  summerVenuesWithShowtimesOrAll,
 } from "@/lib/homeMovieFilters";
-import { ExternalLink, MapPin } from "lucide-react";
+import VenueCard from "@/components/VenueCard";
 
 const summerStrip = [
   "Θερινό σινεμά",
   "Περιοδείες ανά την Ελλάδα",
-  "Ανοιχτός ουρανός",
   "Θέατρο καλοκαιριού",
   "Ξανά στη σκηνή",
 ];
@@ -101,55 +100,7 @@ function MovieRowScroll({
       ))}
     </HorizontalScroll>
   );
-}
-
-function VenueSummerCard({ venue }: { venue: StrapiVenue }) {
-  return (
-    <div className="min-w-[260px] max-w-[260px] md:min-w-[280px] md:max-w-[280px] flex-shrink-0">
-      <div className="card-elevated flex h-full flex-col p-5 text-left">
-        <div className="mb-3 flex items-start justify-between gap-3">
-          <h3 className="font-display text-lg font-semibold leading-snug text-white">{venue.name}</h3>
-          <span className="shrink-0 rounded bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#13143E]">
-            θερινό
-          </span>
-        </div>
-        <div className="grow space-y-2 text-sm text-white/55">
-          {venue.address ? (
-            <p className="flex items-start gap-2">
-              <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-white/40" aria-hidden />
-              <span>{venue.address}</span>
-            </p>
-          ) : null}
-          {venue.city ? <p className="text-xs font-medium text-white/65">{venue.city}</p> : null}
-        </div>
-        <div className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4">
-          {venue.moreLink ? (
-            <a
-              href={venue.moreLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium text-white hover:border-white/30 hover:bg-white/10"
-            >
-              Περισσότερα
-              <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
-            </a>
-          ) : null}
-          {venue.googleMapsUrl ? (
-            <a
-              href={venue.googleMapsUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 rounded-md border border-white/15 px-3 py-2 text-xs text-white/65 hover:border-white/30 hover:text-white"
-            >
-              Χάρτης
-              <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
-            </a>
-          ) : null}
-        </div>
-      </div>
-    </div>
-  );
-}
+};
 
 const Index = () => {
   const layout = useHomeLayout();
@@ -173,16 +124,9 @@ const Index = () => {
     return flagged.length > 0 ? flagged : all.slice(0, 12);
   }, [restaurants]);
 
-  const summerMovies = useMemo(
-    () => moviesWithSummerOutdoorShowtime(movieList, stList, venueList),
-    [movieList, stList, venueList],
-  );
-  const summerVenueList = useMemo(
-    () =>
-      [...venueList]
-        .filter((v) => v.summerOutdoor)
-        .sort((a, b) => a.name.localeCompare(b.name, "el")),
-    [venueList],
+  const summerVenuesForHome = useMemo(
+    () => summerVenuesWithShowtimesOrAll(venueList, stList),
+    [venueList, stList],
   );
   const weekMovies = useMemo(() => moviesWithShowtimeThisWeek(movieList, stList), [movieList, stList]);
   const todayMovies = useMemo(() => moviesWithShowtimeToday(movieList, stList), [movieList, stList]);
@@ -238,17 +182,47 @@ const Index = () => {
           case "summer_cinema":
             return sectionEl(
               "summer_cinema",
-              <MovieRowScroll
-                loading={moviesLoading || showtimesLoading || venuesLoading}
-                loadingMessage="Φόρτωση θερινών προβολών..."
-                fetchErrorMessage={
-                  moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
-                }
-                items={summerMovies}
-                spotlight
-                eyebrow="Καλοκαίρι · ανοιχτός ουρανός"
-                title="Θερινά σινεμά"
-              />,
+              venuesLoading || showtimesLoading ? (
+                <LoadingState message="Φόρτωση θερινών χώρων..." />
+              ) : venuesError ? (
+                <section className="relative section-black py-12 md:py-16 border-y border-white/[0.07]">
+                  <div className="container max-w-7xl">
+                    <div className="max-w-xl rounded-xl border border-amber-500/25 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
+                      <p className="font-display text-lg tracking-tight text-amber-100">Θερινά σινεμά</p>
+                      <p className="mt-3 text-sm leading-relaxed text-amber-100/80 font-body">
+                        Δεν ήταν δυνατή η φόρτωση των χώρων.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              ) : summerVenuesForHome.length === 0 ? (
+                <section className="relative section-black py-12 md:py-16 border-y border-white/[0.07]">
+                  <div className="container max-w-7xl">
+                    <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
+                      <p className="font-display text-lg tracking-tight text-white">Θερινά σινεμά</p>
+                      <p className="mt-3 text-sm leading-relaxed text-white/55 font-body">
+                        Δεν υπάρχουν θερινοί χώροι προς το παρόν.
+                      </p>
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                <HorizontalScroll
+                  spotlight
+                  eyebrow="Καλοκαίρι · θερινές προβολές"
+                  title="Θερινά σινεμά"
+                  subtitle="Επέλεξε χώρο· η λίστα ταινιών φιλτράρεται αυτόματα για τις προβολές εκεί."
+                >
+                  {summerVenuesForHome.map((venue) => (
+                    <VenueCard
+                      key={venue.id}
+                      venue={venue}
+                      variant="spotlight"
+                      moviesHref={`/movies?venue=${encodeURIComponent(venue.slug)}`}
+                    />
+                  ))}
+                </HorizontalScroll>
+              ),
             );
           case "summer_venues":
             return sectionEl(
@@ -267,7 +241,7 @@ const Index = () => {
                       </div>
                     </div>
                   </section>
-                ) : summerVenueList.length === 0 ? (
+                ) : summerVenuesForHome.length === 0 ? (
                   <section className="relative section-black border-y border-white/[0.07] py-12 md:py-16">
                     <div className="container max-w-7xl">
                       <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
@@ -285,8 +259,13 @@ const Index = () => {
                       eyebrow="Χώροι"
                       title="Τα θερινά σινεμά"
                     >
-                      {summerVenueList.map((venue) => (
-                        <VenueSummerCard key={venue.id} venue={venue} />
+                      {summerVenuesForHome.map((venue) => (
+                        <VenueCard
+                          key={venue.id}
+                          venue={venue}
+                          variant="spotlight"
+                          moviesHref={`/movies?venue=${encodeURIComponent(venue.slug)}`}
+                        />
                       ))}
                     </HorizontalScroll>
                     <div className="section-black pb-10 pt-0">

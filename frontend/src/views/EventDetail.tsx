@@ -25,6 +25,20 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     return [...filtered].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
   }, [showtimes, slug, type]);
 
+  const showtimesByVenue = useMemo(() => {
+    const m = new Map<string, StrapiShowtime[]>();
+    for (const st of eventShowtimes) {
+      const key = typeof st.venue === "string" && st.venue.trim() ? st.venue.trim() : "Χώρος χωρίς όνομα";
+      if (!m.has(key)) m.set(key, []);
+      m.get(key)!.push(st);
+    }
+    const keys = [...m.keys()].sort((a, b) => a.localeCompare(b, "el"));
+    return keys.map((venueName) => ({
+      venueName,
+      slots: [...(m.get(venueName) ?? [])].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()),
+    }));
+  }, [eventShowtimes]);
+
   const isLoading = type === "movie" ? moviesLoading : theaterLoading;
 
   const event = type === "movie"
@@ -143,26 +157,45 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         </section>
 
         <section id="showtimes">
-          <h2 className="font-display text-xl font-semibold mb-4">Προβολές</h2>
+          <h2 className="font-display text-xl font-semibold mb-2">Πού παίζει & ώρες</h2>
+          <p className="text-muted-foreground text-sm mb-6 max-w-2xl">
+            Κάθε γραμμή είναι προγραμματισμένη προβολή: ημερομηνία, ώρα και σινεμά όπως καταχωρείται στον οδηγό.
+          </p>
           {eventShowtimes.length === 0 ? (
             <p className="text-muted-foreground text-sm">Δεν έχουν καταχωρηθεί προβολές ακόμη.</p>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {eventShowtimes.slice(0, 12).map((st) => (
-                <div key={st.id} className="rounded border border-border p-4 text-left">
-                  <p className="text-base font-medium">
-                    {new Date(st.datetime).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" })}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-0.5">
-                    {new Date(st.datetime).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" })} · {st.venue}
-                    {st.hallName ? <> · αίθ. {st.hallName}</> : null}
-                    {st.venueSummerOutdoor ? <span className="text-amber-600 dark:text-amber-500 font-medium"> · θερινό</span> : null}
-                  </p>
-                  {st.price != null ? (
-                    <p className="text-base font-bold mt-1">
-                      {Number.isInteger(st.price) ? `${st.price}` : st.price.toFixed(2)} €
-                    </p>
-                  ) : null}
+            <div className="space-y-10 max-w-3xl">
+              {showtimesByVenue.map(({ venueName, slots }) => (
+                <div key={venueName}>
+                  <h3 className="font-display text-lg font-semibold mb-4 border-b border-border pb-2">{venueName}</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {slots.map((st) => {
+                      const d = new Date(st.datetime);
+                      return (
+                        <div key={st.id} className="rounded-lg border border-border bg-card/30 p-4 text-left">
+                          <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Ημερομηνία</p>
+                          <p className="text-base font-semibold text-foreground">
+                            {d.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" })}
+                          </p>
+                          <p className="mt-3 text-[11px] font-medium uppercase tracking-wider text-muted-foreground">Ώρα έναρξης</p>
+                          <p className="text-lg font-bold text-foreground tabular-nums">
+                            {d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" })}
+                          </p>
+                          {st.hallName ? (
+                            <p className="mt-2 text-sm text-muted-foreground">Αίθουσα: {st.hallName}</p>
+                          ) : null}
+                          {st.venueSummerOutdoor ? (
+                            <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-500">Θερινή προβολή</p>
+                          ) : null}
+                          {st.price != null ? (
+                            <p className="mt-3 text-base font-bold">
+                              {Number.isInteger(st.price) ? `${st.price}` : st.price.toFixed(2)} €
+                            </p>
+                          ) : null}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
             </div>

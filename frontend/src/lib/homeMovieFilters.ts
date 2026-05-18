@@ -17,6 +17,24 @@ export function showtimeIsSummerOutdoor(showtime: StrapiShowtime, venues: Strapi
   return v ? mappedVenueIsSummerOutdoor(v) : false;
 }
 
+/**
+ * Θερινοί χώροι (CMS) που έχουν τουλάχιστον μία μελλοντική προβολή ταινίας με ένδειξη «θερινής» στο μοντέλο προβολής.
+ * Αν κανείς δεν έχει τέτοια προβολή, επιστρέφονται όλοι οι θερινοί για να μην μένει κενή η ενότητα.
+ */
+export function summerVenuesWithShowtimesOrAll(venues: StrapiVenue[], showtimes: StrapiShowtime[], now = new Date()): StrapiVenue[] {
+  const summerVenues = venues.filter((v) => v.summerOutdoor).sort((a, b) => a.name.localeCompare(b.name, "el"));
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const idWithSummerShow = new Set<number>();
+  for (const st of showtimes) {
+    if (st.movieId == null || st.venueId == null) continue;
+    if (Number.isNaN(new Date(st.datetime).getTime()) || new Date(st.datetime) < dayStart) continue;
+    if (!showtimeIsSummerOutdoor(st, venues)) continue;
+    idWithSummerShow.add(Number(st.venueId));
+  }
+  const withShows = summerVenues.filter((v) => idWithSummerShow.has(Number(v.id)));
+  return withShows.length > 0 ? withShows : summerVenues;
+}
+
 /** Σταθερό id για stubs όταν λείπει movieId — αποφυγή διπλότυπων React keys (παλιά: όλα 0). */
 function stubNumericIdFromSlug(slug: string): number {
   let h = 0;

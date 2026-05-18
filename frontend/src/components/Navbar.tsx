@@ -1,9 +1,13 @@
 import { Link, useLocation } from "react-router-dom";
-import { Film, Theater, UtensilsCrossed, Building2, User } from "lucide-react";
+import { Film, Theater, UtensilsCrossed, Building2, User, Search } from "lucide-react";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import { GlobalSearch, useGlobalSearchShortcut } from "@/components/GlobalSearch";
 
 const Navbar = () => {
   const location = useLocation();
+  const [searchOpen, setSearchOpen] = useState(false);
+  useGlobalSearchShortcut(setSearchOpen);
 
   const links = [
     { to: "/", label: "Αρχική" },
@@ -22,6 +26,19 @@ const Navbar = () => {
 
   return (
     <>
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+
+      {/* Mobile: ταχύπληρο κέντρο αναζήτησης πάνω από το bottom nav */}
+      <button
+        type="button"
+        aria-label="Άνοιγμα αναζήτησης ταινιών και χώρων"
+        onClick={() => setSearchOpen(true)}
+        className="fixed bottom-24 right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full border border-white/20 bg-[#382154]/95 text-white shadow-lg backdrop-blur-sm transition hover:bg-[#4a2d6e] md:hidden"
+        style={{ boxShadow: "0 10px 30px rgba(0,0,0,0.35)" }}
+      >
+        <Search className="h-6 w-6" aria-hidden />
+      </button>
+
       {/* Desktop Nav */}
       <nav
         className="fixed top-0 left-0 right-0 z-50 hidden md:block"
@@ -30,10 +47,9 @@ const Navbar = () => {
             "linear-gradient(95deg, #742374 0%, #872F8B 18%, #7A2D84 34%, #5A286F 56%, #382154 76%, #13143E 100%)",
         }}
       >
-        <div className="container flex items-center justify-between h-28">
-
+        <div className="container flex h-28 items-center gap-4">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-4">
+          <Link to="/" className="flex shrink-0 items-center gap-4">
             <div className="flex items-baseline gap-0.5">
               <span style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 300, fontSize: '3rem', color: '#F0EDF8', letterSpacing: '-3px', lineHeight: 1 }}>
                 37
@@ -46,8 +62,23 @@ const Navbar = () => {
             </div>
           </Link>
 
-          {/* Links */}
-          <div className="flex items-center gap-8">
+          <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex">
+            <button
+              type="button"
+              onClick={() => setSearchOpen(true)}
+              className="flex h-11 w-full max-w-md cursor-pointer items-center gap-3 rounded-full border border-white/20 bg-black/25 px-4 text-left text-sm text-white/70 transition hover:border-white/35 hover:bg-black/35 hover:text-white"
+            >
+              <Search className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+              <span className="min-w-0 flex-1 truncate font-body text-white/55">Ταινίες, χώροι…</span>
+              <kbd className="hidden shrink-0 rounded border border-white/25 bg-black/35 px-1.5 py-0.5 font-mono text-[10px] text-white/50 lg:inline">
+                ⌘K
+              </kbd>
+            </button>
+          </div>
+
+          <div className="flex flex-1 items-center justify-end gap-4 md:contents">
+            {/* Links */}
+            <div className="flex items-center gap-6 md:gap-8">
             {links.map((link) => (
               <Link
                 key={link.to}
@@ -68,11 +99,12 @@ const Navbar = () => {
                 )}
               </Link>
             ))}
-          </div>
+            </div>
 
-          <Link to="/profile" className="p-2 rounded-full hover:bg-white/10 transition-colors">
-            <User className="w-5 h-5 text-white/60" />
-          </Link>
+            <Link to="/profile" className="shrink-0 p-2 rounded-full hover:bg-white/10 transition-colors">
+              <User className="w-5 h-5 text-white/60" />
+            </Link>
+          </div>
         </div>
       </nav>
 
