@@ -56,20 +56,36 @@ function venueLabelFromShowtime(st: StrapiShowtime, venues: StrapiVenue[] | unde
   return "Άγνωστος χώρος";
 }
 
+/** Ένα κλειδί ανά φυσικό σινεμά — ώστε να μην εμφανίζονται πολλές γραμμές για τον ίδιο χώρο. */
+function stableVenueKey(st: StrapiShowtime, venues: StrapiVenue[] | undefined): string {
+  if (st.venueId != null) return `v:${Number(st.venueId)}`;
+  const vn = typeof st.venue === "string" ? st.venue.trim() : "";
+  if (venues?.length && vn) {
+    const byName = venues.filter((x) => x.name.trim() === vn);
+    if (byName.length === 1) return `v:${byName[0].id}`;
+  }
+  const label = venueLabelFromShowtime(st, venues);
+  return `n:${label.trim().toLowerCase().replace(/\s+/g, " ")}`;
+}
+
 function formatShowtimeClock(d: Date): string {
   return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-type ShowingLine = {
-  key: string;
+type ShowingSlot = {
   datetime: Date;
-  venueLabel: string;
   hallName?: string;
+};
+
+type VenueShowingsBlock = {
+  key: string;
+  venueLabel: string;
+  slots: ShowingSlot[];
 };
 
 type MovieDayEntry = {
   movie: StrapiMovie;
-  showings: ShowingLine[];
+  showings: VenueShowingsBlock[];
 };
 
 type DaySection = {
@@ -141,8 +157,8 @@ const Movies = () => {
     const movieMap = new Map<number, StrapiMovie>();
     (movies ?? []).forEach((movie) => movieMap.set(movie.id, movie));
 
-    /** sectionKey -> movieId -> ShowingLine[] με αποφυγή διπλότυπων */
-    const sectionMovieShowings = new Map<string, Map<number, ShowingLine[]>>();
+    /** sectionKey -> movieId -> venueKey -> μπλοκ προβολών ανά σινεμά */
+    const sectionMovieShowings = new Map<string, Map<number, Map<string, VenueShowingsBlock>>>();
     const sectionMeta = new Map<string, { label: string; date: Date }>();
 
     const filteredSt = showtimes
@@ -188,20 +204,26 @@ const Movies = () => {
 
       const hallRaw = typeof st.hallName === "string" ? st.hallName.trim() : "";
       const venueLabel = venueLabelFromShowtime(st, venues);
-      const dedupeKey = `${stDate.getTime()}-${venueLabel}-${hallRaw}`;
+      const venueKey = stableVenueKey(st, venues);
+      /** Ίδια λεπτό + ίδια αίθουσα = διπλότυπο από το CMS */
+      const slotDedupeKey = `${Math.floor(stDate.getTime() / 60000)}-${hallRaw}`;
 
       if (!sectionMovieShowings.has(sectionKey)) {
         sectionMovieShowings.set(sectionKey, new Map());
       }
       const byMovie = sectionMovieShowings.get(sectionKey)!;
-      if (!byMovie.has(movie.id)) byMovie.set(movie.id, []);
+      if (!byMovie.has(movie.id)) byMovie.set(movie.id, new Map());
+      const byVenue = byMovie.get(movie.id)!;
 
-      const list = byMovie.get(movie.id)!;
-      if (list.some((x) => x.key === dedupeKey)) continue;
-      list.push({
-        key: dedupeKey,
+      if (!byVenue.has(venueKey)) {
+        byVenue.set(venueKey, { key: venueKey, venueLabel, slots: [] });
+      }
+      const block = byVenue.get(venueKey)!;
+      if (block.slots.some((s) => `${Math.floor(s.datetime.getTime() / 60000)}-${s.hallName ?? ""}` === slotDedupeKey)) {
+        continue;
+      }
+      block.slots.push({
         datetime: stDate,
-        venueLabel,
         hallName: hallRaw || undefined,
       });
     }
@@ -209,15 +231,23 @@ const Movies = () => {
     const sections: DaySection[] = [...sectionMovieShowings.keys()].map((key) => {
       const meta = sectionMeta.get(key)!;
       const byMovie = sectionMovieShowings.get(key)!;
-      const entries: MovieDayEntry[] = [...byMovie.entries()].map(([mid, lines]) => {
+      const entries: MovieDayEntry[] = [...byMovie.entries()].map(([mid, venueMap]) => {
         const mv = movieMap.get(mid)!;
-        const sorted = [...lines].sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
-        return { movie: mv, showings: sorted };
+        const showings = [...venueMap.values()].map((b) => ({
+          ...b,
+          slots: [...b.slots].sort((x, y) => x.datetime.getTime() - y.datetime.getTime()),
+        }));
+        showings.sort((a, b) => {
+          const ta = a.slots[0]?.datetime.getTime() ?? 0;
+          const tb = b.slots[0]?.datetime.getTime() ?? 0;
+          return ta - tb;
+        });
+        return { movie: mv, showings };
       });
 
       entries.sort((a, b) => {
-        const ta = a.showings[0]?.datetime.getTime() ?? 0;
-        const tb = b.showings[0]?.datetime.getTime() ?? 0;
+        const ta = a.showings[0]?.slots[0]?.datetime.getTime() ?? 0;
+        const tb = b.showings[0]?.slots[0]?.datetime.getTime() ?? 0;
         return ta - tb;
       });
 
@@ -439,17 +469,22 @@ const Movies = () => {
                           className="w-full flex-1"
                         />
                       </div>
-                      <ul className="shrink-0 space-y-1 rounded-lg border border-border/70 bg-muted/40 px-2.5 py-2 text-[11px] leading-snug text-muted-foreground">
-                        {showings.map((line) => {
-                          const time = formatShowtimeClock(line.datetime);
-                          const where = venueFilter
-                            ? line.hallName
-                              ? `${line.hallName}`
-                              : null
-                            : `${line.venueLabel}${line.hallName ? ` · ${line.hallName}` : ""}`;
+                      <ul className="shrink-0 space-y-1.5 rounded-lg border border-border/70 bg-muted/40 px-3 py-2.5 text-xs sm:text-sm leading-snug text-muted-foreground">
+                        {showings.map((block) => {
+                          const hallLabels = block.slots.map((s) => s.hallName).filter((h): h is string => Boolean(h));
+                          const distinctHalls = new Set(hallLabels);
+                          const showHall =
+                            Boolean(venueFilter) || (distinctHalls.size > 1 && hallLabels.length > 0);
+                          const timeParts = block.slots.map((s) => {
+                            const t = formatShowtimeClock(s.datetime);
+                            if (showHall && s.hallName) return `${t} · ${s.hallName}`;
+                            return t;
+                          });
+                          const timesStr = timeParts.join(", ");
+                          const where = venueFilter ? null : block.venueLabel;
                           return (
-                            <li key={line.key} className="font-body tabular-nums">
-                              <span className="font-medium text-foreground">{time}</span>
+                            <li key={block.key} className="font-body tabular-nums">
+                              <span className="font-medium text-foreground">{timesStr}</span>
                               {where ? <span className="text-muted-foreground">{` · ${where}`}</span> : null}
                             </li>
                           );
