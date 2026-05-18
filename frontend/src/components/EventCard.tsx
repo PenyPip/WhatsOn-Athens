@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 interface EventCardProps {
   slug: string;
   title: string;
+  /** Δεύτερη γραμμή (π.χ. πρωτότυπος τίτλος όταν ο κύριος είναι ελληνικός). */
+  titleSecondary?: string;
   subtitle: string;
   genre: string;
   duration: number;
@@ -20,10 +22,11 @@ interface EventCardProps {
   index?: number;
 }
 
-const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom, gradientTo, posterUrl, type, badge, className = "", index = 0 }: EventCardProps) => {
+const EventCard = ({ slug, title, titleSecondary, subtitle, genre, duration, score, gradientFrom, gradientTo, posterUrl, type, badge, className = "", index = 0 }: EventCardProps) => {
   const showGradientFallback =
     !posterUrl && typeof gradientFrom === "string" && typeof gradientTo === "string";
   const subtitleLine = typeof subtitle === "string" && subtitle.trim() ? subtitle : "\u00a0";
+  const posterAlt = titleSecondary ? `${title} · ${titleSecondary}` : title;
 
   return (
     <motion.div
@@ -50,7 +53,7 @@ const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom
               {/* eslint-disable-next-line @next/next/no-img-element -- αφίσες Strapi, static export */}
               <img
                 src={posterUrl}
-                alt={title}
+                alt={posterAlt}
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </>
@@ -67,10 +70,18 @@ const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom
           )}
         </div>
         <div className="flex flex-1 flex-col bg-white p-3">
-          <h3 className="mb-1 min-h-[2.75rem] font-display text-base font-semibold leading-tight text-gray-900 line-clamp-2 group-hover:text-primary transition-colors">
+          <h3
+            className={cn(
+              "mb-1 font-display text-base font-semibold leading-tight text-gray-900 line-clamp-2 group-hover:text-primary transition-colors",
+              !titleSecondary && "min-h-[2.75rem]",
+            )}
+          >
             {title}
           </h3>
-          <p className="mb-2 min-h-[1.375rem] text-sm leading-snug text-gray-500 line-clamp-1">{subtitleLine}</p>
+          {titleSecondary ? (
+            <p className="-mt-0.5 mb-2 text-sm font-medium leading-snug text-gray-600 line-clamp-2">{titleSecondary}</p>
+          ) : null}
+          <p className={cn("mb-2 text-sm leading-snug text-gray-500 line-clamp-1", titleSecondary ? "min-h-0" : "min-h-[1.375rem]")}>{subtitleLine}</p>
           <div className="mt-auto flex items-end justify-between gap-2 pt-1">
             <span className="min-w-0 text-xs font-medium uppercase tracking-wider text-gray-400 line-clamp-1">
               {type === "movie" && genre ? `Είδος · ${genre}` : genre || "\u00a0"}

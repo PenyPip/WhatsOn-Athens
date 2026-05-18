@@ -6,6 +6,7 @@ import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useMovies, useShowtimes, useMovieGenres, useVenues } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
+import { movieTitleLines } from "@/lib/movieTitles";
 import { showtimeIsSummerOutdoor } from "@/lib/homeMovieFilters";
 
 function showtimeMatchesVenue(st: StrapiShowtime, venue: StrapiVenue): boolean {
@@ -291,12 +292,15 @@ const Movies = () => {
               <section key={section.label}>
                 <h2 className="font-display text-2xl font-semibold mb-4 capitalize">{section.label}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 items-stretch">
-                  {section.entries.map(({ movie, showings }, i) => (
+                  {section.entries.map(({ movie, showings }, i) => {
+                    const tl = movieTitleLines(movie);
+                    return (
                     <div key={`${section.label}-${movie.slug}`} className="flex flex-col gap-2 h-full min-h-0">
                       <div className="flex min-h-0 flex-1">
                         <EventCard
                           slug={movie.slug}
-                          title={movie.title}
+                          title={tl.primary}
+                          titleSecondary={tl.secondary}
                           subtitle={movie.director ?? ""}
                           genre={movie.genre}
                           duration={movie.duration}
@@ -324,7 +328,7 @@ const Movies = () => {
                         })}
                       </ul>
                     </div>
-                  ))}
+                  );})}
                 </div>
               </section>
             ))}

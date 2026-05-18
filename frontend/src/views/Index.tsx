@@ -9,8 +9,9 @@ import { Fragment, useMemo } from "react";
 import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues } from "@/hooks/useStrapi";
 import type { HomeSectionId } from "@/config/home";
 import type { StrapiMovie } from "@/lib/api";
+import { movieTitleLines } from "@/lib/movieTitles";
 import {
-  moviesWithFutureReleaseDate,
+  moviesReleasedInLastDays,
   moviesWithSummerOutdoorShowtime,
   moviesWithShowtimeThisWeek,
   moviesWithShowtimeToday,
@@ -80,14 +81,17 @@ function MovieRowScroll({
   }
   return (
     <HorizontalScroll spotlight={spotlight} muted={muted} eyebrow={eyebrow} title={title} subtitle={subtitle}>
-      {items.map((movie, i) => (
+      {items.map((movie, i) => {
+        const tl = movieTitleLines(movie);
+        return (
         <div
           key={`${movie.id}-${movie.slug}`}
           className="flex h-full min-h-0 min-w-[170px] max-w-[170px] flex-shrink-0 md:min-w-[200px] md:max-w-[200px]"
         >
           <EventCard
             slug={movie.slug}
-            title={movie.title}
+            title={tl.primary}
+            titleSecondary={tl.secondary}
             subtitle={movie.director}
             genre={movie.genre}
             duration={movie.duration}
@@ -98,7 +102,7 @@ function MovieRowScroll({
             className="w-full flex-1"
           />
         </div>
-      ))}
+      );})}
     </HorizontalScroll>
   );
 };
@@ -135,7 +139,7 @@ const Index = () => {
   );
   const weekMovies = useMemo(() => moviesWithShowtimeThisWeek(movieList, stList), [movieList, stList]);
   const todayMovies = useMemo(() => moviesWithShowtimeToday(movieList, stList), [movieList, stList]);
-  const comingSoonMovies = useMemo(() => moviesWithFutureReleaseDate(movieList), [movieList]);
+  const newMoviesList = useMemo(() => moviesReleasedInLastDays(movieList, 10), [movieList]);
 
   const sectionEl = (id: HomeSectionId, node: ReactNode) => <Fragment key={id}>{node}</Fragment>;
 
@@ -320,12 +324,12 @@ const Index = () => {
                 loading={moviesLoading}
                 loadingMessage="Φόρτωση ταινιών..."
                 fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
-                items={comingSoonMovies}
-                emptyMessage="Δεν υπάρχουν ταινίες με καταχωρημένη μελλοντική ημερομηνία κυκλοφορίας."
+                items={newMoviesList}
+                emptyMessage="Δεν υπάρχουν ταινίες με κυκλοφορία στις τελευταίες 10 ημέρες."
                 muted
-                eyebrow="Προσεχώς"
-                title="Επερχόμενες κυκλοφορίες"
-                subtitle="Όλες οι ταινίες με ημερομηνία κυκλοφορίας μετά τη σήμερα (η πλησιέστερη πρώτη)."
+                eyebrow="Τελευταίες κυκλοφορίες"
+                title="Νέες ταινίες"
+                subtitle="Ταινίες με ημερομηνία κυκλοφορίας μέσα στις τελευταίες 10 μέρες (συμπεριλαμβανομένης της σήμερας)."
               />,
             );
           case "movies_week":

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { useMovies, useTheaterShows, useHomeLayout } from "@/hooks/useStrapi";
 import { layoutShowsHero } from "@/config/home";
 import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
+import { movieTitleLines } from "@/lib/movieTitles";
 
 function clampIndex(n: number, length: number): number {
   if (length <= 0) return 0;
@@ -38,6 +39,7 @@ const Hero = () => {
   if (!featured) return null;
 
   const isTheater = Boolean(theater);
+  const movieTitles = !isTheater ? movieTitleLines(featured as StrapiMovie) : null;
 
   const to = isTheater ? `/theater/${(featured as StrapiTheaterShow).slug}` : `/movies/${(featured as StrapiMovie).slug}`;
   const eyebrow = isTheater ? "Καλοκαίρι · παραστάσεις που ταξιδεύουν" : "Καλοκαίρι · θερινά σινεμά & θέατρο που ταξιδεύει";
@@ -92,7 +94,12 @@ const Hero = () => {
           ) : null}
           <span className="mb-2 block text-xs font-body uppercase tracking-[0.2em] text-white/55">{kicker}</span>
           <div className="w-16 h-0.5 bg-amber-400/85 mb-5" />
-          <h1 className="font-display text-4xl md:text-6xl font-bold mb-4 leading-tight text-white">{featured.title}</h1>
+          <h1 className="font-display text-4xl md:text-6xl font-bold mb-2 leading-tight text-white">
+            {isTheater ? featured.title : movieTitles!.primary}
+          </h1>
+          {!isTheater && movieTitles?.secondary ? (
+            <p className="font-display text-2xl md:text-4xl font-medium leading-tight text-white/85 mb-4">{movieTitles.secondary}</p>
+          ) : null}
           <p className="text-white/60 text-base md:text-lg mb-6 leading-relaxed max-w-lg font-body">{featured.synopsis}</p>
           <div className="flex items-center gap-4">
             <Link

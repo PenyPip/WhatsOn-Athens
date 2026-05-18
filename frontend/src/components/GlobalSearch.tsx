@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from "@/components/ui/command";
 import { useMovies, useVenues } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiVenue } from "@/lib/api";
+import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
 
 function normalizeSearch(s: string): string {
   const raw = typeof s === "string" ? s : String(s ?? "");
@@ -18,7 +19,7 @@ function normalizeSearch(s: string): string {
 
 function movieMatches(movie: StrapiMovie, q: string): boolean {
   if (!q) return true;
-  const hay = [movie.title ?? "", movie.slug ?? "", movie.director ?? "", movie.genre ?? ""].join(" ").toLowerCase();
+  const hay = movieTitlesSearchBlob(movie).toLowerCase();
   const nq = normalizeSearch(q);
   return normalizeSearch(hay).includes(nq);
 }
@@ -30,10 +31,6 @@ function venueMatches(venue: StrapiVenue, q: string): boolean {
     .toLowerCase();
   const nq = normalizeSearch(q);
   return normalizeSearch(hay).includes(nq);
-}
-
-function cmpMovieTitles(a: StrapiMovie, b: StrapiMovie): number {
-  return (a.title ?? "").localeCompare(b.title ?? "", "el");
 }
 
 function cmpVenueNames(a: StrapiVenue, b: StrapiVenue): number {
@@ -63,7 +60,11 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const movieHits = useMemo(() => {
     const list = movies ?? [];
     const trimmed = search.trim();
-    let out = trimmed ? list.filter((m) => movieMatches(m, trimmed)) : [...list].sort(cmpMovieTitles);
+    let out = trimmed
+      ? list.filter((m) => movieMatches(m, trimmed))
+      : [...list].sort((a, b) =>
+          movieTitleLines(a).primary.localeCompare(movieTitleLines(b).primary, "el"),
+        );
     if (!trimmed) out = out.slice(0, CAP_EMPTY);
     return out.slice(0, 50);
   }, [movies, search]);
@@ -121,26 +122,31 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               <CommandEmpty>Δεν βρέθηκαν αποτελέσματα.</CommandEmpty>
               {movieHits.length > 0 ? (
                 <CommandGroup heading="Ταινίες">
-                  {movieHits.map((m) => (
+                  {movieHits.map((m) => {
+                    const tl = movieTitleLines(m);
+                    return (
                     <CommandItem
                       key={`movie-${m.id}`}
-                      value={`movie-${m.id}-${m.slug ?? ""}-${m.title ?? ""}`}
-                      keywords={[m.title, m.director, m.genre, m.slug].map((x) => (typeof x === "string" ? x : "")).filter(Boolean)}
+                      value={`movie-${m.id}-${m.slug ?? ""}-${tl.primary}-${tl.secondary ?? ""}`}
+                      keywords={[movieTitlesSearchBlob(m), m.director ?? "", m.genre ?? "", m.slug ?? ""].filter(Boolean)}
                       onSelect={() => runMovie(m.slug ?? "")}
                       className="gap-3"
                     >
                       <Clapperboard className="shrink-0 text-muted-foreground" aria-hidden />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{m.title || "Τίτλος"}</span>
+                        <span className="block truncate font-medium">{tl.primary || "Τίτλος"}</span>
+                        {tl.secondary ? (
+                          <span className="block truncate text-xs text-muted-foreground">{tl.secondary}</span>
+                        ) : null}
                         {(m.director || m.genre) && (
-                          <span className="block truncate text-xs text-muted-foreground">
+                          <span className="block truncate text-xs text-muted-foreground mt-0.5">
                             {[m.director, m.genre].filter(Boolean).join(" · ")}
                           </span>
                         )}
                       </span>
                       <CommandShortcut className="hidden sm:inline opacity-70">Ταινία</CommandShortcut>
                     </CommandItem>
-                  ))}
+                  );})}
                 </CommandGroup>
               ) : null}
               {venueHits.length > 0 ? (

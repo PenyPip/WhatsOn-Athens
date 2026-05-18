@@ -15,6 +15,14 @@
       "type": "string",
       "required": true
     },
+    "greek_title": {
+      "type": "string",
+      "description": "Ελληνικός τίτλος· εμφανίζεται ως κύρια γραμμή όταν συμπληρωθεί μαζί με τον πρωτότυπο."
+    },
+    "original_title": {
+      "type": "string",
+      "description": "Πρωτότυπος τίτλος (π.χ. διεθνής)· δεύτερη γραμμή στην κάρτα/λήμμα όταν υπάρχει και ελληνικός."
+    },
     "slug": {
       "type": "uid",
       "targetField": "title",

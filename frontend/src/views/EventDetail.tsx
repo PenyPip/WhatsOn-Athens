@@ -8,6 +8,19 @@ import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
+import { movieTitleLines } from "@/lib/movieTitles";
+
+function reviewContentMatchesMovie(contentTitle: string, movie: StrapiMovie): boolean {
+  const ct = contentTitle.trim();
+  if (!ct) return false;
+  const tl = movieTitleLines(movie);
+  const variants = new Set(
+    [movie.title, movie.greekTitle, movie.originalTitle, tl.primary, tl.secondary]
+      .map((s) => (typeof s === "string" ? s.trim() : ""))
+      .filter(Boolean),
+  );
+  return variants.has(ct);
+}
 
 const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { slug } = useParams();
@@ -70,8 +83,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     ? (movies ?? []).filter((m) => m.slug !== slug).slice(0, 4)
     : (theaterShows ?? []).filter((s) => s.slug !== slug).slice(0, 4);
 
-  const eventEditorialReviews = (editorialReviews ?? []).filter((r) => r.contentTitle === event.title);
-  const eventUserReviews = (userReviews ?? []).filter((r) => r.contentTitle === event.title);
+  const eventEditorialReviews = (editorialReviews ?? []).filter((r) =>
+    isMovie && movie ? reviewContentMatchesMovie(r.contentTitle, movie) : r.contentTitle === event.title,
+  );
+  const eventUserReviews = (userReviews ?? []).filter((r) =>
+    isMovie && movie ? reviewContentMatchesMovie(r.contentTitle, movie) : r.contentTitle === event.title,
+  );
+
+  const headline = isMovie && movie ? movieTitleLines(movie) : { primary: event.title, secondary: undefined as string | undefined };
 
   return (
     <div className="min-h-screen pb-20 md:pb-8">
@@ -115,7 +134,16 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               </div>
             )}
 
-            <h1 className="font-display text-3xl md:text-5xl font-bold mb-4 text-white">{event.title}</h1>
+            <h1
+              className={`font-display text-3xl md:text-5xl font-bold text-white ${
+                headline.secondary ? "mb-2" : "mb-4"
+              }`}
+            >
+              {headline.primary}
+            </h1>
+            {headline.secondary ? (
+              <p className="font-display text-xl md:text-3xl font-medium text-white/85 mb-4">{headline.secondary}</p>
+            ) : null}
 
             <div className="flex flex-wrap items-center gap-3 text-base text-white/60 mb-6">
               <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {event.duration} λεπτά</span>
@@ -242,11 +270,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <section>
           <h2 className="font-display text-xl font-semibold mb-4">Μπορεί να σου αρέσει</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-stretch">
-            {related.map((item, i) => (
+            {related.map((item, i) => {
+              const itemTl = isMovie ? movieTitleLines(item as StrapiMovie) : { primary: item.title, secondary: undefined as string | undefined };
+              return (
               <div key={item.id} className="flex h-full min-h-0">
                 <EventCard
                   slug={item.slug}
-                  title={item.title}
+                  title={itemTl.primary}
+                  titleSecondary={itemTl.secondary}
                   subtitle={item.director}
                   genre={item.genre}
                   duration={item.duration}
@@ -259,7 +290,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   className="w-full flex-1"
                 />
               </div>
-            ))}
+            );})}
           </div>
         </section>
       </div>
