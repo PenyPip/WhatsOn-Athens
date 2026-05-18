@@ -9,6 +9,7 @@ import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { normalizeCastFromStrapi, type StrapiMovie, type StrapiShowtime, type StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
+import { cn } from "@/lib/utils";
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
 function ShowtimeCompactRow({ st }: { st: StrapiShowtime }) {
@@ -293,13 +294,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         ) : null}
 
         <section id="showtimes">
-          <h2 className="font-display text-xl font-semibold mb-2">Πού παίζει & ώρες</h2>
-          {isMovie ? (
-            <p className="text-muted-foreground text-sm mb-6 max-w-2xl">
-              Οι προβολές εμφανίζονται όλες ανά σινεμά με ημερομηνία, ώρα και όποια υπάρχουν στοιχεία έχουν καταχωρηθεί (αίθουσα, τιμή,
-              θερινή προβολή).
-            </p>
-          ) : null}
+          <h2 className={cn("font-display text-xl font-semibold", isMovie ? "mb-6" : "mb-2")}>Πού παίζει & ώρες</h2>
           {eventShowtimes.length === 0 ? (
             <p className="text-muted-foreground text-sm">Δεν έχουν καταχωρηθεί προβολές ακόμη.</p>
           ) : (

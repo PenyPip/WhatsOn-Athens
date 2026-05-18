@@ -50,6 +50,10 @@ const EventCard = ({
   const posterAlt = titleSecondary ? `${title} · ${titleSecondary}` : title;
   const showDuration = typeof duration === "number" && Number.isFinite(duration) && duration > 0;
   const genreTrimmed = typeof genre === "string" ? genre.trim() : "";
+  const isMovie = type === "movie";
+  const secondaryLine = typeof titleSecondary === "string" && titleSecondary.trim() ? titleSecondary.trim() : "";
+  /** Σελίδα λίστας προβολών: το είδος κάτω από τον τίτλο μαζί με σκηνοθέτη και διάρκεια. */
+  const movieListingMeta = isMovie && attachShowtimes;
 
   return (
     <motion.div
@@ -120,40 +124,87 @@ const EventCard = ({
                 ),
           )}
         >
-          {type === "movie" && genreTrimmed ? (
+          {type === "movie" && genreTrimmed && !movieListingMeta ? (
             <p className="mb-1.5 line-clamp-3 max-w-full shrink-0 break-words text-[11px] font-semibold uppercase leading-snug tracking-wider text-muted-foreground/95">
               <span className="font-normal text-muted-foreground/75">Είδος · </span>
               {genreTrimmed}
             </p>
           ) : null}
-          <div className="min-h-[2.75rem]">
-            <h3 className="font-display text-base font-semibold leading-tight text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+          <div
+            className={cn(
+              isMovie ? "flex min-h-[5.125rem] flex-col" : "min-h-[2.75rem]",
+            )}
+          >
+            <h3
+              className={cn(
+                "font-display font-semibold leading-tight text-foreground transition-colors group-hover:text-primary",
+                isMovie
+                  ? "line-clamp-2 min-h-[2.5rem] text-base"
+                  : "line-clamp-2 text-base",
+              )}
+            >
               {title}
             </h3>
-            {titleSecondary ? (
+            {isMovie ? (
+              <p
+                className="mt-0.5 line-clamp-2 min-h-[2.4375rem] text-sm font-medium leading-snug text-muted-foreground"
+                {...(!secondaryLine ? { "aria-hidden": true as const } : {})}
+              >
+                {secondaryLine || "\u00a0"}
+              </p>
+            ) : titleSecondary ? (
               <p className="mt-0.5 text-sm font-medium leading-snug text-muted-foreground line-clamp-2">{titleSecondary}</p>
             ) : null}
           </div>
-          <p className="mb-1.5 mt-1 min-h-[1.25rem] text-sm leading-snug text-muted-foreground line-clamp-1">{subtitleLine}</p>
-          <div
-            className={cn(
-              "flex items-end gap-2 pt-1",
-              type === "movie" ? "justify-end" : "justify-between",
-              !attachShowtimes && "mt-auto",
-            )}
-          >
-            {type === "theater" ? (
-              <span className="min-w-0 flex-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/90 line-clamp-1">
-                {genreTrimmed || "\u00a0"}
-              </span>
-            ) : null}
-            {showDuration ? (
-              <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
-                <Clock className="h-3.5 w-3.5 shrink-0" />
-                <span>{duration}&nbsp;′</span>
+          {movieListingMeta ? (
+            <div className={cn("mb-1 mt-1 flex min-h-[1.25rem] flex-col gap-1.5 text-sm leading-snug text-muted-foreground")}>
+              {genreTrimmed ? (
+                <p className="line-clamp-2 max-w-full break-words">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/85">Είδος · </span>
+                  <span className="text-foreground/90">{genreTrimmed}</span>
+                </p>
+              ) : null}
+              {typeof subtitle === "string" && subtitle.trim() ? (
+                <p className="line-clamp-2 break-words text-foreground/90">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/85">
+                    Σκηνοθεσία ·{" "}
+                  </span>
+                  {subtitle.trim()}
+                </p>
+              ) : null}
+              {showDuration ? (
+                <div className="flex shrink-0 items-center gap-1 pt-0.5 text-sm text-muted-foreground">
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                  <span>{duration}&nbsp;′</span>
+                </div>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <p className="mb-1.5 mt-1 min-h-[1.25rem] text-sm leading-snug text-muted-foreground line-clamp-1">
+                {subtitleLine}
+              </p>
+              <div
+                className={cn(
+                  "flex items-end gap-2 pt-1",
+                  type === "movie" ? "justify-end" : "justify-between",
+                  !attachShowtimes && "mt-auto",
+                )}
+              >
+                {type === "theater" ? (
+                  <span className="min-w-0 flex-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/90 line-clamp-1">
+                    {genreTrimmed || "\u00a0"}
+                  </span>
+                ) : null}
+                {showDuration ? (
+                  <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
+                    <Clock className="h-3.5 w-3.5 shrink-0" />
+                    <span>{duration}&nbsp;′</span>
+                  </div>
+                ) : null}
               </div>
-            ) : null}
-          </div>
+            </>
+          )}
         </div>
       </Link>
     </motion.div>
