@@ -81,7 +81,10 @@ function MovieRowScroll({
   return (
     <HorizontalScroll spotlight={spotlight} muted={muted} eyebrow={eyebrow} title={title} subtitle={subtitle}>
       {items.map((movie, i) => (
-        <div key={movie.id} className="flex h-full min-h-0 min-w-[170px] max-w-[170px] flex-shrink-0 md:min-w-[200px] md:max-w-[200px]">
+        <div
+          key={movie.slug}
+          className="flex h-full min-h-0 min-w-[170px] max-w-[170px] flex-shrink-0 md:min-w-[200px] md:max-w-[200px]"
+        >
           <EventCard
             slug={movie.slug}
             title={movie.title}

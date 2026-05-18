@@ -625,13 +625,17 @@ export const api = {
   getHomepage: () => fetchHomepage(),
 
   getMovies: () =>
-    fetchAPI<any[]>("/movies", { "populate[movie_genre]": "*" }).then((d) =>
-      (Array.isArray(d) ? d : []).map((x) => mapMovie(x)),
-    ),
+    fetchAPI<any[]>("/movies", {
+      "populate[movie_genre]": "*",
+      /** Αλλιώς με ρητό populate χάνεται το media και η αφίσα επιστρέφει χωρίς url. */
+      "populate[poster]": "*",
+      "pagination[pageSize]": "100",
+    }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapMovie(x))),
   getMovieBySlug: (slug: string) =>
     fetchAPI<any[]>(`/movies`, {
       "filters[slug][$eq]": slug,
       "populate[movie_genre]": "*",
+      "populate[poster]": "*",
     }).then((d) => {
       const row = Array.isArray(d) ? d[0] : undefined;
       return row ? mapMovie(row) : undefined;

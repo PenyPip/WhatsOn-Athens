@@ -1,4 +1,4 @@
-import { ReactNode, useRef } from "react";
+import { ReactNode, useCallback, useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -15,6 +15,43 @@ interface HorizontalScrollProps {
 
 const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children }: HorizontalScrollProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [overflowing, setOverflowing] = useState(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const syncScrollEdges = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) {
+      setOverflowing(false);
+      setCanScrollLeft(false);
+      setCanScrollRight(false);
+      return;
+    }
+    const { scrollLeft, scrollWidth, clientWidth } = el;
+    const maxLeft = Math.max(0, scrollWidth - clientWidth);
+    const eps = 2;
+    const ov = scrollWidth > clientWidth + eps;
+    setOverflowing(ov);
+    setCanScrollLeft(ov && scrollLeft > eps);
+    setCanScrollRight(ov && scrollLeft < maxLeft - eps);
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    syncScrollEdges();
+    if (!el) return undefined;
+
+    const ro = new ResizeObserver(() => syncScrollEdges());
+    ro.observe(el);
+    el.addEventListener("scroll", syncScrollEdges, { passive: true });
+    window.addEventListener("resize", syncScrollEdges);
+
+    return () => {
+      ro.disconnect();
+      el.removeEventListener("scroll", syncScrollEdges);
+      window.removeEventListener("resize", syncScrollEdges);
+    };
+  }, [syncScrollEdges]);
 
   const scroll = (dir: "left" | "right") => {
     const el = scrollRef.current;
@@ -71,34 +108,51 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
               </p>
             )}
           </div>
-          <div
-            className={cn(
-              "relative z-20 flex shrink-0 items-center gap-1",
-              muted && "opacity-60",
-            )}
-          >
-            <button
-              type="button"
-              onClick={() => scroll("left")}
-              className="rounded-full border border-foreground/15 p-2 transition-colors hover:bg-foreground hover:text-background"
-              aria-label="Κύλιση αριστερά"
+          {overflowing ? (
+            <div
+              className={cn(
+                "relative z-20 flex shrink-0 items-center gap-1",
+                muted && "opacity-60",
+              )}
             >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              onClick={() => scroll("right")}
-              className="rounded-full border border-foreground/15 p-2 transition-colors hover:bg-foreground hover:text-background"
-              aria-label="Κύλιση δεξιά"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
+              <button
+                type="button"
+                disabled={!canScrollLeft}
+                onClick={() => scroll("left")}
+                className={cn(
+                  "rounded-full border border-foreground/15 p-2 transition-colors",
+                  canScrollLeft
+                    ? "hover:bg-foreground hover:text-background"
+                    : "cursor-default opacity-35",
+                )}
+                aria-label="Κύλιση αριστερά"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                disabled={!canScrollRight}
+                onClick={() => scroll("right")}
+                className={cn(
+                  "rounded-full border border-foreground/15 p-2 transition-colors",
+                  canScrollRight
+                    ? "hover:bg-foreground hover:text-background"
+                    : "cursor-default opacity-35",
+                )}
+                aria-label="Κύλιση δεξιά"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
         </div>
         <div className="min-w-0 max-w-full">
           <div
             ref={scrollRef}
-            className="flex max-w-full min-w-0 flex-nowrap items-stretch gap-4 overflow-x-auto overflow-y-visible pb-2 scrollbar-hide"
+            className={cn(
+              "flex max-w-full min-w-0 flex-nowrap items-stretch gap-4 overflow-x-scroll overscroll-x-contain pb-2 scrollbar-hide",
+              "touch-pan-x scroll-smooth [-webkit-overflow-scrolling:touch]",
+            )}
           >
             {children}
           </div>

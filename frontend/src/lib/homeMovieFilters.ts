@@ -17,13 +17,23 @@ function showtimeIsSummerOutdoor(showtime: StrapiShowtime, venues: StrapiVenue[]
   return v ? mappedVenueIsSummerOutdoor(v) : false;
 }
 
+/** Σταθερό id για stubs όταν λείπει movieId — αποφυγή διπλότυπων React keys (παλιά: όλα 0). */
+function stubNumericIdFromSlug(slug: string): number {
+  let h = 0;
+  for (let i = 0; i < slug.length; i++) h = Math.imul(31, h) + slug.charCodeAt(i);
+  const u = h >>> 0;
+  return u === 0 ? 1 : u;
+}
+
 /** Όταν η γραμμή `/movies` λείπει (π.χ. draft ταινία) αλλά η προβολή φέρνει slug + τίτλο. */
 function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefined): StrapiMovie | null {
   if (!st) return null;
   const title =
     typeof st.movieTitle === "string" && st.movieTitle.trim() ? st.movieTitle.trim() : slug;
   const id =
-    st.movieId != null && Number.isFinite(Number(st.movieId)) ? Number(st.movieId) : 0;
+    st.movieId != null && Number.isFinite(Number(st.movieId))
+      ? Number(st.movieId)
+      : stubNumericIdFromSlug(slug);
   return {
     id,
     documentId: "",

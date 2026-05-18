@@ -172,7 +172,7 @@ const Movies = () => {
                 <h2 className="font-display text-2xl font-semibold mb-4 capitalize">{section.label}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 items-stretch">
                   {section.movies.map((movie, i) => (
-                    <div key={`${section.label}-${movie.id}`} className="flex h-full min-h-0">
+                    <div key={`${section.label}-${movie.slug}`} className="flex h-full min-h-0">
                       <EventCard
                         slug={movie.slug}
                         title={movie.title}
