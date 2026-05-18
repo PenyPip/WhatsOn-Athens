@@ -249,16 +249,20 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <section className="card-elevated p-6 max-w-2xl">
           <h2 className="font-display text-lg font-semibold mb-4">Πληροφορίες</h2>
           <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-4">
-            {hasDirector ? (
+            {hasDirector || Boolean(genreLabel) ? (
               <div className="min-w-0">
-                <span className="text-muted-foreground text-sm uppercase tracking-wider">Σκηνοθεσία</span>
-                <p className="font-medium text-base mt-1">{directorLabel}</p>
-              </div>
-            ) : null}
-            {genreLabel ? (
-              <div className="min-w-0">
-                <span className="text-muted-foreground text-sm uppercase tracking-wider">Είδος</span>
-                <p className="font-medium text-base mt-1">{genreLabel}</p>
+                {hasDirector ? (
+                  <>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider">Σκηνοθεσία</span>
+                    <p className="font-medium text-base mt-1">{directorLabel}</p>
+                  </>
+                ) : null}
+                {genreLabel ? (
+                  <div className={hasDirector ? "mt-5" : undefined}>
+                    <span className="text-muted-foreground text-sm uppercase tracking-wider">Είδος</span>
+                    <p className="font-medium text-base mt-1">{genreLabel}</p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             {hasDuration ? (

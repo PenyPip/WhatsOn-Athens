@@ -509,24 +509,26 @@ const Movies = () => {
                     const rows = flattenShowingsToRows(showings);
                     const { preview, rest } = splitPreviewAndRest(rows, Boolean(venueFilter));
                     return (
-                    <div key={`${section.label}-${movie.slug}`} className="flex flex-col gap-2 h-full min-h-0">
-                      <div className="flex min-h-0 flex-1">
-                        <EventCard
-                          slug={movie.slug}
-                          title={tl.primary}
-                          titleSecondary={tl.secondary}
-                          subtitle={movie.director ?? ""}
-                          genre={movie.genre}
-                          duration={movie.duration}
-                          score={movie.criticScore}
-                          posterUrl={movie.posterUrl}
-                          type="movie"
-                          tone="soft"
-                          index={i}
-                          className="w-full flex-1"
-                        />
-                      </div>
-                      <div className="shrink-0 rounded-lg bg-muted/30 px-2.5 py-2 text-xs sm:text-sm leading-snug text-muted-foreground shadow-none ring-1 ring-border/[0.07]">
+                    <div
+                      key={`${section.label}-${movie.slug}`}
+                      className="group/movie-stack flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-muted/30 ring-1 ring-border/[0.1] transition-[box-shadow] hover:shadow-[0_10px_32px_rgba(28,29,98,0.1)] hover:ring-border/[0.18]"
+                    >
+                      <EventCard
+                        slug={movie.slug}
+                        title={tl.primary}
+                        titleSecondary={tl.secondary}
+                        subtitle={movie.director ?? ""}
+                        genre={movie.genre}
+                        duration={movie.duration}
+                        score={movie.criticScore}
+                        posterUrl={movie.posterUrl}
+                        type="movie"
+                        tone="soft"
+                        attachShowtimes
+                        index={i}
+                        className="w-full"
+                      />
+                      <div className="flex min-h-0 flex-1 flex-col justify-end border-t border-border/[0.1] px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
                         <ul className="space-y-1">
                           {preview.map((row) => (
                             <li key={row.key} className="font-body tabular-nums leading-relaxed">
@@ -547,7 +549,7 @@ const Movies = () => {
                           ))}
                         </ul>
                         {rest.length > 0 ? (
-                          <details className="group mt-2 border-t border-transparent pt-2">
+                          <details className="group mt-2 shrink-0 border-t border-transparent pt-2">
                             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground outline-none ring-offset-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
                               <span>{`Ακόμα ${rest.length} προβολή${rest.length === 1 ? "" : "ες"}`}</span>
                               <ChevronDown

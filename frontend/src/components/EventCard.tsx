@@ -20,6 +20,8 @@ interface EventCardProps {
   badge?: string;
   /** Λίστες όπως /movies: ηπιότερο πλαίσιο (λιγότερο «λευκό» από το προεπιλεγμένο card-elevated). */
   tone?: "default" | "soft";
+  /** Το επόμενο μπλοκ είναι προβολές στο ίδιο χαρτόνι· χωρίς κενό/δίπλα πλαίσιο κάτω από διάρκεια. */
+  attachShowtimes?: boolean;
   className?: string;
   index?: number;
 }
@@ -38,6 +40,7 @@ const EventCard = ({
   type,
   badge,
   tone = "default",
+  attachShowtimes = false,
   className = "",
   index = 0,
 }: EventCardProps) => {
@@ -50,7 +53,7 @@ const EventCard = ({
 
   return (
     <motion.div
-      className={cn("h-full", className)}
+      className={cn(attachShowtimes ? "w-full shrink-0" : "h-full", className)}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
@@ -58,10 +61,15 @@ const EventCard = ({
       <Link
         to={`/${type === "movie" ? "movies" : "theater"}/${slug}`}
         className={cn(
-          "group flex h-full flex-col overflow-hidden rounded-lg transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
-          tone === "soft"
-            ? "border-transparent bg-muted/35 shadow-none ring-1 ring-border/10 hover:-translate-y-0.5 hover:bg-muted/45 hover:shadow-[0_4px_14px_rgba(28,29,98,0.09)] hover:ring-border/[0.22]"
-            : "card-elevated",
+          "group flex min-h-0 flex-col overflow-hidden transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
+          attachShowtimes
+            ? "h-auto shrink-0 w-full rounded-b-none rounded-t-lg bg-transparent shadow-none ring-0 hover:translate-y-0 hover:shadow-none hover:ring-0"
+            : cn(
+                "h-full",
+                tone === "soft"
+                  ? "rounded-lg border-transparent bg-muted/35 shadow-none ring-1 ring-border/10 hover:-translate-y-0.5 hover:bg-muted/45 hover:shadow-[0_4px_14px_rgba(28,29,98,0.09)] hover:ring-border/[0.22]"
+                  : "card-elevated rounded-lg",
+              ),
         )}
       >
         <div
@@ -103,8 +111,13 @@ const EventCard = ({
         </div>
         <div
           className={cn(
-            "flex min-h-[8.25rem] flex-1 flex-col px-3 py-2",
-            tone === "soft" ? "border-t border-border/[0.07]" : "border-t border-border/12",
+            "flex flex-col px-3 py-2",
+            attachShowtimes
+              ? "shrink-0 border-t border-border/[0.1] px-3 py-2 pb-2"
+              : cn(
+                  "min-h-[8.25rem] flex-1",
+                  tone === "soft" ? "border-t border-border/[0.07]" : "border-t border-border/12",
+                ),
           )}
         >
           {type === "movie" && genreTrimmed ? (
@@ -124,8 +137,9 @@ const EventCard = ({
           <p className="mb-1.5 mt-1 min-h-[1.25rem] text-sm leading-snug text-muted-foreground line-clamp-1">{subtitleLine}</p>
           <div
             className={cn(
-              "mt-auto flex items-end gap-2 pt-1",
+              "flex items-end gap-2 pt-1",
               type === "movie" ? "justify-end" : "justify-between",
+              !attachShowtimes && "mt-auto",
             )}
           >
             {type === "theater" ? (
