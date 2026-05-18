@@ -66,9 +66,6 @@
       "type": "media",
       "allowedTypes": ["images"]
     },
-    "poster_url": {
-      "type": "string"
-    },
     "trailer_url": {
       "type": "string"
     },

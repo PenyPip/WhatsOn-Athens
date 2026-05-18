@@ -159,7 +159,7 @@ function mapMovie(raw: unknown): StrapiMovie {
     releaseDate: m.release_date,
     isNew: m.is_new === true,
     trailerUrl: m.trailer_url,
-    posterUrl: strapiMediaUrl(m.poster) ?? normalizeUploadedUrl(m.poster_url) ?? null,
+    posterUrl: strapiMediaUrl(m.poster) ?? null,
   };
 }
 
@@ -294,6 +294,37 @@ export function venueLooksSummerOutdoor(attrs: Record<string, unknown>): boolean
   return false;
 }
 
+/** Σύντομο στοιχείο αίθουσας στο Venue (populate halls). */
+export interface StrapiHallSummary {
+  id: number;
+  name: string;
+}
+
+function mapVenueHalls(rel: unknown): StrapiHallSummary[] {
+  if (rel == null || typeof rel !== "object") return [];
+  const raw = rel as Record<string, unknown>;
+  const d = raw.data;
+  const nodes = Array.isArray(d) ? d : d != null && typeof d === "object" ? [d] : [];
+  const out: StrapiHallSummary[] = [];
+  for (const node of nodes) {
+    const attrs =
+      typeof node === "object" && node !== null ? strapiRelationAttrs(node as unknown) : null;
+    if (!attrs || typeof attrs.name !== "string" || !attrs.name.trim()) continue;
+    const nid = typeof node === "object" && node !== null ? (node as { id?: unknown }).id : undefined;
+    const idRaw = nid ?? attrs.id;
+    const idNum = typeof idRaw === "number" ? idRaw : typeof idRaw === "string" ? Number(idRaw) : NaN;
+    out.push({ id: Number.isFinite(idNum) ? idNum : 0, name: attrs.name.trim() });
+  }
+  return [...out].sort((a, b) => a.name.localeCompare(b.name, "el"));
+}
+
+function parseShowtimePrice(raw: unknown): number | undefined {
+  if (raw === null || raw === undefined || raw === "") return undefined;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  if (!Number.isFinite(n)) return undefined;
+  return n;
+}
+
 function mapShowtime(rawS: any): StrapiShowtime[] {
   const s = unwrapStrapiEntry(rawS);
   const ss = s.summer_screening;
@@ -307,6 +338,15 @@ function mapShowtime(rawS: any): StrapiShowtime[] {
         ? s.venue
         : "";
   const venueSummerOutdoor = Boolean(vAttrs && venueLooksSummerOutdoor(vAttrs));
+
+  const hAttrs = strapiRelationAttrs(s.hall as unknown);
+  const hallName =
+    typeof hAttrs?.name === "string" && hAttrs.name.trim()
+      ? hAttrs.name.trim()
+      : typeof (s.hall as { name?: unknown } | undefined)?.name === "string"
+        ? String((s.hall as { name: string }).name).trim()
+        : undefined;
+  const hallId = strapiRelationNumericId(s.hall as unknown);
 
   const mAttrs = strapiRelationAttrs(s.movie as unknown);
   const movieSlug =
@@ -334,16 +374,26 @@ function mapShowtime(rawS: any): StrapiShowtime[] {
   const baseId = String(s.id);
   const slots = Array.isArray(s.show_slots) ? s.show_slots : [];
 
+  const seatsRaw = s.available_seats;
+  const seatsNum =
+    seatsRaw !== null && seatsRaw !== undefined && seatsRaw !== ""
+      ? typeof seatsRaw === "number"
+        ? seatsRaw
+        : Number(seatsRaw)
+      : NaN;
+
   const toRow = (datetime: string, index: number) => ({
     id: `${baseId}-${index}`,
     documentId: s.documentId,
     datetime,
     venue,
     venueId,
+    hallId,
+    hallName,
     summerScreening,
     venueSummerOutdoor,
-    availableSeats: s.available_seats,
-    price: typeof s.price === "number" ? s.price : Number(s.price ?? 0),
+    availableSeats: Number.isFinite(seatsNum) ? seatsNum : 0,
+    price: parseShowtimePrice(s.price),
     movieId,
     movieSlug,
     movieTitle,

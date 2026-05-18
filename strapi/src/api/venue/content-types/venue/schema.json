@@ -41,6 +41,12 @@
       "type": "media",
       "allowedTypes": ["images"]
     },
+    "halls": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::hall.hall",
+      "mappedBy": "venue"
+    },
     "type": {
       "type": "string"
     },

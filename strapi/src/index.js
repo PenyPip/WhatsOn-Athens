@@ -8,6 +8,8 @@ const PUBLIC_COLLECTION_READ_ACTIONS = [
   'api::showtime.showtime.findOne',
   'api::venue.venue.find',
   'api::venue.venue.findOne',
+  'api::hall.hall.find',
+  'api::hall.hall.findOne',
   'api::theater-show.theater-show.find',
   'api::theater-show.theater-show.findOne',
   'api::restaurant.restaurant.find',

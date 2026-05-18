@@ -8,12 +8,13 @@ import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues } from "@/hooks/useStrapi";
 import type { HomeSectionId } from "@/config/home";
-import type { StrapiMovie } from "@/lib/api";
+import type { StrapiMovie, StrapiVenue } from "@/lib/api";
 import {
   moviesMarkedNew,
   moviesWithShowtimeThisWeek,
   moviesWithSummerOutdoorShowtime,
 } from "@/lib/homeMovieFilters";
+import { ExternalLink, MapPin } from "lucide-react";
 
 const summerStrip = [
   "Θερινό σινεμά",
@@ -38,7 +39,7 @@ function MovieRowScroll({
   loading: boolean;
   loadingMessage: string;
   items: StrapiMovie[];
-  emptyMessage: string;
+  emptyMessage?: string;
   /** Όταν το query αποτύχει (δίκτυο/403) — όχι «κενό CMS». */
   fetchErrorMessage?: string;
   spotlight?: boolean;
@@ -68,7 +69,9 @@ function MovieRowScroll({
         <div className="container">
           <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
             <p className="font-display text-lg tracking-tight text-white">{title}</p>
-            <p className="mt-3 text-sm leading-relaxed text-white/55 font-body">{emptyMessage}</p>
+            {emptyMessage ? (
+              <p className="mt-3 text-sm leading-relaxed text-white/55 font-body">{emptyMessage}</p>
+            ) : null}
           </div>
         </div>
       </section>
@@ -92,6 +95,54 @@ function MovieRowScroll({
         </div>
       ))}
     </HorizontalScroll>
+  );
+}
+
+function VenueSummerCard({ venue }: { venue: StrapiVenue }) {
+  return (
+    <div className="min-w-[260px] max-w-[260px] md:min-w-[280px] md:max-w-[280px] flex-shrink-0">
+      <div className="card-elevated flex h-full flex-col p-5 text-left">
+        <div className="mb-3 flex items-start justify-between gap-3">
+          <h3 className="font-display text-lg font-semibold leading-snug text-white">{venue.name}</h3>
+          <span className="shrink-0 rounded bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#13143E]">
+            θερινό
+          </span>
+        </div>
+        <div className="grow space-y-2 text-sm text-white/55">
+          {venue.address ? (
+            <p className="flex items-start gap-2">
+              <MapPin className="mt-0.5 h-3.5 w-3.5 flex-shrink-0 text-white/40" aria-hidden />
+              <span>{venue.address}</span>
+            </p>
+          ) : null}
+          {venue.city ? <p className="text-xs font-medium text-white/65">{venue.city}</p> : null}
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2 border-t border-white/10 pt-4">
+          {venue.moreLink ? (
+            <a
+              href={venue.moreLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md border border-white/15 bg-white/5 px-3 py-2 text-xs font-medium text-white hover:border-white/30 hover:bg-white/10"
+            >
+              Περισσότερα
+              <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
+            </a>
+          ) : null}
+          {venue.googleMapsUrl ? (
+            <a
+              href={venue.googleMapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 rounded-md border border-white/15 px-3 py-2 text-xs text-white/65 hover:border-white/30 hover:text-white"
+            >
+              Χάρτης
+              <ExternalLink className="h-3 w-3 opacity-70" aria-hidden />
+            </a>
+          ) : null}
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -121,6 +172,13 @@ const Index = () => {
     () => moviesWithSummerOutdoorShowtime(movieList, stList, venueList),
     [movieList, stList, venueList],
   );
+  const summerVenueList = useMemo(
+    () =>
+      [...venueList]
+        .filter((v) => v.summerOutdoor)
+        .sort((a, b) => a.name.localeCompare(b.name, "el")),
+    [venueList],
+  );
   const weekMovies = useMemo(() => moviesWithShowtimeThisWeek(movieList, stList), [movieList, stList]);
   const newMoviesList = useMemo(() => moviesMarkedNew(movieList), [movieList]);
 
@@ -131,18 +189,7 @@ const Index = () => {
       {apiSectionFailed ? (
         <div className="section-black border-b border-amber-500/30 bg-amber-950/25 px-4 py-3 md:py-4">
           <div className="container text-center text-sm text-amber-100/90 font-body md:text-left md:text-[0.9375rem]">
-            Μερικά δεδομένα δεν φορτώθηκαν από το Strapi (
-            {[
-              moviesError ? "ταινίες" : "",
-              showtimesError ? "προβολές" : "",
-              venuesError ? "χώροι" : "",
-              theaterError ? "θέατρο" : "",
-              restaurantsError ? "εστίαση" : "",
-            ]
-              .filter(Boolean)
-              .join(", ")}
-            ). Ελέγχονται θύρα, proxy στο{" "}
-            <code className="text-amber-200/95">/api</code> και δικαιώματα Public.
+            Μερικά δεδομένα δεν φορτώθηκαν. Δοκίμασε να ανανεώσεις τη σελίδα.
           </div>
         </div>
       ) : null}
@@ -174,16 +221,64 @@ const Index = () => {
                 loading={moviesLoading || showtimesLoading || venuesLoading}
                 loadingMessage="Φόρτωση θερινών προβολών..."
                 fetchErrorMessage={
-                  moviesError || showtimesError
-                    ? "Δεν ήταν δυνατή η φόρτωση ταινιών ή προβολών από το API (δίκτυο, proxy ή δικαιώματα Public στο Strapi)."
-                    : undefined
+                  moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
                 }
                 items={summerMovies}
-                emptyMessage="Για να εμφανιστεί εδώ χρειάζεται προβολή ταινίας με συνδεδεμένη ταινία ΚΑΙ μία από τις δύο: (α) ενεργοποίηση του πεδίου «Summer screening» πάνω στην προβολή, (β) Venue με σημασμένο «Θερινό» ή με λέξη όπως θερινός/ύπαιθρος στο όνομα ή τον τύπο."
                 spotlight
                 eyebrow="Καλοκαίρι · ανοιχτός ουρανός"
                 title="Θερινά σινεμά"
               />,
+            );
+          case "summer_venues":
+            return sectionEl(
+              "summer_venues",
+              <>
+                {venuesLoading ? (
+                  <LoadingState message="Φόρτωση θερινών χώρων..." />
+                ) : venuesError ? (
+                  <section className="relative section-black border-y border-white/[0.07] py-12 md:py-16">
+                    <div className="container">
+                      <div className="max-w-xl rounded-xl border border-amber-500/25 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
+                        <p className="font-display text-lg tracking-tight text-amber-100">Τα θερινά σινεμά</p>
+                        <p className="mt-3 text-sm leading-relaxed text-amber-100/80 font-body">
+                          Δεν ήταν δυνατή η φόρτωση των χώρων.
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+                ) : summerVenueList.length === 0 ? (
+                  <section className="relative section-black border-y border-white/[0.07] py-12 md:py-16">
+                    <div className="container">
+                      <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
+                        <p className="font-display text-lg tracking-tight text-white">Τα θερινά σινεμά</p>
+                        <p className="mt-3 text-sm leading-relaxed text-white/55 font-body">
+                          Κανένας χώρος δεν έχει δηλωθεί ως θερινός στο CMS. Σήμανσε «Θερινό (ανοιχτό σινεμά)» στο κατάλληλο μέρο για να εμφανιστεί εδώ.
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+                ) : (
+                  <>
+                    <HorizontalScroll
+                      spotlight
+                      eyebrow="Χώροι"
+                      title="Τα θερινά σινεμά"
+                      subtitle="Σινεμά που έχουν τσεκάρει «Θερινό (ανοιχτό σινεμά)» στο Strapi"
+                    >
+                      {summerVenueList.map((venue) => (
+                        <VenueSummerCard key={venue.id} venue={venue} />
+                      ))}
+                    </HorizontalScroll>
+                    <div className="section-black pb-10 pt-0">
+                      <div className="container text-center">
+                        <a href="/venues" className="text-sm font-medium text-amber-200/90 hover:text-amber-100">
+                          Δες όλους τους χώρους →
+                        </a>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </>,
             );
           case "tours":
             return sectionEl(
@@ -203,24 +298,16 @@ const Index = () => {
                     <h2 className="font-display text-3xl font-bold leading-tight text-white md:text-5xl md:leading-[1.1]">
                       Περιοδείες & παραστάσεις που ταξιδεύουν
                     </h2>
-                    <p className="mt-4 max-w-2xl text-base text-white/55 md:text-lg">
-                      Από σταθερές σεζόν στα μεγάλα θέατρα μέχρι περιοδείες και φεστιβαλικές εμφανίσεις ανά την Ελλάδα.
-                    </p>
                   </motion.div>
                   {theaterLoading ? (
                     <LoadingState message="Φόρτωση παραστάσεων..." />
                   ) : theaterError ? (
                     <div className="mt-10 max-w-xl rounded-xl border border-amber-500/20 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
-                      <p className="text-sm leading-relaxed text-amber-100/85 font-body">
-                        Δεν φορτώθηκαν οι παραστάσεις θεάτρου από το API. Έλεγξε <code>/api/theater-shows</code>.
-                      </p>
+                      <p className="text-sm leading-relaxed text-amber-100/85 font-body">Δεν ήταν δυνατή η φόρτωση.</p>
                     </div>
                   ) : (theaterShows ?? []).length === 0 ? (
                     <div className="mt-10 max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
-                      <p className="text-sm leading-relaxed text-white/55 font-body">
-                        Δεν υπάρχουν παραστάσεις στο σύστημα αυτή τη στιγμή. Πρόσθεσε εγγραφές θεάτρου στο διαχειριστικό
-                        για να εμφανιστούν εδώ.
-                      </p>
+                      <p className="text-sm leading-relaxed text-white/55 font-body">Δεν υπάρχουν παραστάσεις προς το παρόν.</p>
                     </div>
                   ) : (
                     <div className="mt-10 flex items-start gap-4 overflow-x-auto scrollbar-hide pb-2">
@@ -255,13 +342,11 @@ const Index = () => {
               <MovieRowScroll
                 loading={moviesLoading}
                 loadingMessage="Φόρτωση ταινιών..."
-                fetchErrorMessage={moviesError ? "Δεν φορτώθηκαν οι ταινίες από το API." : undefined}
+                fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={newMoviesList}
-                emptyMessage="Δεν υπάρχουν ταινίες με την ετικέτα «Νέα» — ενεργοποίησέ την στην εγγραφή της ταινίας."
                 muted
                 eyebrow="Προβολές"
                 title="Νέες ταινίες"
-                subtitle="Ταινίες που έχουν επισημανθεί ως νέες στο διαχειριστικό."
               />,
             );
           case "movies_week":
@@ -270,17 +355,11 @@ const Index = () => {
               <MovieRowScroll
                 loading={moviesLoading || showtimesLoading}
                 loadingMessage="Φόρτωση προβολών εβδομάδας..."
-                fetchErrorMessage={
-                  moviesError || showtimesError
-                    ? "Δεν φορτώθηκαν ταινίες ή προβολές· δεν μπορεί να υπολογιστεί η εβδομάδα."
-                    : undefined
-                }
+                fetchErrorMessage={moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={weekMovies}
-                emptyMessage="Δεν υπάρχουν προβολές με ημερομηνία μέσα στην τρέχουσα εβδομάδα (Δευ–Κυρ, τοπικά)."
                 muted
                 eyebrow="Τρέχουσα εβδομάδα"
                 title="Ταινίες της εβδομάδας"
-                subtitle="Βάσει των καταχωρημένων ημερομηνιών προβολής (πρόγραμμα τρέχουσας εβδομάδας)."
               />,
             );
           case "dining":
@@ -291,26 +370,15 @@ const Index = () => {
               ) : restaurantsError ? (
                 <div className="section-black border-y border-amber-500/20 bg-amber-950/15 py-10">
                   <div className="container max-w-xl text-sm leading-relaxed text-amber-100/85 font-body">
-                    Δεν φορτώθηκαν εστιατόρια από το API (έλεγχος <code>/api/restaurants</code> και δικαιώματα).
+                    Δεν ήταν δυνατή η φόρτωση.
                   </div>
                 </div>
               ) : diningToShow.length === 0 ? (
                 <div className="section-black border-y border-border/40 bg-muted/10 py-10">
-                  <div className="container max-w-xl text-sm text-muted-foreground font-body">
-                    Δεν υπάρχουν καταχωρημένα εστιατόρια ακόμη ή δεν έχουν δημοσιευτεί.
-                  </div>
+                  <div className="container max-w-xl text-sm text-muted-foreground font-body">Δεν υπάρχουν προτάσεις.</div>
                 </div>
               ) : (
-                <HorizontalScroll
-                  muted
-                  eyebrow="Περιεχόμενο"
-                  title="Φαγητό & μέρη στην πόλη"
-                  subtitle={
-                    restaurants?.some((r) => r.isNew)
-                      ? "Νέα μέρη και προτάσεις."
-                      : "Προτάσεις από τη λίστα εστιατορίων (σημείωσε «νέο» σε επιλογές για προτεραιότητα)."
-                  }
-                >
+                <HorizontalScroll muted eyebrow="Περιεχόμενο" title="Φαγητό & μέρη στην πόλη">
                   {diningToShow.map((r, i) => (
                     <div
                       key={r.id}

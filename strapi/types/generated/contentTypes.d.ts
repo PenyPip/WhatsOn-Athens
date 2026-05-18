@@ -417,6 +417,35 @@ export interface ApiEditorialReviewEditorialReview
   };
 }
 
+export interface ApiHallHall extends Schema.CollectionType {
+  collectionName: 'halls';
+  info: {
+    description: '\u0391\u03AF\u03B8\u03BF\u03C5\u03C3\u03B1/\u03BF\u03B8\u03CC\u03BD\u03B7 \u03C3\u03B5 \u03BA\u03B9\u03BD\u03B7\u03BC\u03B1\u03C4\u03BF\u03B3\u03C1\u03AC\u03C6\u03BF. \u03A3\u03C5\u03BD\u03B4\u03AD\u03B5\u03C4\u03B1\u03B9 \u03BC\u03B5 Venue\u00B7 \u03C3\u03C4\u03B9\u03C2 \u03A0\u03C1\u03BF\u03B2\u03BF\u03BB\u03AD\u03C2 \u03C4\u03B1\u03B9\u03BD\u03AF\u03B1\u03C2 \u03B5\u03C0\u03B9\u03BB\u03AD\u03B3\u03B5\u03C4\u03B1\u03B9 Venues + \u03C3\u03C5\u03B3\u03BA\u03B5\u03BA\u03C1\u03B9\u03BC\u03AD\u03BD\u03B7 \u03B1\u03AF\u03B8\u03BF\u03C5\u03C3\u03B1.';
+    displayName: '\u0391\u03AF\u03B8\u03BF\u03C5\u03C3\u03B1';
+    pluralName: 'halls';
+    singularName: 'hall';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<'api::hall.hall', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+    name: Attribute.String & Attribute.Required;
+    publishedAt: Attribute.DateTime;
+    slug: Attribute.UID<'api::hall.hall', 'name'>;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<'api::hall.hall', 'oneToOne', 'admin::user'> &
+      Attribute.Private;
+    venue: Attribute.Relation<
+      'api::hall.hall',
+      'manyToOne',
+      'api::venue.venue'
+    >;
+  };
+}
+
 export interface ApiHomepageHomepage extends Schema.SingleType {
   collectionName: 'homepage';
   info: {
@@ -515,7 +544,6 @@ export interface ApiMovieMovie extends Schema.CollectionType {
     is_new: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
     poster: Attribute.Media<'images'>;
-    poster_url: Attribute.String;
     publishedAt: Attribute.DateTime;
     release_date: Attribute.Date;
     reviews: Attribute.Relation<
@@ -613,6 +641,11 @@ export interface ApiShowtimeShowtime extends Schema.CollectionType {
     > &
       Attribute.Private;
     datetime: Attribute.DateTime & Attribute.Required;
+    hall: Attribute.Relation<
+      'api::showtime.showtime',
+      'manyToOne',
+      'api::hall.hall'
+    >;
     movie: Attribute.Relation<
       'api::showtime.showtime',
       'manyToOne',
@@ -769,6 +802,11 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     > &
       Attribute.Private;
     google_maps_url: Attribute.String;
+    halls: Attribute.Relation<
+      'api::venue.venue',
+      'oneToMany',
+      'api::hall.hall'
+    >;
     image: Attribute.Media<'images'>;
     more_link: Attribute.String;
     name: Attribute.String & Attribute.Required;
@@ -1234,6 +1272,7 @@ declare module '@strapi/types' {
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
       'api::editorial-review.editorial-review': ApiEditorialReviewEditorialReview;
+      'api::hall.hall': ApiHallHall;
       'api::homepage.homepage': ApiHomepageHomepage;
       'api::movie.movie': ApiMovieMovie;
       'api::restaurant.restaurant': ApiRestaurantRestaurant;

@@ -40,6 +40,12 @@
       "relation": "manyToOne",
       "target": "api::venue.venue",
       "inversedBy": "showtimes"
+    },
+    "hall": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hall.hall",
+      "description": "Προαιρετική αίθουσα (πρέπει να ανήκει στο ίδιο venue)."
     }
   }
 }
