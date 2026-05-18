@@ -18,7 +18,7 @@ export function useHomeLayout() {
 }
 
 export const useMovies = () =>
-  useQuery({ queryKey: ["movies"], queryFn: api.getMovies });
+  useQuery({ queryKey: ["movies"], queryFn: api.getMovies, throwOnError: false, retry: 1 });
 
 export const useMovieGenres = () =>
   useQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1, throwOnError: false });
@@ -39,7 +39,7 @@ export const useRestaurantBySlug = (slug: string) =>
   useQuery({ queryKey: ["restaurant", slug], queryFn: () => api.getRestaurantBySlug(slug), enabled: !!slug });
 
 export const useVenues = () =>
-  useQuery({ queryKey: ["venues"], queryFn: api.getVenues });
+  useQuery({ queryKey: ["venues"], queryFn: api.getVenues, throwOnError: false, retry: 1 });
 
 export const useEditorialReviews = () =>
   useQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews });

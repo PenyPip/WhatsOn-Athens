@@ -7,32 +7,37 @@ import { useMovies, useVenues } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiVenue } from "@/lib/api";
 
 function normalizeSearch(s: string): string {
-  return s
-    .trim()
-    .toLowerCase()
-    .normalize("NFD")
-    .replace(/\p{M}/gu, "");
+  const raw = typeof s === "string" ? s : String(s ?? "");
+  const t = raw.trim().toLowerCase();
+  try {
+    return t.normalize("NFD").replace(/\p{M}/gu, "");
+  } catch {
+    return t;
+  }
 }
 
 function movieMatches(movie: StrapiMovie, q: string): boolean {
   if (!q) return true;
-  const hay = [
-    movie.title,
-    movie.slug,
-    movie.director,
-    movie.genre,
-  ]
-    .join(" ")
-    .toLowerCase();
+  const hay = [movie.title ?? "", movie.slug ?? "", movie.director ?? "", movie.genre ?? ""].join(" ").toLowerCase();
   const nq = normalizeSearch(q);
   return normalizeSearch(hay).includes(nq);
 }
 
 function venueMatches(venue: StrapiVenue, q: string): boolean {
   if (!q) return true;
-  const hay = [venue.name, venue.slug, venue.address, venue.type, venue.city ?? ""].join(" ").toLowerCase();
+  const hay = [venue.name ?? "", venue.slug ?? "", venue.address ?? "", venue.type ?? "", venue.city ?? ""]
+    .join(" ")
+    .toLowerCase();
   const nq = normalizeSearch(q);
   return normalizeSearch(hay).includes(nq);
+}
+
+function cmpMovieTitles(a: StrapiMovie, b: StrapiMovie): number {
+  return (a.title ?? "").localeCompare(b.title ?? "", "el");
+}
+
+function cmpVenueNames(a: StrapiVenue, b: StrapiVenue): number {
+  return (a.name ?? "").localeCompare(b.name ?? "", "el");
 }
 
 const CAP_EMPTY = 10;
@@ -44,11 +49,12 @@ interface GlobalSearchProps {
 
 export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const navigate = useNavigate();
-  const { data: movies, isLoading: moviesLoading } = useMovies();
-  const { data: venues, isLoading: venuesLoading } = useVenues();
+  const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies();
+  const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues();
   const [search, setSearch] = useState("");
 
   const loading = moviesLoading || venuesLoading;
+  const listsError = moviesError || venuesError;
 
   useEffect(() => {
     if (!open) setSearch("");
@@ -57,7 +63,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const movieHits = useMemo(() => {
     const list = movies ?? [];
     const trimmed = search.trim();
-    let out = trimmed ? list.filter((m) => movieMatches(m, trimmed)) : [...list].sort((a, b) => a.title.localeCompare(b.title, "el"));
+    let out = trimmed ? list.filter((m) => movieMatches(m, trimmed)) : [...list].sort(cmpMovieTitles);
     if (!trimmed) out = out.slice(0, CAP_EMPTY);
     return out.slice(0, 50);
   }, [movies, search]);
@@ -65,23 +71,25 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const venueHits = useMemo(() => {
     const list = venues ?? [];
     const trimmed = search.trim();
-    let out = trimmed ? list.filter((v) => venueMatches(v, trimmed)) : [...list].sort((a, b) => a.name.localeCompare(b.name, "el"));
+    let out = trimmed ? list.filter((v) => venueMatches(v, trimmed)) : [...list].sort(cmpVenueNames);
     if (!trimmed) out = out.slice(0, CAP_EMPTY);
     return out.slice(0, 50);
   }, [venues, search]);
 
   const runMovie = useCallback(
     (slug: string) => {
+      if (!slug?.trim()) return;
       onOpenChange(false);
-      navigate(`/movies/${slug}`);
+      navigate(`/movies/${slug.trim()}`);
     },
     [navigate, onOpenChange],
   );
 
   const runVenue = useCallback(
     (slug: string) => {
+      if (!slug?.trim()) return;
       onOpenChange(false);
-      navigate(`/movies?venue=${encodeURIComponent(slug)}`);
+      navigate(`/movies?venue=${encodeURIComponent(slug.trim())}`);
     },
     [navigate, onOpenChange],
   );
@@ -104,6 +112,10 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               Φόρτωση λιστών…
             </div>
+          ) : listsError ? (
+            <div className="border-b px-4 py-8 text-sm leading-relaxed text-destructive">
+              Δεν ήταν δυνατή η φόρτωση των λιστών για αναζήτηση (ταινίες / χώροι). Έλεγξε αν ο server Strapi ανταποκρίνεται και αν το όνομα διακομιστή επιτρέπει τις διαδρομές API.
+            </div>
           ) : (
             <CommandList className="max-h-[min(420px,60vh)]">
               <CommandEmpty>Δεν βρέθηκαν αποτελέσματα.</CommandEmpty>
@@ -112,14 +124,14 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                   {movieHits.map((m) => (
                     <CommandItem
                       key={`movie-${m.id}`}
-                      value={`movie-${m.id}-${m.slug}-${m.title}`}
-                      keywords={[m.title, m.director, m.genre, m.slug]}
-                      onSelect={() => runMovie(m.slug)}
+                      value={`movie-${m.id}-${m.slug ?? ""}-${m.title ?? ""}`}
+                      keywords={[m.title, m.director, m.genre, m.slug].map((x) => (typeof x === "string" ? x : "")).filter(Boolean)}
+                      onSelect={() => runMovie(m.slug ?? "")}
                       className="gap-3"
                     >
                       <Clapperboard className="shrink-0 text-muted-foreground" aria-hidden />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{m.title}</span>
+                        <span className="block truncate font-medium">{m.title || "Τίτλος"}</span>
                         {(m.director || m.genre) && (
                           <span className="block truncate text-xs text-muted-foreground">
                             {[m.director, m.genre].filter(Boolean).join(" · ")}
@@ -136,14 +148,14 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                   {venueHits.map((v) => (
                     <CommandItem
                       key={`venue-${v.id}`}
-                      value={`venue-${v.id}-${v.slug}-${v.name}`}
-                      keywords={[v.name, v.slug, v.address ?? "", v.type, v.city ?? ""]}
-                      onSelect={() => runVenue(v.slug)}
+                      value={`venue-${v.id}-${v.slug ?? ""}-${v.name ?? ""}`}
+                      keywords={[v.name ?? "", v.slug ?? "", v.address ?? "", v.type ?? "", v.city ?? ""].filter(Boolean)}
+                      onSelect={() => runVenue(v.slug ?? "")}
                       className="gap-3"
                     >
                       <Building2 className="shrink-0 text-muted-foreground" aria-hidden />
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{v.name}</span>
+                        <span className="block truncate font-medium">{v.name || "Χώρος"}</span>
                         {v.city || v.address ? (
                           <span className="block truncate text-xs text-muted-foreground">{[v.address, v.city].filter(Boolean).join(" · ")}</span>
                         ) : null}
