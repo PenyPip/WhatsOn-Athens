@@ -15,10 +15,37 @@ function showtimeMatchesVenue(st: StrapiShowtime, venue: StrapiVenue): boolean {
   return false;
 }
 
-const sortOptions = [
-  { label: "Ημερομηνία", value: "date" },
-  { label: "Βαθμολογία", value: "score" },
-];
+function venueLabelFromShowtime(st: StrapiShowtime, venues: StrapiVenue[] | undefined): string {
+  if (venues?.length && st.venueId != null) {
+    const v = venues.find((x) => Number(x.id) === Number(st.venueId));
+    if (typeof v?.name === "string" && v.name.trim()) return v.name.trim();
+  }
+  const vn = typeof st.venue === "string" ? st.venue.trim() : "";
+  if (vn) return vn;
+  return "Άγνωστος χώρος";
+}
+
+function formatShowtimeClock(d: Date): string {
+  return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+}
+
+type ShowingLine = {
+  key: string;
+  datetime: Date;
+  venueLabel: string;
+  hallName?: string;
+};
+
+type MovieDayEntry = {
+  movie: StrapiMovie;
+  showings: ShowingLine[];
+};
+
+type DaySection = {
+  label: string;
+  date: Date;
+  entries: MovieDayEntry[];
+};
 
 const Movies = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -29,7 +56,6 @@ const Movies = () => {
   const { data: venues, isLoading: venuesLoading } = useVenues();
   const { data: cmsGenres } = useMovieGenres();
   const [genreSlug, setGenreSlug] = useState<string | null>(null);
-  const [sort, setSort] = useState("date");
   const [summerOutdoorOnly, setSummerOutdoorOnly] = useState(false);
 
   const genreFilters = useMemo(() => {
@@ -43,18 +69,15 @@ const Movies = () => {
 
   const filteredMovies = useMemo(() => {
     if (!movies) return [];
-    let result = genreSlug == null ? [...movies] : movies.filter((m) => m.genreSlug === genreSlug);
-    if (sort === "date") result = [...result].sort((a, b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime());
-    if (sort === "score") result = [...result].sort((a, b) => b.criticScore - a.criticScore);
-    return result;
-  }, [movies, genreSlug, sort]);
+    return genreSlug == null ? [...movies] : movies.filter((m) => m.genreSlug === genreSlug);
+  }, [movies, genreSlug]);
 
   const venueFilter = useMemo((): StrapiVenue | null => {
     if (!venueSlug || !venues?.length) return null;
     return venues.find((v) => v.slug === venueSlug) ?? null;
   }, [venues, venueSlug]);
 
-  const groupedMovies = useMemo(() => {
+  const groupedMovies = useMemo((): DaySection[] => {
     if (!showtimes || !movies) return [];
 
     const now = new Date();
@@ -67,67 +90,90 @@ const Movies = () => {
     const movieMap = new Map<number, StrapiMovie>();
     filteredMovies.forEach((movie) => movieMap.set(movie.id, movie));
 
-    const sections = new Map<string, { label: string; date: Date; movies: StrapiMovie[] }>();
-    const seenBySection = new Map<string, Set<number>>();
+    /** sectionKey -> movieId -> ShowingLine[] με αποφυγή διπλότυπων */
+    const sectionMovieShowings = new Map<string, Map<number, ShowingLine[]>>();
+    const sectionMeta = new Map<string, { label: string; date: Date }>();
 
-    showtimes
-      .filter((st) => !!st.movieId)
+    const filteredSt = showtimes
+      .filter((st) => st.movieId != null)
       .filter((st) => !summerOutdoorOnly || showtimeIsSummerOutdoor(st, venues))
       .filter((st) => !venueFilter || showtimeMatchesVenue(st, venueFilter))
       .filter((st) => new Date(st.datetime) >= todayStart)
-      .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-      .forEach((st: StrapiShowtime) => {
-        const stDate = new Date(st.datetime);
-        let sectionKey: string;
-        let sectionLabel: string;
-        let sectionDate: Date;
+      .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
-        if (stDate >= todayStart && stDate < tomorrowStart) {
-          sectionKey = "today";
-          sectionLabel = "Σήμερα";
-          sectionDate = todayStart;
-        } else if (stDate >= tomorrowStart && stDate < dayAfterTomorrowStart) {
-          sectionKey = "tomorrow";
-          sectionLabel = "Αύριο";
-          sectionDate = tomorrowStart;
-        } else {
-          sectionDate = new Date(stDate.getFullYear(), stDate.getMonth(), stDate.getDate());
-          sectionKey = sectionDate.toISOString().slice(0, 10);
-          sectionLabel = sectionDate.toLocaleDateString("el-GR", {
-            weekday: "long",
-            day: "numeric",
-            month: "long",
-          });
-        }
+    for (const st of filteredSt) {
+      const stDate = new Date(st.datetime);
+      if (Number.isNaN(stDate.getTime())) continue;
 
-        if (!sections.has(sectionKey)) {
-          sections.set(sectionKey, { label: sectionLabel, date: sectionDate, movies: [] });
-          seenBySection.set(sectionKey, new Set<number>());
-        }
+      let sectionKey: string;
+      let sectionLabel: string;
+      let sectionDate: Date;
 
-        const movie = st.movieId ? movieMap.get(st.movieId) : undefined;
-        if (!movie) return;
+      if (stDate >= todayStart && stDate < tomorrowStart) {
+        sectionKey = "today";
+        sectionLabel = "Σήμερα";
+        sectionDate = todayStart;
+      } else if (stDate >= tomorrowStart && stDate < dayAfterTomorrowStart) {
+        sectionKey = "tomorrow";
+        sectionLabel = "Αύριο";
+        sectionDate = tomorrowStart;
+      } else {
+        sectionDate = new Date(stDate.getFullYear(), stDate.getMonth(), stDate.getDate());
+        sectionKey = sectionDate.toISOString().slice(0, 10);
+        sectionLabel = sectionDate.toLocaleDateString("el-GR", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+        });
+      }
 
-        const seenMovies = seenBySection.get(sectionKey);
-        if (!seenMovies?.has(movie.id)) {
-          sections.get(sectionKey)?.movies.push(movie);
-          seenMovies?.add(movie.id);
-        }
+      if (!sectionMeta.has(sectionKey)) {
+        sectionMeta.set(sectionKey, { label: sectionLabel, date: sectionDate });
+      }
+
+      const movie = movieMap.get(Number(st.movieId));
+      if (!movie) continue;
+
+      const hallRaw = typeof st.hallName === "string" ? st.hallName.trim() : "";
+      const venueLabel = venueLabelFromShowtime(st, venues);
+      const dedupeKey = `${stDate.getTime()}-${venueLabel}-${hallRaw}`;
+
+      if (!sectionMovieShowings.has(sectionKey)) {
+        sectionMovieShowings.set(sectionKey, new Map());
+      }
+      const byMovie = sectionMovieShowings.get(sectionKey)!;
+      if (!byMovie.has(movie.id)) byMovie.set(movie.id, []);
+
+      const list = byMovie.get(movie.id)!;
+      if (list.some((x) => x.key === dedupeKey)) continue;
+      list.push({
+        key: dedupeKey,
+        datetime: stDate,
+        venueLabel,
+        hallName: hallRaw || undefined,
+      });
+    }
+
+    const sections: DaySection[] = [...sectionMovieShowings.keys()].map((key) => {
+      const meta = sectionMeta.get(key)!;
+      const byMovie = sectionMovieShowings.get(key)!;
+      const entries: MovieDayEntry[] = [...byMovie.entries()].map(([mid, lines]) => {
+        const mv = movieMap.get(mid)!;
+        const sorted = [...lines].sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+        return { movie: mv, showings: sorted };
       });
 
-    return [...sections.values()]
-      .map((section) => {
-        const sortedMovies = [...section.movies];
-        if (sort === "date") {
-          sortedMovies.sort((a, b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime());
-        } else if (sort === "score") {
-          sortedMovies.sort((a, b) => b.criticScore - a.criticScore);
-        }
-        return { ...section, movies: sortedMovies };
-      })
-      .filter((section) => section.movies.length > 0)
-      .sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [showtimes, movies, filteredMovies, sort, summerOutdoorOnly, venues, venueFilter]);
+      entries.sort((a, b) => {
+        const ta = a.showings[0]?.datetime.getTime() ?? 0;
+        const tb = b.showings[0]?.datetime.getTime() ?? 0;
+        return ta - tb;
+      });
+
+      return { label: meta.label, date: meta.date, entries };
+    });
+
+    return sections.filter((s) => s.entries.length > 0).sort((a, b) => a.date.getTime() - b.date.getTime());
+  }, [showtimes, movies, filteredMovies, summerOutdoorOnly, venues, venueFilter]);
 
   function clearVenueFilter() {
     const next = new URLSearchParams(searchParams);
@@ -237,21 +283,6 @@ const Movies = () => {
             </button>
           ))}
         </div>
-        <div className="flex items-center gap-2 mb-8">
-          <span className="text-sm text-muted-foreground uppercase tracking-wider">Ταξινόμηση:</span>
-          {sortOptions.map((s) => (
-            <button
-              key={s.value}
-              onClick={() => setSort(s.value)}
-              className={`text-sm px-2 py-1 rounded transition-colors ${
-                sort === s.value ? "text-foreground font-semibold" : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-
         {isLoading || showtimesLoading || (summerOutdoorOnly && venuesLoading) || (!!venueSlug && venuesLoading) ? (
           <LoadingState message="Φόρτωση ταινιών..." />
         ) : (
@@ -260,20 +291,38 @@ const Movies = () => {
               <section key={section.label}>
                 <h2 className="font-display text-2xl font-semibold mb-4 capitalize">{section.label}</h2>
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 items-stretch">
-                  {section.movies.map((movie, i) => (
-                    <div key={`${section.label}-${movie.slug}`} className="flex h-full min-h-0">
-                      <EventCard
-                        slug={movie.slug}
-                        title={movie.title}
-                        subtitle={movie.director ?? ""}
-                        genre={movie.genre}
-                        duration={movie.duration}
-                        score={movie.criticScore}
-                        posterUrl={movie.posterUrl}
-                        type="movie"
-                        index={i}
-                        className="w-full flex-1"
-                      />
+                  {section.entries.map(({ movie, showings }, i) => (
+                    <div key={`${section.label}-${movie.slug}`} className="flex flex-col gap-2 h-full min-h-0">
+                      <div className="flex min-h-0 flex-1">
+                        <EventCard
+                          slug={movie.slug}
+                          title={movie.title}
+                          subtitle={movie.director ?? ""}
+                          genre={movie.genre}
+                          duration={movie.duration}
+                          score={movie.criticScore}
+                          posterUrl={movie.posterUrl}
+                          type="movie"
+                          index={i}
+                          className="w-full flex-1"
+                        />
+                      </div>
+                      <ul className="shrink-0 space-y-1 rounded-lg border border-border/70 bg-muted/40 px-2.5 py-2 text-[11px] leading-snug text-muted-foreground">
+                        {showings.map((line) => {
+                          const time = formatShowtimeClock(line.datetime);
+                          const where = venueFilter
+                            ? line.hallName
+                              ? `${line.hallName}`
+                              : null
+                            : `${line.venueLabel}${line.hallName ? ` · ${line.hallName}` : ""}`;
+                          return (
+                            <li key={line.key} className="font-body tabular-nums">
+                              <span className="font-medium text-foreground">{time}</span>
+                              {where ? <span className="text-muted-foreground">{` · ${where}`}</span> : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </div>
                   ))}
                 </div>
