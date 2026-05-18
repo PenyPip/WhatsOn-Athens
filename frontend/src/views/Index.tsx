@@ -11,6 +11,7 @@ import type { HomeSectionId } from "@/config/home";
 import type { StrapiMovie } from "@/lib/api";
 import {
   moviesReleasedInLastDays,
+  moviesWithSummerOutdoorShowtime,
   moviesWithShowtimeThisWeek,
   moviesWithShowtimeToday,
   summerVenuesWithShowtimesOrAll,
@@ -128,6 +129,10 @@ const Index = () => {
     () => summerVenuesWithShowtimesOrAll(venueList, stList),
     [venueList, stList],
   );
+  const summerMoviesForHome = useMemo(
+    () => moviesWithSummerOutdoorShowtime(movieList, stList, venueList),
+    [movieList, stList, venueList],
+  );
   const weekMovies = useMemo(() => moviesWithShowtimeThisWeek(movieList, stList), [movieList, stList]);
   const todayMovies = useMemo(() => moviesWithShowtimeToday(movieList, stList), [movieList, stList]);
   const newMoviesList = useMemo(() => moviesReleasedInLastDays(movieList, 10), [movieList]);
@@ -182,47 +187,18 @@ const Index = () => {
           case "summer_cinema":
             return sectionEl(
               "summer_cinema",
-              venuesLoading || showtimesLoading ? (
-                <LoadingState message="Φόρτωση θερινών χώρων..." />
-              ) : venuesError ? (
-                <section className="relative section-black py-12 md:py-16 border-y border-white/[0.07]">
-                  <div className="container max-w-7xl">
-                    <div className="max-w-xl rounded-xl border border-amber-500/25 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
-                      <p className="font-display text-lg tracking-tight text-amber-100">Θερινά σινεμά</p>
-                      <p className="mt-3 text-sm leading-relaxed text-amber-100/80 font-body">
-                        Δεν ήταν δυνατή η φόρτωση των χώρων.
-                      </p>
-                    </div>
-                  </div>
-                </section>
-              ) : summerVenuesForHome.length === 0 ? (
-                <section className="relative section-black py-12 md:py-16 border-y border-white/[0.07]">
-                  <div className="container max-w-7xl">
-                    <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
-                      <p className="font-display text-lg tracking-tight text-white">Θερινά σινεμά</p>
-                      <p className="mt-3 text-sm leading-relaxed text-white/55 font-body">
-                        Δεν υπάρχουν θερινοί χώροι προς το παρόν.
-                      </p>
-                    </div>
-                  </div>
-                </section>
-              ) : (
-                <HorizontalScroll
-                  spotlight
-                  eyebrow="Καλοκαίρι · θερινές προβολές"
-                  title="Θερινά σινεμά"
-                  subtitle="Επέλεξε χώρο· η λίστα ταινιών φιλτράρεται αυτόματα για τις προβολές εκεί."
-                >
-                  {summerVenuesForHome.map((venue) => (
-                    <VenueCard
-                      key={venue.id}
-                      venue={venue}
-                      variant="spotlight"
-                      moviesHref={`/movies?venue=${encodeURIComponent(venue.slug)}`}
-                    />
-                  ))}
-                </HorizontalScroll>
-              ),
+              <MovieRowScroll
+                loading={moviesLoading || showtimesLoading || venuesLoading}
+                loadingMessage="Φόρτωση θερινών προβολών..."
+                fetchErrorMessage={
+                  moviesError || showtimesError || venuesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
+                }
+                items={summerMoviesForHome}
+                spotlight
+                eyebrow="Καλοκαίρι · θερινές προβολές"
+                title="Θερινά σινεμά"
+                subtitle="Ταινίες που παίζουν σε ανοιχτό ή θερινό πρόγραμμα."
+              />,
             );
           case "summer_venues":
             return sectionEl(
@@ -258,6 +234,7 @@ const Index = () => {
                       spotlight
                       eyebrow="Χώροι"
                       title="Τα θερινά σινεμά"
+                      subtitle="Κάθε κάρτα: διεύθυνση, χωρητικότητα, σύνδεσμοι. Πάτα για τι παίζει σε αυτόν τον χώρο."
                     >
                       {summerVenuesForHome.map((venue) => (
                         <VenueCard
@@ -445,9 +422,9 @@ const Index = () => {
                   </span>
                   <sup
                     style={{
-                      fontFamily: "Cormorant Garamond, serif",
+                      fontFamily: '"Literata", Georgia, serif',
                       fontStyle: "italic",
-                      fontWeight: 300,
+                      fontWeight: 400,
                       fontSize: "0.8rem",
                       color: "rgba(240,237,248,0.6)",
                       verticalAlign: "super",

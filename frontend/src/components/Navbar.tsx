@@ -54,7 +54,7 @@ const Navbar = () => {
               <span style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 300, fontSize: '3rem', color: '#F0EDF8', letterSpacing: '-3px', lineHeight: 1 }}>
                 37
               </span>
-              <sup style={{ fontFamily: 'Cormorant Garamond, serif', fontStyle: 'italic', fontWeight: 300, fontSize: '1.4rem', color: 'rgba(240,237,248,0.7)', verticalAlign: 'super' }}>°N</sup>
+              <sup style={{ fontFamily: '"Literata", Georgia, serif', fontStyle: 'italic', fontWeight: 400, fontSize: '1.4rem', color: 'rgba(240,237,248,0.7)', verticalAlign: 'super' }}>°N</sup>
             </div>
             <div className="flex flex-col gap-1" style={{ borderLeft: '1px solid rgba(240,237,248,0.2)', paddingLeft: '16px' }}>
               <span style={{ fontFamily: 'Unbounded, sans-serif', fontWeight: 700, fontSize: '0.8rem', color: '#FFFFFF', letterSpacing: '3px' }}>ATHENS GUIDE</span>
@@ -70,9 +70,6 @@ const Navbar = () => {
             >
               <Search className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
               <span className="min-w-0 flex-1 truncate font-body text-white/55">Ταινίες, χώροι…</span>
-              <kbd className="hidden shrink-0 rounded border border-white/25 bg-black/35 px-1.5 py-0.5 font-mono text-[10px] text-white/50 lg:inline">
-                ⌘K
-              </kbd>
             </button>
           </div>
 

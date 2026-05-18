@@ -1,4 +1,5 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=DM+Sans:wght@300;400;500&family=Unbounded:wght@300;400;700;900&display=swap');
+/* Literata: πλήρη ελληνικά· Cormorant Garamond όχι → μικτό κείμενο έβλεπε διαφορετικό βάρος ανά-script. DM Sans variable: πραγματικά weights (όχι faux-bold σε semibold/bold). */
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&family=Literata:ital,opsz,wght@0,7..72,200..900;1,7..72,200..900&family=Unbounded:wght@300;400;600;700;900&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -54,23 +55,31 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    font-synthesis: none;
     background-color: #F0EDF8;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'Literata', Georgia, serif;
+    font-optical-sizing: auto;
+    font-synthesis: none;
     color: hsl(var(--foreground));
   }
 }
 
 @layer utilities {
   .font-display {
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'Literata', Georgia, serif;
+    font-optical-sizing: auto;
+    font-synthesis: none;
   }
 
   .font-body {
-    font-family: 'DM Sans', sans-serif;
+    font-family: 'DM Sans', system-ui, sans-serif;
+    font-optical-sizing: auto;
+    font-synthesis: none;
   }
 
   .font-mono {
@@ -98,7 +107,7 @@
   .section-black h1, .section-black h2, .section-black h3,
   .section-black h4, .section-black h5, .section-black h6 {
     color: #F0EDF8;
-    font-family: 'Cormorant Garamond', serif;
+    font-family: 'Literata', Georgia, serif;
   }
 
   .section-black p, .section-black span {

@@ -120,12 +120,18 @@ const VenueCard = ({ venue, moviesHref, variant = "page", className }: VenueCard
     </div>
   );
 
+  /** Στο spotlight τα κείμενα είναι ανοικτά· το `.card-elevated` βάζει φωτεινό --card όποτε σε hover γίνεται αόρατο με άσπρο κείμενο. */
+  const spotlightShell =
+    "relative flex h-full min-h-[200px] flex-col rounded-lg border border-white/12 bg-black/50 p-6 text-left shadow-[0_8px_30px_rgba(0,0,0,0.25)]";
+  const pageShell = cn(
+    "card-elevated relative flex h-full min-h-[200px] flex-col p-6 text-left transition-colors",
+    moviesHref && "hover:border-primary/35",
+  );
+
   const cardShell = (
     <div
       className={cn(
-        "card-elevated relative flex h-full min-h-[200px] flex-col p-6 text-left transition-colors",
-        moviesHref && isSpotlight && "hover:border-amber-500/35 hover:bg-black/45",
-        moviesHref && !isSpotlight && "hover:border-primary/35",
+        isSpotlight ? spotlightShell : pageShell,
         className,
       )}
     >
