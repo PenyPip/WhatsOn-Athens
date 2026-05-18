@@ -92,6 +92,17 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const headline = isMovie && movie ? movieTitleLines(movie) : { primary: event.title, secondary: undefined as string | undefined };
 
+  const genreLabel = (movie ? movie.genre : event.genre ?? "").trim();
+  const hasCast =
+    Array.isArray(event.cast) && event.cast.some((c) => typeof c === "string" && c.trim() !== "");
+  const showCriticScoreBadge =
+    Boolean(movie) && eventEditorialReviews.length > 0 && Number(movie?.criticScore) > 0;
+
+  const directorLabel = (event.director ?? "").trim();
+  const hasDirector = directorLabel.length > 0;
+  const hasDuration = typeof event.duration === "number" && Number.isFinite(event.duration) && event.duration > 0;
+  const hasInfoBlock = hasDirector || hasCast || Boolean(genreLabel) || hasDuration;
+
   return (
     <div className="min-h-screen pb-20 md:pb-8">
       <section className="relative min-h-[50vh] overflow-hidden bg-[#13143E]">
@@ -127,12 +138,16 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               <ArrowLeft className="w-4 h-4" /> Πίσω στις {isMovie ? "Ταινίες" : "Παραστάσεις"}
             </Link>
 
-            {movie && (
+            {movie && (showCriticScoreBadge || movie.ageRating?.trim()) ? (
               <div className="flex items-center gap-3 mb-3">
-                <span className="px-2 py-0.5 bg-white text-sm font-bold text-[#13143E] rounded">{movie.criticScore}/10</span>
-                <span className="text-sm text-white/60">{movie.ageRating}</span>
+                {showCriticScoreBadge ? (
+                  <span className="px-2 py-0.5 bg-white text-sm font-bold text-[#13143E] rounded">{movie.criticScore}/10</span>
+                ) : null}
+                {movie.ageRating?.trim() ? (
+                  <span className="text-sm text-white/60">{movie.ageRating}</span>
+                ) : null}
               </div>
-            )}
+            ) : null}
 
             <h1
               className={`font-display text-3xl md:text-5xl font-bold text-white ${
@@ -146,14 +161,17 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             ) : null}
 
             <div className="flex flex-wrap items-center gap-3 text-base text-white/60 mb-6">
-              <span className="flex items-center gap-1"><Clock className="w-4 h-4" /> {event.duration} λεπτά</span>
-              {movie ? (
-                <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white">
-                  Είδος · {movie.genre}
+              {hasDuration ? (
+                <span className="flex items-center gap-1">
+                  <Clock className="w-4 h-4" /> {event.duration} λεπτά
                 </span>
-              ) : (
-                <span>{event.genre}</span>
-              )}
+              ) : null}
+              {movie && genreLabel ? (
+                <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white">
+                  Είδος · {genreLabel}
+                </span>
+              ) : null}
+              {!movie && genreLabel ? <span>{genreLabel}</span> : null}
               {movie && <span className="flex items-center gap-1"><Globe className="w-4 h-4" /> {movie.language}</span>}
               {!isMovie && <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {(event as StrapiTheaterShow).venue}</span>}
             </div>
@@ -174,20 +192,42 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           <p className="text-muted-foreground text-base leading-relaxed">{event.synopsis}</p>
         </motion.section>
 
+        {hasInfoBlock ? (
         <section className="card-elevated p-6 max-w-2xl">
           <h2 className="font-display text-lg font-semibold mb-4">Πληροφορίες</h2>
           <div className="grid grid-cols-2 gap-4">
-            <div><span className="text-muted-foreground text-sm uppercase tracking-wider">Σκηνοθεσία</span><p className="font-medium text-base mt-1">{event.director}</p></div>
-            <div><span className="text-muted-foreground text-sm uppercase tracking-wider">Cast</span><p className="font-medium text-base mt-1">{event.cast?.join(", ")}</p></div>
-            <div><span className="text-muted-foreground text-sm uppercase tracking-wider">Είδος</span><p className="font-medium text-base mt-1">{event.genre}</p></div>
-            <div><span className="text-muted-foreground text-sm uppercase tracking-wider">Διάρκεια</span><p className="font-medium text-base mt-1">{event.duration} λεπτά</p></div>
+            {hasDirector ? (
+              <div>
+                <span className="text-muted-foreground text-sm uppercase tracking-wider">Σκηνοθεσία</span>
+                <p className="font-medium text-base mt-1">{directorLabel}</p>
+              </div>
+            ) : null}
+            {hasCast ? (
+              <div>
+                <span className="text-muted-foreground text-sm uppercase tracking-wider">Cast</span>
+                <p className="font-medium text-base mt-1">{event.cast!.filter((c) => typeof c === "string" && c.trim()).join(", ")}</p>
+              </div>
+            ) : null}
+            {genreLabel ? (
+              <div>
+                <span className="text-muted-foreground text-sm uppercase tracking-wider">Είδος</span>
+                <p className="font-medium text-base mt-1">{genreLabel}</p>
+              </div>
+            ) : null}
+            {hasDuration ? (
+              <div>
+                <span className="text-muted-foreground text-sm uppercase tracking-wider">Διάρκεια</span>
+                <p className="font-medium text-base mt-1">{event.duration} λεπτά</p>
+              </div>
+            ) : null}
           </div>
         </section>
+        ) : null}
 
         <section id="showtimes">
           <h2 className="font-display text-xl font-semibold mb-2">Πού παίζει & ώρες</h2>
           <p className="text-muted-foreground text-sm mb-6 max-w-2xl">
-            Κάθε γραμμή είναι προγραμματισμένη προβολή: ημερομηνία, ώρα και σινεμά όπως καταχωρείται στον οδηγό.
+    
           </p>
           {eventShowtimes.length === 0 ? (
             <p className="text-muted-foreground text-sm">Δεν έχουν καταχωρηθεί προβολές ακόμη.</p>
@@ -264,7 +304,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <div className="card-elevated p-6 text-center max-w-md mx-auto border-2 border-[#13143E]">
           <h3 className="font-display font-semibold text-lg mb-2">Γράψε Κριτική</h3>
           <p className="text-base text-muted-foreground mb-3">Σύνδεση για να γράψεις κριτική</p>
-          <Button variant="outline" size="sm" className="border-foreground text-foreground hover:bg-foreground hover:text-background">Σύνδεση</Button>
+          <Button variant="outline" size="sm" className="border-foreground text-foreground hover:bg-foreground hover:text-background" asChild>
+            <Link to="/profile">Σύνδεση</Link>
+          </Button>
         </div>
 
         <section>

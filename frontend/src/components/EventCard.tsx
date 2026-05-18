@@ -27,6 +27,7 @@ const EventCard = ({ slug, title, titleSecondary, subtitle, genre, duration, sco
     !posterUrl && typeof gradientFrom === "string" && typeof gradientTo === "string";
   const subtitleLine = typeof subtitle === "string" && subtitle.trim() ? subtitle : "\u00a0";
   const posterAlt = titleSecondary ? `${title} · ${titleSecondary}` : title;
+  const showDuration = typeof duration === "number" && Number.isFinite(duration) && duration > 0;
 
   return (
     <motion.div
@@ -86,10 +87,12 @@ const EventCard = ({ slug, title, titleSecondary, subtitle, genre, duration, sco
             <span className="min-w-0 text-xs font-medium uppercase tracking-wider text-gray-400 line-clamp-1">
               {type === "movie" && genre ? `Είδος · ${genre}` : genre || "\u00a0"}
             </span>
-            <div className="flex shrink-0 items-center gap-1 text-sm text-gray-400">
-              <Clock className="h-3.5 w-3.5 shrink-0" />
-              <span>{duration}&nbsp;′</span>
-            </div>
+            {showDuration ? (
+              <div className="flex shrink-0 items-center gap-1 text-sm text-gray-400">
+                <Clock className="h-3.5 w-3.5 shrink-0" />
+                <span>{duration}&nbsp;′</span>
+              </div>
+            ) : null}
           </div>
         </div>
       </Link>

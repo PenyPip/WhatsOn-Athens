@@ -117,7 +117,9 @@ const DiningDetail = () => {
               <div className="card-elevated p-6 text-center border-2 border-[#111111] mt-4">
                 <h3 className="font-display font-semibold mb-2">Γράψε Κριτική</h3>
                 <p className="text-sm text-muted-foreground mb-3">Σύνδεση για κριτική</p>
-                <Button variant="outline" size="sm" className="border-foreground text-foreground hover:bg-foreground hover:text-background">Σύνδεση</Button>
+                <Button variant="outline" size="sm" className="border-foreground text-foreground hover:bg-foreground hover:text-background" asChild>
+                  <Link to="/profile">Σύνδεση</Link>
+                </Button>
               </div>
             </section>
 

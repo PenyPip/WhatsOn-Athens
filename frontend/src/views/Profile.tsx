@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { User, Heart, Star, Ticket } from "lucide-react";
+import { User, Heart, Star } from "lucide-react";
 import Footer from "@/components/Footer";
 
 const Profile = () => {
@@ -22,7 +22,7 @@ const Profile = () => {
         >
           <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="font-display text-xl font-semibold mb-2">Σύνδεση για περισσότερα</h2>
-          <p className="text-muted-foreground text-sm mb-6">Συνδέσου για να αποθηκεύσεις αγαπημένα, να γράψεις κριτικές και να κάνεις κρατήσεις.</p>
+          <p className="text-muted-foreground text-sm mb-6">Συνδέσου για να αποθηκεύσεις αγαπημένα και να γράψεις κριτικές.</p>
 
           <div className="space-y-3 max-w-xs mx-auto">
             <button className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded border border-border text-sm font-medium hover:bg-secondary transition-colors">
@@ -40,11 +40,10 @@ const Profile = () => {
           </div>
         </motion.div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-8">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
           {[
             { icon: Heart, title: "Αγαπημένα", desc: "Δεν υπάρχουν αποθηκεύσεις" },
             { icon: Star, title: "Κριτικές", desc: "Δεν έχεις γράψει κριτικές" },
-            { icon: Ticket, title: "Κρατήσεις", desc: "Δεν υπάρχουν κρατήσεις" },
           ].map((item, i) => (
             <motion.div
               key={item.title}
