@@ -60,6 +60,7 @@ function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefined): St
     director: "—",
     cast: [],
     genre: "",
+    genreSlugs: [],
     duration: 0,
     language: "",
     ageRating: "",

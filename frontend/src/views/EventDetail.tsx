@@ -9,9 +9,8 @@ import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { normalizeCastFromStrapi, type StrapiMovie, type StrapiShowtime, type StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
-/** Συμπαγής γραμμή για επιπλέον προβολές στο ίδιο σινεμά (όχι πλήρης κάρτα). */
+/** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
 function ShowtimeCompactRow({ st }: { st: StrapiShowtime }) {
   const d = new Date(st.datetime);
   return (
@@ -34,31 +33,6 @@ function ShowtimeCompactRow({ st }: { st: StrapiShowtime }) {
         ) : null}
       </div>
     </li>
-  );
-}
-
-function ShowtimeSlotCard({ st }: { st: StrapiShowtime }) {
-  const d = new Date(st.datetime);
-  return (
-    <div className="rounded-xl border-2 border-[#13143E]/20 bg-white p-5 text-left shadow-[0_10px_40px_rgba(19,20,62,0.14)] ring-1 ring-black/[0.04]">
-      <p className="text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Ημερομηνία</p>
-      <p className="mt-1.5 text-base font-semibold leading-snug text-foreground sm:text-lg">
-        {d.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" })}
-      </p>
-      <p className="mt-4 text-xs font-semibold uppercase tracking-[0.14em] text-muted-foreground">Ώρα έναρξης</p>
-      <p className="mt-1 text-2xl font-bold tabular-nums text-[#13143E]">
-        {d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false })}
-      </p>
-      {st.hallName ? <p className="mt-3 text-sm font-medium text-muted-foreground">Αίθουσα · {st.hallName}</p> : null}
-      {st.venueSummerOutdoor ? (
-        <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-amber-700">Θερινή προβολή</p>
-      ) : null}
-      {st.price != null ? (
-        <p className="mt-4 border-t border-border/60 pt-3 text-lg font-bold text-foreground">
-          {Number.isInteger(st.price) ? `${st.price}` : st.price.toFixed(2)} €
-        </p>
-      ) : null}
-    </div>
   );
 }
 
@@ -291,47 +265,31 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
         <section id="showtimes">
           <h2 className="font-display text-xl font-semibold mb-2">Πού παίζει & ώρες</h2>
-          <p className="text-muted-foreground text-sm mb-6 max-w-2xl">
-            Για κάθε σινεμά εμφανίζεται η πρώτη διαθέσιμη προβολή· αν υπάρχουν κι άλλες ώρες στο ίδιο χώρο, τις βλέπεις στο «Περισσότερες ώρες».
-          </p>
+          {isMovie ? (
+            <p className="text-muted-foreground text-sm mb-6 max-w-2xl">
+              Οι προβολές εμφανίζονται όλες ανά σινεμά με ημερομηνία, ώρα και όποια υπάρχουν στοιχεία έχουν καταχωρηθεί (αίθουσα, τιμή,
+              θερινή προβολή).
+            </p>
+          ) : null}
           {eventShowtimes.length === 0 ? (
             <p className="text-muted-foreground text-sm">Δεν έχουν καταχωρηθεί προβολές ακόμη.</p>
           ) : (
             <div className="space-y-12 max-w-5xl">
-              {showtimesByVenue.map(({ venueName, slots }, vi) => {
-                const [primary, ...extras] = slots;
-                if (!primary) return null;
+              {showtimesByVenue.map(({ venueName, slots }) => {
+                if (!slots.length) return null;
                 return (
-                <div key={venueName}>
-                  <h3 className="font-display text-lg font-semibold mb-4 border-b border-border pb-2 text-foreground">
-                    {venueName}
-                  </h3>
-                  <div className="max-w-lg">
-                    <ShowtimeSlotCard st={primary} />
+                  <div key={venueName}>
+                    <h3 className="font-display text-lg font-semibold mb-4 border-b border-border pb-2 text-foreground">
+                      {venueName}
+                    </h3>
+                    <div className="max-w-2xl">
+                      <ul className="rounded-lg border border-border/80 bg-card/40 px-3 sm:px-4">
+                        {slots.map((st) => (
+                          <ShowtimeCompactRow key={st.id} st={st} />
+                        ))}
+                      </ul>
+                    </div>
                   </div>
-                  {extras.length > 0 ? (
-                    <>
-                      <p className="mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground">
-                        Υπάρχουν <strong className="text-foreground">{extras.length}</strong> ακόμη προβολ{extras.length === 1 ? "ή" : "ές"} σε αυτό το σινεμά.
-                        Άνοιξε «Περισσότερες ώρες» για ημερομηνία, ώρα και τιμή κάθε προβολής.
-                      </p>
-                      <Accordion type="single" collapsible className="mt-3 w-full max-w-2xl rounded-xl border border-border bg-muted/25">
-                        <AccordionItem value={`venue-extra-${vi}`} className="border-0">
-                          <AccordionTrigger className="px-4 py-3 text-left text-sm font-semibold text-foreground hover:no-underline [&[data-state=open]]:bg-muted/50">
-                            Περισσότερες ώρες ({extras.length})
-                          </AccordionTrigger>
-                          <AccordionContent className="px-4 pb-4 pt-0">
-                            <ul className="rounded-lg border border-border/80 bg-card/40 px-3 sm:px-4">
-                              {extras.map((st) => (
-                                <ShowtimeCompactRow key={st.id} st={st} />
-                              ))}
-                            </ul>
-                          </AccordionContent>
-                        </AccordionItem>
-                      </Accordion>
-                    </>
-                  ) : null}
-                </div>
                 );
               })}
             </div>

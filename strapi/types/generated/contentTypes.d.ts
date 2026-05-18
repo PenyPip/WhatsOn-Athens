@@ -517,7 +517,7 @@ export interface ApiMovieGenreMovieGenre extends Schema.CollectionType {
     label: Attribute.String & Attribute.Required;
     movies: Attribute.Relation<
       'api::movie-genre.movie-genre',
-      'oneToMany',
+      'manyToMany',
       'api::movie.movie'
     >;
     slug: Attribute.UID<'api::movie-genre.movie-genre', 'label'> &
@@ -563,9 +563,9 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'api::editorial-review.editorial-review'
     >;
     language: Attribute.String;
-    movie_genre: Attribute.Relation<
+    movie_genres: Attribute.Relation<
       'api::movie.movie',
-      'manyToOne',
+      'manyToMany',
       'api::movie-genre.movie-genre'
     >;
     original_title: Attribute.String;

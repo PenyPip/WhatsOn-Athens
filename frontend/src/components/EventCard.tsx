@@ -121,7 +121,7 @@ const EventCard = ({
           )}
         >
           {type === "movie" && genreTrimmed ? (
-            <p className="mb-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/95 leading-snug">
+            <p className="mb-1.5 line-clamp-3 max-w-full shrink-0 break-words text-[11px] font-semibold uppercase leading-snug tracking-wider text-muted-foreground/95">
               <span className="font-normal text-muted-foreground/75">Είδος · </span>
               {genreTrimmed}
             </p>

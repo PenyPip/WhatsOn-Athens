@@ -27,9 +27,9 @@
     },
     "movies": {
       "type": "relation",
-      "relation": "oneToMany",
+      "relation": "manyToMany",
       "target": "api::movie.movie",
-      "mappedBy": "movie_genre"
+      "mappedBy": "movie_genres"
     }
   }
 }

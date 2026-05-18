@@ -172,15 +172,49 @@ function strapiMediaUrl(media: unknown): string | undefined {
   return u || undefined;
 }
 
-function movieGenreFieldsFromMovie(raw: Record<string, unknown>): { genre: string; genreSlug?: string } {
-  const attrs = strapiRelationAttrs(raw.movie_genre as unknown);
-  if (attrs) {
-    const label = typeof attrs.label === "string" ? attrs.label.trim() : "";
-    const slug = typeof attrs.slug === "string" ? attrs.slug.trim() : "";
-    const genre = label || (slug ? MOVIE_GENRE_LABELS[slug] ?? slug : "");
-    return { genre, genreSlug: slug || undefined };
+/** Εγγραφές σχέσης Strapi: παλιό `movie_genre` ή νέο `movie_genres` (πολλά). */
+function relationDataEntries(rel: unknown): Record<string, unknown>[] {
+  if (rel == null) return [];
+  if (typeof rel !== "object") return [];
+  const o = rel as Record<string, unknown>;
+  if (typeof o.label === "string" || typeof o.slug === "string") return [o];
+  const d = o.data;
+  if (d == null || d === false) return [];
+  const nodes = Array.isArray(d) ? d : [d];
+  const out: Record<string, unknown>[] = [];
+  for (const node of nodes) {
+    const u = unwrapStrapiEntry(node);
+    if (u && typeof u === "object" && !Array.isArray(u)) out.push(u as Record<string, unknown>);
   }
-  return { genre: "" };
+  return out;
+}
+
+function movieGenresFromMovieRaw(raw: Record<string, unknown>): { genre: string; genreSlug?: string; genreSlugs: string[] } {
+  const fromMany = relationDataEntries(raw.movie_genres);
+  const fromLegacy = relationDataEntries(raw.movie_genre);
+  const merged = [...fromMany, ...fromLegacy];
+  type Pair = { label: string; slug: string };
+  const pairs: Pair[] = [];
+  const seen = new Set<string>();
+  for (const attrs of merged) {
+    const labelRaw = attrs.label;
+    const slugRaw = attrs.slug;
+    const labelTrim = typeof labelRaw === "string" ? labelRaw.trim() : "";
+    let slug = typeof slugRaw === "string" ? slugRaw.trim().toLowerCase().replace(/^\/+|\/+$/g, "") : "";
+    const displayLabel = labelTrim || (slug ? MOVIE_GENRE_LABELS[slug] ?? slug : "");
+    if (!slug && labelTrim) slug = labelTrim.toLowerCase().replace(/\s+/g, "-");
+    if (!displayLabel || !slug) continue;
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    pairs.push({ label: displayLabel, slug });
+  }
+  const genreSlugs = pairs.map((p) => p.slug);
+  const genre = pairs.map((p) => p.label).join(" · ");
+  return {
+    genre,
+    genreSlugs,
+    genreSlug: genreSlugs[0],
+  };
 }
 
 /** Unwrap Strapi cast: επαναλαμβανόμενο component, παλιό JSON (array), ή string (γραμμές/κόμματα). */
@@ -231,7 +265,7 @@ export function normalizeCastFromStrapi(cast: unknown): string[] {
 
 function mapMovie(raw: unknown): StrapiMovie {
   const m = unwrapStrapiEntry(raw);
-  const gf = movieGenreFieldsFromMovie(m as Record<string, unknown>);
+  const gf = movieGenresFromMovieRaw(m as Record<string, unknown>);
   const rawId = m.id;
   let numericId = NaN;
   if (typeof rawId === "number" && Number.isFinite(rawId)) numericId = rawId;
@@ -248,6 +282,7 @@ function mapMovie(raw: unknown): StrapiMovie {
     cast: normalizeCastFromStrapi(m.cast),
     genre: gf.genre,
     genreSlug: gf.genreSlug,
+    genreSlugs: gf.genreSlugs,
     duration: m.duration,
     language: m.language,
     ageRating: m.age_rating,
@@ -549,9 +584,12 @@ export interface StrapiMovie {
   originalTitle?: string;
   director: string;
   cast: string[];
+  /** Οι ετικέτες ενωμένες με « · » για λίστες και κείμενο. */
   genre: string;
-  /** slug από CMS συλλογή «Είδος ταινίας» — για φίλτρα στη σελίδα Ταινίες */
+  /** slug πρώτου είδους (συμβατότητα) */
   genreSlug?: string;
+  /** Όλα τα slug ειδών από το CMS — φίλτρα / διακριτά chips. */
+  genreSlugs: string[];
   duration: number;
   language: string;
   ageRating: string;
@@ -685,7 +723,7 @@ export const api = {
 
   getMovies: () =>
     fetchAPIPagedEntries("/movies", {
-      "populate[movie_genre]": "*",
+      "populate[movie_genres]": "*",
       /** Αλλιώς με ρητό populate χάνεται το media και η αφίσα επιστρέφει χωρίς url. */
       "populate[poster]": "*",
       "populate[cast]": "*",
@@ -693,7 +731,7 @@ export const api = {
   getMovieBySlug: (slug: string) =>
     fetchAPI<any[]>(`/movies`, {
       "filters[slug][$eq]": slug,
-      "populate[movie_genre]": "*",
+      "populate[movie_genres]": "*",
       "populate[poster]": "*",
       "populate[cast]": "*",
     }).then((d) => {

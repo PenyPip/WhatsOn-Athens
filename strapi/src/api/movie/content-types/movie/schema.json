@@ -37,11 +37,12 @@
       "component": "shared.cast-name",
       "description": "Λίστα ηθοποιών: μία καταχώρηση ανά όνομα (χωρίς JSON)."
     },
-    "movie_genre": {
+    "movie_genres": {
       "type": "relation",
-      "relation": "manyToOne",
+      "relation": "manyToMany",
       "target": "api::movie-genre.movie-genre",
-      "description": "Είδος ταινίας· διαχείριση από τη συλλογή «Είδος ταινίας»."
+      "inversedBy": "movies",
+      "description": "Ένα ή περισσότερα είδη ταινίας από τη συλλογή «Είδος ταινίας»."
     },
     "duration": {
       "type": "integer"
