@@ -18,6 +18,11 @@
     "price": {
       "type": "decimal"
     },
+    "summer_screening": {
+      "type": "boolean",
+      "default": false,
+      "description": "Τσέκαρε αν αυτή η προβολή πρέπει να εμφανίζεται στην αρχική (ενότητα «Θερινά σινεμά»), ακόμη κι αν στο Venue δεν είναι σημειωμένο «Θερινό»."
+    },
     "movie": {
       "type": "relation",
       "relation": "manyToOne",

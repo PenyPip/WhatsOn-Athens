@@ -25,20 +25,23 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Navbar />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/movies" element={<Movies />} />
-          <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
-          <Route path="/theater" element={<TheaterPage />} />
-          <Route path="/theater/:slug" element={<EventDetail type="theater" />} />
-          <Route path="/venues" element={<Venues />} />
-          <Route path="/dining" element={<Dining />} />
-          <Route path="/dining/:slug" element={<DiningDetail />} />
-          <Route path="/reviews" element={<Reviews />} />
-          <Route path="/reviews/:slug" element={<ReviewDetail />} />
-          <Route path="/profile" element={<Profile />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        {/* Χώρος για duble fixed header (nav h-28 + λωρίδα «Εξερεύνησε» h-10) ώστε το περιεχόμενο να μην κρύβεται από πάνω· το Hero το αναιρεί με -mt + pt. */}
+        <main className="min-h-screen md:pt-[9.5rem]">
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/movies" element={<Movies />} />
+            <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
+            <Route path="/theater" element={<TheaterPage />} />
+            <Route path="/theater/:slug" element={<EventDetail type="theater" />} />
+            <Route path="/venues" element={<Venues />} />
+            <Route path="/dining" element={<Dining />} />
+            <Route path="/dining/:slug" element={<DiningDetail />} />
+            <Route path="/reviews" element={<Reviews />} />
+            <Route path="/reviews/:slug" element={<ReviewDetail />} />
+            <Route path="/profile" element={<Profile />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </main>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

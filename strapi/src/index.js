@@ -1,6 +1,46 @@
 'use strict';
 
-const PUBLIC_ACTION = 'api::homepage.homepage.find';
+/** Ανάγνωση από το δημόσιο API (χωρίς JWT)· χωρίς αυτά η αρχική μένει κενή (403). */
+const PUBLIC_COLLECTION_READ_ACTIONS = [
+  'api::movie.movie.find',
+  'api::movie.movie.findOne',
+  'api::showtime.showtime.find',
+  'api::showtime.showtime.findOne',
+  'api::venue.venue.find',
+  'api::venue.venue.findOne',
+  'api::theater-show.theater-show.find',
+  'api::theater-show.theater-show.findOne',
+  'api::restaurant.restaurant.find',
+  'api::restaurant.restaurant.findOne',
+  'api::editorial-review.editorial-review.find',
+  'api::editorial-review.editorial-review.findOne',
+  'api::user-review.user-review.find',
+  'api::user-review.user-review.findOne',
+];
+
+const PUBLIC_SINGLE_TYPE_ACTIONS = ['api::homepage.homepage.find'];
+
+async function enablePublicPermission(strapi, action, publicRoleId) {
+  const perms = await strapi.db.query('plugin::users-permissions.permission').findMany({
+    where: { role: publicRoleId, action },
+    limit: 1,
+  });
+  const permission = perms[0];
+  if (!permission) {
+    strapi.log.warn(
+      `[whatson] Λείπει permission για Public: "${action}". Στο Strapi Admin → Settings → Users & Permissions → Public, άνοιξε την αντίστοιχη ενότητα και αποθήκευσε για να δημιουργηθούν οι εγγραφές· μετά restart.`,
+    );
+    return false;
+  }
+  if (!permission.enabled) {
+    await strapi.db.query('plugin::users-permissions.permission').update({
+      where: { id: permission.id },
+      data: { enabled: true },
+    });
+    strapi.log.info(`[whatson] Ενεργοποιήθηκε Public: ${action}`);
+  }
+  return true;
+}
 
 module.exports = {
   /**
@@ -14,27 +54,15 @@ module.exports = {
 
       if (!publicRole) return;
 
-      const perms = await strapi.db.query('plugin::users-permissions.permission').findMany({
-        where: { role: publicRole.id, action: PUBLIC_ACTION },
-        limit: 1,
-      });
-
-      const permission = perms[0];
-      if (!permission) {
-        strapi.log.warn(
-          '[whatson] Στο Users & Permissions → Public → Homepage: κάνε tick το find (είδος single type). Το πρώτο boot με νέο content type συχνά το δημιουργεί αυτόματα μετά από restart.',
-        );
-        return;
+      for (const action of PUBLIC_SINGLE_TYPE_ACTIONS) {
+        await enablePublicPermission(strapi, action, publicRole.id);
       }
 
-      if (!permission.enabled) {
-        await strapi.db.query('plugin::users-permissions.permission').update({
-          where: { id: permission.id },
-          data: { enabled: true },
-        });
+      for (const action of PUBLIC_COLLECTION_READ_ACTIONS) {
+        await enablePublicPermission(strapi, action, publicRole.id);
       }
     } catch (e) {
-      strapi.log.warn('[bootstrap homepage permission]', e);
+      strapi.log.warn('[whatson bootstrap public API permissions]', e);
     }
   },
 };

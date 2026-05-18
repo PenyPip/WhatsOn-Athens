@@ -490,7 +490,6 @@ export interface ApiMovieMovie extends Schema.CollectionType {
     critic_score: Attribute.Decimal;
     director: Attribute.String;
     duration: Attribute.Integer;
-    is_new: Attribute.Boolean & Attribute.DefaultTo<false>;
     editorial_reviews: Attribute.Relation<
       'api::movie.movie',
       'oneToMany',
@@ -620,6 +619,7 @@ export interface ApiShowtimeShowtime extends Schema.CollectionType {
       'api::movie.movie'
     >;
     price: Attribute.Decimal;
+    summer_screening: Attribute.Boolean & Attribute.DefaultTo<false>;
     theater_show: Attribute.Relation<
       'api::showtime.showtime',
       'manyToOne',

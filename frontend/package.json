@@ -6,6 +6,7 @@
     "dev": "next dev --hostname 0.0.0.0 -p 3000",
     "build": "next build",
     "preview": "npx serve@14 out -l 3000",
+    "preview:prod": "bash ./scripts/serve-export-with-api.sh",
     "lint": "eslint ."
   },
   "dependencies": {
