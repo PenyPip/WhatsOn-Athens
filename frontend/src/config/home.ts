@@ -1,7 +1,7 @@
 /**
  * Το layout της αρχικής έρχεται από Strapi Single Type «Homepage».
  * Έτοιμα τμήματα: movies_today (προβολές σήμερα), summer_cinema (θερινές ταινίες), summer_venues (χώροι ως θερινό στο CMS),
- * tours (περιοδείες), new_movies, movies_week — διάλεξε ποια εμφανίζονται και με ποια σειρά.
+ * tours (περιοδείες), new_movies (πρόσφατη ημερομηνία κυκλοφορίας ταινίας), movies_week — διάλεξε ποια εμφανίζονται και με ποια σειρά.
  */
 
 export const HOME_SECTION_IDS = [

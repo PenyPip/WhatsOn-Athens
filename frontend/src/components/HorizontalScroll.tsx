@@ -61,103 +61,114 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
     el.scrollTo({ left: target, behavior: "smooth" });
   };
 
+  const headerAndRail = (
+    <>
+      <div className="mb-6 flex min-w-0 max-w-full items-end justify-between gap-4">
+        <div className="min-w-0">
+          {(eyebrow || spotlight) && (
+            <span
+              className={cn(
+                "mb-2 block font-body text-[10px] uppercase tracking-[0.22em]",
+                spotlight ? "text-amber-800/90 dark:text-amber-300/95" : "text-muted-foreground",
+                muted && "opacity-75",
+              )}
+            >
+              {eyebrow || (spotlight ? "Επίκεντρο καλοκαιριού" : eyebrow)}
+            </span>
+          )}
+          <h2
+            className={cn(
+              "font-display font-bold text-foreground",
+              muted ? "text-xl md:text-2xl" : spotlight ? "text-3xl md:text-5xl md:leading-[1.1]" : "text-2xl",
+            )}
+          >
+            {title}
+          </h2>
+          {subtitle && (
+            <p
+              className={cn(
+                "mt-1 font-body leading-relaxed",
+                muted ? "text-sm text-muted-foreground max-w-xl" : spotlight ? "text-base md:text-lg text-muted-foreground max-w-2xl mt-2" : "text-base text-muted-foreground mt-1",
+              )}
+            >
+              {subtitle}
+            </p>
+          )}
+        </div>
+        {overflowing ? (
+          <div
+            className={cn(
+              "relative z-20 flex shrink-0 items-center gap-1",
+              muted && "opacity-60",
+            )}
+          >
+            <button
+              type="button"
+              disabled={!canScrollLeft}
+              onClick={() => scroll("left")}
+              className={cn(
+                "rounded-full border border-foreground/15 p-2 transition-colors",
+                canScrollLeft
+                  ? "hover:bg-foreground hover:text-background"
+                  : "cursor-default opacity-35",
+              )}
+              aria-label="Κύλιση αριστερά"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              disabled={!canScrollRight}
+              onClick={() => scroll("right")}
+              className={cn(
+                "rounded-full border border-foreground/15 p-2 transition-colors",
+                canScrollRight
+                  ? "hover:bg-foreground hover:text-background"
+                  : "cursor-default opacity-35",
+              )}
+              aria-label="Κύλιση δεξιά"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        ) : null}
+      </div>
+      <div className="min-w-0 max-w-full">
+        <div
+          ref={scrollRef}
+          className={cn(
+            "flex max-w-full min-w-0 flex-nowrap items-stretch gap-4 overflow-x-scroll overscroll-x-contain pb-2 scrollbar-hide",
+            "touch-pan-x scroll-smooth [-webkit-overflow-scrolling:touch]",
+          )}
+        >
+          {children}
+        </div>
+      </div>
+    </>
+  );
+
   return (
     <section
       className={cn(
         "relative",
-        muted ? "py-8 border-y border-border/40 bg-muted/20" : "py-10",
-        spotlight && "py-14 md:py-20 bg-gradient-to-b from-amber-500/[0.09] via-transparent to-transparent",
+        muted && "border-y border-border/40 bg-muted/20 py-8",
+        spotlight && !muted && "py-6 md:py-10",
+        !muted && !spotlight && "py-10",
       )}
     >
-      {spotlight && (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute right-0 top-0 h-64 w-64 rounded-full bg-amber-400/15 blur-[100px]"
-        />
-      )}
-      <div className="container relative z-[1] min-w-0 max-w-full">
-        <div className="mb-6 flex min-w-0 max-w-full items-end justify-between gap-4">
-          <div className="min-w-0">
-            {(eyebrow || spotlight) && (
-              <span
-                className={cn(
-                  "mb-2 block font-body text-[10px] uppercase tracking-[0.22em]",
-                  spotlight ? "text-amber-800/90 dark:text-amber-300/95" : "text-muted-foreground",
-                  muted && "opacity-75",
-                )}
-              >
-                {eyebrow || (spotlight ? "Επίκεντρο καλοκαιριού" : eyebrow)}
-              </span>
-            )}
-            <h2
-              className={cn(
-                "font-display font-bold text-foreground",
-                muted ? "text-xl md:text-2xl" : spotlight ? "text-3xl md:text-5xl md:leading-[1.1]" : "text-2xl",
-              )}
-            >
-              {title}
-            </h2>
-            {subtitle && (
-              <p
-                className={cn(
-                  "mt-1 font-body leading-relaxed",
-                  muted ? "text-sm text-muted-foreground max-w-xl" : spotlight ? "text-base md:text-lg text-muted-foreground max-w-2xl mt-2" : "text-base text-muted-foreground mt-1",
-                )}
-              >
-                {subtitle}
-              </p>
-            )}
-          </div>
-          {overflowing ? (
+      {spotlight && !muted ? (
+        <div className="container relative z-[1] max-w-7xl min-w-0">
+          <div className="relative overflow-hidden rounded-2xl border border-amber-500/15 bg-gradient-to-b from-amber-500/[0.09] via-transparent to-transparent px-4 py-10 md:px-8 md:py-14">
             <div
-              className={cn(
-                "relative z-20 flex shrink-0 items-center gap-1",
-                muted && "opacity-60",
-              )}
-            >
-              <button
-                type="button"
-                disabled={!canScrollLeft}
-                onClick={() => scroll("left")}
-                className={cn(
-                  "rounded-full border border-foreground/15 p-2 transition-colors",
-                  canScrollLeft
-                    ? "hover:bg-foreground hover:text-background"
-                    : "cursor-default opacity-35",
-                )}
-                aria-label="Κύλιση αριστερά"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </button>
-              <button
-                type="button"
-                disabled={!canScrollRight}
-                onClick={() => scroll("right")}
-                className={cn(
-                  "rounded-full border border-foreground/15 p-2 transition-colors",
-                  canScrollRight
-                    ? "hover:bg-foreground hover:text-background"
-                    : "cursor-default opacity-35",
-                )}
-                aria-label="Κύλιση δεξιά"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </button>
-            </div>
-          ) : null}
-        </div>
-        <div className="min-w-0 max-w-full">
-          <div
-            ref={scrollRef}
-            className={cn(
-              "flex max-w-full min-w-0 flex-nowrap items-stretch gap-4 overflow-x-scroll overscroll-x-contain pb-2 scrollbar-hide",
-              "touch-pan-x scroll-smooth [-webkit-overflow-scrolling:touch]",
-            )}
-          >
-            {children}
+              aria-hidden
+              className="pointer-events-none absolute -right-12 top-0 h-64 w-64 rounded-full bg-amber-400/15 blur-[100px]"
+            />
+            <div className="relative z-[1] min-w-0">{headerAndRail}</div>
           </div>
         </div>
-      </div>
+      ) : (
+        <div className="container relative z-[1] min-w-0 max-w-full">{headerAndRail}</div>
+      )}
     </section>
   );
 };

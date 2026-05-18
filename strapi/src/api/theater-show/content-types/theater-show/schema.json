@@ -67,12 +67,6 @@
       "target": "api::venue.venue",
       "inversedBy": "theater_shows"
     },
-    "showtimes": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::showtime.showtime",
-      "mappedBy": "theater_show"
-    },
     "reviews": {
       "type": "relation",
       "relation": "oneToMany",

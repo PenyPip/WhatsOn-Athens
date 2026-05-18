@@ -84,6 +84,27 @@ async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): P
   return json.data ?? json;
 }
 
+/** Συγχώνευση όλων των σελίδων (Strapi maxLimit ανά σελίδα · προεπιλογή CMS συχνά 100). */
+async function fetchAPIPagedEntries(endpoint: string, params: Record<string, string>): Promise<any[]> {
+  const pageSize = 100;
+  const aggregated: any[] = [];
+  const maxPages = 40;
+
+  for (let page = 1; page <= maxPages; page++) {
+    const chunk = await fetchAPI<any[]>(endpoint, {
+      ...params,
+      "pagination[page]": String(page),
+      "pagination[pageSize]": String(pageSize),
+    });
+    const rows = Array.isArray(chunk) ? chunk : [];
+    if (rows.length === 0) break;
+    aggregated.push(...rows);
+    if (rows.length < pageSize) break;
+  }
+
+  return aggregated;
+}
+
 const MOVIE_GENRE_LABELS: Record<string, string> = {
   action: "Δράση",
   adventure: "Περιπέτεια",
@@ -184,7 +205,6 @@ function mapMovie(raw: unknown): StrapiMovie {
     synopsis: m.synopsis,
     criticScore: m.critic_score,
     releaseDate: m.release_date,
-    isNew: m.is_new === true,
     trailerUrl: m.trailer_url,
     posterUrl: strapiMediaUrl(m.poster) ?? null,
   };
@@ -390,14 +410,6 @@ function mapShowtime(rawS: any): StrapiShowtime[] {
         : undefined;
   const movieId = strapiRelationNumericId(s.movie as unknown);
 
-  const thAttrs = strapiRelationAttrs(s.theater_show as unknown);
-  const theaterShowSlug =
-    typeof thAttrs?.slug === "string"
-      ? thAttrs.slug
-      : typeof s.theater_show?.slug === "string"
-        ? s.theater_show.slug
-        : undefined;
-
   const baseId = String(s.id);
   const slots = Array.isArray(s.show_slots) ? s.show_slots : [];
 
@@ -424,7 +436,6 @@ function mapShowtime(rawS: any): StrapiShowtime[] {
     movieId,
     movieSlug,
     movieTitle,
-    theaterShowSlug,
   });
 
   if (slots.length > 0) {
@@ -495,8 +506,6 @@ export interface StrapiMovie {
   synopsis: string;
   criticScore: number;
   releaseDate: string;
-  /** Strapi πεδίο is_new — για μπλοκ «Νέες ταινίες» στην αρχική */
-  isNew?: boolean;
   trailerUrl?: string;
   posterUrl?: string;
 }
@@ -593,8 +602,6 @@ export interface StrapiShowtime {
   movieTitle?: string;
   hallId?: number;
   hallName?: string;
-  /** όταν η προβολή είναι για παράσταση θεάτρου */
-  theaterShowSlug?: string;
 }
 
 export interface StrapiUserReview {
@@ -625,12 +632,11 @@ export const api = {
   getHomepage: () => fetchHomepage(),
 
   getMovies: () =>
-    fetchAPI<any[]>("/movies", {
+    fetchAPIPagedEntries("/movies", {
       "populate[movie_genre]": "*",
       /** Αλλιώς με ρητό populate χάνεται το media και η αφίσα επιστρέφει χωρίς url. */
       "populate[poster]": "*",
-      "pagination[pageSize]": "100",
-    }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapMovie(x))),
+    }).then((d) => d.map((x) => mapMovie(x))),
   getMovieBySlug: (slug: string) =>
     fetchAPI<any[]>(`/movies`, {
       "filters[slug][$eq]": slug,
@@ -675,11 +681,11 @@ export const api = {
     }),
 
   getShowtimes: () =>
-    fetchAPI<any[]>("/showtimes", {
+    fetchAPIPagedEntries("/showtimes", {
       "populate[movie]": "*",
       "populate[venue]": "*",
-      "populate[theater_show]": "*",
-    }).then((d) => (Array.isArray(d) ? d : []).flatMap((x) => mapShowtime(x))),
+      "populate[hall]": "*",
+    }).then((d) => d.flatMap((x) => mapShowtime(x))),
 
   getUserReviews: () =>
     fetchAPI<any[]>("/user-reviews").then((d) => (Array.isArray(d) ? d : []).map((x) => mapUserReview(x))),

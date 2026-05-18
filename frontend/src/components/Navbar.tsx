@@ -76,16 +76,6 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {/* Categories bar */}
-      <div className="fixed top-28 left-0 right-0 z-40 hidden md:block border-b" style={{ background: '#F0EDF8', borderColor: 'rgba(28,29,98,0.1)' }}>
-        <div className="container flex items-center gap-6 h-10" style={{ fontFamily: 'DM Sans, sans-serif', fontSize: '0.65rem', letterSpacing: '3px', textTransform: 'uppercase' }}>
-          <span style={{ color: 'rgba(28,29,98,0.35)' }}>Εξερεύνησε:</span>
-          {["Δράμα", "Κωμωδία", "Μιούζικαλ", "Σινεμά", "Νέα Μέρη"].map((cat) => (
-            <span key={cat} className="cursor-pointer transition-opacity hover:opacity-100" style={{ color: 'rgba(28,29,98,0.65)' }}>{cat}</span>
-          ))}
-        </div>
-      </div>
-
       {/* Mobile Bottom Nav */}
       <nav
         className="fixed bottom-0 left-0 right-0 z-50 md:hidden border-t"

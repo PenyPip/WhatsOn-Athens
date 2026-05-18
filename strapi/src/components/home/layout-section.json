@@ -2,7 +2,7 @@
   "collectionName": "components_home_layout_sections",
   "info": {
     "displayName": "Μπλοκ αρχικής",
-    "description": "Πρόσθεσε μόνο όσα θέλεις (2–4 τυπικά). Σειρά = σειρά εμφάνισης. movies_today=ταινίες με προβολή σήμερα, summer_cinema=θερινές ταινίες, summer_venues=χώροι με σήμα θερινού CMS, tours=περιοδείες θεάτρου, new_movies=με τσεκ is_new, movies_week=προβολές αυτής της εβδομάδας."
+    "description": "Πρόσθεσε μόνο όσα θέλεις (2–4 τυπικά). Σειρά = σειρά εμφάνισης. movies_today=ταινίες με προβολή σήμερα, summer_cinema=θερινές ταινίες, summer_venues=χώροι με σήμα θερινού CMS, tours=περιοδείες θεάτρου, new_movies=νέες κυκλοφορίες βάσει ημερομηνίας κυκλοφορίας, movies_week=προβολές αυτής της εβδομάδας."
   },
   "attributes": {
     "section_key": {

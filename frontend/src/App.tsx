@@ -25,8 +25,8 @@ const App = () => (
       <Sonner />
       <BrowserRouter>
         <Navbar />
-        {/* Χώρος για duble fixed header (nav h-28 + λωρίδα «Εξερεύνησε» h-10) ώστε το περιεχόμενο να μην κρύβεται από πάνω· το Hero το αναιρεί με -mt + pt. */}
-        <main className="min-h-screen md:pt-[9.5rem]">
+        {/* Χώρος για fixed desktop nav (h-28)· το Hero το αναιρεί με -mt + pt. */}
+        <main className="min-h-screen md:pt-28">
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/movies" element={<Movies />} />

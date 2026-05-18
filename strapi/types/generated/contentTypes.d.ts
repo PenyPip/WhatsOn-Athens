@@ -562,7 +562,6 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'oneToMany',
       'api::editorial-review.editorial-review'
     >;
-    is_new: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
     movie_genre: Attribute.Relation<
       'api::movie.movie',
@@ -679,11 +678,6 @@ export interface ApiShowtimeShowtime extends Schema.CollectionType {
     >;
     price: Attribute.Decimal;
     summer_screening: Attribute.Boolean & Attribute.DefaultTo<false>;
-    theater_show: Attribute.Relation<
-      'api::showtime.showtime',
-      'manyToOne',
-      'api::theater-show.theater-show'
-    >;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::showtime.showtime',
@@ -734,11 +728,6 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
       'api::theater-show.theater-show',
       'oneToMany',
       'api::user-review.user-review'
-    >;
-    showtimes: Attribute.Relation<
-      'api::theater-show.theater-show',
-      'oneToMany',
-      'api::showtime.showtime'
     >;
     slug: Attribute.UID<'api::theater-show.theater-show', 'title'> &
       Attribute.Required;

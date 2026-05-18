@@ -20,11 +20,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const eventShowtimes = useMemo((): StrapiShowtime[] => {
     const list = showtimes ?? [];
-    if (!slug) return [];
-    const filtered =
-      type === "movie"
-        ? list.filter((st) => st.movieSlug === slug && !st.theaterShowSlug)
-        : list.filter((st) => st.theaterShowSlug === slug);
+    if (!slug || type !== "movie") return [];
+    const filtered = list.filter((st) => st.movieSlug === slug);
     return [...filtered].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
   }, [showtimes, slug, type]);
 
