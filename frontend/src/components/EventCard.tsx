@@ -18,11 +18,29 @@ interface EventCardProps {
   posterUrl?: string;
   type: "movie" | "theater";
   badge?: string;
+  /** Λίστες όπως /movies: ηπιότερο πλαίσιο (λιγότερο «λευκό» από το προεπιλεγμένο card-elevated). */
+  tone?: "default" | "soft";
   className?: string;
   index?: number;
 }
 
-const EventCard = ({ slug, title, titleSecondary, subtitle, genre, duration, score, gradientFrom, gradientTo, posterUrl, type, badge, className = "", index = 0 }: EventCardProps) => {
+const EventCard = ({
+  slug,
+  title,
+  titleSecondary,
+  subtitle,
+  genre,
+  duration,
+  score,
+  gradientFrom,
+  gradientTo,
+  posterUrl,
+  type,
+  badge,
+  tone = "default",
+  className = "",
+  index = 0,
+}: EventCardProps) => {
   const showGradientFallback =
     !posterUrl && typeof gradientFrom === "string" && typeof gradientTo === "string";
   const subtitleLine = typeof subtitle === "string" && subtitle.trim() ? subtitle : "\u00a0";
@@ -39,7 +57,12 @@ const EventCard = ({ slug, title, titleSecondary, subtitle, genre, duration, sco
     >
       <Link
         to={`/${type === "movie" ? "movies" : "theater"}/${slug}`}
-        className="group flex h-full flex-col overflow-hidden card-elevated"
+        className={cn(
+          "group flex h-full flex-col overflow-hidden rounded-lg transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
+          tone === "soft"
+            ? "border-transparent bg-muted/35 shadow-none ring-1 ring-border/10 hover:-translate-y-0.5 hover:bg-muted/45 hover:shadow-[0_4px_14px_rgba(28,29,98,0.09)] hover:ring-border/[0.22]"
+            : "card-elevated",
+        )}
       >
         <div
           className={cn(
@@ -66,12 +89,24 @@ const EventCard = ({ slug, title, titleSecondary, subtitle, genre, duration, sco
             </span>
           )}
           {score && (
-            <div className="absolute bottom-2 left-2 rounded bg-card/95 px-2 py-0.5 text-xs font-bold text-[#13143E] shadow-sm ring-1 ring-border/10 z-10">
+            <div
+              className={cn(
+                "absolute bottom-2 left-2 rounded px-2 py-0.5 text-xs font-bold text-[#13143E] z-10",
+                tone === "soft"
+                  ? "bg-background/85 ring-1 ring-border/[0.08]"
+                  : "bg-card/95 shadow-sm ring-1 ring-border/10",
+              )}
+            >
               {score}/10
             </div>
           )}
         </div>
-        <div className="flex min-h-[8.25rem] flex-1 flex-col border-t border-border/12 px-3 py-2">
+        <div
+          className={cn(
+            "flex min-h-[8.25rem] flex-1 flex-col px-3 py-2",
+            tone === "soft" ? "border-t border-border/[0.07]" : "border-t border-border/12",
+          )}
+        >
           {type === "movie" && genreTrimmed ? (
             <p className="mb-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/95 leading-snug">
               <span className="font-normal text-muted-foreground/75">Είδος · </span>

@@ -330,14 +330,14 @@ const Movies = () => {
 
       <div className="container">
         {areaFilter && !venueFilter ? (
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-4">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/35 px-4 py-3.5 ring-1 ring-border/[0.08]">
             <p className="text-sm md:text-base text-foreground">
               Περιοχή: <strong className="font-semibold">{AREA_LABELS[areaFilter]}</strong>
             </p>
             <button
               type="button"
               onClick={() => setAreaParam(null)}
-              className="shrink-0 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary/80"
+              className="shrink-0 rounded-lg bg-background/65 px-3 py-2 text-sm font-medium text-foreground shadow-none ring-1 ring-border/10 transition-colors hover:bg-background/85"
             >
               Όλη η Ελλάδα
             </button>
@@ -345,32 +345,32 @@ const Movies = () => {
         ) : null}
 
         {venueFilter ? (
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-4">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-muted/35 px-4 py-3.5 ring-1 ring-border/[0.08]">
             <p className="text-sm md:text-base text-foreground">
               Προβολές για: <strong className="font-semibold">{venueFilter.name}</strong>
             </p>
             <button
               type="button"
               onClick={clearVenueFilter}
-              className="shrink-0 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary/80"
+              className="shrink-0 rounded-lg bg-background/65 px-3 py-2 text-sm font-medium text-foreground shadow-none ring-1 ring-border/10 transition-colors hover:bg-background/85"
             >
               Όλοι οι χώροι
             </button>
           </div>
         ) : venueSlug && !venuesLoading ? (
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-500/35 bg-amber-950/15 px-4 py-4">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-950/[0.09] px-4 py-3.5 ring-1 ring-amber-600/18">
             <p className="text-sm text-amber-100/90">Ο σύνδεσμος χώρου δεν αντιστοιχεί σε καταχωρημένο venue.</p>
             <button
               type="button"
               onClick={clearVenueFilter}
-              className="shrink-0 rounded-lg border border-amber-500/40 bg-black/40 px-3 py-2 text-sm font-medium text-amber-50 hover:bg-black/55"
+              className="shrink-0 rounded-lg bg-black/35 px-3 py-2 text-sm font-medium text-amber-50 shadow-none ring-1 ring-amber-500/25 transition-colors hover:bg-black/55"
             >
               Επαναφορά
             </button>
           </div>
         ) : null}
 
-        <div className="mb-6 rounded-xl border border-amber-500/15 bg-gradient-to-r from-amber-500/[0.06] via-transparent to-transparent px-4 py-4 md:px-5 md:py-4">
+        <div className="mb-6 rounded-xl bg-gradient-to-r from-amber-500/[0.04] via-muted/40 to-muted/35 px-4 py-4 md:px-5 md:py-4 ring-1 ring-border/[0.06]">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-display text-base font-semibold text-foreground md:text-lg">Θερινό σινεμά</p>
@@ -383,10 +383,10 @@ const Movies = () => {
               role="switch"
               aria-checked={summerOutdoorOnly}
               onClick={() => setSummerOutdoorOnly((v) => !v)}
-              className={`inline-flex shrink-0 items-center gap-2 rounded-full border px-4 py-2.5 text-sm font-semibold transition-colors ${
+              className={`inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2.5 text-sm font-semibold shadow-none ring-1 transition-colors ${
                 summerOutdoorOnly
-                  ? "border-amber-400/70 bg-amber-500/20 text-amber-950 dark:text-amber-100"
-                  : "border-border bg-card text-muted-foreground hover:border-amber-500/40 hover:text-foreground"
+                  ? "bg-amber-500/22 text-amber-950 ring-amber-600/35 dark:text-amber-50"
+                  : "bg-muted/50 text-muted-foreground ring-transparent hover:bg-muted/65 hover:text-foreground hover:ring-border/15"
               }`}
             >
               <span
@@ -412,10 +412,10 @@ const Movies = () => {
             <button
               type="button"
               onClick={() => setAreaParam(null)}
-              className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ring-1 ${
                 areaFilter === null && !venueSlug
-                  ? "bg-[#13143E] text-white border-[#13143E]"
-                  : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+                  ? "bg-[#13143E] text-white ring-[#13143E]"
+                  : "bg-muted/45 text-muted-foreground ring-border/[0.08] hover:bg-muted/60 hover:text-foreground hover:ring-border/25"
               }`}
             >
               Όλα
@@ -425,10 +425,10 @@ const Movies = () => {
                 type="button"
                 key={key}
                 onClick={() => setAreaParam(key)}
-                className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ring-1 ${
                   areaFilter === key && !venueSlug
-                    ? "bg-[#13143E] text-white border-[#13143E]"
-                    : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+                    ? "bg-[#13143E] text-white ring-[#13143E]"
+                    : "bg-muted/45 text-muted-foreground ring-border/[0.08] hover:bg-muted/60 hover:text-foreground hover:ring-border/25"
                 }`}
               >
                 {AREA_LABELS[key]}
@@ -447,7 +447,7 @@ const Movies = () => {
               onChange={(e) => setVenueQuery(e.target.value)}
               placeholder="Αναζήτηση σινεμά…"
               autoComplete="off"
-              className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#13143E]/50 focus:outline-none focus:ring-2 focus:ring-[#13143E]/20"
+              className="w-full rounded-lg border-transparent bg-muted/45 py-2 pl-9 pr-3 text-sm text-foreground shadow-none ring-1 ring-border/10 backdrop-blur-[2px] placeholder:text-muted-foreground focus:bg-background/90 focus:outline-none focus:ring-2 focus:ring-[#13143E]/18"
               aria-label="Αναζήτηση κατά όνομα σινεμά"
             />
           </div>
@@ -458,15 +458,15 @@ const Movies = () => {
                 : `Εμφάνιση ${venuesForChips.length} από ${venuesSorted.length} χώρους.`}
             </p>
           ) : null}
-          <div className="max-h-[min(280px,42vh)] overflow-y-auto rounded-lg border border-border/35 bg-muted/10 p-2">
+          <div className="max-h-[min(280px,42vh)] overflow-y-auto rounded-xl bg-muted/30 p-2 ring-1 ring-border/[0.06]">
             <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setVenueParam(null)}
-              className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+              className={`px-4 py-1.5 rounded-md text-sm font-medium transition-colors ring-1 ${
                 !venueSlug
-                  ? "bg-[#13143E] text-white border-[#13143E]"
-                  : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+                  ? "bg-[#13143E] text-white ring-[#13143E]"
+                  : "bg-muted/45 text-muted-foreground ring-border/[0.08] hover:bg-muted/60 hover:text-foreground hover:ring-border/25"
               }`}
             >
               Όλα
@@ -476,10 +476,10 @@ const Movies = () => {
                 type="button"
                 key={v.id}
                 onClick={() => setVenueParam(v.slug)}
-                className={`max-w-[200px] truncate px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                className={`max-w-[200px] truncate px-4 py-1.5 rounded-md text-sm font-medium transition-colors ring-1 ${
                   venueSlug === v.slug
-                    ? "bg-[#13143E] text-white border-[#13143E]"
-                    : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+                    ? "bg-[#13143E] text-white ring-[#13143E]"
+                    : "bg-muted/45 text-muted-foreground ring-border/[0.08] hover:bg-muted/60 hover:text-foreground hover:ring-border/25"
                 }`}
                 title={v.name}
               >
@@ -521,11 +521,12 @@ const Movies = () => {
                           score={movie.criticScore}
                           posterUrl={movie.posterUrl}
                           type="movie"
+                          tone="soft"
                           index={i}
                           className="w-full flex-1"
                         />
                       </div>
-                      <div className="shrink-0 rounded-lg border border-border/12 bg-muted/10 px-2.5 py-2 text-xs sm:text-sm leading-snug text-muted-foreground">
+                      <div className="shrink-0 rounded-lg bg-muted/30 px-2.5 py-2 text-xs sm:text-sm leading-snug text-muted-foreground shadow-none ring-1 ring-border/[0.07]">
                         <ul className="space-y-1">
                           {preview.map((row) => (
                             <li key={row.key} className="font-body tabular-nums leading-relaxed">
@@ -546,7 +547,7 @@ const Movies = () => {
                           ))}
                         </ul>
                         {rest.length > 0 ? (
-                          <details className="group mt-2 border-t border-border/12 pt-2">
+                          <details className="group mt-2 border-t border-transparent pt-2">
                             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground outline-none ring-offset-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
                               <span>{`Ακόμα ${rest.length} προβολή${rest.length === 1 ? "" : "ες"}`}</span>
                               <ChevronDown
@@ -554,7 +555,7 @@ const Movies = () => {
                                 className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
                               />
                             </summary>
-                            <ul className="mt-2 space-y-1 border-l border-border/30 pl-2.5">
+                            <ul className="mt-2 space-y-1 border-l-2 border-border/[0.12] pl-2">
                               {rest.map((row) => (
                                 <li key={row.key} className="font-body tabular-nums leading-relaxed">
                                   <span className="font-semibold tabular-nums text-foreground">
