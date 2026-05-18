@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_shared_cast_names",
+  "info": {
+    "displayName": "Ηθοποιός",
+    "description": "Ένα όνομα ανά γραμμή. Στο Admin: «Προσθήκη νέας εγγραφής» για κάθε ηθοποιό — χωρίς JSON ή κόμματα."
+  },
+  "options": {},
+  "attributes": {
+    "person_name": {
+      "type": "string",
+      "required": true
+    }
+  }
+}

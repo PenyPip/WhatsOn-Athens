@@ -27,10 +27,22 @@ export interface HomeLayoutSection extends Schema.Component {
   };
 }
 
+export interface SharedCastName extends Schema.Component {
+  collectionName: 'components_shared_cast_names';
+  info: {
+    description: '\u0388\u03BD\u03B1 \u03CC\u03BD\u03BF\u03BC\u03B1 \u03B1\u03BD\u03AC \u03B3\u03C1\u03B1\u03BC\u03BC\u03AE. \u03A3\u03C4\u03BF Admin: \u00AB\u03A0\u03C1\u03BF\u03C3\u03B8\u03AE\u03BA\u03B7 \u03BD\u03AD\u03B1\u03C2 \u03B5\u03B3\u03B3\u03C1\u03B1\u03C6\u03AE\u03C2\u00BB \u03B3\u03B9\u03B1 \u03BA\u03AC\u03B8\u03B5 \u03B7\u03B8\u03BF\u03C0\u03BF\u03B9\u03CC \u2014 \u03C7\u03C9\u03C1\u03AF\u03C2 JSON \u03AE \u03BA\u03CC\u03BC\u03BC\u03B1\u03C4\u03B1.';
+    displayName: '\u0397\u03B8\u03BF\u03C0\u03BF\u03B9\u03CC\u03C2';
+  };
+  attributes: {
+    person_name: Attribute.String & Attribute.Required;
+  };
+}
+
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
       'home.layout-section': HomeLayoutSection;
+      'shared.cast-name': SharedCastName;
     }
   }
 }

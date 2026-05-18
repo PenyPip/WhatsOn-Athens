@@ -546,7 +546,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
   };
   attributes: {
     age_rating: Attribute.String;
-    cast: Attribute.JSON;
+    cast: Attribute.Component<'shared.cast-name', true>;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
       'api::movie.movie',
@@ -702,7 +702,7 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     singularName: 'theater-show';
   };
   attributes: {
-    cast: Attribute.JSON;
+    cast: Attribute.Component<'shared.cast-name', true>;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
       'api::theater-show.theater-show',

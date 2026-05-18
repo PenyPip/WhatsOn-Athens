@@ -183,6 +183,52 @@ function movieGenreFieldsFromMovie(raw: Record<string, unknown>): { genre: strin
   return { genre: "" };
 }
 
+/** Unwrap Strapi cast: επαναλαμβανόμενο component, παλιό JSON (array), ή string (γραμμές/κόμματα). */
+export function normalizeCastFromStrapi(cast: unknown): string[] {
+  if (cast == null) return [];
+  if (typeof cast === "string") {
+    const t = cast.trim();
+    if (!t) return [];
+    if (t.startsWith("[")) {
+      try {
+        return normalizeCastFromStrapi(JSON.parse(t) as unknown);
+      } catch {
+        /* πτώση για split */
+      }
+    }
+    return t
+      .split(/\r?\n|[,;·•]\s*/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  if (!Array.isArray(cast)) return [];
+  const out: string[] = [];
+  for (const item of cast) {
+    if (typeof item === "string") {
+      const s = item.trim();
+      if (s) out.push(s);
+      continue;
+    }
+    if (item && typeof item === "object") {
+      const o = item as Record<string, unknown>;
+      const unwrapped = o.attributes && typeof o.attributes === "object" ? (o.attributes as Record<string, unknown>) : o;
+      const n =
+        typeof unwrapped.person_name === "string"
+          ? unwrapped.person_name
+          : typeof unwrapped.name === "string"
+            ? unwrapped.name
+            : typeof o.person_name === "string"
+              ? o.person_name
+              : typeof o.name === "string"
+                ? o.name
+                : "";
+      const trimmed = typeof n === "string" ? n.trim() : "";
+      if (trimmed) out.push(trimmed);
+    }
+  }
+  return out;
+}
+
 function mapMovie(raw: unknown): StrapiMovie {
   const m = unwrapStrapiEntry(raw);
   const gf = movieGenreFieldsFromMovie(m as Record<string, unknown>);
@@ -199,7 +245,7 @@ function mapMovie(raw: unknown): StrapiMovie {
     title: m.title,
     originalTitle: originalTitle || undefined,
     director: m.director,
-    cast: m.cast || [],
+    cast: normalizeCastFromStrapi(m.cast),
     genre: gf.genre,
     genreSlug: gf.genreSlug,
     duration: m.duration,
@@ -229,7 +275,7 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     slug: s.slug,
     title: s.title,
     director: s.director,
-    cast: s.cast || [],
+    cast: normalizeCastFromStrapi(s.cast),
     genre: s.genre,
     duration: s.duration,
     venue,
@@ -642,12 +688,14 @@ export const api = {
       "populate[movie_genre]": "*",
       /** Αλλιώς με ρητό populate χάνεται το media και η αφίσα επιστρέφει χωρίς url. */
       "populate[poster]": "*",
+      "populate[cast]": "*",
     }).then((d) => d.map((x) => mapMovie(x))),
   getMovieBySlug: (slug: string) =>
     fetchAPI<any[]>(`/movies`, {
       "filters[slug][$eq]": slug,
       "populate[movie_genre]": "*",
       "populate[poster]": "*",
+      "populate[cast]": "*",
     }).then((d) => {
       const row = Array.isArray(d) ? d[0] : undefined;
       return row ? mapMovie(row) : undefined;

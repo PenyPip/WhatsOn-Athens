@@ -28,6 +28,7 @@ const EventCard = ({ slug, title, titleSecondary, subtitle, genre, duration, sco
   const subtitleLine = typeof subtitle === "string" && subtitle.trim() ? subtitle : "\u00a0";
   const posterAlt = titleSecondary ? `${title} · ${titleSecondary}` : title;
   const showDuration = typeof duration === "number" && Number.isFinite(duration) && duration > 0;
+  const genreTrimmed = typeof genre === "string" ? genre.trim() : "";
 
   return (
     <motion.div
@@ -65,30 +66,40 @@ const EventCard = ({ slug, title, titleSecondary, subtitle, genre, duration, sco
             </span>
           )}
           {score && (
-            <div className="absolute bottom-2 left-2 px-2 py-0.5 bg-white text-xs font-bold text-[#13143E] rounded z-10">
+            <div className="absolute bottom-2 left-2 rounded bg-card/95 px-2 py-0.5 text-xs font-bold text-[#13143E] shadow-sm ring-1 ring-border/10 z-10">
               {score}/10
             </div>
           )}
         </div>
-        <div className="flex flex-1 flex-col bg-white p-3">
-          <h3
+        <div className="flex min-h-[8.25rem] flex-1 flex-col border-t border-border/12 px-3 py-2">
+          {type === "movie" && genreTrimmed ? (
+            <p className="mb-1.5 shrink-0 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/95 leading-snug">
+              <span className="font-normal text-muted-foreground/75">Είδος · </span>
+              {genreTrimmed}
+            </p>
+          ) : null}
+          <div className="min-h-[2.75rem]">
+            <h3 className="font-display text-base font-semibold leading-tight text-foreground line-clamp-2 group-hover:text-primary transition-colors">
+              {title}
+            </h3>
+            {titleSecondary ? (
+              <p className="mt-0.5 text-sm font-medium leading-snug text-muted-foreground line-clamp-2">{titleSecondary}</p>
+            ) : null}
+          </div>
+          <p className="mb-1.5 mt-1 min-h-[1.25rem] text-sm leading-snug text-muted-foreground line-clamp-1">{subtitleLine}</p>
+          <div
             className={cn(
-              "mb-1 font-display text-base font-semibold leading-tight text-gray-900 line-clamp-2 group-hover:text-primary transition-colors",
-              !titleSecondary && "min-h-[2.75rem]",
+              "mt-auto flex items-end gap-2 pt-1",
+              type === "movie" ? "justify-end" : "justify-between",
             )}
           >
-            {title}
-          </h3>
-          {titleSecondary ? (
-            <p className="-mt-0.5 mb-2 text-sm font-medium leading-snug text-gray-600 line-clamp-2">{titleSecondary}</p>
-          ) : null}
-          <p className={cn("mb-2 text-sm leading-snug text-gray-500 line-clamp-1", titleSecondary ? "min-h-0" : "min-h-[1.375rem]")}>{subtitleLine}</p>
-          <div className="mt-auto flex items-end justify-between gap-2 pt-1">
-            <span className="min-w-0 text-xs font-medium uppercase tracking-wider text-gray-400 line-clamp-1">
-              {type === "movie" && genre ? `Είδος · ${genre}` : genre || "\u00a0"}
-            </span>
+            {type === "theater" ? (
+              <span className="min-w-0 flex-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/90 line-clamp-1">
+                {genreTrimmed || "\u00a0"}
+              </span>
+            ) : null}
             {showDuration ? (
-              <div className="flex shrink-0 items-center gap-1 text-sm text-gray-400">
+              <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
                 <Clock className="h-3.5 w-3.5 shrink-0" />
                 <span>{duration}&nbsp;′</span>
               </div>

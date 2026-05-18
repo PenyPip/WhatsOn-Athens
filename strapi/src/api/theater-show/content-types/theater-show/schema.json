@@ -23,7 +23,10 @@
       "type": "string"
     },
     "cast": {
-      "type": "json"
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.cast-name",
+      "description": "Λίστα συντελεστών: μία καταχώρηση ανά όνομα (χωρίς JSON)."
     },
     "genre": {
       "type": "enumeration",

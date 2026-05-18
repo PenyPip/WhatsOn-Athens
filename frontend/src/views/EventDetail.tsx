@@ -7,7 +7,7 @@ import { useMovies, useTheaterShows, useEditorialReviews, useUserReviews, useSho
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
-import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
+import { normalizeCastFromStrapi, type StrapiMovie, type StrapiShowtime, type StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 
@@ -110,12 +110,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     ? movies?.find((m) => m.slug === slug)
     : theaterShows?.find((s) => s.slug === slug);
 
-  const castList = useMemo((): string[] => {
-    if (!event || !Array.isArray(event.cast)) return [];
-    return event.cast
-      .filter((c): c is string => typeof c === "string" && c.trim() !== "")
-      .map((c) => c.trim());
-  }, [event]);
+  const castList = useMemo((): string[] => (event ? normalizeCastFromStrapi(event.cast) : []), [event]);
 
   if (isLoading) {
     return (

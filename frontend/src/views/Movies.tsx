@@ -525,7 +525,7 @@ const Movies = () => {
                           className="w-full flex-1"
                         />
                       </div>
-                      <div className="shrink-0 rounded-lg border border-border/35 bg-muted/15 px-2.5 py-2 text-xs sm:text-sm leading-snug text-muted-foreground">
+                      <div className="shrink-0 rounded-lg border border-border/12 bg-muted/10 px-2.5 py-2 text-xs sm:text-sm leading-snug text-muted-foreground">
                         <ul className="space-y-1">
                           {preview.map((row) => (
                             <li key={row.key} className="font-body tabular-nums leading-relaxed">
@@ -546,7 +546,7 @@ const Movies = () => {
                           ))}
                         </ul>
                         {rest.length > 0 ? (
-                          <details className="group mt-2 border-t border-border/25 pt-2">
+                          <details className="group mt-2 border-t border-border/12 pt-2">
                             <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground outline-none ring-offset-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
                               <span>{`Ακόμα ${rest.length} προβολή${rest.length === 1 ? "" : "ες"}`}</span>
                               <ChevronDown
