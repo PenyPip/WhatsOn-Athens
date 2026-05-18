@@ -528,7 +528,7 @@ const Movies = () => {
                         index={i}
                         className="w-full"
                       />
-                      <div className="flex min-h-0 flex-1 flex-col justify-end border-t border-border/[0.1] px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
+                      <div className="flex min-h-0 flex-1 flex-col justify-start border-t border-border/[0.1] px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
                         <ul className="space-y-1">
                           {preview.map((row) => (
                             <li key={row.key} className="font-body tabular-nums leading-relaxed">
