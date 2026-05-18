@@ -33,6 +33,7 @@ const Venues = () => {
               >
                 <VenueCard
                   venue={venue}
+                  layout="grid"
                   variant="page"
                   moviesHref={`/movies?venue=${encodeURIComponent(venue.slug)}`}
                 />

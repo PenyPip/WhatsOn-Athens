@@ -1,4 +1,4 @@
-import { ExternalLink, MapPin, Users } from "lucide-react";
+import { ChevronRight, ExternalLink, MapPin, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import type { StrapiVenue } from "@/lib/api";
@@ -19,17 +19,19 @@ export interface VenueCardProps {
   /** Αν υπάρχει, κάθε χτύπημα στην κάρτα (εκτός από εξωτερικά links) οδηγεί στις ταινίες με φίλτρο χώρου. */
   moviesHref?: string;
   variant?: "page" | "spotlight";
+  /** Στη γραμμή carousel χρειάζεται σταθερό πλάτος· σε grid/grid-like γονέα χρησιμοποίησε `grid` για να γεμίζει το κελί. */
+  layout?: "carousel" | "grid";
   className?: string;
 }
 
-const VenueCard = ({ venue, moviesHref, variant = "page", className }: VenueCardProps) => {
+const VenueCard = ({ venue, moviesHref, variant = "page", layout = "carousel", className }: VenueCardProps) => {
   const isSpotlight = variant === "spotlight";
   const headingClass = cn("font-display text-lg font-semibold leading-snug", isSpotlight ? "text-white" : "text-foreground");
-  const bodyClass = cn("grow space-y-2 text-sm", isSpotlight ? "text-white/55" : "text-muted-foreground");
+  const metaBodyClass = cn("grow space-y-2 text-sm", isSpotlight ? "text-white/55" : "text-muted-foreground");
   const cityClass = cn("text-xs font-medium", isSpotlight ? "text-white/65" : "text-foreground");
 
   const mainContent = (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col">
       <div className="mb-3 flex items-start justify-between gap-3">
         <h3 className={headingClass}>{venue.name}</h3>
         <div className="pointer-events-none flex flex-wrap justify-end gap-1.5 shrink-0">
@@ -50,7 +52,7 @@ const VenueCard = ({ venue, moviesHref, variant = "page", className }: VenueCard
           ) : null}
         </div>
       </div>
-      <div className={cn("pointer-events-none", bodyClass)}>
+      <div className={cn(metaBodyClass, "pointer-events-none")}>
         {venue.address ? (
           <p className="flex items-start gap-2">
             <MapPin className={cn("mt-0.5 h-3.5 w-3.5 flex-shrink-0", isSpotlight ? "text-white/40" : "text-muted-foreground")} />
@@ -68,20 +70,23 @@ const VenueCard = ({ venue, moviesHref, variant = "page", className }: VenueCard
       {moviesHref ? (
         <p
           className={cn(
-            "pointer-events-none mt-3 text-xs font-semibold uppercase tracking-wide",
-            isSpotlight ? "text-amber-300/95" : "text-primary",
+            "pointer-events-none mt-auto inline-flex items-center gap-0.5 pt-5 text-xs font-medium leading-snug",
+            isSpotlight ? "text-amber-200/95" : "text-primary",
           )}
         >
-          Πάτα για τι παίζει σε αυτόν τον χώρο →
+          Πρόγραμμα ταινιών σε αυτόν τον χώρο
+          <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
         </p>
       ) : null}
-    </>
+    </div>
   );
 
-  const footer = (
+  const hasFooterLinks = Boolean(venue.moreLink || venue.googleMapsUrl);
+
+  const footerOuter = hasFooterLinks ? (
     <div
       className={cn(
-        "relative z-[2] mt-4 flex flex-wrap gap-2 border-t pt-4",
+        "relative z-[2] mt-auto flex shrink-0 flex-wrap gap-2 border-t pt-4 pointer-events-none",
         isSpotlight ? "border-white/10" : "border-border",
       )}
     >
@@ -118,13 +123,17 @@ const VenueCard = ({ venue, moviesHref, variant = "page", className }: VenueCard
         </a>
       ) : null}
     </div>
-  );
+  ) : null;
 
-  /** Στο spotlight τα κείμενα είναι ανοικτά· το `.card-elevated` βάζει φωτεινό --card όποτε σε hover γίνεται αόρατο με άσπρο κείμενο. */
-  const spotlightShell =
-    "relative flex h-full min-h-[200px] flex-col rounded-lg border border-white/12 bg-black/50 p-6 text-left shadow-[0_8px_30px_rgba(0,0,0,0.25)]";
+  /** Στο spotlight χωρίς `.card-elevated` (φωτεινό --card). Σταθερό min ύψος ώστε όλες οι κάρτες να ευθυγραμμίζονται. */
+  const cardMinH = "min-h-[296px]";
+  const spotlightShell = cn(
+    "relative flex h-full flex-col rounded-lg border border-white/12 bg-black/50 p-6 text-left shadow-[0_8px_30px_rgba(0,0,0,0.25)]",
+    cardMinH,
+  );
   const pageShell = cn(
-    "card-elevated relative flex h-full min-h-[200px] flex-col p-6 text-left transition-colors",
+    "card-elevated relative flex h-full flex-col p-6 text-left transition-colors",
+    cardMinH,
     moviesHref && "hover:border-primary/35",
   );
 
@@ -140,15 +149,17 @@ const VenueCard = ({ venue, moviesHref, variant = "page", className }: VenueCard
           <Link
             to={moviesHref}
             className="absolute inset-0 z-0 rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400"
-            aria-label={`Ταινίες στο χώρο ${venue.name}`}
+            aria-label={`Πρόγραμμα ταινιών στο χώρο ${venue.name}`}
           />
-          <div className="relative z-[1]">{mainContent}</div>
-          {(venue.moreLink || venue.googleMapsUrl) && footer}
+          <div className="relative z-[1] flex min-h-0 flex-1 flex-col pointer-events-none">
+            {mainContent}
+          </div>
+          {footerOuter}
         </>
       ) : (
         <>
-          {mainContent}
-          {(venue.moreLink || venue.googleMapsUrl) && footer}
+          <div className="flex min-h-0 flex-1 flex-col">{mainContent}</div>
+          {footerOuter}
         </>
       )}
     </div>
@@ -157,8 +168,9 @@ const VenueCard = ({ venue, moviesHref, variant = "page", className }: VenueCard
   return (
     <div
       className={cn(
-        "h-full",
-        moviesHref ? "min-w-[280px] max-w-[320px] shrink-0 md:min-w-[300px] md:max-w-[340px]" : "",
+        "flex h-full flex-col",
+        moviesHref && layout === "carousel" && "min-w-[280px] max-w-[320px] shrink-0 md:min-w-[300px] md:max-w-[340px]",
+        moviesHref && layout === "grid" && "min-w-0 w-full",
       )}
     >
       {cardShell}
