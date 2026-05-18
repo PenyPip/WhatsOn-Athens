@@ -25,16 +25,25 @@ const PUBLIC_COLLECTION_READ_ACTIONS = [
 const PUBLIC_SINGLE_TYPE_ACTIONS = ['api::homepage.homepage.find'];
 
 async function enablePublicPermission(strapi, action, publicRoleId) {
-  const perms = await strapi.db.query('plugin::users-permissions.permission').findMany({
+  let perms = await strapi.db.query('plugin::users-permissions.permission').findMany({
     where: { role: publicRoleId, action },
     limit: 1,
   });
-  const permission = perms[0];
+  let permission = perms[0];
+  /** Νέοι τύποι CMS (π.χ. Είδος ταινίας): η εγγραφή permission πρέπει να δημιουργείται ή δεν εμφανίζεται στο REST populate. */
   if (!permission) {
-    strapi.log.warn(
-      `[whatson] Λείπει permission για Public: "${action}". Στο Strapi Admin → Settings → Users & Permissions → Public, άνοιξε την αντίστοιχη ενότητα και αποθήκευσε για να δημιουργηθούν οι εγγραφές· μετά restart.`,
-    );
-    return false;
+    try {
+      permission = await strapi.db.query('plugin::users-permissions.permission').create({
+        data: { action, enabled: true, role: publicRoleId },
+      });
+      strapi.log.info(`[whatson] Δημιουργήθηκε + Public: ${action}`);
+    } catch (e) {
+      strapi.log.warn(
+        `[whatson] Δεν ήταν δυνατή η δημιουργία permission για Public: "${action}". Admin → Users & Permissions → Public → όρισε χειροκίνητα. ${e}`,
+      );
+      return false;
+    }
+    return true;
   }
   if (!permission.enabled) {
     await strapi.db.query('plugin::users-permissions.permission').update({

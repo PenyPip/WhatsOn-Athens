@@ -175,6 +175,14 @@ function strapiMediaUrl(media: unknown): string | undefined {
 /** Εγγραφές σχέσης Strapi: παλιό `movie_genre` ή νέο `movie_genres` (πολλά). */
 function relationDataEntries(rel: unknown): Record<string, unknown>[] {
   if (rel == null) return [];
+  if (Array.isArray(rel)) {
+    const out: Record<string, unknown>[] = [];
+    for (const node of rel) {
+      const u = unwrapStrapiEntry(node);
+      if (u && typeof u === "object" && !Array.isArray(u)) out.push(u as Record<string, unknown>);
+    }
+    return out;
+  }
   if (typeof rel !== "object") return [];
   const o = rel as Record<string, unknown>;
   if (typeof o.label === "string" || typeof o.slug === "string") return [o];
@@ -190,9 +198,12 @@ function relationDataEntries(rel: unknown): Record<string, unknown>[] {
 }
 
 function movieGenresFromMovieRaw(raw: Record<string, unknown>): { genre: string; genreSlug?: string; genreSlugs: string[] } {
-  const fromMany = relationDataEntries(raw.movie_genres);
-  const fromLegacy = relationDataEntries(raw.movie_genre);
-  const merged = [...fromMany, ...fromLegacy];
+  const alt = raw as { movieGenres?: unknown; movie_genre?: unknown; movie_genres?: unknown };
+  const merged = [
+    ...relationDataEntries(alt.movie_genres),
+    ...relationDataEntries(alt.movieGenres),
+    ...relationDataEntries(raw.movie_genre),
+  ];
   type Pair = { label: string; slug: string };
   const pairs: Pair[] = [];
   const seen = new Set<string>();
@@ -723,17 +734,17 @@ export const api = {
 
   getMovies: () =>
     fetchAPIPagedEntries("/movies", {
-      "populate[movie_genres]": "*",
-      /** Αλλιώς με ρητό populate χάνεται το media και η αφίσα επιστρέφει χωρίς url. */
-      "populate[poster]": "*",
-      "populate[cast]": "*",
+      /**
+       * `populate=*` φέρνει σχέσεις πρώτου επιπέδου (poster, movie_genres, cast …).
+       * Στη Strapi 4, μόνο `populate[movie_genres]=*` (χωρίς *) συχνά δεν επεκτείνει τις υπόλοιπες σχέσεις·
+       * αν τα είδη δεν είναι Public-readable, Το CMS αφαιρεί το populate από την απάντηση.
+       */
+      populate: "*",
     }).then((d) => d.map((x) => mapMovie(x))),
   getMovieBySlug: (slug: string) =>
     fetchAPI<any[]>(`/movies`, {
       "filters[slug][$eq]": slug,
-      "populate[movie_genres]": "*",
-      "populate[poster]": "*",
-      "populate[cast]": "*",
+      populate: "*",
     }).then((d) => {
       const row = Array.isArray(d) ? d[0] : undefined;
       return row ? mapMovie(row) : undefined;
