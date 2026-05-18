@@ -12,6 +12,7 @@ import type { StrapiMovie } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
   moviesReleasedInLastDays,
+  moviesWithFutureReleaseDate,
   moviesWithSummerOutdoorShowtime,
   moviesWithShowtimeThisWeek,
   moviesWithShowtimeToday,
@@ -140,6 +141,7 @@ const Index = () => {
   const weekMovies = useMemo(() => moviesWithShowtimeThisWeek(movieList, stList), [movieList, stList]);
   const todayMovies = useMemo(() => moviesWithShowtimeToday(movieList, stList), [movieList, stList]);
   const newMoviesList = useMemo(() => moviesReleasedInLastDays(movieList, 10), [movieList]);
+  const comingSoonMovies = useMemo(() => moviesWithFutureReleaseDate(movieList), [movieList]);
 
   const sectionEl = (id: HomeSectionId, node: ReactNode) => <Fragment key={id}>{node}</Fragment>;
 
@@ -341,6 +343,20 @@ const Index = () => {
                 muted
                 eyebrow="Τρέχουσα εβδομάδα"
                 title="Ταινίες της εβδομάδας"
+              />,
+            );
+          case "coming_soon":
+            return sectionEl(
+              "coming_soon",
+              <MovieRowScroll
+                loading={moviesLoading}
+                loadingMessage="Φόρτωση ταινιών..."
+                fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
+                items={comingSoonMovies}
+                muted
+                eyebrow="Μελλοντική κυκλοφορία"
+                title="Προσεχώς"
+                emptyMessage="Δεν υπάρχουν ταινίες με ημερομηνία κυκλοφορίας μετά τη σημερινή μέρα."
               />,
             );
           case "dining":

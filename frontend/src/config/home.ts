@@ -1,7 +1,7 @@
 /**
  * Το layout της αρχικής έρχεται από Strapi Single Type «Homepage».
- * Έτοιμα τμήματα: movies_today (προβολές σήμερα), summer_cinema (θερινές ταινίες), summer_venues (χώροι ως θερινό στο CMS),
- * tours, new_movies (νέες κυκλοφορίες: τελευταίες 10 ημέρες release date), movies_week — διάλεξε ποια εμφανίζονται και με ποια σειρά.
+ * Έτοιμα τμήματα: movies_today, summer_cinema, summer_venues, tours,
+ * new_movies (τελευταίες 10 ημέρες release date), movies_week, coming_soon (release date μετά τη σήμερα) — διάλεξε ποια εμφανίζονται και με ποια σειρά.
  */
 
 export const HOME_SECTION_IDS = [
@@ -13,6 +13,7 @@ export const HOME_SECTION_IDS = [
   "tours",
   "new_movies",
   "movies_week",
+  "coming_soon",
   "dining",
   "newsletter",
 ] as const;

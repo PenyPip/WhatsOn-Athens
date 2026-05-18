@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import ScrollToTop from "@/components/ScrollToTop";
 import Navbar from "@/components/Navbar";
+import CookieConsentBanner from "@/components/CookieConsentBanner";
 import Index from "./views/Index";
 import Movies from "./views/Movies";
 import TheaterPage from "./views/Theater";
@@ -16,6 +17,7 @@ import Reviews from "./views/Reviews";
 import ReviewDetail from "./views/ReviewDetail";
 import Profile from "./views/Profile";
 import NotFound from "./views/NotFound";
+import Privacy from "./views/Privacy";
 
 const queryClient = new QueryClient();
 
@@ -29,6 +31,7 @@ const App = () => (
         <Navbar />
         {/* Χώρος για fixed desktop nav (h-28)· το Hero το αναιρεί με -mt + pt. */}
         <main className="min-h-screen md:pt-28">
+          <CookieConsentBanner />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/movies" element={<Movies />} />
@@ -41,6 +44,7 @@ const App = () => (
             <Route path="/reviews" element={<Reviews />} />
             <Route path="/reviews/:slug" element={<ReviewDetail />} />
             <Route path="/profile" element={<Profile />} />
+            <Route path="/privacy" element={<Privacy />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </main>
