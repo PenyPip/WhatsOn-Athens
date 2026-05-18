@@ -3,10 +3,9 @@ import { motion } from "framer-motion";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
-import { useMovies, useShowtimes } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useMovieGenres } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
 
-const genres = ["Όλα", "Δράμα", "Κωμωδία", "Θρίλερ", "Επιστημονική Φαντασία"];
 const sortOptions = [
   { label: "Ημερομηνία", value: "date" },
   { label: "Βαθμολογία", value: "score" },
@@ -15,16 +14,26 @@ const sortOptions = [
 const Movies = () => {
   const { data: movies, isLoading } = useMovies();
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes();
-  const [genre, setGenre] = useState("Όλα");
+  const { data: cmsGenres } = useMovieGenres();
+  const [genreSlug, setGenreSlug] = useState<string | null>(null);
   const [sort, setSort] = useState("date");
+
+  const genreFilters = useMemo(() => {
+    if (cmsGenres?.length) return cmsGenres.map((g) => ({ slug: g.slug, label: g.label }));
+    const seen = new Map<string, string>();
+    for (const m of movies ?? []) {
+      if (m.genreSlug && m.genre) seen.set(m.genreSlug, m.genre);
+    }
+    return [...seen.entries()].map(([slug, label]) => ({ slug, label }));
+  }, [cmsGenres, movies]);
 
   const filteredMovies = useMemo(() => {
     if (!movies) return [];
-    let result = genre === "Όλα" ? movies : movies.filter((m) => m.genre === genre);
+    let result = genreSlug == null ? [...movies] : movies.filter((m) => m.genreSlug === genreSlug);
     if (sort === "date") result = [...result].sort((a, b) => new Date(b.releaseDate).getTime() - new Date(a.releaseDate).getTime());
     if (sort === "score") result = [...result].sort((a, b) => b.criticScore - a.criticScore);
     return result;
-  }, [movies, genre, sort]);
+  }, [movies, genreSlug, sort]);
 
   const groupedMovies = useMemo(() => {
     if (!showtimes || !movies) return [];
@@ -113,15 +122,29 @@ const Movies = () => {
       <div className="container">
         <div className="flex flex-wrap items-center gap-2 mb-4">
           <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Είδος:</span>
-          {genres.map((g) => (
+          <button
+            type="button"
+            onClick={() => setGenreSlug(null)}
+            className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+              genreSlug === null
+                ? "bg-[#13143E] text-white border-[#13143E]"
+                : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+            }`}
+          >
+            Όλα
+          </button>
+          {genreFilters.map(({ slug, label }) => (
             <button
-              key={g}
-              onClick={() => setGenre(g)}
+              type="button"
+              key={slug}
+              onClick={() => setGenreSlug(slug)}
               className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
-                genre === g ? "bg-[#13143E] text-white border-[#13143E]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+                genreSlug === slug
+                  ? "bg-[#13143E] text-white border-[#13143E]"
+                  : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
               }`}
             >
-              {g}
+              {label}
             </button>
           ))}
         </div>
@@ -147,14 +170,22 @@ const Movies = () => {
             {groupedMovies.map((section) => (
               <section key={section.label}>
                 <h2 className="font-display text-2xl font-semibold mb-4 capitalize">{section.label}</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 items-stretch">
                   {section.movies.map((movie, i) => (
-                    <EventCard
-                      key={`${section.label}-${movie.id}`} slug={movie.slug} title={movie.title} subtitle={movie.director}
-                      genre={movie.genre} duration={movie.duration} score={movie.criticScore}
-                      posterUrl={movie.posterUrl}
-                      type="movie" index={i}
-                    />
+                    <div key={`${section.label}-${movie.id}`} className="flex h-full min-h-0">
+                      <EventCard
+                        slug={movie.slug}
+                        title={movie.title}
+                        subtitle={movie.director ?? ""}
+                        genre={movie.genre}
+                        duration={movie.duration}
+                        score={movie.criticScore}
+                        posterUrl={movie.posterUrl}
+                        type="movie"
+                        index={i}
+                        className="w-full flex-1"
+                      />
+                    </div>
                   ))}
                 </div>
               </section>

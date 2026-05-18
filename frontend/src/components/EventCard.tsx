@@ -23,20 +23,22 @@ interface EventCardProps {
 const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom, gradientTo, posterUrl, type, badge, className = "", index = 0 }: EventCardProps) => {
   const showGradientFallback =
     !posterUrl && typeof gradientFrom === "string" && typeof gradientTo === "string";
+  const subtitleLine = typeof subtitle === "string" && subtitle.trim() ? subtitle : "\u00a0";
 
   return (
     <motion.div
+      className={cn("h-full", className)}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
     >
       <Link
         to={`/${type === "movie" ? "movies" : "theater"}/${slug}`}
-        className={`group block card-elevated overflow-hidden ${className}`}
+        className="group flex h-full flex-col overflow-hidden card-elevated"
       >
         <div
           className={cn(
-            "aspect-[2/3] relative overflow-hidden",
+            "relative aspect-[2/3] shrink-0 overflow-hidden",
             !posterUrl && !showGradientFallback && "bg-secondary",
           )}
           style={
@@ -64,15 +66,17 @@ const EventCard = ({ slug, title, subtitle, genre, duration, score, gradientFrom
             </div>
           )}
         </div>
-        <div className="p-3 bg-white">
-          <h3 className="font-display font-semibold text-base leading-tight mb-1 text-gray-900 group-hover:text-primary transition-colors line-clamp-2">
+        <div className="flex flex-1 flex-col bg-white p-3">
+          <h3 className="mb-1 min-h-[2.75rem] font-display text-base font-semibold leading-tight text-gray-900 line-clamp-2 group-hover:text-primary transition-colors">
             {title}
           </h3>
-          <p className="text-sm text-gray-500 mb-2">{subtitle}</p>
-          <div className="flex items-center justify-between">
-            <span className="text-xs uppercase tracking-wider text-gray-400 font-medium">{type === "movie" && genre ? `Είδος · ${genre}` : genre}</span>
-            <div className="flex items-center gap-1 text-sm text-gray-400">
-              <Clock className="w-3.5 h-3.5" />
+          <p className="mb-2 min-h-[1.375rem] text-sm leading-snug text-gray-500 line-clamp-1">{subtitleLine}</p>
+          <div className="mt-auto flex items-end justify-between gap-2 pt-1">
+            <span className="min-w-0 text-xs font-medium uppercase tracking-wider text-gray-400 line-clamp-1">
+              {type === "movie" && genre ? `Είδος · ${genre}` : genre || "\u00a0"}
+            </span>
+            <div className="flex shrink-0 items-center gap-1 text-sm text-gray-400">
+              <Clock className="h-3.5 w-3.5 shrink-0" />
               <span>{duration}&nbsp;′</span>
             </div>
           </div>

@@ -85,9 +85,11 @@ const Hero = () => {
           transition={{ duration: 0.7, ease: "easeOut" }}
         >
           <span className="mb-3 block font-body text-[10px] uppercase tracking-[0.28em] text-amber-200/90 md:text-[11px]">{eyebrow}</span>
-          <span className="mb-2 inline-flex rounded border border-white/15 bg-white/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200/95">
-            Είδος · {featured.genre}
-          </span>
+          {(featured.genre ?? "").trim() ? (
+            <span className="mb-2 inline-flex rounded border border-white/15 bg-white/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200/95">
+              Είδος · {featured.genre}
+            </span>
+          ) : null}
           <span className="mb-2 block text-xs font-body uppercase tracking-[0.2em] text-white/55">{kicker}</span>
           <div className="w-16 h-0.5 bg-amber-400/85 mb-5" />
           <h1 className="font-display text-4xl md:text-6xl font-bold mb-4 leading-tight text-white">{featured.title}</h1>

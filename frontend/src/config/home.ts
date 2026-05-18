@@ -1,12 +1,13 @@
 /**
  * Το layout της αρχικής έρχεται από Strapi Single Type «Homepage».
- * Έτοιμα τμήματα: summer_cinema (θερινές ταινίες), summer_venues (χώροι ως θερινό στο CMS),
+ * Έτοιμα τμήματα: movies_today (προβολές σήμερα), summer_cinema (θερινές ταινίες), summer_venues (χώροι ως θερινό στο CMS),
  * tours (περιοδείες), new_movies, movies_week — διάλεξε ποια εμφανίζονται και με ποια σειρά.
  */
 
 export const HOME_SECTION_IDS = [
   "hero",
   "strip",
+  "movies_today",
   "summer_cinema",
   "summer_venues",
   "tours",
@@ -22,6 +23,7 @@ export type HomeSectionId = (typeof HOME_SECTION_IDS)[number];
 export const FALLBACK_SECTIONS: HomeSectionId[] = [
   "hero",
   "strip",
+  "movies_today",
   "summer_cinema",
   "summer_venues",
   "tours",

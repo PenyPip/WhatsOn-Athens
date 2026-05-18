@@ -12,6 +12,7 @@ import type { StrapiMovie, StrapiVenue } from "@/lib/api";
 import {
   moviesMarkedNew,
   moviesWithShowtimeThisWeek,
+  moviesWithShowtimeToday,
   moviesWithSummerOutdoorShowtime,
 } from "@/lib/homeMovieFilters";
 import { ExternalLink, MapPin } from "lucide-react";
@@ -80,7 +81,7 @@ function MovieRowScroll({
   return (
     <HorizontalScroll spotlight={spotlight} muted={muted} eyebrow={eyebrow} title={title} subtitle={subtitle}>
       {items.map((movie, i) => (
-        <div key={movie.id} className="min-w-[170px] max-w-[170px] md:min-w-[200px] md:max-w-[200px] flex-shrink-0">
+        <div key={movie.id} className="flex h-full min-h-0 min-w-[170px] max-w-[170px] flex-shrink-0 md:min-w-[200px] md:max-w-[200px]">
           <EventCard
             slug={movie.slug}
             title={movie.title}
@@ -91,6 +92,7 @@ function MovieRowScroll({
             posterUrl={movie.posterUrl}
             type="movie"
             index={i}
+            className="w-full flex-1"
           />
         </div>
       ))}
@@ -180,6 +182,7 @@ const Index = () => {
     [venueList],
   );
   const weekMovies = useMemo(() => moviesWithShowtimeThisWeek(movieList, stList), [movieList, stList]);
+  const todayMovies = useMemo(() => moviesWithShowtimeToday(movieList, stList), [movieList, stList]);
   const newMoviesList = useMemo(() => moviesMarkedNew(movieList), [movieList]);
 
   const sectionEl = (id: HomeSectionId, node: ReactNode) => <Fragment key={id}>{node}</Fragment>;
@@ -213,6 +216,21 @@ const Index = () => {
                   ))}
                 </div>
               </div>,
+            );
+          case "movies_today":
+            return sectionEl(
+              "movies_today",
+              <MovieRowScroll
+                loading={moviesLoading || showtimesLoading}
+                loadingMessage="Φόρτωση προβολών της ημέρας..."
+                fetchErrorMessage={
+                  moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
+                }
+                items={todayMovies}
+                muted
+                eyebrow="Σήμερα"
+                title="Ταινίες σήμερα"
+              />,
             );
           case "summer_cinema":
             return sectionEl(
@@ -252,7 +270,7 @@ const Index = () => {
                       <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
                         <p className="font-display text-lg tracking-tight text-white">Τα θερινά σινεμά</p>
                         <p className="mt-3 text-sm leading-relaxed text-white/55 font-body">
-                          Κανένας χώρος δεν έχει δηλωθεί ως θερινός στο CMS. Σήμανσε «Θερινό (ανοιχτό σινεμά)» στο κατάλληλο μέρο για να εμφανιστεί εδώ.
+                          Δεν υπάρχουν θερινοί χώροι προς το παρόν.
                         </p>
                       </div>
                     </div>
@@ -263,7 +281,6 @@ const Index = () => {
                       spotlight
                       eyebrow="Χώροι"
                       title="Τα θερινά σινεμά"
-                      subtitle="Σινεμά που έχουν τσεκάρει «Θερινό (ανοιχτό σινεμά)» στο Strapi"
                     >
                       {summerVenueList.map((venue) => (
                         <VenueSummerCard key={venue.id} venue={venue} />
@@ -310,11 +327,11 @@ const Index = () => {
                       <p className="text-sm leading-relaxed text-white/55 font-body">Δεν υπάρχουν παραστάσεις προς το παρόν.</p>
                     </div>
                   ) : (
-                    <div className="mt-10 flex items-start gap-4 overflow-x-auto scrollbar-hide pb-2">
+                    <div className="mt-10 flex items-stretch gap-4 overflow-x-auto scrollbar-hide pb-2">
                       {(theaterShows ?? []).map((show, i) => (
                         <div
                           key={show.id}
-                          className="min-w-[170px] max-w-[170px] md:min-w-[200px] md:max-w-[200px] flex-shrink-0"
+                          className="flex h-full min-h-0 min-w-[170px] max-w-[170px] flex-shrink-0 md:min-w-[200px] md:max-w-[200px]"
                         >
                           <EventCard
                             slug={show.slug}
@@ -328,6 +345,7 @@ const Index = () => {
                             type="theater"
                             index={i}
                             badge={show.isPremiere ? "Πρεμιέρα" : show.isLastShows ? "Τελευταίες" : undefined}
+                            className="w-full flex-1"
                           />
                         </div>
                       ))}

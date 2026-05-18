@@ -29,24 +29,11 @@
     "cast": {
       "type": "json"
     },
-    "genre": {
-      "type": "enumeration",
-      "enum": [
-        "action",
-        "adventure",
-        "animation",
-        "comedy",
-        "documentary",
-        "drama",
-        "fantasy",
-        "horror",
-        "musical",
-        "romance",
-        "sci-fi",
-        "thriller",
-        "other"
-      ],
-      "description": "Είδος ταινίας (ως επιλογή από λίστα — και το site το δείχνει σαν «Είδος»)."
+    "movie_genre": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::movie-genre.movie-genre",
+      "description": "Είδος ταινίας· διαχείριση από τη συλλογή «Είδος ταινίας»."
     },
     "duration": {
       "type": "integer"

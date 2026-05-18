@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "movie_genres",
+  "info": {
+    "singularName": "movie-genre",
+    "pluralName": "movie-genres",
+    "displayName": "Είδος ταινίας",
+    "description": "Διαχείριση ειδών για τις ταινίες· ρύθμισε ετικέτα και σειρά εμφάνισης στα φίλτρα του site."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "label",
+      "required": true
+    },
+    "sort_order": {
+      "type": "integer",
+      "default": 0,
+      "description": "Μικρότερο = πρώτο στη λίστα φίλτρων."
+    },
+    "movies": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::movie.movie",
+      "mappedBy": "movie_genre"
+    }
+  }
+}

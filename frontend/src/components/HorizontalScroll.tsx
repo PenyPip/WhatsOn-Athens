@@ -17,9 +17,11 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const scroll = (dir: "left" | "right") => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: dir === "left" ? -300 : 300, behavior: "smooth" });
-    }
+    const el = scrollRef.current;
+    if (!el) return;
+    const delta = Math.max(260, Math.round(el.clientWidth * 0.72));
+    const target = el.scrollLeft + (dir === "left" ? -delta : delta);
+    el.scrollTo({ left: target, behavior: "smooth" });
   };
 
   return (
@@ -36,9 +38,9 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
           className="pointer-events-none absolute right-0 top-0 h-64 w-64 rounded-full bg-amber-400/15 blur-[100px]"
         />
       )}
-      <div className="container relative z-[1]">
-        <div className="flex items-end justify-between mb-6">
-          <div>
+      <div className="container relative z-[1] min-w-0 max-w-full">
+        <div className="mb-6 flex min-w-0 max-w-full items-end justify-between gap-4">
+          <div className="min-w-0">
             {(eyebrow || spotlight) && (
               <span
                 className={cn(
@@ -69,17 +71,37 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
               </p>
             )}
           </div>
-          <div className={cn("flex shrink-0 items-center gap-1", muted && "opacity-60")}>
-            <button type="button" onClick={() => scroll("left")} className="p-2 rounded-full border border-foreground/15 hover:bg-foreground hover:text-background transition-colors" aria-label="Κύλιση αριστερά">
-              <ChevronLeft className="w-4 h-4" />
+          <div
+            className={cn(
+              "relative z-20 flex shrink-0 items-center gap-1",
+              muted && "opacity-60",
+            )}
+          >
+            <button
+              type="button"
+              onClick={() => scroll("left")}
+              className="rounded-full border border-foreground/15 p-2 transition-colors hover:bg-foreground hover:text-background"
+              aria-label="Κύλιση αριστερά"
+            >
+              <ChevronLeft className="h-4 w-4" />
             </button>
-            <button type="button" onClick={() => scroll("right")} className="p-2 rounded-full border border-foreground/15 hover:bg-foreground hover:text-background transition-colors" aria-label="Κύλιση δεξιά">
-              <ChevronRight className="w-4 h-4" />
+            <button
+              type="button"
+              onClick={() => scroll("right")}
+              className="rounded-full border border-foreground/15 p-2 transition-colors hover:bg-foreground hover:text-background"
+              aria-label="Κύλιση δεξιά"
+            >
+              <ChevronRight className="h-4 w-4" />
             </button>
           </div>
         </div>
-        <div ref={scrollRef} className="flex items-start gap-4 overflow-x-auto scrollbar-hide pb-2">
-          {children}
+        <div className="min-w-0 max-w-full">
+          <div
+            ref={scrollRef}
+            className="flex max-w-full min-w-0 flex-nowrap items-stretch gap-4 overflow-x-auto overflow-y-visible pb-2 scrollbar-hide"
+          >
+            {children}
+          </div>
         </div>
       </div>
     </section>

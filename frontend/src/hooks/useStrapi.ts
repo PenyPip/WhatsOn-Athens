@@ -20,6 +20,9 @@ export function useHomeLayout() {
 export const useMovies = () =>
   useQuery({ queryKey: ["movies"], queryFn: api.getMovies });
 
+export const useMovieGenres = () =>
+  useQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1, throwOnError: false });
+
 export const useMovieBySlug = (slug: string) =>
   useQuery({ queryKey: ["movie", slug], queryFn: () => api.getMovieBySlug(slug), enabled: !!slug });
 

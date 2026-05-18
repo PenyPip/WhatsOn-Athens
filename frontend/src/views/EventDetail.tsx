@@ -23,7 +23,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     if (!slug) return [];
     const filtered =
       type === "movie"
-        ? list.filter((st) => st.movieSlug === slug)
+        ? list.filter((st) => st.movieSlug === slug && !st.theaterShowSlug)
         : list.filter((st) => st.theaterShowSlug === slug);
     return [...filtered].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
   }, [showtimes, slug, type]);
@@ -158,9 +158,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   </p>
                   <p className="text-sm text-muted-foreground mt-0.5">
                     {new Date(st.datetime).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" })} · {st.venue}
+                    {st.hallName ? <> · αίθ. {st.hallName}</> : null}
                     {st.venueSummerOutdoor ? <span className="text-amber-600 dark:text-amber-500 font-medium"> · θερινό</span> : null}
                   </p>
-                  <p className="text-base font-bold mt-1">€{st.price}</p>
+                  {st.price != null ? (
+                    <p className="text-base font-bold mt-1">
+                      {Number.isInteger(st.price) ? `${st.price}` : st.price.toFixed(2)} €
+                    </p>
+                  ) : null}
                 </div>
               ))}
             </div>
@@ -206,22 +211,24 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
         <section>
           <h2 className="font-display text-xl font-semibold mb-4">Μπορεί να σου αρέσει</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-stretch">
             {related.map((item, i) => (
-              <EventCard
-                key={item.id}
-                slug={item.slug}
-                title={item.title}
-                subtitle={item.director}
-                genre={item.genre}
-                duration={item.duration}
-                score={isMovie ? (item as StrapiMovie).criticScore : undefined}
-                gradientFrom={isMovie ? undefined : (item as StrapiTheaterShow).gradientFrom}
-                gradientTo={isMovie ? undefined : (item as StrapiTheaterShow).gradientTo}
-                posterUrl={isMovie ? (item as StrapiMovie).posterUrl : item.posterUrl}
-                type={type}
-                index={i}
-              />
+              <div key={item.id} className="flex h-full min-h-0">
+                <EventCard
+                  slug={item.slug}
+                  title={item.title}
+                  subtitle={item.director}
+                  genre={item.genre}
+                  duration={item.duration}
+                  score={isMovie ? (item as StrapiMovie).criticScore : undefined}
+                  gradientFrom={isMovie ? undefined : (item as StrapiTheaterShow).gradientFrom}
+                  gradientTo={isMovie ? undefined : (item as StrapiTheaterShow).gradientTo}
+                  posterUrl={isMovie ? (item as StrapiMovie).posterUrl : item.posterUrl}
+                  type={type}
+                  index={i}
+                  className="w-full flex-1"
+                />
+              </div>
             ))}
           </div>
         </section>

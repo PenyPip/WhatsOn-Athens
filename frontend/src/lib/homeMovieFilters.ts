@@ -122,6 +122,36 @@ export function moviesWithShowtimeThisWeek(movies: StrapiMovie[], showtimes: Str
     .filter((m): m is StrapiMovie => Boolean(m));
 }
 
+/** Ταινίες με τουλάχιστον μία προβολή σήμερα (τοπικό ημερολόγιο). */
+export function moviesWithShowtimeToday(movies: StrapiMovie[], showtimes: StrapiShowtime[], now = new Date()): StrapiMovie[] {
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+
+  const slugsOrdered: string[] = [];
+  const seen = new Set<string>();
+  const slugToShowtime = new Map<string, StrapiShowtime>();
+  for (const st of showtimes) {
+    if (st.movieSlug == null && st.movieId == null) continue;
+    const slug =
+      st.movieSlug ?? (st.movieId != null ? movies.find((m) => Number(m.id) === Number(st.movieId))?.slug : undefined);
+    if (!slug) continue;
+    const dt = new Date(st.datetime);
+    if (Number.isNaN(dt.getTime()) || dt.getTime() < dayStart.getTime() || dt.getTime() >= dayEnd.getTime()) continue;
+    if (seen.has(slug)) continue;
+    seen.add(slug);
+    slugToShowtime.set(slug, st);
+    slugsOrdered.push(slug);
+  }
+  return slugsOrdered
+    .map((slug) => {
+      const hit = movies.find((m) => m.slug === slug);
+      if (hit) return hit;
+      return movieStubFromShowtime(slug, slugToShowtime.get(slug));
+    })
+    .filter((m): m is StrapiMovie => Boolean(m));
+}
+
 /** Ταινίες με `is_new` στο Strapi. */
 export function moviesMarkedNew(movies: StrapiMovie[]): StrapiMovie[] {
   return movies.filter((m) => m.isNew === true);

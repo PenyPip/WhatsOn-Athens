@@ -495,6 +495,44 @@ export interface ApiHomepageHomepage extends Schema.SingleType {
   };
 }
 
+export interface ApiMovieGenreMovieGenre extends Schema.CollectionType {
+  collectionName: 'movie_genres';
+  info: {
+    description: '\u0394\u03B9\u03B1\u03C7\u03B5\u03AF\u03C1\u03B9\u03C3\u03B7 \u03B5\u03B9\u03B4\u03CE\u03BD \u03B3\u03B9\u03B1 \u03C4\u03B9\u03C2 \u03C4\u03B1\u03B9\u03BD\u03AF\u03B5\u03C2\u00B7 \u03C1\u03CD\u03B8\u03BC\u03B9\u03C3\u03B5 \u03B5\u03C4\u03B9\u03BA\u03AD\u03C4\u03B1 \u03BA\u03B1\u03B9 \u03C3\u03B5\u03B9\u03C1\u03AC \u03B5\u03BC\u03C6\u03AC\u03BD\u03B9\u03C3\u03B7\u03C2 \u03C3\u03C4\u03B1 \u03C6\u03AF\u03BB\u03C4\u03C1\u03B1 \u03C4\u03BF\u03C5 site.';
+    displayName: '\u0395\u03AF\u03B4\u03BF\u03C2 \u03C4\u03B1\u03B9\u03BD\u03AF\u03B1\u03C2';
+    pluralName: 'movie-genres';
+    singularName: 'movie-genre';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::movie-genre.movie-genre',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    label: Attribute.String & Attribute.Required;
+    movies: Attribute.Relation<
+      'api::movie-genre.movie-genre',
+      'oneToMany',
+      'api::movie.movie'
+    >;
+    slug: Attribute.UID<'api::movie-genre.movie-genre', 'label'> &
+      Attribute.Required;
+    sort_order: Attribute.Integer & Attribute.DefaultTo<0>;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::movie-genre.movie-genre',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiMovieMovie extends Schema.CollectionType {
   collectionName: 'movies';
   info: {
@@ -524,25 +562,13 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'oneToMany',
       'api::editorial-review.editorial-review'
     >;
-    genre: Attribute.Enumeration<
-      [
-        'action',
-        'adventure',
-        'animation',
-        'comedy',
-        'documentary',
-        'drama',
-        'fantasy',
-        'horror',
-        'musical',
-        'romance',
-        'sci-fi',
-        'thriller',
-        'other'
-      ]
-    >;
     is_new: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
+    movie_genre: Attribute.Relation<
+      'api::movie.movie',
+      'manyToOne',
+      'api::movie-genre.movie-genre'
+    >;
     poster: Attribute.Media<'images'>;
     publishedAt: Attribute.DateTime;
     release_date: Attribute.Date;
@@ -1274,6 +1300,7 @@ declare module '@strapi/types' {
       'api::editorial-review.editorial-review': ApiEditorialReviewEditorialReview;
       'api::hall.hall': ApiHallHall;
       'api::homepage.homepage': ApiHomepageHomepage;
+      'api::movie-genre.movie-genre': ApiMovieGenreMovieGenre;
       'api::movie.movie': ApiMovieMovie;
       'api::restaurant.restaurant': ApiRestaurantRestaurant;
       'api::showtime.showtime': ApiShowtimeShowtime;
