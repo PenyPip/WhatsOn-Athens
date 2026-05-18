@@ -110,6 +110,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     ? movies?.find((m) => m.slug === slug)
     : theaterShows?.find((s) => s.slug === slug);
 
+  const castList = useMemo((): string[] => {
+    if (!event || !Array.isArray(event.cast)) return [];
+    return event.cast
+      .filter((c): c is string => typeof c === "string" && c.trim() !== "")
+      .map((c) => c.trim());
+  }, [event]);
+
   if (isLoading) {
     return (
       <div className="min-h-screen pt-36">
@@ -145,12 +152,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const headline = isMovie && movie ? movieTitleLines(movie) : { primary: event.title, secondary: undefined as string | undefined };
 
   const genreLabel = (movie ? movie.genre : event.genre ?? "").trim();
-  const castList = useMemo((): string[] => {
-    if (!Array.isArray(event.cast)) return [];
-    return event.cast
-      .filter((c): c is string => typeof c === "string" && c.trim() !== "")
-      .map((c) => c.trim());
-  }, [event.cast]);
   const hasCast = castList.length > 0;
   const showCriticScoreBadge =
     Boolean(movie) && eventEditorialReviews.length > 0 && Number(movie?.criticScore) > 0;

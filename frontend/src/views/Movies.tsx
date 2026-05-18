@@ -1,5 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
+import { Search } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
@@ -88,11 +89,23 @@ const Movies = () => {
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes();
   const { data: venues, isLoading: venuesLoading } = useVenues();
   const [summerOutdoorOnly, setSummerOutdoorOnly] = useState(false);
+  const [venueQuery, setVenueQuery] = useState("");
 
   const venuesSorted = useMemo(
     () => [...(venues ?? [])].sort((a, b) => a.name.localeCompare(b.name, "el")),
     [venues],
   );
+
+  const venuesForChips = useMemo(() => {
+    const q = venueQuery.trim().toLowerCase();
+    if (!q) return venuesSorted;
+    return venuesSorted.filter(
+      (v) =>
+        v.name.toLowerCase().includes(q) ||
+        (typeof v.slug === "string" && v.slug.toLowerCase().includes(q)) ||
+        (typeof v.address === "string" && v.address.toLowerCase().includes(q)),
+    );
+  }, [venuesSorted, venueQuery]);
 
   const setAreaParam = (key: AreaKey | null) => {
     const next = new URLSearchParams(searchParams);
@@ -342,7 +355,27 @@ const Movies = () => {
 
         <div className="mb-6">
           <span className="text-sm text-muted-foreground uppercase tracking-wider">Σινεμά</span>
-          <div className="mt-2 flex flex-wrap items-center gap-2">
+          <div className="relative mt-2 mb-2 max-w-md">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <input
+              type="search"
+              value={venueQuery}
+              onChange={(e) => setVenueQuery(e.target.value)}
+              placeholder="Αναζήτηση σινεμά…"
+              autoComplete="off"
+              className="w-full rounded-lg border border-border bg-card py-2 pl-9 pr-3 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#13143E]/50 focus:outline-none focus:ring-2 focus:ring-[#13143E]/20"
+              aria-label="Αναζήτηση κατά όνομα σινεμά"
+            />
+          </div>
+          {venueQuery.trim() ? (
+            <p className="mb-2 text-xs text-muted-foreground">
+              {venuesForChips.length === 0
+                ? "Δεν βρέθηκε ταύτιση — δοκίμασε άλλο κείμενο."
+                : `Εμφάνιση ${venuesForChips.length} από ${venuesSorted.length} χώρους.`}
+            </p>
+          ) : null}
+          <div className="max-h-[min(280px,42vh)] overflow-y-auto rounded-lg border border-border/70 bg-muted/15 p-2">
+            <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={() => setVenueParam(null)}
@@ -354,7 +387,7 @@ const Movies = () => {
             >
               Όλα
             </button>
-            {venuesSorted.map((v) => (
+            {venuesForChips.map((v) => (
               <button
                 type="button"
                 key={v.id}
@@ -369,8 +402,16 @@ const Movies = () => {
                 {v.name}
               </button>
             ))}
+            </div>
           </div>
         </div>
+
+        {venueSlug ? (
+          <p className="mb-4 text-xs text-muted-foreground">
+            Με επιλεγμένο σινεμά, το φίλτρο <span className="font-medium text-foreground/80">περιοχής</span> δεν
+            εφαρμόζεται (το URL απλοποιείται σε έναν χώρο).
+          </p>
+        ) : null}
         {isLoading || showtimesLoading || (needsVenueData && venuesLoading) ? (
           <LoadingState message="Φόρτωση ταινιών..." />
         ) : (
