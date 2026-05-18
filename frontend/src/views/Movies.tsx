@@ -4,10 +4,39 @@ import { useSearchParams } from "react-router-dom";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
-import { useMovies, useShowtimes, useMovieGenres, useVenues } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useVenues } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { showtimeIsSummerOutdoor } from "@/lib/homeMovieFilters";
+
+const AREA_KEYS = ["athens", "thessaloniki", "other"] as const;
+type AreaKey = (typeof AREA_KEYS)[number];
+
+const AREA_LABELS: Record<AreaKey, string> = {
+  athens: "Αθήνα",
+  thessaloniki: "Θεσσαλονίκη",
+  other: "Άλλο",
+};
+
+function normalizeVenueCity(c: string | undefined): string {
+  const s = (c ?? "").trim().toLowerCase();
+  return AREA_KEYS.includes(s as AreaKey) ? s : "";
+}
+
+/** Περιοχή = πόλη χώρου (CMS)· αν δεν ταυτιστεί η προβολή με venue, δεν περνά το φίλτρο. */
+function showtimeMatchesArea(st: StrapiShowtime, area: AreaKey, venues: StrapiVenue[] | undefined): boolean {
+  if (!venues?.length) return false;
+  let v: StrapiVenue | undefined;
+  if (st.venueId != null) {
+    v = venues.find((x) => Number(x.id) === Number(st.venueId));
+  }
+  if (!v) {
+    const vn = typeof st.venue === "string" ? st.venue.trim() : "";
+    if (vn) v = venues.find((x) => x.name.trim() === vn);
+  }
+  if (!v) return false;
+  return normalizeVenueCity(v.city) === area;
+}
 
 function showtimeMatchesVenue(st: StrapiShowtime, venue: StrapiVenue): boolean {
   if (st.venueId != null && Number(st.venueId) === Number(venue.id)) return true;
@@ -27,7 +56,7 @@ function venueLabelFromShowtime(st: StrapiShowtime, venues: StrapiVenue[] | unde
 }
 
 function formatShowtimeClock(d: Date): string {
-  return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+  return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
 type ShowingLine = {
@@ -51,27 +80,35 @@ type DaySection = {
 const Movies = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const venueSlug = searchParams.get("venue")?.trim() || "";
+  const rawArea = searchParams.get("area")?.trim().toLowerCase() ?? "";
+  const areaFilter: AreaKey | null =
+    rawArea === "athens" || rawArea === "thessaloniki" || rawArea === "other" ? rawArea : null;
 
   const { data: movies, isLoading } = useMovies();
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes();
   const { data: venues, isLoading: venuesLoading } = useVenues();
-  const { data: cmsGenres } = useMovieGenres();
-  const [genreSlug, setGenreSlug] = useState<string | null>(null);
   const [summerOutdoorOnly, setSummerOutdoorOnly] = useState(false);
 
-  const genreFilters = useMemo(() => {
-    if (cmsGenres?.length) return cmsGenres.map((g) => ({ slug: g.slug, label: g.label }));
-    const seen = new Map<string, string>();
-    for (const m of movies ?? []) {
-      if (m.genreSlug && m.genre) seen.set(m.genreSlug, m.genre);
-    }
-    return [...seen.entries()].map(([slug, label]) => ({ slug, label }));
-  }, [cmsGenres, movies]);
+  const venuesSorted = useMemo(
+    () => [...(venues ?? [])].sort((a, b) => a.name.localeCompare(b.name, "el")),
+    [venues],
+  );
 
-  const filteredMovies = useMemo(() => {
-    if (!movies) return [];
-    return genreSlug == null ? [...movies] : movies.filter((m) => m.genreSlug === genreSlug);
-  }, [movies, genreSlug]);
+  const setAreaParam = (key: AreaKey | null) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("venue");
+    if (key) next.set("area", key);
+    else next.delete("area");
+    setSearchParams(next);
+  };
+
+  const setVenueParam = (slug: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("area");
+    if (slug) next.set("venue", slug);
+    else next.delete("venue");
+    setSearchParams(next);
+  };
 
   const venueFilter = useMemo((): StrapiVenue | null => {
     if (!venueSlug || !venues?.length) return null;
@@ -89,7 +126,7 @@ const Movies = () => {
     dayAfterTomorrowStart.setDate(dayAfterTomorrowStart.getDate() + 1);
 
     const movieMap = new Map<number, StrapiMovie>();
-    filteredMovies.forEach((movie) => movieMap.set(movie.id, movie));
+    (movies ?? []).forEach((movie) => movieMap.set(movie.id, movie));
 
     /** sectionKey -> movieId -> ShowingLine[] με αποφυγή διπλότυπων */
     const sectionMovieShowings = new Map<string, Map<number, ShowingLine[]>>();
@@ -99,6 +136,7 @@ const Movies = () => {
       .filter((st) => st.movieId != null)
       .filter((st) => !summerOutdoorOnly || showtimeIsSummerOutdoor(st, venues))
       .filter((st) => !venueFilter || showtimeMatchesVenue(st, venueFilter))
+      .filter((st) => !areaFilter || showtimeMatchesArea(st, areaFilter, venues))
       .filter((st) => new Date(st.datetime) >= todayStart)
       .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
@@ -174,13 +212,13 @@ const Movies = () => {
     });
 
     return sections.filter((s) => s.entries.length > 0).sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [showtimes, movies, filteredMovies, summerOutdoorOnly, venues, venueFilter]);
+  }, [showtimes, movies, summerOutdoorOnly, venues, venueFilter, areaFilter]);
 
   function clearVenueFilter() {
-    const next = new URLSearchParams(searchParams);
-    next.delete("venue");
-    setSearchParams(next);
+    setVenueParam(null);
   }
+
+  const needsVenueData = Boolean(venueSlug || areaFilter || summerOutdoorOnly);
 
   return (
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
@@ -194,6 +232,21 @@ const Movies = () => {
       </div>
 
       <div className="container">
+        {areaFilter && !venueFilter ? (
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-4">
+            <p className="text-sm md:text-base text-foreground">
+              Περιοχή: <strong className="font-semibold">{AREA_LABELS[areaFilter]}</strong>
+            </p>
+            <button
+              type="button"
+              onClick={() => setAreaParam(null)}
+              className="shrink-0 rounded-lg border border-border bg-card px-3 py-2 text-sm font-medium text-foreground hover:bg-secondary/80"
+            >
+              Όλη η Ελλάδα
+            </button>
+          </div>
+        ) : null}
+
         {venueFilter ? (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-4">
             <p className="text-sm md:text-base text-foreground">
@@ -256,35 +309,69 @@ const Movies = () => {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 mb-4">
-          <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Είδος:</span>
-          <button
-            type="button"
-            onClick={() => setGenreSlug(null)}
-            className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
-              genreSlug === null
-                ? "bg-[#13143E] text-white border-[#13143E]"
-                : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
-            }`}
-          >
-            Όλα
-          </button>
-          {genreFilters.map(({ slug, label }) => (
+        <div className="mb-3">
+          <span className="text-sm text-muted-foreground uppercase tracking-wider">Περιοχή (πόλη)</span>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              key={slug}
-              onClick={() => setGenreSlug(slug)}
+              onClick={() => setAreaParam(null)}
               className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
-                genreSlug === slug
+                areaFilter === null && !venueSlug
                   ? "bg-[#13143E] text-white border-[#13143E]"
                   : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
               }`}
             >
-              {label}
+              Όλα
             </button>
-          ))}
+            {(AREA_KEYS as readonly AreaKey[]).map((key) => (
+              <button
+                type="button"
+                key={key}
+                onClick={() => setAreaParam(key)}
+                className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                  areaFilter === key && !venueSlug
+                    ? "bg-[#13143E] text-white border-[#13143E]"
+                    : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+                }`}
+              >
+                {AREA_LABELS[key]}
+              </button>
+            ))}
+          </div>
         </div>
-        {isLoading || showtimesLoading || (summerOutdoorOnly && venuesLoading) || (!!venueSlug && venuesLoading) ? (
+
+        <div className="mb-6">
+          <span className="text-sm text-muted-foreground uppercase tracking-wider">Σινεμά</span>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setVenueParam(null)}
+              className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                !venueSlug
+                  ? "bg-[#13143E] text-white border-[#13143E]"
+                  : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+              }`}
+            >
+              Όλα
+            </button>
+            {venuesSorted.map((v) => (
+              <button
+                type="button"
+                key={v.id}
+                onClick={() => setVenueParam(v.slug)}
+                className={`max-w-[200px] truncate px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                  venueSlug === v.slug
+                    ? "bg-[#13143E] text-white border-[#13143E]"
+                    : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+                }`}
+                title={v.name}
+              >
+                {v.name}
+              </button>
+            ))}
+          </div>
+        </div>
+        {isLoading || showtimesLoading || (needsVenueData && venuesLoading) ? (
           <LoadingState message="Φόρτωση ταινιών..." />
         ) : (
           <div className="space-y-10">
@@ -337,8 +424,7 @@ const Movies = () => {
 
         {!isLoading &&
           !showtimesLoading &&
-          !(summerOutdoorOnly && venuesLoading) &&
-          !(!!venueSlug && venuesLoading) &&
+          !(needsVenueData && venuesLoading) &&
           groupedMovies.length === 0 && (
           <div className="text-center py-20 text-muted-foreground text-base">
             <p>
@@ -346,9 +432,11 @@ const Movies = () => {
                 ? "Δεν βρέθηκε ο χώρος του συνδέσμου."
                 : venueFilter
                   ? `Δεν βρέθηκαν προβολές στο ${venueFilter.name} για αυτό το φίλτρο.`
-                  : summerOutdoorOnly
-                    ? "Δεν βρέθηκαν μελλοντικές προβολές σε θερινούς χώρους για αυτό το φίλτρο είδους."
-                    : "Δεν βρέθηκαν προβολές για αυτό το φίλτρο."}
+                  : areaFilter
+                    ? `Δεν βρέθηκαν προβολές στην περιοχή «${AREA_LABELS[areaFilter]}» για αυτό το φίλτρο.`
+                    : summerOutdoorOnly
+                      ? "Δεν βρέθηκαν μελλοντικές προβολές σε θερινούς χώρους για αυτό το φίλτρο."
+                      : "Δεν βρέθηκαν προβολές για αυτό το φίλτρο."}
             </p>
           </div>
         )}
