@@ -15,7 +15,7 @@ function reviewContentMatchesMovie(contentTitle: string, movie: StrapiMovie): bo
   if (!ct) return false;
   const tl = movieTitleLines(movie);
   const variants = new Set(
-    [movie.title, movie.greekTitle, movie.originalTitle, tl.primary, tl.secondary]
+    [movie.title, movie.originalTitle, tl.primary, tl.secondary]
       .map((s) => (typeof s === "string" ? s.trim() : ""))
       .filter(Boolean),
   );

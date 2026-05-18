@@ -190,7 +190,6 @@ function mapMovie(raw: unknown): StrapiMovie {
   let numericId = NaN;
   if (typeof rawId === "number" && Number.isFinite(rawId)) numericId = rawId;
   else if (typeof rawId === "string" && rawId.trim() !== "") numericId = Number(rawId);
-  const greekTitle = typeof m.greek_title === "string" ? m.greek_title.trim() : "";
   const originalTitle = typeof m.original_title === "string" ? m.original_title.trim() : "";
 
   return {
@@ -198,7 +197,6 @@ function mapMovie(raw: unknown): StrapiMovie {
     documentId: m.documentId,
     slug: m.slug,
     title: m.title,
-    greekTitle: greekTitle || undefined,
     originalTitle: originalTitle || undefined,
     director: m.director,
     cast: m.cast || [],
@@ -499,11 +497,9 @@ export interface StrapiMovie {
   id: number;
   documentId: string;
   slug: string;
-  /** Κύριο πεδίο Strapi (slug target)· fallback εμφάνισης όταν δεν συμπληρώνονται ελληνικός/πρωτότυπος. */
+  /** Ελληνικός τίτλος (slug target) — κύρια γραμμή εμφάνισης. */
   title: string;
-  /** Ελληνικός τίτλος — προτιμάται για κύρια γραμμή μαζί με `originalTitle`. */
-  greekTitle?: string;
-  /** Πρωτότυπος τίτλος (π.χ. αγγλικό) — δεύτερη γραμμή όταν υπάρχει και ελληνικός. */
+  /** Πρωτότυπος τίτλος (π.χ. διεθνής) — δεύτερη γραμμή όταν διαφέρει και είναι συμπληρωμένος. */
   originalTitle?: string;
   director: string;
   cast: string[];

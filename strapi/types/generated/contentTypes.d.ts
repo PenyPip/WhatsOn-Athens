@@ -562,7 +562,6 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'oneToMany',
       'api::editorial-review.editorial-review'
     >;
-    greek_title: Attribute.String;
     language: Attribute.String;
     movie_genre: Attribute.Relation<
       'api::movie.movie',
