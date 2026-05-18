@@ -215,3 +215,18 @@ export function moviesReleasedInLastDays(movies: StrapiMovie[], days: number, no
   withParsed.sort((a, b) => b.release.getTime() - a.release.getTime());
   return withParsed.map((x) => x.movie);
 }
+
+/** Ταινίες με ημερομηνία κυκλοφορίας αυστηρά μετά τη σήμερα (τοπικά). Σειρά: πιο κοντινή πρώτη. */
+export function moviesWithFutureReleaseDate(movies: StrapiMovie[], now = new Date()): StrapiMovie[] {
+  const todayStart = startOfLocalDay(now);
+  const withParsed: { movie: StrapiMovie; release: Date }[] = [];
+  for (const movie of movies) {
+    const release = parseReleaseDateLocal(movie.releaseDate ?? "");
+    if (!release) continue;
+    const r0 = startOfLocalDay(release);
+    if (r0.getTime() <= todayStart.getTime()) continue;
+    withParsed.push({ movie, release: r0 });
+  }
+  withParsed.sort((a, b) => a.release.getTime() - b.release.getTime());
+  return withParsed.map((x) => x.movie);
+}
