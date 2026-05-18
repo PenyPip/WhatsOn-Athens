@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { Search } from "lucide-react";
+import { ChevronDown, Search } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
@@ -72,6 +72,8 @@ function formatShowtimeClock(d: Date): string {
   return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+const MOVIES_PREVIEW_COUNT = 3;
+
 type ShowingSlot = {
   datetime: Date;
   hallName?: string;
@@ -82,6 +84,58 @@ type VenueShowingsBlock = {
   venueLabel: string;
   slots: ShowingSlot[];
 };
+
+/** Μία γραμμή λίστας ανά προβολή — όχι πολλές ώρες στην ίδια γραμμή. */
+type ShowingRow = {
+  key: string;
+  venueKey: string;
+  venueLabel: string;
+  datetime: Date;
+  hallName?: string;
+};
+
+/** Στην προβολή «όλοι οι χώροι»: οι πρώτες μέχρι 3 είναι από διαφορετικά σινεμά · με συγκεκριμένο χώρο, απλά οι πρώτες ώρες. */
+function splitPreviewAndRest(rows: ShowingRow[], singleVenueOnly: boolean): { preview: ShowingRow[]; rest: ShowingRow[] } {
+  if (singleVenueOnly) {
+    return {
+      preview: rows.slice(0, MOVIES_PREVIEW_COUNT),
+      rest: rows.slice(MOVIES_PREVIEW_COUNT),
+    };
+  }
+  const preview: ShowingRow[] = [];
+  const rest: ShowingRow[] = [];
+  const seenVenueKey = new Set<string>();
+  for (const row of rows) {
+    if (preview.length < MOVIES_PREVIEW_COUNT) {
+      if (seenVenueKey.has(row.venueKey)) {
+        rest.push(row);
+      } else {
+        preview.push(row);
+        seenVenueKey.add(row.venueKey);
+      }
+    } else {
+      rest.push(row);
+    }
+  }
+  return { preview, rest };
+}
+
+function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
+  const rows: ShowingRow[] = [];
+  for (const b of showings) {
+    const slots = [...b.slots].sort((x, y) => x.datetime.getTime() - y.datetime.getTime());
+    for (const slot of slots) {
+      rows.push({
+        key: `${b.key}-${slot.datetime.getTime()}-${slot.hallName ?? ""}`,
+        venueKey: b.key,
+        venueLabel: b.venueLabel,
+        datetime: slot.datetime,
+        hallName: slot.hallName,
+      });
+    }
+  }
+  return rows.sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+}
 
 type MovieDayEntry = {
   movie: StrapiMovie;
@@ -276,7 +330,7 @@ const Movies = () => {
 
       <div className="container">
         {areaFilter && !venueFilter ? (
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-4">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-4">
             <p className="text-sm md:text-base text-foreground">
               Περιοχή: <strong className="font-semibold">{AREA_LABELS[areaFilter]}</strong>
             </p>
@@ -291,7 +345,7 @@ const Movies = () => {
         ) : null}
 
         {venueFilter ? (
-          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/25 bg-primary/5 px-4 py-4">
+          <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-primary/15 bg-primary/[0.04] px-4 py-4">
             <p className="text-sm md:text-base text-foreground">
               Προβολές για: <strong className="font-semibold">{venueFilter.name}</strong>
             </p>
@@ -316,7 +370,7 @@ const Movies = () => {
           </div>
         ) : null}
 
-        <div className="mb-6 rounded-xl border border-amber-500/25 bg-gradient-to-r from-amber-500/[0.08] via-transparent to-transparent px-4 py-4 md:px-5 md:py-4">
+        <div className="mb-6 rounded-xl border border-amber-500/15 bg-gradient-to-r from-amber-500/[0.06] via-transparent to-transparent px-4 py-4 md:px-5 md:py-4">
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <p className="font-display text-base font-semibold text-foreground md:text-lg">Θερινό σινεμά</p>
@@ -404,7 +458,7 @@ const Movies = () => {
                 : `Εμφάνιση ${venuesForChips.length} από ${venuesSorted.length} χώρους.`}
             </p>
           ) : null}
-          <div className="max-h-[min(280px,42vh)] overflow-y-auto rounded-lg border border-border/70 bg-muted/15 p-2">
+          <div className="max-h-[min(280px,42vh)] overflow-y-auto rounded-lg border border-border/35 bg-muted/10 p-2">
             <div className="flex flex-wrap items-center gap-2">
             <button
               type="button"
@@ -452,6 +506,8 @@ const Movies = () => {
                 <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 items-stretch">
                   {section.entries.map(({ movie, showings }, i) => {
                     const tl = movieTitleLines(movie);
+                    const rows = flattenShowingsToRows(showings);
+                    const { preview, rest } = splitPreviewAndRest(rows, Boolean(venueFilter));
                     return (
                     <div key={`${section.label}-${movie.slug}`} className="flex flex-col gap-2 h-full min-h-0">
                       <div className="flex min-h-0 flex-1">
@@ -469,27 +525,59 @@ const Movies = () => {
                           className="w-full flex-1"
                         />
                       </div>
-                      <ul className="shrink-0 space-y-1.5 rounded-lg border border-border/70 bg-muted/40 px-3 py-2.5 text-xs sm:text-sm leading-snug text-muted-foreground">
-                        {showings.map((block) => {
-                          const hallLabels = block.slots.map((s) => s.hallName).filter((h): h is string => Boolean(h));
-                          const distinctHalls = new Set(hallLabels);
-                          const showHall =
-                            Boolean(venueFilter) || (distinctHalls.size > 1 && hallLabels.length > 0);
-                          const timeParts = block.slots.map((s) => {
-                            const t = formatShowtimeClock(s.datetime);
-                            if (showHall && s.hallName) return `${t} · ${s.hallName}`;
-                            return t;
-                          });
-                          const timesStr = timeParts.join(", ");
-                          const where = venueFilter ? null : block.venueLabel;
-                          return (
-                            <li key={block.key} className="font-body tabular-nums">
-                              <span className="font-medium text-foreground">{timesStr}</span>
-                              {where ? <span className="text-muted-foreground">{` · ${where}`}</span> : null}
+                      <div className="shrink-0 rounded-lg border border-border/35 bg-muted/15 px-2.5 py-2 text-xs sm:text-sm leading-snug text-muted-foreground">
+                        <ul className="space-y-1">
+                          {preview.map((row) => (
+                            <li key={row.key} className="font-body tabular-nums leading-relaxed">
+                              <span className="font-semibold tabular-nums text-foreground">{formatShowtimeClock(row.datetime)}</span>
+                              {venueFilter ? (
+                                row.hallName ? (
+                                  <span className="text-muted-foreground">{` · ${row.hallName}`}</span>
+                                ) : null
+                              ) : (
+                                <>
+                                  <span className="text-muted-foreground">{` · ${row.venueLabel}`}</span>
+                                  {row.hallName ? (
+                                    <span className="text-muted-foreground/90">{` · ${row.hallName}`}</span>
+                                  ) : null}
+                                </>
+                              )}
                             </li>
-                          );
-                        })}
-                      </ul>
+                          ))}
+                        </ul>
+                        {rest.length > 0 ? (
+                          <details className="group mt-2 border-t border-border/25 pt-2">
+                            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground outline-none ring-offset-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
+                              <span>{`Ακόμα ${rest.length} προβολή${rest.length === 1 ? "" : "ες"}`}</span>
+                              <ChevronDown
+                                aria-hidden
+                                className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
+                              />
+                            </summary>
+                            <ul className="mt-2 space-y-1 border-l border-border/30 pl-2.5">
+                              {rest.map((row) => (
+                                <li key={row.key} className="font-body tabular-nums leading-relaxed">
+                                  <span className="font-semibold tabular-nums text-foreground">
+                                    {formatShowtimeClock(row.datetime)}
+                                  </span>
+                                  {venueFilter ? (
+                                    row.hallName ? (
+                                      <span className="text-muted-foreground">{` · ${row.hallName}`}</span>
+                                    ) : null
+                                  ) : (
+                                    <>
+                                      <span className="text-muted-foreground">{` · ${row.venueLabel}`}</span>
+                                      {row.hallName ? (
+                                        <span className="text-muted-foreground/90">{` · ${row.hallName}`}</span>
+                                      ) : null}
+                                    </>
+                                  )}
+                                </li>
+                              ))}
+                            </ul>
+                          </details>
+                        ) : null}
+                      </div>
                     </div>
                   );})}
                 </div>
