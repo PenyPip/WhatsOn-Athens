@@ -1,9 +1,11 @@
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
-import { useMovies, useTheaterShows, useHomeLayout } from "@/hooks/useStrapi";
+import { useMemo } from "react";
+import { useMovies, useTheaterShows, useHomeLayout, useShowtimes } from "@/hooks/useStrapi";
 import { layoutShowsHero } from "@/config/home";
 import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
+import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 
 function clampIndex(n: number, length: number): number {
   if (length <= 0) return 0;
@@ -14,8 +16,13 @@ function clampIndex(n: number, length: number): number {
 const Hero = () => {
   const layout = useHomeLayout();
   const { data: movies } = useMovies();
+  const { data: showtimes } = useShowtimes();
   const { data: theaterShows } = useTheaterShows();
 
+  const moviesEnriched = useMemo(
+    () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
+    [movies, showtimes],
+  );
   if (!layoutShowsHero(layout)) return null;
 
   const theaterSlug = layout.heroTheaterSlug ?? undefined;
@@ -28,11 +35,11 @@ const Hero = () => {
     theater = theaterShows?.find((s) => s.slug === theaterSlug) ?? null;
   }
   if (!theater && movieSlug) {
-    movie = movies?.find((m) => m.slug === movieSlug) ?? null;
+    movie = moviesEnriched?.find((m) => m.slug === movieSlug) ?? null;
   }
-  if (!theater && !movie && movies?.length) {
-    const idx = clampIndex(layout.featuredMovieIndex, movies.length);
-    movie = movies[idx] ?? movies[0] ?? null;
+  if (!theater && !movie && moviesEnriched?.length) {
+    const idx = clampIndex(layout.featuredMovieIndex, moviesEnriched.length);
+    movie = moviesEnriched[idx] ?? moviesEnriched[0] ?? null;
   }
 
   const featured = theater ?? movie;
@@ -40,6 +47,31 @@ const Hero = () => {
 
   const isTheater = Boolean(theater);
   const movieTitles = !isTheater ? movieTitleLines(featured as StrapiMovie) : null;
+
+  let heroGenreLabel = "";
+  if (isTheater) {
+    const t = featured as StrapiTheaterShow;
+    heroGenreLabel = (t.genre ?? "").trim();
+    if (
+      !heroGenreLabel &&
+      layout.heroTheaterSlug &&
+      t.slug === layout.heroTheaterSlug &&
+      (layout.priorityTheaterGenre ?? "").trim()
+    ) {
+      heroGenreLabel = layout.priorityTheaterGenre!.trim();
+    }
+  } else {
+    const m = featured as StrapiMovie;
+    heroGenreLabel = (m.genre ?? "").trim();
+    if (
+      !heroGenreLabel &&
+      layout.heroMovieSlug &&
+      m.slug === layout.heroMovieSlug &&
+      (layout.priorityMovieGenre ?? "").trim()
+    ) {
+      heroGenreLabel = layout.priorityMovieGenre!.trim();
+    }
+  }
 
   const to = isTheater ? `/theater/${(featured as StrapiTheaterShow).slug}` : `/movies/${(featured as StrapiMovie).slug}`;
   const eyebrow = isTheater ? "Καλοκαίρι · παραστάσεις που ταξιδεύουν" : "Καλοκαίρι · θερινά σινεμά & θέατρο που ταξιδεύει";
@@ -87,9 +119,9 @@ const Hero = () => {
           transition={{ duration: 0.7, ease: "easeOut" }}
         >
           <span className="mb-3 block font-body text-[10px] uppercase tracking-[0.28em] text-amber-200/90 md:text-[11px]">{eyebrow}</span>
-          {(featured.genre ?? "").trim() ? (
+          {(heroGenreLabel ?? "").trim() ? (
             <span className="mb-2 inline-flex rounded border border-white/15 bg-white/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200/95">
-              Είδος · {featured.genre}
+              Είδος · {heroGenreLabel}
             </span>
           ) : null}
           <span className="mb-2 block text-xs font-body uppercase tracking-[0.2em] text-white/55">{kicker}</span>

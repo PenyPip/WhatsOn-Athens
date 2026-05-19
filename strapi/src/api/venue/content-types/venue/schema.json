@@ -27,6 +27,11 @@
       "type": "enumeration",
       "enum": ["athens", "thessaloniki", "other"]
     },
+    "district": {
+      "type": "enumeration",
+      "enum": ["center", "north", "south", "west", "east", "piraeus", "greater_other"],
+      "description": "Υποπεριοχή (κυρίως για Αθήνα)· για φίλτρο «Περιοχή» στη σελίδα Ταινιών."
+    },
     "google_maps_url": {
       "type": "string"
     },

@@ -3,13 +3,27 @@ import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { Clock, Globe, Users, ArrowLeft } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useMovies, useTheaterShows, useEditorialReviews, useUserReviews, useShowtimes } from "@/hooks/useStrapi";
+import {
+  useMovies,
+  useTheaterShows,
+  useEditorialReviews,
+  useUserReviews,
+  useShowtimes,
+  useMovieBySlug,
+  useMovieGenreCatalog,
+} from "@/hooks/useStrapi";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
-import { normalizeCastFromStrapi, type StrapiMovie, type StrapiShowtime, type StrapiTheaterShow } from "@/lib/api";
+import {
+  normalizeCastFromStrapi,
+  resolveMovieGenreLine,
+  type StrapiMovie,
+  type StrapiShowtime,
+  type StrapiTheaterShow,
+} from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
-import { showtimeIsUpcoming } from "@/lib/homeMovieFilters";
+import { showtimeIsUpcoming, enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
 
@@ -59,7 +73,31 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { data: editorialReviews } = useEditorialReviews();
   const { data: userReviews } = useUserReviews();
   const { data: showtimes } = useShowtimes();
+  const { data: genreCatalog } = useMovieGenreCatalog();
 
+  const moviesEnriched = useMemo(
+    () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
+    [movies, showtimes],
+  );
+
+  const movieFromList = useMemo(
+    () => (type === "movie" && slug ? moviesEnriched?.find((m) => m.slug === slug) : undefined),
+    [type, moviesEnriched, slug],
+  );
+
+  const { data: movieBySlug, isLoading: movieBySlugLoading } = useMovieBySlug(
+    type === "movie" && slug ? slug : "",
+  );
+
+  const event =
+    type === "movie"
+      ? movieBySlug ?? movieFromList
+      : theaterShows?.find((s) => s.slug === slug);
+
+  const isLoading =
+    type === "movie"
+      ? moviesLoading || (!!slug && !movieFromList && movieBySlugLoading)
+      : theaterLoading;
   const eventShowtimes = useMemo((): StrapiShowtime[] => {
     const list = showtimes ?? [];
     if (!slug || type !== "movie") return [];
@@ -82,11 +120,19 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     }));
   }, [eventShowtimes]);
 
-  const isLoading = type === "movie" ? moviesLoading : theaterLoading;
-
-  const event = type === "movie"
-    ? movies?.find((m) => m.slug === slug)
-    : theaterShows?.find((s) => s.slug === slug);
+  const genreLabel = useMemo(() => {
+    if (!event) return "";
+    const isM = type === "movie";
+    const mov = isM ? (event as StrapiMovie) : null;
+    if (!isM || !mov) return (event.genre ?? "").trim();
+    const fromMovie = resolveMovieGenreLine(mov.id, mov.slug, mov, genreCatalog?.linkIndex);
+    if (fromMovie) return fromMovie;
+    const list = showtimes ?? [];
+    const st =
+      list.find((s) => s.movieId != null && Number(s.movieId) === Number(mov.id) && (s.movieGenre ?? "").trim()) ??
+      list.find((s) => typeof slug === "string" && s.movieSlug === slug && (s.movieGenre ?? "").trim());
+    return (st?.movieGenre ?? "").trim();
+  }, [event, type, showtimes, slug, genreCatalog]);
 
   const castList = useMemo((): string[] => (event ? normalizeCastFromStrapi(event.cast) : []), [event]);
 
@@ -112,7 +158,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const isMovie = type === "movie";
   const movie = isMovie ? event as StrapiMovie : null;
   const related = isMovie
-    ? (movies ?? []).filter((m) => m.slug !== slug).slice(0, 4)
+    ? (moviesEnriched ?? []).filter((m) => m.slug !== slug).slice(0, 4)
     : (theaterShows ?? []).filter((s) => s.slug !== slug).slice(0, 4);
 
   const eventEditorialReviews = (editorialReviews ?? []).filter((r) =>
@@ -124,8 +170,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const headline = isMovie && movie ? movieTitleLines(movie) : { primary: event.title, secondary: undefined as string | undefined };
 
-  const genreLabel = (movie ? movie.genre : event.genre ?? "").trim();
-  const movieGenreParts = isMovie && movie && genreLabel 
+  const movieGenreParts = isMovie && movie && genreLabel
     ? genreLabel.split(/\s*·\s*/).map((s) => s.trim()).filter(Boolean)
     : [];
   const hasCast = castList.length > 0;

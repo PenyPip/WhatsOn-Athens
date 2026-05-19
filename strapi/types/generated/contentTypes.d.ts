@@ -562,6 +562,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'oneToMany',
       'api::editorial-review.editorial-review'
     >;
+    genre_display: Attribute.String;
     language: Attribute.String;
     movie_genres: Attribute.Relation<
       'api::movie.movie',
@@ -817,6 +818,9 @@ export interface ApiVenueVenue extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    district: Attribute.Enumeration<
+      ['center', 'north', 'south', 'west', 'east', 'piraeus', 'greater_other']
+    >;
     google_maps_url: Attribute.String;
     halls: Attribute.Relation<
       'api::venue.venue',

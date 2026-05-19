@@ -1,4 +1,4 @@
-import { venueLooksSummerOutdoor, type StrapiMovie, type StrapiShowtime, type StrapiVenue } from "@/lib/api";
+import { venueLooksSummerOutdoor, movieGenreSlugsToDisplayLine, type StrapiMovie, type StrapiShowtime, type StrapiVenue } from "@/lib/api";
 
 function mappedVenueIsSummerOutdoor(v: StrapiVenue): boolean {
   if (v.summerOutdoor) return true;
@@ -49,7 +49,7 @@ function stubNumericIdFromSlug(slug: string): number {
   return u === 0 ? 1 : u;
 }
 
-/** Όταν η γραμμή `/movies` λείπει (π.χ. draft ταινία) αλλά η προβολή φέρνει slug + τίτλο. */
+/** Όταν η γραμμή `/movies` λείπει (π.χ. draft ταινία) αλλά η προβολή φέρνει slug + τίτλο + είδος από `populate[movie]`. */
 function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefined): StrapiMovie | null {
   if (!st) return null;
   const title =
@@ -58,6 +58,9 @@ function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefined): St
     st.movieId != null && Number.isFinite(Number(st.movieId))
       ? Number(st.movieId)
       : stubNumericIdFromSlug(slug);
+  const genreLine =
+    typeof st.movieGenre === "string" && st.movieGenre.trim() ? st.movieGenre.trim() : "";
+  const slugs = Array.isArray(st.movieGenreSlugs) ? st.movieGenreSlugs.filter(Boolean) : [];
   return {
     id,
     documentId: "",
@@ -65,8 +68,8 @@ function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefined): St
     title,
     director: "—",
     cast: [],
-    genre: "",
-    genreSlugs: [],
+    genre: genreLine || (slugs.length ? movieGenreSlugsToDisplayLine(slugs) : ""),
+    genreSlugs: slugs,
     duration: 0,
     language: "",
     ageRating: "",
@@ -207,7 +210,19 @@ function moviesFromShowtimesOrdered(
         key.startsWith("id:")
           ? movies.find((m) => Number(m.id) === Number(key.slice(3)))
           : movies.find((m) => m.slug === slug);
-      if (hit) return hit;
+      if (hit) {
+        const g = (hit.genre ?? "").trim();
+        const fromSt = (st.movieGenre ?? "").trim();
+        if (!g && fromSt) {
+          return {
+            ...hit,
+            genre: fromSt,
+            genreSlugs:
+              st.movieGenreSlugs && st.movieGenreSlugs.length > 0 ? st.movieGenreSlugs : hit.genreSlugs,
+          };
+        }
+        return hit;
+      }
       return movieStubFromShowtime(slug, st);
     })
     .filter((m): m is StrapiMovie => Boolean(m));
@@ -285,6 +300,31 @@ function parseReleaseDateLocal(value: string): Date | null {
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+export function enrichMoviesWithShowtimeGenre(movies: StrapiMovie[], showtimes: StrapiShowtime[]): StrapiMovie[] {
+  if (!movies.length || !showtimes.length) return movies;
+  return movies.map((m) => {
+    const g = (m.genre ?? "").trim();
+    if (g) return m;
+    const mid = m.id;
+    const slug = typeof m.slug === "string" ? m.slug.trim() : "";
+    const st =
+      Number.isFinite(mid) && mid > 0
+        ? showtimes.find((s) => s.movieId != null && Number(s.movieId) === Number(mid) && (s.movieGenre ?? "").trim())
+        : undefined;
+    const bySlug =
+      !st && slug ? showtimes.find((s) => s.movieSlug === slug && (s.movieGenre ?? "").trim()) : undefined;
+    const pick = st ?? bySlug;
+    const fromSt = pick?.movieGenre?.trim();
+    if (!fromSt) return m;
+    return {
+      ...m,
+      genre: fromSt,
+      genreSlug: pick.movieGenreSlugs?.[0] ?? m.genreSlug,
+      genreSlugs: pick.movieGenreSlugs?.length ? pick.movieGenreSlugs : m.genreSlugs,
+    };
+  });
 }
 
 /** Ταινίες με ημερομηνία κυκλοφορίας μέσα στις τελευταίες `days` μέρες (τοπικά, συμπεριλαμβανομένης της σήμερας). */

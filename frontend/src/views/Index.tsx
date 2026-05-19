@@ -18,6 +18,7 @@ import {
   moviesWithShowtimeThisWeek,
   moviesWithShowtimeToday,
   summerVenuesWithShowtimesOrAll,
+  enrichMoviesWithShowtimeGenre,
 } from "@/lib/homeMovieFilters";
 import VenueCard from "@/components/VenueCard";
 
@@ -148,8 +149,12 @@ const Index = () => {
 
   const apiSectionFailed = moviesError || showtimesError || venuesError || theaterError || restaurantsError;
 
-  const movieList = useMemo(() => movies ?? [], [movies]);
   const stList = useMemo(() => showtimes ?? [], [showtimes]);
+
+  const movieList = useMemo(
+    () => enrichMoviesWithShowtimeGenre(movies ?? [], stList),
+    [movies, stList],
+  );
 
   const venueList = useMemo(() => venues ?? [], [venues]);
 

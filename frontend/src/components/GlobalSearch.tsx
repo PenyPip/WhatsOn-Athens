@@ -3,9 +3,10 @@ import { useNavigate } from "react-router-dom";
 import { Building2, Clapperboard, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from "@/components/ui/command";
-import { useMovies, useVenues } from "@/hooks/useStrapi";
+import { useMovies, useVenues, useShowtimes } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
+import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 
 function normalizeSearch(s: string): string {
   const raw = typeof s === "string" ? s : String(s ?? "");
@@ -47,8 +48,14 @@ interface GlobalSearchProps {
 export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const navigate = useNavigate();
   const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies();
+  const { data: showtimes } = useShowtimes();
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues();
   const [search, setSearch] = useState("");
+
+  const moviesEnriched = useMemo(
+    () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
+    [movies, showtimes],
+  );
 
   const loading = moviesLoading || venuesLoading;
   const listsError = moviesError || venuesError;
@@ -58,7 +65,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   }, [open]);
 
   const movieHits = useMemo(() => {
-    const list = movies ?? [];
+    const list = moviesEnriched ?? [];
     const trimmed = search.trim();
     let out = trimmed
       ? list.filter((m) => movieMatches(m, trimmed))
@@ -67,7 +74,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
         );
     if (!trimmed) out = out.slice(0, CAP_EMPTY);
     return out.slice(0, 50);
-  }, [movies, search]);
+  }, [moviesEnriched, search]);
 
   const venueHits = useMemo(() => {
     const list = venues ?? [];

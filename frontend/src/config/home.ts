@@ -55,6 +55,10 @@ export interface MappedHomepage {
   heroTheaterSlug: string | null;
   heroMovieSlug: string | null;
   featuredMovieIndex: number;
+  /** Από `populate[priority_movie]=*` στο /homepage — για Hero όταν η λίστα ταινιών δεν φέρει είδη. */
+  priorityMovieGenre: string | null;
+  /** Από το συνδεδεμένο priority θεατρικό — εμφάνιση είδους στο Hero. */
+  priorityTheaterGenre: string | null;
 }
 
 export interface ResolvedHomepageLayout extends MappedHomepage {}
@@ -66,6 +70,8 @@ export function resolveHomepageLayout(mapped: MappedHomepage | null): ResolvedHo
     heroTheaterSlug: null,
     heroMovieSlug: null,
     featuredMovieIndex: 2,
+    priorityMovieGenre: null,
+    priorityTheaterGenre: null,
   };
   if (!mapped) return base;
   return {
@@ -73,6 +79,8 @@ export function resolveHomepageLayout(mapped: MappedHomepage | null): ResolvedHo
     heroTheaterSlug: mapped.heroTheaterSlug ?? null,
     heroMovieSlug: mapped.heroMovieSlug ?? null,
     featuredMovieIndex: Number.isFinite(mapped.featuredMovieIndex) ? mapped.featuredMovieIndex : 2,
+    priorityMovieGenre: mapped.priorityMovieGenre ?? null,
+    priorityTheaterGenre: mapped.priorityTheaterGenre ?? null,
   };
 }
 

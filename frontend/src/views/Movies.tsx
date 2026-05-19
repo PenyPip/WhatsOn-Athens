@@ -6,7 +6,7 @@ import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useMovies, useShowtimes, useVenues } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useVenues, useMovieGenres } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
@@ -17,6 +17,7 @@ import {
   showtimeIsUpcoming,
   moviesReleasedInLastDays,
   moviesWithFutureReleaseDate,
+  enrichMoviesWithShowtimeGenre,
 } from "@/lib/homeMovieFilters";
 
 const MOVIES_SECTION_QUERY_KEYS = ["today", "week", "summer", "new", "soon"] as const;
@@ -44,9 +45,56 @@ const AREA_LABELS: Record<AreaKey, string> = {
   other: "Άλλο",
 };
 
+const ATHENS_DISTRICT_KEYS = ["center", "north", "south", "west", "east", "piraeus", "greater_other"] as const;
+type AthensDistrictKey = (typeof ATHENS_DISTRICT_KEYS)[number];
+
+const ATHENS_DISTRICT_LABELS: Record<AthensDistrictKey, string> = {
+  center: "Κέντρο / κοντινά",
+  north: "Βόρεια προάστια",
+  south: "Νότια προάστια",
+  west: "Δυτικά προάστια",
+  east: "Ανατολικά προάστια",
+  piraeus: "Πειραιάς",
+  greater_other: "Υπόλοιπη Αττική",
+};
+
 function normalizeVenueCity(c: string | undefined): string {
   const s = (c ?? "").trim().toLowerCase();
   return AREA_KEYS.includes(s as AreaKey) ? s : "";
+}
+
+/** Προβολή ταινίας: φιλτράρισμα ανά slug είδους (ταινία στο map). */
+function showtimeMatchesMovieGenre(
+  st: StrapiShowtime,
+  genreSlug: string,
+  movieMap: Map<number, StrapiMovie>,
+): boolean {
+  if (st.movieId == null) return false;
+  const m = movieMap.get(Number(st.movieId));
+  if (!m) return false;
+  const g = genreSlug.trim().toLowerCase();
+  if (!g) return true;
+  if (m.genreSlugs?.some((s) => s.toLowerCase() === g)) return true;
+  if (m.genreSlug && m.genreSlug.toLowerCase() === g) return true;
+  return false;
+}
+
+/** Συνδυασμός πόλης Αθήνα + υποπεριοχής (πεδίο district στο venue). */
+function showtimeMatchesAthensDistrict(
+  st: StrapiShowtime,
+  district: AthensDistrictKey,
+  venues: StrapiVenue[] | undefined,
+): boolean {
+  if (!venues?.length) return false;
+  let v: StrapiVenue | undefined;
+  if (st.venueId != null) v = venues.find((x) => Number(x.id) === Number(st.venueId));
+  if (!v) {
+    const vn = typeof st.venue === "string" ? st.venue.trim() : "";
+    if (vn) v = venues.find((x) => x.name.trim() === vn);
+  }
+  if (!v) return false;
+  if (normalizeVenueCity(v.city) !== "athens") return false;
+  return v.district === district;
 }
 
 /** Περιοχή = πόλη χώρου (CMS)· αν δεν ταυτιστεί η προβολή με venue, δεν περνά το φίλτρο. */
@@ -181,6 +229,13 @@ const Movies = () => {
   const rawArea = searchParams.get("area")?.trim().toLowerCase() ?? "";
   const areaFilter: AreaKey | null =
     rawArea === "athens" || rawArea === "thessaloniki" || rawArea === "other" ? rawArea : null;
+  const rawDistrict = searchParams.get("district")?.trim().toLowerCase() ?? "";
+  const districtFilter: AthensDistrictKey | null =
+    areaFilter === "athens" && (ATHENS_DISTRICT_KEYS as readonly string[]).includes(rawDistrict)
+      ? (rawDistrict as AthensDistrictKey)
+      : null;
+  const rawGenre = searchParams.get("genre")?.trim().toLowerCase() ?? "";
+  const genreFilterSlug = rawGenre || null;
   const moviesSection = parseMoviesSectionParam(searchParams.get("section"));
 
   const clearMoviesSectionParam = () => {
@@ -192,32 +247,79 @@ const Movies = () => {
   const { data: movies, isLoading } = useMovies();
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes();
   const { data: venues, isLoading: venuesLoading } = useVenues();
+  const { data: movieGenresList } = useMovieGenres();
   const [summerOutdoorOnly, setSummerOutdoorOnly] = useState(false);
+
+  const moviesEnriched = useMemo(
+    () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
+    [movies, showtimes],
+  );
 
   const venuesSorted = useMemo(
     () => [...(venues ?? [])].sort((a, b) => a.name.localeCompare(b.name, "el")),
     [venues],
   );
 
+  /** Χώροι που έχουν τουλάχιστον μία προβολή με συνδεδεμένη ταινία. */
+  const venueIdsWithMovieShowtime = useMemo(() => {
+    const ids = new Set<number>();
+    for (const st of showtimes ?? []) {
+      if (st.movieId == null) continue;
+      if (st.venueId != null) ids.add(Number(st.venueId));
+    }
+    return ids;
+  }, [showtimes]);
+
+  /** Μόνο σινεμά με ταινίες + τρέχον φίλτρο πόλης/περιοχής Αθήνας. */
+  const venuesForSelect = useMemo(() => {
+    return venuesSorted.filter((v) => {
+      if (!venueIdsWithMovieShowtime.has(v.id)) return false;
+      const cityNorm = normalizeVenueCity(v.city);
+      if (areaFilter && cityNorm !== areaFilter) return false;
+      if (areaFilter === "athens" && districtFilter) {
+        if (cityNorm !== "athens") return false;
+        return v.district === districtFilter;
+      }
+      return true;
+    });
+  }, [venuesSorted, venueIdsWithMovieShowtime, areaFilter, districtFilter]);
+
   const venueSelectValue = useMemo(() => {
     if (!venueSlug) return FILTER_ALL;
-    const hit = venuesSorted.find((v) => v.slug === venueSlug);
+    const hit = venuesForSelect.find((v) => v.slug === venueSlug);
     return hit ? hit.slug : FILTER_ALL;
-  }, [venueSlug, venuesSorted]);
+  }, [venueSlug, venuesForSelect]);
 
   const setAreaParam = (key: AreaKey | null) => {
     const next = new URLSearchParams(searchParams);
     next.delete("venue");
+    next.delete("district");
     if (key) next.set("area", key);
     else next.delete("area");
+    setSearchParams(next);
+  };
+
+  const setDistrictParam = (key: AthensDistrictKey | null) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("venue");
+    if (key) next.set("district", key);
+    else next.delete("district");
     setSearchParams(next);
   };
 
   const setVenueParam = (slug: string | null) => {
     const next = new URLSearchParams(searchParams);
     next.delete("area");
+    next.delete("district");
     if (slug) next.set("venue", slug);
     else next.delete("venue");
+    setSearchParams(next);
+  };
+
+  const setGenreParam = (slug: string | null) => {
+    const next = new URLSearchParams(searchParams);
+    if (slug) next.set("genre", slug);
+    else next.delete("genre");
     setSearchParams(next);
   };
 
@@ -237,13 +339,15 @@ const Movies = () => {
     dayAfterTomorrowStart.setDate(dayAfterTomorrowStart.getDate() + 1);
 
     const movieMap = new Map<number, StrapiMovie>();
-    (movies ?? []).forEach((movie) => movieMap.set(movie.id, movie));
+    (moviesEnriched ?? []).forEach((movie) => movieMap.set(movie.id, movie));
 
     const baseSt = showtimes
       .filter((st) => st.movieId != null)
       .filter((st) => !summerOutdoorOnly || showtimeIsSummerOutdoor(st, venues))
       .filter((st) => !venueFilter || showtimeMatchesVenue(st, venueFilter))
       .filter((st) => !areaFilter || showtimeMatchesArea(st, areaFilter, venues))
+      .filter((st) => !districtFilter || showtimeMatchesAthensDistrict(st, districtFilter, venues))
+      .filter((st) => !genreFilterSlug || showtimeMatchesMovieGenre(st, genreFilterSlug, movieMap))
       .filter((st) => showtimeIsUpcoming(st, now))
       .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
 
@@ -259,8 +363,8 @@ const Movies = () => {
     if (moviesSection === "new" || moviesSection === "soon") {
       const subset =
         moviesSection === "new"
-          ? moviesReleasedInLastDays(movies ?? [], 10, now)
-          : moviesWithFutureReleaseDate(movies ?? [], now);
+          ? moviesReleasedInLastDays(moviesEnriched ?? [], 10, now)
+          : moviesWithFutureReleaseDate(moviesEnriched ?? [], now);
       if (subset.length === 0) return [];
 
       const ids = new Set(subset.map((m) => m.id));
@@ -410,13 +514,13 @@ const Movies = () => {
     });
 
     return sections.filter((s) => s.entries.length > 0).sort((a, b) => a.date.getTime() - b.date.getTime());
-  }, [showtimes, movies, summerOutdoorOnly, venues, venueFilter, areaFilter, moviesSection]);
+  }, [showtimes, movies, moviesEnriched, summerOutdoorOnly, venues, venueFilter, areaFilter, districtFilter, genreFilterSlug, moviesSection]);
 
   function clearVenueFilter() {
     setVenueParam(null);
   }
 
-  const needsVenueData = Boolean(venueSlug || areaFilter || summerOutdoorOnly || moviesSection === "summer");
+  const needsVenueData = Boolean(venueSlug || areaFilter || districtFilter || summerOutdoorOnly || moviesSection === "summer");
 
   return (
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
@@ -467,23 +571,20 @@ const Movies = () => {
             />
             <span>
               <span className="text-sm font-medium text-foreground">Μόνο θερινές προβολές</span>
-              <span className="mt-1 block text-xs leading-relaxed text-muted-foreground">
-                Προβολή με σήμα θερινής στο CMS ή venue σημειωμένο ως θερινό.
-              </span>
             </span>
           </label>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2">
+          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <div className="space-y-2">
-              <span className="text-xs font-medium text-muted-foreground" id="movies-filter-area-label">
-                Περιοχή
+              <span className="text-xs font-medium text-muted-foreground" id="movies-filter-city-label">
+                Πόλη
               </span>
               <Select
                 value={areaFilter ?? FILTER_ALL}
                 onValueChange={(v) => setAreaParam(v === FILTER_ALL ? null : (v as AreaKey))}
                 disabled={venuesLoading || Boolean(venueFilter)}
               >
-                <SelectTrigger aria-labelledby="movies-filter-area-label" className="w-full">
+                <SelectTrigger aria-labelledby="movies-filter-city-label" className="w-full">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
@@ -496,6 +597,32 @@ const Movies = () => {
                 </SelectContent>
               </Select>
             </div>
+            {areaFilter === "athens" && !venueFilter ? (
+              <div className="space-y-2 sm:col-span-2 xl:col-span-1">
+                <span className="text-xs font-medium text-muted-foreground" id="movies-filter-district-label">
+                  Περιοχή Αθήνας
+                </span>
+                <Select
+                  value={districtFilter ?? FILTER_ALL}
+                  onValueChange={(v) =>
+                    setDistrictParam(v === FILTER_ALL ? null : (v as AthensDistrictKey))
+                  }
+                  disabled={venuesLoading}
+                >
+                  <SelectTrigger aria-labelledby="movies-filter-district-label" className="w-full">
+                    <SelectValue placeholder="Όλη η Αθήνα" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    <SelectItem value={FILTER_ALL}>Όλη η Αθήνα</SelectItem>
+                    {(ATHENS_DISTRICT_KEYS as readonly AthensDistrictKey[]).map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {ATHENS_DISTRICT_LABELS[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
             <div className="space-y-2">
               <span className="text-xs font-medium text-muted-foreground" id="movies-filter-venue-label">
                 Σινεμά
@@ -509,8 +636,8 @@ const Movies = () => {
                   <SelectValue placeholder="Όλα τα σινεμά" />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  <SelectItem value={FILTER_ALL}>Όλα τα σινεμά</SelectItem>
-                  {venuesSorted.map((v) => (
+                  <SelectItem value={FILTER_ALL}>Όλα με προβολές ταινιών</SelectItem>
+                  {venuesForSelect.map((v) => (
                     <SelectItem key={v.id} value={v.slug}>
                       {v.name}
                     </SelectItem>
@@ -518,11 +645,35 @@ const Movies = () => {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <span className="text-xs font-medium text-muted-foreground" id="movies-filter-genre-label">
+                Είδος ταινίας
+              </span>
+              <Select
+                value={genreFilterSlug ?? FILTER_ALL}
+                onValueChange={(v) => setGenreParam(v === FILTER_ALL ? null : v)}
+                disabled={isLoading}
+              >
+                <SelectTrigger aria-labelledby="movies-filter-genre-label" className="w-full">
+                  <SelectValue placeholder="Όλα τα είδη" />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  <SelectItem value={FILTER_ALL}>Όλα τα είδη</SelectItem>
+                  {[...(movieGenresList ?? [])]
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((g) => (
+                      <SelectItem key={g.id} value={g.slug.toLowerCase()}>
+                        {g.label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           {venueFilter ? (
             <p className="mt-3 text-xs text-muted-foreground">
-              Το φίλτρο περιοχής είναι αδρανές όταν έχεις επιλέξει συγκεκριμένο σινεμά.
+              Τα φίλτρα πόλης και περιοχής Αθήνας είναι αδρανή όταν έχεις επιλέξει συγκεκριμένο σινεμά.
             </p>
           ) : null}
         </div>
@@ -638,8 +789,10 @@ const Movies = () => {
                 : venueFilter
                   ? `Δεν βρέθηκαν προβολές στο ${venueFilter.name} για αυτό το φίλτρο.`
                   : areaFilter
-                    ? `Δεν βρέθηκαν προβολές στην περιοχή «${AREA_LABELS[areaFilter]}» για αυτό το φίλτρο.`
-                    : summerOutdoorOnly
+                    ? `Δεν βρέθηκαν προβολές στην πόλη «${AREA_LABELS[areaFilter]}»${districtFilter ? ` / ${ATHENS_DISTRICT_LABELS[districtFilter]}` : ""} για αυτό το φίλτρο.`
+                    : genreFilterSlug
+                      ? "Δεν βρέθηκαν προβολές για το είδος και τα υπόλοιπα φίλτρα."
+                      : summerOutdoorOnly
                       ? "Δεν βρέθηκαν μελλοντικές προβολές σε θερινούς χώρους για αυτό το φίλτρο."
                       : moviesSection === "today"
                         ? "Δεν βρέθηκαν προβολές για σήμερα με τα τρέχοντα φίλτρα."

@@ -1,9 +1,6 @@
-"use client";
+import SpaRoot from "@/components/SpaRoot";
 
-import dynamic from "next/dynamic";
-
-const App = dynamic(() => import("@/App"), { ssr: false });
-
+/** Αρχική — React Router SPA shell. */
 export default function Home() {
-  return <App />;
+  return <SpaRoot />;
 }

@@ -40,27 +40,6 @@ function mapHomepageLayoutSections(layoutSections: unknown): HomeSectionId[] {
   return out;
 }
 
-function mapHomeAttributes(attrs: Record<string, unknown>): MappedHomepage {
-  const sections = mapHomepageLayoutSections(attrs.layout_sections);
-  const idxRaw = attrs.featured_movie_list_index;
-  let featuredMovieIndex = 2;
-  if (typeof idxRaw === "number" && Number.isFinite(idxRaw)) {
-    featuredMovieIndex = idxRaw;
-  } else if (idxRaw !== null && idxRaw !== undefined) {
-    const p = parseInt(String(idxRaw), 10);
-    if (Number.isFinite(p)) featuredMovieIndex = p;
-  }
-
-  const resolvedSections = sections.length > 0 ? sections : [...FALLBACK_SECTIONS];
-
-  return {
-    sections: resolvedSections,
-    heroTheaterSlug: homepageRelationSlug(attrs.priority_theater_show),
-    heroMovieSlug: homepageRelationSlug(attrs.priority_movie),
-    featuredMovieIndex,
-  };
-}
-
 function apiRequestBaseUrl(): string {
   /** Origin περιλαμβάνει θύρα (:3000)· χωρίς αυτό τα `/api` χτυπάνε λάθος host (π.χ. :80) και «σβήνει» όλη η αρχική. */
   if (API_PREFIX.startsWith("http://") || API_PREFIX.startsWith("https://")) return API_PREFIX;
@@ -82,6 +61,14 @@ async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): P
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   const json = await res.json();
   return json.data ?? json;
+}
+
+/** Πρώτη εγγραφή collection από `fetchAPI`: πίνακας ή μονή εγγραφή `{ id, attributes }`. */
+function strapiCollectionFirst(data: unknown): unknown {
+  if (data == null) return undefined;
+  if (Array.isArray(data)) return data[0];
+  if (typeof data === "object" && ("id" in data || "attributes" in data)) return data;
+  return undefined;
 }
 
 /** Συγχώνευση όλων των σελίδων (Strapi maxLimit ανά σελίδα · προεπιλογή CMS συχνά 100). */
@@ -121,6 +108,19 @@ const MOVIE_GENRE_LABELS: Record<string, string> = {
   other: "Άλλο",
 };
 
+/** Fallback εμφάνισης · αν `genre` από το mapMovie είναι κενό αλλά υπάρχουν slug στον τύπο. */
+export function movieGenreSlugsToDisplayLine(slugs: string[] | undefined | null): string {
+  if (!slugs?.length) return "";
+  return slugs
+    .map((s) => {
+      const k = String(s).trim().toLowerCase().replace(/^\/+|\/+$/g, "");
+      if (!k) return "";
+      return MOVIE_GENRE_LABELS[k] ?? String(s).trim();
+    })
+    .filter(Boolean)
+    .join(" · ");
+}
+
 function normalizeUploadedUrl(raw: string | undefined | null): string | undefined {
   if (!raw || typeof raw !== "string") return undefined;
   return raw.replace("http://localhost:1337", "").replace("http://strapi:1337", "");
@@ -135,6 +135,20 @@ function unwrapStrapiEntry(raw: unknown): any {
     return { ...(attrs as Record<string, unknown>), id: o.id, documentId: o.documentId };
   }
   return raw;
+}
+
+/** Σχέση από Homepage (priority movie/show) → ίδιο σχήμα με `unwrapStrapiEntry`. */
+function homepageRelationAsEntry(rel: unknown): Record<string, unknown> | null {
+  if (rel == null || typeof rel !== "object") return null;
+  const o = rel as Record<string, unknown>;
+  if ("data" in o) {
+    const d = o.data;
+    if (d === null || d === undefined) return null;
+    const node = Array.isArray(d) ? d[0] : d;
+    if (!node || typeof node !== "object") return null;
+    return unwrapStrapiEntry(node) as Record<string, unknown>;
+  }
+  return unwrapStrapiEntry(rel) as Record<string, unknown>;
 }
 
 function mapMovieGenre(raw: unknown): StrapiMovieGenre {
@@ -174,10 +188,26 @@ function strapiMediaUrl(media: unknown): string | undefined {
 
 /** Εγγραφές σχέσης Strapi: παλιό `movie_genre` ή νέο `movie_genres` (πολλά). */
 function relationDataEntries(rel: unknown): Record<string, unknown>[] {
+  const pushNumericId = (out: Record<string, unknown>[], node: unknown) => {
+    if (typeof node === "number" && Number.isFinite(node)) {
+      out.push({ id: node });
+      return true;
+    }
+    if (typeof node === "string" && node.trim() !== "") {
+      const n = Number(node.trim());
+      if (Number.isFinite(n)) {
+        out.push({ id: n });
+        return true;
+      }
+    }
+    return false;
+  };
+
   if (rel == null) return [];
   if (Array.isArray(rel)) {
     const out: Record<string, unknown>[] = [];
     for (const node of rel) {
+      if (pushNumericId(out, node)) continue;
       const u = unwrapStrapiEntry(node);
       if (u && typeof u === "object" && !Array.isArray(u)) out.push(u as Record<string, unknown>);
     }
@@ -191,6 +221,7 @@ function relationDataEntries(rel: unknown): Record<string, unknown>[] {
   const nodes = Array.isArray(d) ? d : [d];
   const out: Record<string, unknown>[] = [];
   for (const node of nodes) {
+    if (pushNumericId(out, node)) continue;
     const u = unwrapStrapiEntry(node);
     if (u && typeof u === "object" && !Array.isArray(u)) out.push(u as Record<string, unknown>);
   }
@@ -207,6 +238,12 @@ function relationEntryNumericId(attrs: Record<string, unknown>): number | null {
   return null;
 }
 
+/** Strapi: stubs σχέσης με documentId όταν δεν έχουν label/slug στο populate. */
+function relationEntryDocId(attrs: Record<string, unknown>): string {
+  const d = attrs.documentId;
+  return typeof d === "string" && d.trim() ? d.trim() : "";
+}
+
 function relationEntrySortOrder(attrs: Record<string, unknown>): number {
   const s = attrs.sort_order;
   if (typeof s === "number" && Number.isFinite(s)) return s;
@@ -217,14 +254,132 @@ function relationEntrySortOrder(attrs: Record<string, unknown>): number {
   return 9999;
 }
 
+function genreLookupFromList(genres: StrapiMovieGenre[]): {
+  byId: Map<number, StrapiMovieGenre>;
+  byDoc: Map<string, StrapiMovieGenre>;
+  bySlug: Map<string, StrapiMovieGenre>;
+} {
+  const byId = new Map<number, StrapiMovieGenre>();
+  const byDoc = new Map<string, StrapiMovieGenre>();
+  const bySlug = new Map<string, StrapiMovieGenre>();
+  for (const g of genres) {
+    if (Number.isFinite(g.id) && g.id > 0) byId.set(g.id, g);
+    const doc = typeof g.documentId === "string" ? g.documentId.trim() : "";
+    if (doc) byDoc.set(doc, g);
+    const slug = typeof g.slug === "string" ? g.slug.trim().toLowerCase().replace(/^\/+|\/+$/g, "") : "";
+    if (slug) bySlug.set(slug, g);
+  }
+  return { byId, byDoc, bySlug };
+}
+
+/** Αντίστροφη σχέση: από κάθε είδος → ποιες ταινίες το έχουν (όταν το populate στη ταινία λείπει). */
+export type MovieGenreLinkIndex = {
+  byMovieId: Map<number, StrapiMovieGenre[]>;
+  byMovieSlug: Map<string, StrapiMovieGenre[]>;
+};
+
+export function buildMovieGenreLinkIndex(genreRows: unknown[]): MovieGenreLinkIndex {
+  const byMovieId = new Map<number, StrapiMovieGenre[]>();
+  const byMovieSlug = new Map<string, StrapiMovieGenre[]>();
+
+  const addGenre = (map: Map<number, StrapiMovieGenre[]> | Map<string, StrapiMovieGenre[]>, key: number | string, genre: StrapiMovieGenre) => {
+    const list = (map as Map<number | string, StrapiMovieGenre[]>).get(key) ?? [];
+    if (!list.some((g) => g.id === genre.id)) list.push(genre);
+    (map as Map<number | string, StrapiMovieGenre[]>).set(key, list);
+  };
+
+  for (const raw of genreRows) {
+    const genre = mapMovieGenre(raw);
+    const unwrapped = unwrapStrapiEntry(raw) as Record<string, unknown>;
+    for (const mov of relationDataEntries(unwrapped.movies)) {
+      const mid = relationEntryNumericId(mov);
+      const slugRaw = mov.slug;
+      const slug =
+        typeof slugRaw === "string" ? slugRaw.trim().toLowerCase().replace(/^\/+|\/+$/g, "") : "";
+      if (mid != null) addGenre(byMovieId, mid, genre);
+      if (slug) addGenre(byMovieSlug, slug, genre);
+    }
+  }
+
+  return { byMovieId, byMovieSlug };
+}
+
+function genresFromLinkIndex(
+  movieId: number,
+  movieSlug: string | undefined,
+  linkIndex?: MovieGenreLinkIndex,
+): { genre: string; genreSlugs: string[]; genreSlug?: string } {
+  if (!linkIndex || !Number.isFinite(movieId)) {
+    return { genre: "", genreSlugs: [] };
+  }
+  const slugKey = typeof movieSlug === "string" ? movieSlug.trim().toLowerCase().replace(/^\/+|\/+$/g, "") : "";
+  const list =
+    linkIndex.byMovieId.get(movieId) ??
+    (slugKey ? linkIndex.byMovieSlug.get(slugKey) : undefined) ??
+    [];
+  if (!list.length) return { genre: "", genreSlugs: [] };
+  const sorted = [...list].sort((a, b) => a.sortOrder - b.sortOrder || a.label.localeCompare(b.label, "el"));
+  const genreSlugs = sorted.map((g) => g.slug).filter(Boolean);
+  const genre = sorted
+    .map((g) => g.label.trim() || (MOVIE_GENRE_LABELS[g.slug] ?? g.slug))
+    .filter(Boolean)
+    .join(" · ");
+  return { genre, genreSlugs, genreSlug: genreSlugs[0] };
+}
+
+export type MovieGenreCatalog = {
+  genres: StrapiMovieGenre[];
+  hydrate: ReturnType<typeof genreLookupFromList>;
+  linkIndex: MovieGenreLinkIndex;
+};
+
+async function fetchMovieGenreCatalog(): Promise<MovieGenreCatalog> {
+  const rows = await fetchAPI<unknown[]>("/movie-genres", {
+    "pagination[pageSize]": "100",
+    "sort[0]": "sort_order:asc",
+    "populate[movies]": "*",
+  });
+  const list = Array.isArray(rows) ? rows : [];
+  const genres = list.map((x) => mapMovieGenre(x));
+  return {
+    genres,
+    hydrate: genreLookupFromList(genres),
+    linkIndex: buildMovieGenreLinkIndex(list),
+  };
+}
+
+/** Γραμμή είδους για ταινία: relation → genre_display → αντίστροφο index ειδών. */
+export function resolveMovieGenreLine(
+  movieId: number,
+  movieSlug: string | undefined,
+  fromMap: { genre?: string; genreSlugs?: string[] },
+  linkIndex?: MovieGenreLinkIndex,
+): string {
+  const direct = (fromMap.genre ?? "").trim();
+  if (direct) return direct;
+  const fromSlugs = movieGenreSlugsToDisplayLine(fromMap.genreSlugs);
+  if (fromSlugs) return fromSlugs;
+  return genresFromLinkIndex(movieId, movieSlug, linkIndex).genre;
+}
+
 /**
- * Είδη ταινίας από τη σχέση CMS. Αν η Strapi επιστρέφει stubs (μόνο id) χωρίς label στη σχέση,
- * συμπληρώνουμε από `genreById` (λίστα `/movie-genres`).
+ * Είδη ταινίας από τη σχέση CMS. Αν η Strapi επιστρέφει stubs (μόνο id / documentId) χωρίς label στη σχέση,
+ * συμπληρώνουμε από `/movie-genres`.
  */
 function movieGenresFromMovieRaw(
   raw: Record<string, unknown>,
-  genreById?: Map<number, StrapiMovieGenre>,
+  hydrate?: { byId: Map<number, StrapiMovieGenre>; byDoc: Map<string, StrapiMovieGenre>; bySlug: Map<string, StrapiMovieGenre> },
 ): { genre: string; genreSlug?: string; genreSlugs: string[] } {
+  const manual =
+    typeof raw.genre_display === "string"
+      ? raw.genre_display.trim()
+      : typeof (raw as { genreDisplay?: unknown }).genreDisplay === "string"
+        ? String((raw as { genreDisplay: string }).genreDisplay).trim()
+        : "";
+  if (manual) {
+    return { genre: manual, genreSlugs: [], genreSlug: undefined };
+  }
+
   const alt = raw as { movieGenres?: unknown; movie_genre?: unknown; movie_genres?: unknown };
   const merged = [
     ...relationDataEntries(alt.movie_genres),
@@ -247,13 +402,18 @@ function movieGenresFromMovieRaw(
       slug || (labelTrim ? labelTrim.toLowerCase().replace(/\s+/g, "-").replace(/^\/+|\/+$/g, "") : "");
 
     const rid = relationEntryNumericId(attrs);
-    if (!displayLabel && genreById && rid != null) {
-      const g = genreById.get(rid);
+    const docStr = relationEntryDocId(attrs);
+    if (!displayLabel && hydrate) {
+      let g: StrapiMovieGenre | undefined;
+      if (rid != null) g = hydrate.byId.get(rid);
+      if (!g && docStr) g = hydrate.byDoc.get(docStr);
+      if (!g && slug) g = hydrate.bySlug.get(slug);
       if (g) {
         const gl = typeof g.label === "string" ? g.label.trim() : "";
-        const gs = typeof g.slug === "string" ? g.slug.trim().toLowerCase() : "";
-        displayLabel = gl || (gs ? (MOVIE_GENRE_LABELS[gs] ?? gs) : "") || slug;
-        slugNorm = gs || (gl ? gl.toLowerCase().replace(/\s+/g, "-") : slugNorm);
+        const gs = typeof g.slug === "string" ? g.slug.trim().toLowerCase().replace(/^\/+|\/+$/g, "") : "";
+        displayLabel =
+          gl || (gs ? MOVIE_GENRE_LABELS[gs] ?? gs : "") || (slug ? MOVIE_GENRE_LABELS[slug] ?? slug : "");
+        slugNorm = gs || (gl ? gl.toLowerCase().replace(/\s+/g, "-").replace(/^\/+|\/+$/g, "") : slugNorm);
         sortOrder = g.sortOrder ?? sortOrder;
       }
     }
@@ -280,6 +440,54 @@ function movieGenresFromMovieRaw(
     genre,
     genreSlugs,
     genreSlug: genreSlugs[0],
+  };
+}
+
+function mapHomeAttributes(
+  attrs: Record<string, unknown>,
+  hydrate?: {
+    byId: Map<number, StrapiMovieGenre>;
+    byDoc: Map<string, StrapiMovieGenre>;
+    bySlug: Map<string, StrapiMovieGenre>;
+  },
+): MappedHomepage {
+  const sections = mapHomepageLayoutSections(attrs.layout_sections);
+  const idxRaw = attrs.featured_movie_list_index;
+  let featuredMovieIndex = 2;
+  if (typeof idxRaw === "number" && Number.isFinite(idxRaw)) {
+    featuredMovieIndex = idxRaw;
+  } else if (idxRaw !== null && idxRaw !== undefined) {
+    const p = parseInt(String(idxRaw), 10);
+    if (Number.isFinite(p)) featuredMovieIndex = p;
+  }
+
+  const resolvedSections = sections.length > 0 ? sections : [...FALLBACK_SECTIONS];
+
+  const pm = homepageRelationAsEntry(attrs.priority_movie);
+  let priorityMovieGenre: string | null = null;
+  if (pm) {
+    const gf = movieGenresFromMovieRaw(pm, hydrate);
+    const line =
+      typeof gf.genre === "string" && gf.genre.trim()
+        ? gf.genre.trim()
+        : movieGenreSlugsToDisplayLine(gf.genreSlugs);
+    priorityMovieGenre = line.trim() ? line : null;
+  }
+
+  const pt = homepageRelationAsEntry(attrs.priority_theater_show);
+  let priorityTheaterGenre: string | null = null;
+  if (pt) {
+    const g = pt.genre;
+    priorityTheaterGenre = typeof g === "string" && g.trim() ? g.trim() : null;
+  }
+
+  return {
+    sections: resolvedSections,
+    heroTheaterSlug: homepageRelationSlug(attrs.priority_theater_show),
+    heroMovieSlug: homepageRelationSlug(attrs.priority_movie),
+    featuredMovieIndex,
+    priorityMovieGenre,
+    priorityTheaterGenre,
   };
 }
 
@@ -329,14 +537,36 @@ export function normalizeCastFromStrapi(cast: unknown): string[] {
   return out;
 }
 
-function mapMovie(raw: unknown, genreById?: Map<number, StrapiMovieGenre>): StrapiMovie {
+function mapMovie(
+  raw: unknown,
+  hydrate?: {
+    byId: Map<number, StrapiMovieGenre>;
+    byDoc: Map<string, StrapiMovieGenre>;
+    bySlug: Map<string, StrapiMovieGenre>;
+  },
+  linkIndex?: MovieGenreLinkIndex,
+): StrapiMovie {
   const m = unwrapStrapiEntry(raw);
-  const gf = movieGenresFromMovieRaw(m as Record<string, unknown>, genreById);
+  const gf = movieGenresFromMovieRaw(m as Record<string, unknown>, hydrate);
   const rawId = m.id;
   let numericId = NaN;
   if (typeof rawId === "number" && Number.isFinite(rawId)) numericId = rawId;
   else if (typeof rawId === "string" && rawId.trim() !== "") numericId = Number(rawId);
   const originalTitle = typeof m.original_title === "string" ? m.original_title.trim() : "";
+  const slugStr = typeof m.slug === "string" ? m.slug : undefined;
+
+  let genreLine =
+    typeof gf.genre === "string" && gf.genre.trim()
+      ? gf.genre.trim()
+      : movieGenreSlugsToDisplayLine(gf.genreSlugs);
+  let genreSlugs = gf.genreSlugs;
+  let genreSlug = gf.genreSlug;
+  if (!genreLine && Number.isFinite(numericId)) {
+    const fromLink = genresFromLinkIndex(numericId, slugStr, linkIndex);
+    genreLine = fromLink.genre;
+    genreSlugs = fromLink.genreSlugs;
+    genreSlug = fromLink.genreSlug;
+  }
 
   return {
     id: Number.isFinite(numericId) ? numericId : 0,
@@ -346,9 +576,9 @@ function mapMovie(raw: unknown, genreById?: Map<number, StrapiMovieGenre>): Stra
     originalTitle: originalTitle || undefined,
     director: m.director,
     cast: normalizeCastFromStrapi(m.cast),
-    genre: gf.genre,
-    genreSlug: gf.genreSlug,
-    genreSlugs: gf.genreSlugs,
+    genre: genreLine,
+    genreSlug,
+    genreSlugs,
     duration: m.duration,
     language: m.language,
     ageRating: m.age_rating,
@@ -522,7 +752,15 @@ function parseShowtimePrice(raw: unknown): number | undefined {
   return n;
 }
 
-function mapShowtime(rawS: any): StrapiShowtime[] {
+function mapShowtime(
+  rawS: any,
+  hydrate?: {
+    byId: Map<number, StrapiMovieGenre>;
+    byDoc: Map<string, StrapiMovieGenre>;
+    bySlug: Map<string, StrapiMovieGenre>;
+  },
+  linkIndex?: MovieGenreLinkIndex,
+): StrapiShowtime[] {
   const s = unwrapStrapiEntry(rawS);
   const ss = s.summer_screening;
   const summerScreening = ss === true || ss === "true" || ss === 1;
@@ -560,6 +798,18 @@ function mapShowtime(rawS: any): StrapiShowtime[] {
         : undefined;
   const movieId = strapiRelationNumericId(s.movie as unknown);
 
+  const gfShow = movieGenresFromMovieRaw((mAttrs ?? {}) as Record<string, unknown>, hydrate);
+  let movieGenreFromShowtime =
+    typeof gfShow.genre === "string" && gfShow.genre.trim()
+      ? gfShow.genre.trim()
+      : movieGenreSlugsToDisplayLine(gfShow.genreSlugs);
+  let movieGenreSlugsFromShowtime = gfShow.genreSlugs;
+  if (!movieGenreFromShowtime && movieId != null && linkIndex) {
+    const fromLink = genresFromLinkIndex(movieId, movieSlug, linkIndex);
+    movieGenreFromShowtime = fromLink.genre;
+    movieGenreSlugsFromShowtime = fromLink.genreSlugs;
+  }
+
   const baseId = String(s.id);
   const slots = Array.isArray(s.show_slots) ? s.show_slots : [];
 
@@ -586,6 +836,8 @@ function mapShowtime(rawS: any): StrapiShowtime[] {
     movieId,
     movieSlug,
     movieTitle,
+    movieGenre: movieGenreFromShowtime || undefined,
+    movieGenreSlugs: movieGenreSlugsFromShowtime.length ? movieGenreSlugsFromShowtime : undefined,
   });
 
   if (slots.length > 0) {
@@ -624,6 +876,8 @@ function mapVenue(raw: unknown): StrapiVenue {
     name: v.name,
     address: v.address,
     city: v.city,
+    /** Υποπεριοχή (enumeration Strapi) — κυρίως για φίλτρο Αθήνας. */
+    district: typeof v.district === "string" && v.district ? v.district : undefined,
     googleMapsUrl: v.google_maps_url,
     moreLink: typeof v.more_link === "string" ? v.more_link.trim() : "",
     seatsTotal: v.seats_total,
@@ -716,6 +970,8 @@ export interface StrapiVenue {
   name: string;
   address: string;
   city: string;
+  /** Π.χ. center, north — από enumeration venue (κυρίως Αθήνα). */
+  district?: string;
   googleMapsUrl: string;
   /** ιστότοπος / κρατήσεις — εμφανίζεται ως «Περισσότερα» */
   moreLink: string;
@@ -756,6 +1012,9 @@ export interface StrapiShowtime {
   movieId?: number;
   movieSlug?: string;
   movieTitle?: string;
+  /** Από `populate[movie]=*`: είδη όταν η γραμμή `/movies` δεν φέρνει σχέση ή χρησιμοποιούμε stub ταινίας. */
+  movieGenre?: string;
+  movieGenreSlugs?: string[];
   hallId?: number;
   hallName?: string;
 }
@@ -772,23 +1031,34 @@ export interface StrapiUserReview {
 }
 
 async function fetchMovieGenreEntities(): Promise<StrapiMovieGenre[]> {
-  return fetchAPI<any[]>("/movie-genres", {
-    "pagination[pageSize]": "100",
-    "sort[0]": "sort_order:asc",
-  }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapMovieGenre(x)));
+  const catalog = await fetchMovieGenreCatalog();
+  return catalog.genres;
 }
 
-function genreByIdMap(genres: StrapiMovieGenre[]): Map<number, StrapiMovieGenre> {
-  const m = new Map<number, StrapiMovieGenre>();
-  for (const g of genres) {
-    if (Number.isFinite(g.id) && g.id > 0) m.set(g.id, g);
-  }
-  return m;
-}
+/**
+ * Strapi 4: χωρίς `populate` το REST δεν συμπεριλαμβάνει σχέσεις στο `attributes` (ούτε κενά `movie_genres`).
+ * Το `populate=*` γεμίζει όλες τις σχέσεις 1ου επιπέδου (poster, movie_genres, cast κ.λπ.).
+ * Για χειροκίνητο έλεγχο: `/api/movies?populate=*` (ή `?populate[movie_genres]=*` μόνο για τα είδη).
+ */
+const MOVIE_PUBLIC_POPULATE: Record<string, string> = {
+  "populate[movie_genres]": "*",
+  "populate[poster]": "*",
+  "populate[cast]": "*",
+};
+
+const SHOWTIME_POPULATE: Record<string, string> = {
+  "populate[movie][populate][movie_genres]": "*",
+  "populate[movie][populate][poster]": "*",
+  "populate[venue]": "*",
+  "populate[hall]": "*",
+};
 
 async function fetchHomepage(): Promise<MappedHomepage | null> {
+  const { hydrate: h } = await fetchMovieGenreCatalog();
   const url = new URL(`${API_PREFIX}/homepage`, apiRequestBaseUrl());
-  url.searchParams.set("populate", "layout_sections,priority_movie,priority_theater_show");
+  url.searchParams.set("populate[layout_sections]", "*");
+  url.searchParams.set("populate[priority_movie]", "*");
+  url.searchParams.set("populate[priority_theater_show]", "*");
   const res = await fetch(url.toString());
   if (res.status === 404 || res.status === 403) return null;
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
@@ -796,28 +1066,30 @@ async function fetchHomepage(): Promise<MappedHomepage | null> {
   const root = json as { data?: { attributes?: Record<string, unknown> } };
   const attrs = root?.data?.attributes;
   if (!attrs) return null;
-  return mapHomeAttributes(attrs);
+  return mapHomeAttributes(attrs, h);
 }
 
 export const api = {
   getHomepage: () => fetchHomepage(),
 
+  getMovieGenreCatalog: () => fetchMovieGenreCatalog(),
+
   getMovies: () =>
-    Promise.all([fetchMovieGenreEntities(), fetchAPIPagedEntries("/movies", { populate: "*" })]).then(([genres, rows]) => {
-      const gid = genreByIdMap(genres);
-      return rows.map((x) => mapMovie(x, gid));
-    }),
+    Promise.all([
+      fetchMovieGenreCatalog(),
+      fetchAPIPagedEntries("/movies", { ...MOVIE_PUBLIC_POPULATE }),
+    ]).then(([catalog, rows]) => rows.map((x) => mapMovie(x, catalog.hydrate, catalog.linkIndex))),
+
   getMovieBySlug: (slug: string) =>
     Promise.all([
-      fetchMovieGenreEntities(),
+      fetchMovieGenreCatalog(),
       fetchAPI<any[]>(`/movies`, {
         "filters[slug][$eq]": slug,
-        populate: "*",
+        ...MOVIE_PUBLIC_POPULATE,
       }),
-    ]).then(([genres, d]) => {
-      const gid = genreByIdMap(genres);
-      const row = Array.isArray(d) ? d[0] : undefined;
-      return row ? mapMovie(row, gid) : undefined;
+    ]).then(([catalog, d]) => {
+      const row = strapiCollectionFirst(d);
+      return row ? mapMovie(row, catalog.hydrate, catalog.linkIndex) : undefined;
     }),
 
   getMovieGenres: () => fetchMovieGenreEntities(),
@@ -826,7 +1098,7 @@ export const api = {
     fetchAPI<any[]>("/theater-shows").then((d) => (Array.isArray(d) ? d : []).map((x) => mapTheaterShow(x))),
   getTheaterShowBySlug: (slug: string) =>
     fetchAPI<any[]>(`/theater-shows`, { "filters[slug][$eq]": slug }).then((d) => {
-      const row = Array.isArray(d) ? d[0] : undefined;
+      const row = strapiCollectionFirst(d);
       return row ? mapTheaterShow(row) : undefined;
     }),
 
@@ -850,11 +1122,9 @@ export const api = {
     }),
 
   getShowtimes: () =>
-    fetchAPIPagedEntries("/showtimes", {
-      "populate[movie]": "*",
-      "populate[venue]": "*",
-      "populate[hall]": "*",
-    }).then((d) => d.flatMap((x) => mapShowtime(x))),
+    Promise.all([fetchMovieGenreCatalog(), fetchAPIPagedEntries("/showtimes", { ...SHOWTIME_POPULATE })]).then(
+      ([catalog, rows]) => rows.flatMap((x) => mapShowtime(x, catalog.hydrate, catalog.linkIndex)),
+    ),
 
   getUserReviews: () =>
     fetchAPI<any[]>("/user-reviews").then((d) => (Array.isArray(d) ? d : []).map((x) => mapUserReview(x))),
