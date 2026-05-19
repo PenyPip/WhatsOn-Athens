@@ -534,12 +534,12 @@ const Movies = () => {
   const needsVenueData = Boolean(venueSlug || areaFilter || districtFilter || summerOutdoorOnly || moviesSection === "summer");
 
   return (
-    <div className="min-h-screen pt-36 pb-20 md:pb-8">
-      <div className="section-black py-10 -mt-28 pt-36 mb-8">
+    <div className="min-h-screen pb-20 md:pb-8">
+      <div className="section-black mb-6 max-md:-mt-16 max-md:py-5 max-md:pt-20 md:-mt-28 md:mb-8 md:py-10 md:pt-36">
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Ταινίες</h1>
-            <p className="text-white/60 text-base">Τώρα στα σινεμά σε όλη την Ελλάδα</p>
+            <h1 className="font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl">Ταινίες</h1>
+            <p className="text-sm text-white/60 md:text-base">Τώρα στα σινεμά σε όλη την Ελλάδα</p>
           </motion.div>
         </div>
       </div>
@@ -571,23 +571,25 @@ const Movies = () => {
           </div>
         ) : null}
 
-        <div className="mb-6 rounded-xl border border-border/15 bg-muted/25 px-4 py-5 ring-1 ring-border/[0.06] md:px-5">
-          <p className="mb-4 text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Φίλτρα</p>
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-border/10 bg-background/40 px-3 py-3 transition-colors hover:bg-background/65">
-            <input
-              type="checkbox"
-              checked={summerOutdoorOnly}
-              onChange={() => setSummerOutdoorOnly((x) => !x)}
-              className="mt-0.5 h-4 w-4 shrink-0 rounded border-input text-[#13143E] accent-[#13143E] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            />
-            <span>
-              <span className="text-sm font-medium text-foreground">Μόνο θερινές προβολές</span>
-            </span>
-          </label>
+        <div className="mb-5 rounded-xl border border-border/15 bg-muted/25 px-3 py-3 ring-1 ring-border/[0.06] max-md:mb-4 md:mb-6 md:px-5 md:py-5">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-x-3 gap-y-2 md:mb-4">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground md:text-[11px]">
+              Φίλτρα
+            </p>
+            <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/10 bg-background/40 px-2.5 py-1.5 transition-colors hover:bg-background/65 md:gap-3 md:rounded-lg md:px-3 md:py-2.5">
+              <input
+                type="checkbox"
+                checked={summerOutdoorOnly}
+                onChange={() => setSummerOutdoorOnly((x) => !x)}
+                className="h-3.5 w-3.5 shrink-0 rounded border-input text-[#13143E] accent-[#13143E] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring md:h-4 md:w-4"
+              />
+              <span className="text-xs font-medium text-foreground md:text-sm">Θερινές μόνο</span>
+            </label>
+          </div>
 
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            <div className="space-y-2">
-              <span className="text-xs font-medium text-muted-foreground" id="movies-filter-city-label">
+          <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+            <div className="space-y-1 md:space-y-2">
+              <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-city-label">
                 Πόλη
               </span>
               <Select
@@ -595,7 +597,7 @@ const Movies = () => {
                 onValueChange={(v) => setAreaParam(v === FILTER_ALL ? null : (v as AreaKey))}
                 disabled={venuesLoading || Boolean(venueFilter)}
               >
-                <SelectTrigger aria-labelledby="movies-filter-city-label" className="w-full">
+                <SelectTrigger aria-labelledby="movies-filter-city-label" className="h-9 w-full text-xs md:h-10 md:text-sm">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
@@ -609,9 +611,9 @@ const Movies = () => {
               </Select>
             </div>
             {areaFilter === "athens" && !venueFilter ? (
-              <div className="space-y-2 sm:col-span-2 xl:col-span-1">
-                <span className="text-xs font-medium text-muted-foreground" id="movies-filter-district-label">
-                  Περιοχή Αθήνας
+              <div className="col-span-2 space-y-1 sm:col-span-2 xl:col-span-1 md:space-y-2">
+                <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-district-label">
+                  Περιοχή
                 </span>
                 <Select
                   value={districtFilter ?? FILTER_ALL}
@@ -620,7 +622,7 @@ const Movies = () => {
                   }
                   disabled={venuesLoading}
                 >
-                  <SelectTrigger aria-labelledby="movies-filter-district-label" className="w-full">
+                  <SelectTrigger aria-labelledby="movies-filter-district-label" className="h-9 w-full text-xs md:h-10 md:text-sm">
                     <SelectValue placeholder="Όλη η Αθήνα" />
                   </SelectTrigger>
                   <SelectContent position="popper">
@@ -634,8 +636,8 @@ const Movies = () => {
                 </Select>
               </div>
             ) : null}
-            <div className="space-y-2">
-              <span className="text-xs font-medium text-muted-foreground" id="movies-filter-venue-label">
+            <div className="space-y-1 md:space-y-2">
+              <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-venue-label">
                 Σινεμά
               </span>
               <Select
@@ -643,7 +645,7 @@ const Movies = () => {
                 onValueChange={(v) => setVenueParam(v === FILTER_ALL ? null : v)}
                 disabled={venuesLoading}
               >
-                <SelectTrigger aria-labelledby="movies-filter-venue-label" className="w-full">
+                <SelectTrigger aria-labelledby="movies-filter-venue-label" className="h-9 w-full text-xs md:h-10 md:text-sm">
                   <SelectValue placeholder="Όλα τα σινεμά" />
                 </SelectTrigger>
                 <SelectContent position="popper">
@@ -656,16 +658,16 @@ const Movies = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-2">
-              <span className="text-xs font-medium text-muted-foreground" id="movies-filter-genre-label">
-                Είδος ταινίας
+            <div className="space-y-1 md:space-y-2">
+              <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-genre-label">
+                Είδος
               </span>
               <Select
                 value={genreFilterSlug ?? FILTER_ALL}
                 onValueChange={(v) => setGenreParam(v === FILTER_ALL ? null : v)}
                 disabled={isLoading}
               >
-                <SelectTrigger aria-labelledby="movies-filter-genre-label" className="w-full">
+                <SelectTrigger aria-labelledby="movies-filter-genre-label" className="h-9 w-full text-xs md:h-10 md:text-sm">
                   <SelectValue placeholder="Όλα τα είδη" />
                 </SelectTrigger>
                 <SelectContent position="popper">
@@ -695,7 +697,7 @@ const Movies = () => {
           <div className="space-y-10">
             {groupedMovies.map((section) => (
               <section key={section.label}>
-                <h2 className="font-display text-2xl font-semibold mb-4 capitalize">{section.label}</h2>
+                <h2 className="font-display mb-3 text-lg font-semibold capitalize md:mb-4 md:text-2xl">{section.label}</h2>
                 <motion.div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 items-start">
                   {section.entries.map(({ movie, showings }, i) => {
                     const tl = movieTitleLines(movie);

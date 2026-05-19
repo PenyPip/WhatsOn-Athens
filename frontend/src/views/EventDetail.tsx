@@ -53,6 +53,28 @@ function ShowtimeCompactRow({ st }: { st: StrapiShowtime }) {
   );
 }
 
+/** YouTube watch / youtu.be / embed → URL για iframe. */
+function youtubeEmbedUrl(raw: string | undefined): string | null {
+  const s = typeof raw === "string" ? raw.trim() : "";
+  if (!s) return null;
+  try {
+    const u = new URL(s);
+    if (u.hostname === "youtu.be" || u.hostname.endsWith(".youtu.be")) {
+      const id = u.pathname.replace(/^\//, "").split("/")[0];
+      return id ? `https://www.youtube.com/embed/${id}` : null;
+    }
+    if (u.hostname.includes("youtube.com") || u.hostname.includes("youtube-nocookie.com")) {
+      const fromQuery = u.searchParams.get("v");
+      if (fromQuery) return `https://www.youtube.com/embed/${fromQuery}`;
+      const fromPath = u.pathname.match(/\/(?:embed|shorts|live)\/([^/?]+)/);
+      if (fromPath?.[1]) return `https://www.youtube.com/embed/${fromPath[1]}`;
+    }
+  } catch {
+    return null;
+  }
+  return null;
+}
+
 function reviewContentMatchesMovie(contentTitle: string, movie: StrapiMovie): boolean {
   const ct = contentTitle.trim();
   if (!ct) return false;
@@ -182,6 +204,93 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const hasDuration = typeof event.duration === "number" && Number.isFinite(event.duration) && event.duration > 0;
   /** Για ταινίες: πάντα τμήμα «Πληροφορίες» ώστε να εμφανίζεται έστω και μόνο το είδος. */
   const hasInfoBlock = isMovie || hasDirector || hasCast || Boolean(genreLabel) || hasDuration;
+  const trailerEmbedUrl = isMovie && movie ? youtubeEmbedUrl(movie.trailerUrl) : null;
+
+  const movieInfoAside = hasInfoBlock ? (
+    <aside className="card-elevated h-fit p-4 md:p-6 lg:sticky lg:top-28">
+      <h2 className="font-display mb-4 text-lg font-semibold">Πληροφορίες</h2>
+      <div className="space-y-5">
+        {hasDirector ? (
+          <div>
+            <span className="text-sm uppercase tracking-wider text-muted-foreground">Σκηνοθεσία</span>
+            <p className="mt-1 text-base font-medium">{directorLabel}</p>
+          </div>
+        ) : null}
+        {isMovie ? (
+          <div>
+            <span className="text-sm uppercase tracking-wider text-muted-foreground">Είδος</span>
+            {genreLabel ? (
+              movieGenreParts.length > 1 ? (
+                <div className="mt-2 flex flex-wrap gap-2">
+                  {movieGenreParts.map((g, i) => (
+                    <span
+                      key={`${g}-${i}`}
+                      className="inline-flex max-w-full items-center rounded-lg border border-border bg-muted/40 px-3 py-1 text-sm font-medium leading-snug text-foreground"
+                    >
+                      {g}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-1 text-base font-medium">{genreLabel}</p>
+              )
+            ) : (
+              <p className="mt-1 text-base text-muted-foreground">Δεν έχει καταχωρηθεί.</p>
+            )}
+          </div>
+        ) : genreLabel ? (
+          <div>
+            <span className="text-sm uppercase tracking-wider text-muted-foreground">Είδος</span>
+            <p className="mt-1 text-base font-medium">{genreLabel}</p>
+          </div>
+        ) : null}
+        {hasDuration ? (
+          <div>
+            <span className="text-sm uppercase tracking-wider text-muted-foreground">Διάρκεια</span>
+            <p className="mt-1 text-base font-medium">{event.duration} λεπτά</p>
+          </div>
+        ) : null}
+        {movie?.language?.trim() ? (
+          <div>
+            <span className="text-sm uppercase tracking-wider text-muted-foreground">Γλώσσα</span>
+            <p className="mt-1 text-base font-medium">{movie.language.trim()}</p>
+          </div>
+        ) : null}
+        {movie?.isDubbed ? (
+          <div>
+            <span className="text-sm uppercase tracking-wider text-muted-foreground">Ήχος</span>
+            <p className="mt-1 text-base font-medium">Μεταγλωτισμένη</p>
+          </div>
+        ) : null}
+        {movie?.releaseDate?.trim() ? (
+          <div>
+            <span className="text-sm uppercase tracking-wider text-muted-foreground">Κυκλοφορία</span>
+            <p className="mt-1 text-base font-medium">
+              {new Date(movie.releaseDate.trim() + "T12:00:00").toLocaleDateString("el-GR", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+        ) : null}
+      </div>
+      {hasCast ? (
+        <div className="mt-6 border-t border-border pt-6">
+          <p className="text-sm uppercase tracking-wider text-muted-foreground">Ηθοποιοί</p>
+          <ul className="mt-3 flex flex-wrap gap-2" role="list">
+            {castList.map((name, i) => (
+              <li key={`${name}-${i}`}>
+                <span className="inline-flex max-w-full items-center rounded-lg border border-border bg-muted/45 px-3 py-1.5 text-sm font-medium leading-snug text-foreground">
+                  {name}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+    </aside>
+  ) : null;
 
   return (
     <div className="min-h-screen pb-20 md:pb-8">
@@ -207,7 +316,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-transparent to-transparent" />
 
-        <div className="relative z-10 container h-full flex items-end pb-12 pt-36">
+        <div className="relative z-10 container flex h-full items-end pb-8 pt-20 md:pb-12 md:pt-36">
           <motion.div
             className="max-w-3xl"
             initial={{ opacity: 0, y: 30 }}
@@ -297,76 +406,61 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       </section>
 
       <div className="container mt-10 space-y-12">
-        <motion.section className="max-w-2xl" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.2 }}>
-          <h2 className="font-display text-xl font-semibold mb-3">Υπόθεση</h2>
-          <p className="text-muted-foreground text-base leading-relaxed">{event.synopsis}</p>
-        </motion.section>
-
-        {hasInfoBlock ? (
-        <section className="card-elevated p-6 max-w-2xl">
-          <h2 className="font-display text-lg font-semibold mb-4">Πληροφορίες</h2>
-          <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 sm:gap-x-8 sm:gap-y-4">
-            {hasDirector || isMovie || Boolean(genreLabel) ? (
+        {isMovie ? (
+          <motion.section
+            className="max-w-5xl"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
+          >
+            <div
+              className={cn(
+                "grid gap-6",
+                hasInfoBlock && "md:grid-cols-[minmax(0,1fr)_minmax(240px,320px)] md:items-start md:gap-8",
+              )}
+            >
               <div className="min-w-0">
-                {hasDirector ? (
-                  <>
-                    <span className="text-muted-foreground text-sm uppercase tracking-wider">Σκηνοθεσία</span>
-                    <p className="font-medium text-base mt-1">{directorLabel}</p>
-                  </>
-                ) : null}
-                {isMovie ? (
-                  <div className={hasDirector ? "mt-5" : undefined}>
-                    <span className="text-muted-foreground text-sm uppercase tracking-wider">Είδος</span>
-                    {genreLabel ? (
-                      movieGenreParts.length > 1 ? (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {movieGenreParts.map((g, i) => (
-                            <span
-                              key={`${g}-${i}`}
-                              className="inline-flex max-w-full items-center rounded-lg border border-border bg-muted/40 px-3 py-1 text-sm font-medium leading-snug text-foreground"
-                            >
-                              {g}
-                            </span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="mt-1 text-base font-medium">{genreLabel}</p>
-                      )
-                    ) : (
-                      <p className="mt-1 text-base text-muted-foreground">Δεν έχει καταχωρηθεί.</p>
-                    )}
-                  </div>
-                ) : genreLabel ? (
-                  <div className={hasDirector ? "mt-5" : undefined}>
-                    <span className="text-muted-foreground text-sm uppercase tracking-wider">Είδος</span>
-                    <p className="mt-1 text-base font-medium">{genreLabel}</p>
-                  </div>
-                ) : null}
+                <h2 className="font-display mb-3 text-xl font-semibold">Υπόθεση</h2>
+                <p className="text-base leading-relaxed text-muted-foreground">{event.synopsis}</p>
               </div>
-            ) : null}
-            {hasDuration ? (
-              <div className="min-w-0">
-                <span className="text-muted-foreground text-sm uppercase tracking-wider">Διάρκεια</span>
-                <p className="font-medium text-base mt-1">{event.duration} λεπτά</p>
-              </div>
-            ) : null}
-          </div>
-          {hasCast ? (
-            <div className="mt-6 border-t border-border pt-6">
-              <p className="text-muted-foreground text-sm uppercase tracking-wider">Ηθοποιοί</p>
-              <ul className="mt-3 flex flex-wrap gap-2" role="list">
-                {castList.map((name, i) => (
-                  <li key={`${name}-${i}`}>
-                    <span className="inline-flex max-w-full items-center rounded-lg border border-border bg-muted/45 px-3 py-1.5 text-sm font-medium leading-snug text-foreground">
-                      {name}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+              {movieInfoAside}
             </div>
-          ) : null}
-        </section>
-        ) : null}
+            {trailerEmbedUrl ? (
+              <motion.div
+                className="mt-8 md:mt-10"
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.25 }}
+              >
+                <h2 className="font-display mb-4 text-xl font-semibold">Τρέιλερ</h2>
+                <div className="aspect-video overflow-hidden rounded-xl border border-border bg-black shadow-sm">
+                  <iframe
+                    title={`Τρέιλερ — ${headline.primary}`}
+                    src={trailerEmbedUrl}
+                    className="h-full w-full"
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                    allowFullScreen
+                    loading="lazy"
+                    referrerPolicy="strict-origin-when-cross-origin"
+                  />
+                </div>
+              </motion.div>
+            ) : null}
+          </motion.section>
+        ) : (
+          <>
+            <motion.section
+              className="max-w-2xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              <h2 className="font-display mb-3 text-xl font-semibold">Υπόθεση</h2>
+              <p className="text-base leading-relaxed text-muted-foreground">{event.synopsis}</p>
+            </motion.section>
+            {movieInfoAside}
+          </>
+        )}
 
         {isMovie ? (
         <section id="showtimes">
