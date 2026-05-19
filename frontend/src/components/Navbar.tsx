@@ -3,6 +3,7 @@ import { Film, Theater, UtensilsCrossed, Building2, User, Search } from "lucide-
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { GlobalSearch, useGlobalSearchShortcut } from "@/components/GlobalSearch";
+import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 
 const Navbar = () => {
   const location = useLocation();
@@ -98,9 +99,11 @@ const Navbar = () => {
             ))}
             </div>
 
-            <Link to="/profile" className="shrink-0 p-2 rounded-full hover:bg-white/10 transition-colors">
-              <User className="w-5 h-5 text-white/60" />
-            </Link>
+            {SHOW_PROFILE_IN_NAV ? (
+              <Link to="/profile" className="shrink-0 p-2 rounded-full hover:bg-white/10 transition-colors">
+                <User className="w-5 h-5 text-white/60" />
+              </Link>
+            ) : null}
           </div>
         </div>
       </nav>
@@ -130,14 +133,16 @@ const Navbar = () => {
               </Link>
             );
           })}
-          <Link
-            to="/profile"
-            className="flex flex-col items-center gap-1 text-xs transition-colors"
-            style={{ color: location.pathname === "/profile" ? '#B47EC8' : 'rgba(240,237,248,0.5)', fontFamily: 'DM Sans, sans-serif' }}
-          >
-            <User className="w-5 h-5" />
-            <span>Προφίλ</span>
-          </Link>
+          {SHOW_PROFILE_IN_NAV ? (
+            <Link
+              to="/profile"
+              className="flex flex-col items-center gap-1 text-xs transition-colors"
+              style={{ color: location.pathname === "/profile" ? '#B47EC8' : 'rgba(240,237,248,0.5)', fontFamily: 'DM Sans, sans-serif' }}
+            >
+              <User className="w-5 h-5" />
+              <span>Προφίλ</span>
+            </Link>
+          ) : null}
         </div>
       </nav>
     </>

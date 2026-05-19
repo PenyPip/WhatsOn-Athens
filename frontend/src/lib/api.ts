@@ -197,14 +197,41 @@ function relationDataEntries(rel: unknown): Record<string, unknown>[] {
   return out;
 }
 
-function movieGenresFromMovieRaw(raw: Record<string, unknown>): { genre: string; genreSlug?: string; genreSlugs: string[] } {
+function relationEntryNumericId(attrs: Record<string, unknown>): number | null {
+  const raw = attrs.id;
+  if (typeof raw === "number" && Number.isFinite(raw)) return raw;
+  if (typeof raw === "string" && raw.trim()) {
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  return null;
+}
+
+function relationEntrySortOrder(attrs: Record<string, unknown>): number {
+  const s = attrs.sort_order;
+  if (typeof s === "number" && Number.isFinite(s)) return s;
+  if (s !== null && s !== undefined && s !== "") {
+    const n = Number(s);
+    if (Number.isFinite(n)) return n;
+  }
+  return 9999;
+}
+
+/**
+ * Είδη ταινίας από τη σχέση CMS. Αν η Strapi επιστρέφει stubs (μόνο id) χωρίς label στη σχέση,
+ * συμπληρώνουμε από `genreById` (λίστα `/movie-genres`).
+ */
+function movieGenresFromMovieRaw(
+  raw: Record<string, unknown>,
+  genreById?: Map<number, StrapiMovieGenre>,
+): { genre: string; genreSlug?: string; genreSlugs: string[] } {
   const alt = raw as { movieGenres?: unknown; movie_genre?: unknown; movie_genres?: unknown };
   const merged = [
     ...relationDataEntries(alt.movie_genres),
     ...relationDataEntries(alt.movieGenres),
     ...relationDataEntries(raw.movie_genre),
   ];
-  type Pair = { label: string; slug: string };
+  type Pair = { label: string; slug: string; sortOrder: number };
   const pairs: Pair[] = [];
   const seen = new Set<string>();
   for (const attrs of merged) {
@@ -212,13 +239,41 @@ function movieGenresFromMovieRaw(raw: Record<string, unknown>): { genre: string;
     const slugRaw = attrs.slug;
     const labelTrim = typeof labelRaw === "string" ? labelRaw.trim() : "";
     let slug = typeof slugRaw === "string" ? slugRaw.trim().toLowerCase().replace(/^\/+|\/+$/g, "") : "";
-    const displayLabel = labelTrim || (slug ? MOVIE_GENRE_LABELS[slug] ?? slug : "");
-    const slugNorm = slug || labelTrim.toLowerCase().replace(/\s+/g, "-");
-    if (!displayLabel) continue;
+    let sortOrder = relationEntrySortOrder(attrs);
+
+    let displayLabel = labelTrim || (slug ? (MOVIE_GENRE_LABELS[slug] ?? slug) : "");
+
+    let slugNorm =
+      slug || (labelTrim ? labelTrim.toLowerCase().replace(/\s+/g, "-").replace(/^\/+|\/+$/g, "") : "");
+
+    const rid = relationEntryNumericId(attrs);
+    if (!displayLabel && genreById && rid != null) {
+      const g = genreById.get(rid);
+      if (g) {
+        const gl = typeof g.label === "string" ? g.label.trim() : "";
+        const gs = typeof g.slug === "string" ? g.slug.trim().toLowerCase() : "";
+        displayLabel = gl || (gs ? (MOVIE_GENRE_LABELS[gs] ?? gs) : "") || slug;
+        slugNorm = gs || (gl ? gl.toLowerCase().replace(/\s+/g, "-") : slugNorm);
+        sortOrder = g.sortOrder ?? sortOrder;
+      }
+    }
+
+    if (!slugNorm && displayLabel) {
+      slugNorm = displayLabel.toLowerCase().replace(/\s+/g, "-").replace(/^\/+|\/+$/g, "");
+    }
+
+    if (!displayLabel || !slugNorm) continue;
     if (seen.has(slugNorm)) continue;
     seen.add(slugNorm);
-    pairs.push({ label: displayLabel, slug: slugNorm });
+    pairs.push({ label: displayLabel, slug: slugNorm, sortOrder });
   }
+
+  pairs.sort((a, b) => {
+    const d = a.sortOrder - b.sortOrder;
+    if (d !== 0) return d;
+    return a.label.localeCompare(b.label, "el");
+  });
+
   const genreSlugs = pairs.map((p) => p.slug);
   const genre = pairs.map((p) => p.label).join(" · ");
   return {
@@ -274,9 +329,9 @@ export function normalizeCastFromStrapi(cast: unknown): string[] {
   return out;
 }
 
-function mapMovie(raw: unknown): StrapiMovie {
+function mapMovie(raw: unknown, genreById?: Map<number, StrapiMovieGenre>): StrapiMovie {
   const m = unwrapStrapiEntry(raw);
-  const gf = movieGenresFromMovieRaw(m as Record<string, unknown>);
+  const gf = movieGenresFromMovieRaw(m as Record<string, unknown>, genreById);
   const rawId = m.id;
   let numericId = NaN;
   if (typeof rawId === "number" && Number.isFinite(rawId)) numericId = rawId;
@@ -716,6 +771,21 @@ export interface StrapiUserReview {
   createdAt: string;
 }
 
+async function fetchMovieGenreEntities(): Promise<StrapiMovieGenre[]> {
+  return fetchAPI<any[]>("/movie-genres", {
+    "pagination[pageSize]": "100",
+    "sort[0]": "sort_order:asc",
+  }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapMovieGenre(x)));
+}
+
+function genreByIdMap(genres: StrapiMovieGenre[]): Map<number, StrapiMovieGenre> {
+  const m = new Map<number, StrapiMovieGenre>();
+  for (const g of genres) {
+    if (Number.isFinite(g.id) && g.id > 0) m.set(g.id, g);
+  }
+  return m;
+}
+
 async function fetchHomepage(): Promise<MappedHomepage | null> {
   const url = new URL(`${API_PREFIX}/homepage`, apiRequestBaseUrl());
   url.searchParams.set("populate", "layout_sections,priority_movie,priority_theater_show");
@@ -733,28 +803,24 @@ export const api = {
   getHomepage: () => fetchHomepage(),
 
   getMovies: () =>
-    fetchAPIPagedEntries("/movies", {
-      /**
-       * `populate=*` φέρνει σχέσεις πρώτου επιπέδου (poster, movie_genres, cast …).
-       * Στη Strapi 4, μόνο `populate[movie_genres]=*` (χωρίς *) συχνά δεν επεκτείνει τις υπόλοιπες σχέσεις·
-       * αν τα είδη δεν είναι Public-readable, Το CMS αφαιρεί το populate από την απάντηση.
-       */
-      populate: "*",
-    }).then((d) => d.map((x) => mapMovie(x))),
+    Promise.all([fetchMovieGenreEntities(), fetchAPIPagedEntries("/movies", { populate: "*" })]).then(([genres, rows]) => {
+      const gid = genreByIdMap(genres);
+      return rows.map((x) => mapMovie(x, gid));
+    }),
   getMovieBySlug: (slug: string) =>
-    fetchAPI<any[]>(`/movies`, {
-      "filters[slug][$eq]": slug,
-      populate: "*",
-    }).then((d) => {
+    Promise.all([
+      fetchMovieGenreEntities(),
+      fetchAPI<any[]>(`/movies`, {
+        "filters[slug][$eq]": slug,
+        populate: "*",
+      }),
+    ]).then(([genres, d]) => {
+      const gid = genreByIdMap(genres);
       const row = Array.isArray(d) ? d[0] : undefined;
-      return row ? mapMovie(row) : undefined;
+      return row ? mapMovie(row, gid) : undefined;
     }),
 
-  getMovieGenres: () =>
-    fetchAPI<any[]>("/movie-genres", {
-      "pagination[pageSize]": "100",
-      "sort[0]": "sort_order:asc",
-    }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapMovieGenre(x))),
+  getMovieGenres: () => fetchMovieGenreEntities(),
 
   getTheaterShows: () =>
     fetchAPI<any[]>("/theater-shows").then((d) => (Array.isArray(d) ? d : []).map((x) => mapTheaterShow(x))),

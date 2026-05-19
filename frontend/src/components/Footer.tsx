@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 
 const Footer = () => {
   return (
@@ -24,9 +25,11 @@ const Footer = () => {
               <a href="/venues" className="block text-white/60 hover:text-white transition-colors">
                 Χώροι
               </a>
-              <a href="/profile" className="block text-white/60 hover:text-white transition-colors">
-                Προφίλ
-              </a>
+              {SHOW_PROFILE_IN_NAV ? (
+                <a href="/profile" className="block text-white/60 hover:text-white transition-colors">
+                  Προφίλ
+                </a>
+              ) : null}
             </div>
           </div>
           <div>

@@ -285,10 +285,6 @@ const Index = () => {
                         <h2 className="font-display text-3xl font-bold leading-tight text-white md:text-4xl md:leading-[1.12]">
                           Τα θερινά σινεμά
                         </h2>
-                        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/55 font-body md:text-[0.9375rem]">
-                          Όλα τα στοιχεία εδώ · κάνε κλικ στην κάρτα για το πρόγραμμα των ταινιών σε αυτόν τον χώρο.
-                          Τα χειριστήρια «Περισσότερα» / «Χάρτης» είναι ξεχωριστοί σύνδεσμοι.
-                        </p>
                       </motion.div>
 
                       <ul

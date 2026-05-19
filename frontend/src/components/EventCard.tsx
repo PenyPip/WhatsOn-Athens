@@ -20,8 +20,10 @@ interface EventCardProps {
   badge?: string;
   /** Λίστες όπως /movies: ηπιότερο πλαίσιο (λιγότερο «λευκό» από το προεπιλεγμένο card-elevated). */
   tone?: "default" | "soft";
-  /** Το επόμενο μπλοκ είναι προβολές στο ίδιο χαρτόνι· χωρίς κενό/δίπλα πλαίσιο κάτω από διάρκεια. */
+  /** Σε λίστα με προβολές: τα κορυφαία (αφίσα+λίζτ) διατείνονται ώστε οι καρτέλες στην ίδια σειρά να ευθυγραμμίζονται. */
   attachShowtimes?: boolean;
+  /** Με προβολές: αν δεν οριστεί, ευθυγράμμιση «πάνω» μερών όπως στις άλλες ταινίες (ίδια default με ταινίες). */
+  uniformMovieSizing?: boolean;
   className?: string;
   index?: number;
 }
@@ -41,23 +43,29 @@ const EventCard = ({
   badge,
   tone = "default",
   attachShowtimes = false,
+  uniformMovieSizing,
   className = "",
   index = 0,
 }: EventCardProps) => {
   const showGradientFallback =
     !posterUrl && typeof gradientFrom === "string" && typeof gradientTo === "string";
-  const subtitleLine = typeof subtitle === "string" && subtitle.trim() ? subtitle : "\u00a0";
+  const subtitleLine = typeof subtitle === "string" && subtitle.trim() ? subtitle.trim() : "\u00a0";
   const posterAlt = titleSecondary ? `${title} · ${titleSecondary}` : title;
   const showDuration = typeof duration === "number" && Number.isFinite(duration) && duration > 0;
   const genreTrimmed = typeof genre === "string" ? genre.trim() : "";
   const isMovie = type === "movie";
+  /** Ομοιόμορφες καρτέλες για ταινίες ανά σειρά · θέατρο όχι. */
+  const uniformMovie = uniformMovieSizing ?? isMovie;
   const secondaryLine = typeof titleSecondary === "string" && titleSecondary.trim() ? titleSecondary.trim() : "";
   /** Σελίδα λίστας προβολών: το είδος κάτω από τον τίτλο μαζί με σκηνοθέτη και διάρκεια. */
   const movieListingMeta = isMovie && attachShowtimes;
 
   return (
     <motion.div
-      className={cn(attachShowtimes ? "w-full shrink-0" : "h-full", className)}
+      className={cn(
+        attachShowtimes ? "flex min-h-0 w-full min-w-0 flex-1 flex-col" : "h-full min-h-0 min-w-0 flex-1",
+        className,
+      )}
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.05 }}
@@ -67,7 +75,7 @@ const EventCard = ({
         className={cn(
           "group flex min-h-0 flex-col overflow-hidden transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
           attachShowtimes
-            ? "h-auto shrink-0 w-full rounded-b-none rounded-t-lg bg-transparent shadow-none ring-0 hover:translate-y-0 hover:shadow-none hover:ring-0"
+            ? "min-h-0 flex-1 w-full rounded-b-none rounded-t-lg bg-transparent shadow-none ring-0 hover:translate-y-0 hover:shadow-none hover:ring-0"
             : cn(
                 "h-full",
                 tone === "soft"
@@ -115,39 +123,46 @@ const EventCard = ({
         </div>
         <div
           className={cn(
-            "flex flex-col px-3 py-2",
+            "flex min-h-0 flex-col px-3 py-2",
             attachShowtimes
-              ? "shrink-0 border-t border-border/[0.1] px-3 py-2 pb-2"
+              ? "min-h-0 flex-1 border-t border-border/[0.1] px-3 py-2 pb-2"
               : cn(
-                  "min-h-[8.25rem] flex-1",
+                  "min-h-[8.75rem] flex-1 gap-0",
                   tone === "soft" ? "border-t border-border/[0.07]" : "border-t border-border/12",
                 ),
           )}
         >
-          {type === "movie" && genreTrimmed && !movieListingMeta ? (
-            <p className="mb-1.5 line-clamp-3 max-w-full shrink-0 break-words text-[11px] font-semibold uppercase leading-snug tracking-wider text-muted-foreground/95">
-              <span className="font-normal text-muted-foreground/75">Είδος · </span>
-              {genreTrimmed}
-            </p>
+          {isMovie && !movieListingMeta ? (
+            <div className="mb-1.5 flex min-h-[2.6875rem] shrink-0 items-start">
+              {genreTrimmed ? (
+                <p className="line-clamp-3 max-w-full shrink-0 break-words text-[11px] font-semibold uppercase leading-snug tracking-wider text-muted-foreground/95">
+                  <span className="font-normal text-muted-foreground/75">Είδος · </span>
+                  {genreTrimmed}
+                </p>
+              ) : uniformMovie ? (
+                <p className="invisible pointer-events-none line-clamp-3 text-[11px] leading-snug" aria-hidden>
+                  Είδος · –
+                </p>
+              ) : null}
+            </div>
           ) : null}
           <div
             className={cn(
-              isMovie ? "flex min-h-[5.125rem] flex-col" : "min-h-[2.75rem]",
+              "flex shrink-0 flex-col",
+              isMovie ? "min-h-[5.875rem]" : "min-h-[2.75rem]",
             )}
           >
             <h3
               className={cn(
                 "font-display font-semibold leading-tight text-foreground transition-colors group-hover:text-primary",
-                isMovie
-                  ? "line-clamp-2 min-h-[2.5rem] text-base"
-                  : "line-clamp-2 text-base",
+                isMovie ? "line-clamp-2 min-h-[3rem] text-base" : "line-clamp-2 text-base",
               )}
             >
               {title}
             </h3>
             {isMovie ? (
               <p
-                className="mt-0.5 line-clamp-2 min-h-[2.4375rem] text-sm font-medium leading-snug text-muted-foreground"
+                className="mt-0.5 line-clamp-2 min-h-[2.75rem] text-sm font-medium leading-snug text-muted-foreground"
                 {...(!secondaryLine ? { "aria-hidden": true as const } : {})}
               >
                 {secondaryLine || "\u00a0"}
@@ -156,12 +171,24 @@ const EventCard = ({
               <p className="mt-0.5 text-sm font-medium leading-snug text-muted-foreground line-clamp-2">{titleSecondary}</p>
             ) : null}
           </div>
+          {isMovie && !movieListingMeta && uniformMovie ? (
+            <div className="min-h-0 flex-1 shrink grow basis-0" aria-hidden />
+          ) : null}
           {movieListingMeta ? (
-            <div className={cn("mb-1 mt-1 flex min-h-[1.25rem] flex-col gap-1.5 text-sm leading-snug text-muted-foreground")}>
+            <div
+              className={cn(
+                "mb-1 mt-1 flex shrink-0 flex-col gap-1.5 text-sm leading-snug text-muted-foreground",
+                uniformMovie ? "min-h-[7rem]" : "min-h-[1.25rem]",
+              )}
+            >
               {genreTrimmed ? (
                 <p className="line-clamp-2 max-w-full break-words">
                   <span className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/85">Είδος · </span>
                   <span className="text-foreground/90">{genreTrimmed}</span>
+                </p>
+              ) : uniformMovie ? (
+                <p className="pointer-events-none line-clamp-2 text-transparent select-none max-w-full" aria-hidden>
+                  Είδος · –
                 </p>
               ) : null}
               {typeof subtitle === "string" && subtitle.trim() ? (
@@ -171,24 +198,33 @@ const EventCard = ({
                   </span>
                   {subtitle.trim()}
                 </p>
+              ) : uniformMovie ? (
+                <p className="pointer-events-none line-clamp-2 text-transparent select-none" aria-hidden>
+                  Σκηνοθεσία · –
+                </p>
               ) : null}
               {showDuration ? (
                 <div className="flex shrink-0 items-center gap-1 pt-0.5 text-sm text-muted-foreground">
                   <Clock className="h-3.5 w-3.5 shrink-0" />
                   <span>{duration}&nbsp;′</span>
                 </div>
+              ) : uniformMovie ? (
+                <div className="pointer-events-none flex shrink-0 items-center gap-1 pt-0.5 text-sm text-transparent select-none" aria-hidden>
+                  <Clock className="h-3.5 w-3.5 shrink-0 opacity-0" />
+                  <span>0&nbsp;′</span>
+                </div>
               ) : null}
             </div>
           ) : (
             <>
-              <p className="mb-1.5 mt-1 min-h-[1.25rem] text-sm leading-snug text-muted-foreground line-clamp-1">
+              <p className="mb-1.5 mt-1 min-h-[1.3125rem] shrink-0 text-sm leading-snug text-muted-foreground line-clamp-1">
                 {subtitleLine}
               </p>
               <div
                 className={cn(
-                  "flex items-end gap-2 pt-1",
+                  "flex shrink-0 items-end gap-2 pt-1",
                   type === "movie" ? "justify-end" : "justify-between",
-                  !attachShowtimes && "mt-auto",
+                  !attachShowtimes && !uniformMovie ? "mt-auto" : "",
                 )}
               >
                 {type === "theater" ? (

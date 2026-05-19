@@ -10,6 +10,7 @@ import Footer from "@/components/Footer";
 import { normalizeCastFromStrapi, type StrapiMovie, type StrapiShowtime, type StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { showtimeIsUpcoming } from "@/lib/homeMovieFilters";
+import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
@@ -377,13 +378,15 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           </section>
         )}
 
-        <div className="card-elevated p-6 text-center max-w-md mx-auto border-2 border-[#13143E]">
-          <h3 className="font-display font-semibold text-lg mb-2">Γράψε Κριτική</h3>
-          <p className="text-base text-muted-foreground mb-3">Σύνδεση για να γράψεις κριτική</p>
-          <Button variant="outline" size="sm" className="border-foreground text-foreground hover:bg-foreground hover:text-background" asChild>
-            <Link to="/profile">Σύνδεση</Link>
-          </Button>
-        </div>
+        {SHOW_WRITE_REVIEW_CTA ? (
+          <div className="card-elevated p-6 text-center max-w-md mx-auto border-2 border-[#13143E]">
+            <h3 className="font-display font-semibold text-lg mb-2">Γράψε Κριτική</h3>
+            <p className="text-base text-muted-foreground mb-3">Σύνδεση για να γράψεις κριτική</p>
+            <Button variant="outline" size="sm" className="border-foreground text-foreground hover:bg-foreground hover:text-background" asChild>
+              <Link to="/profile">Σύνδεση</Link>
+            </Button>
+          </div>
+        ) : null}
 
         <section>
           <h2 className="font-display text-xl font-semibold mb-4">Μπορεί να σου αρέσει</h2>
