@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router-dom";
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Clock, Globe, Users, ArrowLeft } from "lucide-react";
+import { Clock, Globe, Users, ArrowLeft, MapPin, ChevronDown, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   useMovies,
@@ -28,15 +28,25 @@ import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
-function ShowtimeCompactRow({ st }: { st: StrapiShowtime }) {
+function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; emphasized?: boolean }) {
   const d = new Date(st.datetime);
   return (
-    <li className="flex flex-col gap-1.5 border-b border-border/80 py-3.5 text-sm last:border-0 sm:flex-row sm:items-center sm:justify-between">
-      <div className="flex flex-wrap items-baseline gap-x-3 gap-y-0.5">
-        <span className="font-medium capitalize text-foreground">
+    <li
+      className={cn(
+        "flex flex-col gap-1.5 border-b border-border/80 last:border-0 sm:flex-row sm:items-center sm:justify-between",
+        emphasized ? "py-3 text-sm sm:py-3.5" : "py-3.5 text-sm",
+      )}
+    >
+      <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
+        <span className={cn("capitalize text-foreground", emphasized ? "text-sm text-muted-foreground" : "font-medium")}>
           {d.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" })}
         </span>
-        <span className="text-lg font-bold tabular-nums text-[#13143E]">
+        <span
+          className={cn(
+            "font-semibold tabular-nums text-[#13143E]",
+            emphasized ? "text-base" : "text-lg",
+          )}
+        >
           {d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false })}
         </span>
       </div>
@@ -206,90 +216,104 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const hasInfoBlock = isMovie || hasDirector || hasCast || Boolean(genreLabel) || hasDuration;
   const trailerEmbedUrl = isMovie && movie ? youtubeEmbedUrl(movie.trailerUrl) : null;
 
+  const infoField = (label: string, value: ReactNode) => (
+    <div className="min-w-0">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <div className="mt-0.5 text-sm font-medium leading-snug text-foreground">{value}</div>
+    </div>
+  );
+
   const movieInfoAside = hasInfoBlock ? (
-    <aside className="card-elevated h-fit p-4 md:p-6 lg:sticky lg:top-28">
-      <h2 className="font-display mb-4 text-lg font-semibold">Πληροφορίες</h2>
-      <div className="space-y-5">
-        {hasDirector ? (
-          <div>
-            <span className="text-sm uppercase tracking-wider text-muted-foreground">Σκηνοθεσία</span>
-            <p className="mt-1 text-base font-medium">{directorLabel}</p>
-          </div>
-        ) : null}
+    <aside className="card-elevated mx-auto h-fit w-full max-w-[280px] rounded-2xl p-4 md:mx-0 md:max-w-[260px] md:sticky md:top-28 lg:top-32">
+      <h2 className="font-display mb-3 text-center text-sm font-semibold md:text-left">Πληροφορίες</h2>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+        {hasDirector ? infoField("Σκηνοθεσία", directorLabel) : null}
         {isMovie ? (
-          <div>
-            <span className="text-sm uppercase tracking-wider text-muted-foreground">Είδος</span>
-            {genreLabel ? (
+          infoField(
+            "Είδος",
+            genreLabel ? (
               movieGenreParts.length > 1 ? (
-                <div className="mt-2 flex flex-wrap gap-2">
-                  {movieGenreParts.map((g, i) => (
-                    <span
-                      key={`${g}-${i}`}
-                      className="inline-flex max-w-full items-center rounded-lg border border-border bg-muted/40 px-3 py-1 text-sm font-medium leading-snug text-foreground"
-                    >
-                      {g}
-                    </span>
-                  ))}
-                </div>
+                <span className="line-clamp-3 text-xs leading-snug">{movieGenreParts.join(" · ")}</span>
               ) : (
-                <p className="mt-1 text-base font-medium">{genreLabel}</p>
+                genreLabel
               )
             ) : (
-              <p className="mt-1 text-base text-muted-foreground">Δεν έχει καταχωρηθεί.</p>
-            )}
-          </div>
+              <span className="text-muted-foreground">—</span>
+            ),
+          )
         ) : genreLabel ? (
-          <div>
-            <span className="text-sm uppercase tracking-wider text-muted-foreground">Είδος</span>
-            <p className="mt-1 text-base font-medium">{genreLabel}</p>
-          </div>
+          infoField("Είδος", genreLabel)
         ) : null}
-        {hasDuration ? (
-          <div>
-            <span className="text-sm uppercase tracking-wider text-muted-foreground">Διάρκεια</span>
-            <p className="mt-1 text-base font-medium">{event.duration} λεπτά</p>
-          </div>
-        ) : null}
-        {movie?.language?.trim() ? (
-          <div>
-            <span className="text-sm uppercase tracking-wider text-muted-foreground">Γλώσσα</span>
-            <p className="mt-1 text-base font-medium">{movie.language.trim()}</p>
-          </div>
-        ) : null}
-        {movie?.isDubbed ? (
-          <div>
-            <span className="text-sm uppercase tracking-wider text-muted-foreground">Ήχος</span>
-            <p className="mt-1 text-base font-medium">Μεταγλωτισμένη</p>
-          </div>
-        ) : null}
-        {movie?.releaseDate?.trim() ? (
-          <div>
-            <span className="text-sm uppercase tracking-wider text-muted-foreground">Κυκλοφορία</span>
-            <p className="mt-1 text-base font-medium">
-              {new Date(movie.releaseDate.trim() + "T12:00:00").toLocaleDateString("el-GR", {
+        {hasDuration ? infoField("Διάρκεια", `${event.duration}′`) : null}
+        {movie?.language?.trim() ? infoField("Γλώσσα", movie.language.trim()) : null}
+        {movie?.isDubbed ? infoField("Ήχος", "Μεταγλωτ.") : null}
+        {movie?.releaseDate?.trim()
+          ? infoField(
+              "Κυκλοφορία",
+              new Date(movie.releaseDate.trim() + "T12:00:00").toLocaleDateString("el-GR", {
                 day: "numeric",
-                month: "long",
+                month: "short",
                 year: "numeric",
-              })}
-            </p>
-          </div>
-        ) : null}
+              }),
+            )
+          : null}
       </div>
       {hasCast ? (
-        <div className="mt-6 border-t border-border pt-6">
-          <p className="text-sm uppercase tracking-wider text-muted-foreground">Ηθοποιοί</p>
-          <ul className="mt-3 flex flex-wrap gap-2" role="list">
-            {castList.map((name, i) => (
+        <div className="mt-3 border-t border-border pt-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ηθοποιοί</p>
+          <ul className="mt-1.5 flex flex-wrap gap-1" role="list">
+            {castList.slice(0, 6).map((name, i) => (
               <li key={`${name}-${i}`}>
-                <span className="inline-flex max-w-full items-center rounded-lg border border-border bg-muted/45 px-3 py-1.5 text-sm font-medium leading-snug text-foreground">
+                <span className="inline-flex max-w-full items-center rounded-md border border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] font-medium leading-snug text-foreground">
                   {name}
                 </span>
               </li>
             ))}
+            {castList.length > 6 ? (
+              <li className="text-[11px] text-muted-foreground">+{castList.length - 6}</li>
+            ) : null}
           </ul>
         </div>
       ) : null}
     </aside>
+  ) : null;
+
+  const movieShowtimesSection = isMovie ? (
+    <section
+      id="showtimes"
+      className="scroll-mt-24 rounded-xl border border-[#13143E]/12 bg-[#13143E]/[0.03] p-4 md:p-6"
+    >
+      <div className="mb-4 flex items-center gap-2.5 md:mb-5">
+        <MapPin className="h-4 w-4 shrink-0 text-[#13143E]/70" aria-hidden />
+        <div>
+          <h2 className="font-display text-lg font-semibold text-foreground md:text-xl">Πού & πότε παίζεται</h2>
+        </div>
+      </div>
+      {eventShowtimes.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Δεν υπάρχουν επερχόμενες προβολές.</p>
+      ) : (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
+          {showtimesByVenue.map(({ venueName, slots }) => {
+            if (!slots.length) return null;
+            return (
+              <div
+                key={venueName}
+                className="flex min-h-0 flex-col rounded-lg border border-border/80 bg-card/50 p-3 sm:p-4"
+              >
+                <h3 className="font-display mb-2 border-b border-border/60 pb-2 text-sm font-semibold text-[#13143E]">
+                  {venueName}
+                </h3>
+                <ul className="min-h-0 flex-1">
+                  {slots.map((st) => (
+                    <ShowtimeCompactRow key={st.id} st={st} emphasized />
+                  ))}
+                </ul>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </section>
   ) : null;
 
   return (
@@ -395,45 +419,57 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               {!isMovie && <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {(event as StrapiTheaterShow).venue}</span>}
             </div>
 
-            <a
-              href="#showtimes"
-              className="inline-flex items-center px-6 py-3 bg-white text-[#13143E] text-base font-semibold rounded hover:bg-white/90 transition-colors"
-            >
-              Προβολές & τιμές
-            </a>
+            <div className="flex flex-wrap gap-3">
+              <a
+                href="#showtimes"
+                className="inline-flex items-center rounded bg-white px-6 py-3 text-base font-semibold text-[#13143E] transition-colors hover:bg-white/90"
+              >
+                Προβολές & τιμές
+              </a>
+              {isMovie ? (
+                <a
+                  href="#trailer"
+                  className="inline-flex items-center gap-1.5 rounded border border-white/35 bg-white/10 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-white/20"
+                >
+                  <Play className="h-4 w-4 shrink-0" aria-hidden />
+                  Τρέιλερ
+                  <ChevronDown className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                </a>
+              ) : null}
+            </div>
           </motion.div>
         </div>
       </section>
 
-      <div className="container mt-10 space-y-12">
+      <div className="container mt-8 space-y-10 md:mt-10 md:space-y-12">
+        {movieShowtimesSection}
+
         {isMovie ? (
-          <motion.section
-            className="max-w-5xl"
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.5, delay: 0.2 }}
-          >
-            <div
-              className={cn(
-                "grid gap-6",
-                hasInfoBlock && "md:grid-cols-[minmax(0,1fr)_minmax(240px,320px)] md:items-start md:gap-8",
-              )}
+          <>
+            <motion.section
+              className="max-w-5xl"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <div className="min-w-0">
-                <h2 className="font-display mb-3 text-xl font-semibold">Υπόθεση</h2>
-                <p className="text-base leading-relaxed text-muted-foreground">{event.synopsis}</p>
-              </div>
-              {movieInfoAside}
-            </div>
-            {trailerEmbedUrl ? (
-              <motion.div
-                className="mt-8 md:mt-10"
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.45, delay: 0.25 }}
+              <div
+                className={cn(
+                  "grid gap-6 md:gap-8",
+                  hasInfoBlock && "md:grid-cols-[minmax(0,1fr)_auto] md:items-start",
+                )}
               >
-                <h2 className="font-display mb-4 text-xl font-semibold">Τρέιλερ</h2>
-                <div className="aspect-video overflow-hidden rounded-xl border border-border bg-black shadow-sm">
+                <div className="min-w-0">
+                  <h2 className="font-display mb-3 text-xl font-semibold">Υπόθεση</h2>
+                  <p className="text-base leading-relaxed text-muted-foreground">{event.synopsis}</p>
+                </div>
+                {movieInfoAside}
+              </div>
+            </motion.section>
+
+            <section id="trailer" className="max-w-3xl scroll-mt-24">
+              <h2 className="font-display mb-4 text-xl font-semibold">Τρέιλερ</h2>
+              {trailerEmbedUrl ? (
+                <div className="aspect-video max-w-xl overflow-hidden rounded-xl border border-border/80 bg-black shadow-sm">
                   <iframe
                     title={`Τρέιλερ — ${headline.primary}`}
                     src={trailerEmbedUrl}
@@ -444,9 +480,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     referrerPolicy="strict-origin-when-cross-origin"
                   />
                 </div>
-              </motion.div>
-            ) : null}
-          </motion.section>
+              ) : (
+                <p className="text-sm text-muted-foreground">Δεν υπάρχει διαθέσιμο τρέιλερ για αυτή την ταινία.</p>
+              )}
+            </section>
+          </>
         ) : (
           <>
             <motion.section
@@ -461,35 +499,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             {movieInfoAside}
           </>
         )}
-
-        {isMovie ? (
-        <section id="showtimes">
-          <h2 className="font-display text-xl font-semibold mb-6">Πού παίζει & ώρες</h2>
-          {eventShowtimes.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Δεν υπάρχουν επερχόμενες προβολές.</p>
-          ) : (
-            <div className="space-y-12 max-w-5xl">
-              {showtimesByVenue.map(({ venueName, slots }) => {
-                if (!slots.length) return null;
-                return (
-                  <div key={venueName}>
-                    <h3 className="font-display text-lg font-semibold mb-4 border-b border-border pb-2 text-foreground">
-                      {venueName}
-                    </h3>
-                    <div className="max-w-2xl">
-                      <ul className="rounded-lg border border-border/80 bg-card/40 px-3 sm:px-4">
-                        {slots.map((st) => (
-                          <ShowtimeCompactRow key={st.id} st={st} />
-                        ))}
-                      </ul>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </section>
-        ) : null}
 
         {eventEditorialReviews.length > 0 && (
           <section>
