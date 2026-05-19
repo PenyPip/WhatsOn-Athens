@@ -93,7 +93,7 @@ function MovieRowScroll({
           return (
           <div
             key={`${movie.id}-${movie.slug}`}
-            className="flex h-full min-h-0 min-w-[170px] max-w-[170px] flex-shrink-0 md:min-w-[200px] md:max-w-[200px]"
+            className="flex h-full min-h-0 w-[170px] max-w-[170px] flex-shrink-0 self-stretch md:w-[200px] md:max-w-[200px]"
           >
             <EventCard
               slug={movie.slug}
@@ -105,8 +105,9 @@ function MovieRowScroll({
               score={movie.criticScore}
               posterUrl={movie.posterUrl}
               type="movie"
+              uniformMovieSizing
               index={i}
-              className="w-full flex-1"
+              className="h-full w-full min-h-0 flex-1"
             />
           </div>
         );})}

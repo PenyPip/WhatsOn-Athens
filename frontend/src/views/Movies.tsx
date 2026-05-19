@@ -588,7 +588,7 @@ const Movies = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  <SelectItem value={FILTER_ALL}>Όλη η Ελλάδα</SelectItem>
+                  <SelectItem value={FILTER_ALL}>Παντού</SelectItem>
                   {(AREA_KEYS as readonly AreaKey[]).map((key) => (
                     <SelectItem key={key} value={key}>
                       {AREA_LABELS[key]}
@@ -636,7 +636,7 @@ const Movies = () => {
                   <SelectValue placeholder="Όλα τα σινεμά" />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  <SelectItem value={FILTER_ALL}>Όλα με προβολές ταινιών</SelectItem>
+                  <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
                   {venuesForSelect.map((v) => (
                     <SelectItem key={v.id} value={v.slug}>
                       {v.name}
@@ -658,7 +658,7 @@ const Movies = () => {
                   <SelectValue placeholder="Όλα τα είδη" />
                 </SelectTrigger>
                 <SelectContent position="popper">
-                  <SelectItem value={FILTER_ALL}>Όλα τα είδη</SelectItem>
+                  <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
                   {[...(movieGenresList ?? [])]
                     .sort((a, b) => a.sortOrder - b.sortOrder)
                     .map((g) => (
@@ -685,7 +685,7 @@ const Movies = () => {
             {groupedMovies.map((section) => (
               <section key={section.label}>
                 <h2 className="font-display text-2xl font-semibold mb-4 capitalize">{section.label}</h2>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 items-stretch">
+                <motion.div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 items-start">
                   {section.entries.map(({ movie, showings }, i) => {
                     const tl = movieTitleLines(movie);
                     const rows = flattenShowingsToRows(showings);
@@ -694,7 +694,7 @@ const Movies = () => {
                     return (
                     <div
                       key={`${section.label}-${movie.slug}`}
-                      className="group/movie-stack flex h-full min-h-0 flex-col overflow-hidden rounded-lg bg-muted/30 ring-1 ring-border/[0.1] transition-[box-shadow] hover:shadow-[0_10px_32px_rgba(28,29,98,0.1)] hover:ring-border/[0.18]"
+                      className="group/movie-stack flex flex-col overflow-hidden rounded-lg bg-muted/30 ring-1 ring-border/[0.1] transition-[box-shadow] hover:shadow-[0_10px_32px_rgba(28,29,98,0.1)] hover:ring-border/[0.18]"
                     >
                       <EventCard
                         slug={movie.slug}
@@ -712,7 +712,7 @@ const Movies = () => {
                         className="w-full"
                       />
                       {hasShowRows ? (
-                      <div className="flex min-h-0 flex-1 flex-col justify-start border-t border-border/[0.1] px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
+                      <div className="shrink-0 border-t border-border/[0.1] px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
                         <ul className="space-y-1">
                           {preview.map((row) => (
                             <li key={row.key} className="font-body tabular-nums leading-relaxed">
@@ -772,7 +772,7 @@ const Movies = () => {
                       ) : null}
                     </div>
                   );})}
-                </div>
+                </motion.div>
               </section>
             ))}
           </div>

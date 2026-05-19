@@ -59,11 +59,15 @@ const EventCard = ({
   const secondaryLine = typeof titleSecondary === "string" && titleSecondary.trim() ? titleSecondary.trim() : "";
   /** Σελίδα λίστας προβολών: το είδος κάτω από τον τίτλο μαζί με σκηνοθέτη και διάρκεια. */
   const movieListingMeta = isMovie && attachShowtimes;
+  /** Οριζόντια σειρά (αρχική, κ.λπ.): σταθερό ύψος τίτλου/υπότιτλου/ειδους. */
+  const uniformScrollCard = uniformMovie && !movieListingMeta && !attachShowtimes;
 
   return (
     <motion.div
       className={cn(
-        attachShowtimes ? "flex min-h-0 w-full min-w-0 flex-1 flex-col" : "h-full min-h-0 min-w-0 flex-1",
+        attachShowtimes
+          ? "flex w-full min-w-0 shrink-0 flex-col"
+          : "flex h-full min-h-0 min-w-0 flex-1 flex-col",
         className,
       )}
       initial={{ opacity: 0, y: 20 }}
@@ -75,9 +79,9 @@ const EventCard = ({
         className={cn(
           "group flex min-h-0 flex-col overflow-hidden transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
           attachShowtimes
-            ? "min-h-0 flex-1 w-full rounded-b-none rounded-t-lg bg-transparent shadow-none ring-0 hover:translate-y-0 hover:shadow-none hover:ring-0"
+            ? "w-full shrink-0 rounded-b-none rounded-t-lg bg-transparent shadow-none ring-0 hover:translate-y-0 hover:shadow-none hover:ring-0"
             : cn(
-                "h-full",
+                "h-full min-h-0 flex-1",
                 tone === "soft"
                   ? "rounded-lg border-transparent bg-muted/35 shadow-none ring-1 ring-border/10 hover:-translate-y-0.5 hover:bg-muted/45 hover:shadow-[0_4px_14px_rgba(28,29,98,0.09)] hover:ring-border/[0.22]"
                   : "card-elevated rounded-lg",
@@ -125,7 +129,7 @@ const EventCard = ({
           className={cn(
             "flex min-h-0 flex-col px-3 pb-2 pt-1.5",
             attachShowtimes
-              ? "min-h-0 flex-1 border-t border-border/[0.1] px-3 py-2 pb-2"
+              ? "shrink-0 border-t border-border/[0.1] px-3 py-2 pb-2"
               : cn(
                   "min-h-0 flex-1 gap-0",
                   tone === "soft" ? "border-t border-border/[0.07]" : "border-t border-border/12",
@@ -135,13 +139,14 @@ const EventCard = ({
           <div
             className={cn(
               "flex shrink-0 flex-col",
-              isMovie ? "min-h-[5.5rem]" : "min-h-[2.75rem]",
+              uniformScrollCard ? "min-h-[7.25rem]" : isMovie ? "min-h-[5.5rem]" : "min-h-[2.75rem]",
             )}
           >
             <h3
               className={cn(
                 "font-display font-semibold leading-tight text-foreground transition-colors group-hover:text-primary",
                 isMovie ? "line-clamp-2 text-base" : "line-clamp-2 text-base",
+                uniformScrollCard && "min-h-[2.5rem]",
               )}
             >
               {title}
@@ -156,12 +161,17 @@ const EventCard = ({
             ) : titleSecondary ? (
               <p className="mt-0.5 text-sm font-medium leading-snug text-muted-foreground line-clamp-2">{titleSecondary}</p>
             ) : null}
-            {isMovie && !movieListingMeta && genreTrimmed ? (
+            {isMovie && !movieListingMeta ? (
               <p
-                className="mt-1 max-w-full truncate text-[10px] font-normal leading-snug tracking-tight text-muted-foreground/82"
-                title={genreTrimmed}
+                className={cn(
+                  "mt-1 max-w-full truncate text-[10px] font-normal leading-snug tracking-tight text-muted-foreground/82",
+                  uniformScrollCard && "min-h-[1.125rem]",
+                  uniformScrollCard && !genreTrimmed && "invisible",
+                )}
+                title={genreTrimmed || undefined}
+                {...(!genreTrimmed && !uniformScrollCard ? { "aria-hidden": true as const } : {})}
               >
-                {genreTrimmed.replace(/\s*·\s*/g, " · ")}
+                {(genreTrimmed || (uniformScrollCard ? "\u00a0" : "")).replace(/\s*·\s*/g, " · ")}
               </p>
             ) : null}
           </div>
