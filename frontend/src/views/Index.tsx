@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import Hero from "@/components/Hero";
 import HorizontalScroll from "@/components/HorizontalScroll";
 import EventCard from "@/components/EventCard";
@@ -38,6 +39,8 @@ function MovieRowScroll({
   eyebrow,
   title,
   subtitle,
+  /** `/movies?section=…` — ίδιο φίλτρο με την ενότητα της αρχικής */
+  moviesMoreHref,
 }: {
   loading: boolean;
   loadingMessage: string;
@@ -50,6 +53,7 @@ function MovieRowScroll({
   eyebrow: string;
   title: string;
   subtitle?: string;
+  moviesMoreHref?: string;
 }) {
   if (loading) {
     return <LoadingState message={loadingMessage} />;
@@ -81,30 +85,56 @@ function MovieRowScroll({
     );
   }
   return (
-    <HorizontalScroll spotlight={spotlight} muted={muted} eyebrow={eyebrow} title={title} subtitle={subtitle}>
-      {items.map((movie, i) => {
-        const tl = movieTitleLines(movie);
-        return (
+    <>
+      <HorizontalScroll spotlight={spotlight} muted={muted} eyebrow={eyebrow} title={title} subtitle={subtitle}>
+        {items.map((movie, i) => {
+          const tl = movieTitleLines(movie);
+          return (
+          <div
+            key={`${movie.id}-${movie.slug}`}
+            className="flex h-full min-h-0 min-w-[170px] max-w-[170px] flex-shrink-0 md:min-w-[200px] md:max-w-[200px]"
+          >
+            <EventCard
+              slug={movie.slug}
+              title={tl.primary}
+              titleSecondary={tl.secondary}
+              subtitle={movie.director}
+              genre={movie.genre}
+              duration={movie.duration}
+              score={movie.criticScore}
+              posterUrl={movie.posterUrl}
+              type="movie"
+              index={i}
+              className="w-full flex-1"
+            />
+          </div>
+        );})}
+      </HorizontalScroll>
+      {moviesMoreHref && items.length > 0 ? (
         <div
-          key={`${movie.id}-${movie.slug}`}
-          className="flex h-full min-h-0 min-w-[170px] max-w-[170px] flex-shrink-0 md:min-w-[200px] md:max-w-[200px]"
+          className={
+            muted
+              ? "relative border-b border-border/40 bg-muted/[0.12] pb-12 pt-4 text-center"
+              : spotlight
+                ? "section-black relative border-b border-white/10 pb-12 pt-5 text-center"
+                : "section-black relative border-b border-white/10 pb-12 pt-5 text-center"
+          }
         >
-          <EventCard
-            slug={movie.slug}
-            title={tl.primary}
-            titleSecondary={tl.secondary}
-            subtitle={movie.director}
-            genre={movie.genre}
-            duration={movie.duration}
-            score={movie.criticScore}
-            posterUrl={movie.posterUrl}
-            type="movie"
-            index={i}
-            className="w-full flex-1"
-          />
+          <div className="container relative z-[1] max-w-7xl">
+            <Link
+              to={moviesMoreHref}
+              className={
+                spotlight || !muted
+                  ? "inline-flex text-sm font-semibold tracking-tight text-amber-100/95 underline underline-offset-4 hover:text-white"
+                  : "inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
+              }
+            >
+              Δες περισσότερα
+            </Link>
+          </div>
         </div>
-      );})}
-    </HorizontalScroll>
+      ) : null}
+    </>
   );
 };
 
@@ -188,6 +218,7 @@ const Index = () => {
                 muted
                 eyebrow="Σήμερα"
                 title="Ταινίες σήμερα"
+                moviesMoreHref="/movies?section=today"
               />,
             );
           case "summer_cinema":
@@ -204,6 +235,7 @@ const Index = () => {
                 eyebrow="Καλοκαίρι · θερινές προβολές"
                 title="Θερινά σινεμά"
                 subtitle="Θερινές προβολές της εβδομάδας"
+                moviesMoreHref="/movies?section=summer"
               />,
             );
           case "summer_venues":
@@ -235,30 +267,68 @@ const Index = () => {
                     </div>
                   </section>
                 ) : (
-                  <>
-                    <HorizontalScroll
-                      spotlight
-                      eyebrow="Χώροι"
-                      title="Τα θερινά σινεμά"
-                      subtitle="Στοιχεία χώρου και σύνδεσμοι εδώ κάτω — κάνε κλικ οπουδήποτε αλλού στην κάρτα για το πρόγραμμα ταινιών."
-                    >
-                      {summerVenuesForHome.map((venue) => (
-                        <VenueCard
-                          key={venue.id}
-                          venue={venue}
-                          variant="spotlight"
-                          moviesHref={`/movies?venue=${encodeURIComponent(venue.slug)}`}
-                        />
-                      ))}
-                    </HorizontalScroll>
-                    <div className="section-black pb-10 pt-0">
-                      <div className="container max-w-7xl text-center">
-                        <a href="/venues" className="text-sm font-medium text-amber-200/90 hover:text-amber-100">
-                          Δες όλους τους χώρους →
+                  <section className="relative section-black overflow-hidden border-y border-white/[0.07] py-10 md:py-14">
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute -right-20 top-0 h-56 w-56 rounded-full bg-amber-500/15 blur-[90px]"
+                    />
+                    <div className="relative z-[1] container max-w-7xl">
+                      <motion.div
+                        initial={{ opacity: 0, y: 10 }}
+                        whileInView={{ opacity: 1, y: 0 }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 0.45 }}
+                      >
+                        <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-amber-300/95">
+                          Χώροι
+                        </span>
+                        <h2 className="font-display text-3xl font-bold leading-tight text-white md:text-4xl md:leading-[1.12]">
+                          Τα θερινά σινεμά
+                        </h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-white/55 font-body md:text-[0.9375rem]">
+                          Όλα τα στοιχεία εδώ · κάνε κλικ στην κάρτα για το πρόγραμμα των ταινιών σε αυτόν τον χώρο.
+                          Τα χειριστήρια «Περισσότερα» / «Χάρτης» είναι ξεχωριστοί σύνδεσμοι.
+                        </p>
+                      </motion.div>
+
+                      <ul
+                        className="mt-8 grid list-none grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3"
+                        aria-label="Λίστα θερινών σινεμά"
+                      >
+                        {summerVenuesForHome.map((venue, i) => (
+                          <li key={venue.id}>
+                            <motion.div
+                              initial={{ opacity: 0, y: 14 }}
+                              whileInView={{ opacity: 1, y: 0 }}
+                              viewport={{ once: true, margin: "-40px" }}
+                              transition={{ duration: 0.4, delay: Math.min(i * 0.05, 0.25), ease: [0.25, 0.46, 0.45, 0.94] }}
+                              className="h-full"
+                            >
+                              <VenueCard
+                                venue={venue}
+                                variant="spotlight"
+                                layout="grid"
+                                compact
+                                moviesHref={`/movies?venue=${encodeURIComponent(venue.slug)}`}
+                              />
+                            </motion.div>
+                          </li>
+                        ))}
+                      </ul>
+
+                      <div className="mt-10 border-t border-white/10 pt-8 text-center">
+                        <a
+                          href="/venues"
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-amber-200/95 transition-colors hover:text-amber-50"
+                        >
+                          Δες όλους τους χώρους
+                          <span aria-hidden className="opacity-75">
+                            →
+                          </span>
                         </a>
                       </div>
                     </div>
-                  </>
+                  </section>
                 )}
               </>,
             );
@@ -330,6 +400,7 @@ const Index = () => {
                 muted
                 eyebrow="Τελευταίες κυκλοφορίες"
                 title="Νέες ταινίες"
+                moviesMoreHref="/movies?section=new"
               />,
             );
           case "movies_week":
@@ -343,6 +414,7 @@ const Index = () => {
                 muted
                 eyebrow="Τρέχουσα εβδομάδα"
                 title="Ταινίες της εβδομάδας"
+                moviesMoreHref="/movies?section=week"
               />,
             );
           case "coming_soon":
@@ -357,6 +429,7 @@ const Index = () => {
                 eyebrow="Μελλοντική κυκλοφορία"
                 title="Προσεχώς"
                 emptyMessage="Δεν υπάρχουν ταινίες με ημερομηνία κυκλοφορίας μετά τη σημερινή μέρα."
+                moviesMoreHref="/movies?section=soon"
               />,
             );
           case "dining":

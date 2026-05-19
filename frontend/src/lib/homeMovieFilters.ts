@@ -17,17 +17,23 @@ export function showtimeIsSummerOutdoor(showtime: StrapiShowtime, venues: Strapi
   return v ? mappedVenueIsSummerOutdoor(v) : false;
 }
 
+/** Έναρξη προβολής ακόμα δεν έχει περάσει (τελευταίες στιγμές `now`, τοπική ζώνη). */
+export function showtimeIsUpcoming(st: StrapiShowtime, now = new Date()): boolean {
+  const dt = new Date(st.datetime);
+  const t = dt.getTime();
+  return !Number.isNaN(t) && t >= now.getTime();
+}
+
 /**
  * Θερινοί χώροι (CMS) που έχουν τουλάχιστον μία μελλοντική προβολή ταινίας με ένδειξη «θερινής» στο μοντέλο προβολής.
  * Αν κανείς δεν έχει τέτοια προβολή, επιστρέφονται όλοι οι θερινοί για να μην μένει κενή η ενότητα.
  */
 export function summerVenuesWithShowtimesOrAll(venues: StrapiVenue[], showtimes: StrapiShowtime[], now = new Date()): StrapiVenue[] {
   const summerVenues = venues.filter((v) => v.summerOutdoor).sort((a, b) => a.name.localeCompare(b.name, "el"));
-  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const idWithSummerShow = new Set<number>();
   for (const st of showtimes) {
     if (st.movieId == null || st.venueId == null) continue;
-    if (Number.isNaN(new Date(st.datetime).getTime()) || new Date(st.datetime) < dayStart) continue;
+    if (!showtimeIsUpcoming(st, now)) continue;
     if (!showtimeIsSummerOutdoor(st, venues)) continue;
     idWithSummerShow.add(Number(st.venueId));
   }
@@ -105,14 +111,46 @@ function endOfCinemaWeek(d: Date): Date {
   return end;
 }
 
-function isoInCalendarWeek(dt: Date, reference: Date): boolean {
+export function isoInCalendarWeek(dt: Date, reference: Date): boolean {
   const t = dt.getTime();
   return t >= startOfWeekMonday(reference).getTime() && t <= endOfWeekSunday(reference).getTime();
 }
 
-function isoInCinemaWeek(dt: Date, reference: Date): boolean {
+/** Ίδιο όριο με την ενότητα «Θερινά σινεμά» στην αρχική (εβδομάδα σινεμά). */
+export function isoInCinemaWeek(dt: Date, reference: Date): boolean {
   const t = dt.getTime();
   return t >= startOfCinemaWeek(reference).getTime() && t <= endOfCinemaWeek(reference).getTime();
+}
+
+/** Ταιριάζει τις προβολές που φαίνονται στη γραμμή «Σήμερα» της αρχικής (μόνο όσες δεν έχουν περάσει). */
+export function showtimeMatchesHomeToday(st: StrapiShowtime, now = new Date()): boolean {
+  const dt = new Date(st.datetime);
+  if (Number.isNaN(dt.getTime())) return false;
+  if (dt.getTime() < now.getTime()) return false;
+  const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const dayEnd = new Date(dayStart);
+  dayEnd.setDate(dayEnd.getDate() + 1);
+  const t = dt.getTime();
+  return t >= dayStart.getTime() && t < dayEnd.getTime();
+}
+
+/** Ίδια λογική με «Ταινίες της εβδομάδας» (ημερολογιακή Δευ–Κυρ). */
+export function showtimeMatchesHomeThisWeek(st: StrapiShowtime, now = new Date()): boolean {
+  const dt = new Date(st.datetime);
+  return !Number.isNaN(dt.getTime()) && dt.getTime() >= now.getTime() && isoInCalendarWeek(dt, now);
+}
+
+/** Προβολή θερινής σινεμά στην τρέχουσα εβδομάδα κινηματογράφου (όπως αρχική). */
+export function showtimeMatchesHomeSummerCinemaRow(
+  st: StrapiShowtime,
+  venues: StrapiVenue[] | undefined,
+  now = new Date(),
+): boolean {
+  const dt = new Date(st.datetime);
+  if (Number.isNaN(dt.getTime())) return false;
+  if (dt.getTime() < now.getTime()) return false;
+  if (!showtimeIsSummerOutdoor(st, venues)) return false;
+  return isoInCinemaWeek(dt, now);
 }
 
 /**
@@ -180,8 +218,13 @@ export function moviesWithSummerOutdoorShowtime(
   movies: StrapiMovie[],
   showtimes: StrapiShowtime[],
   venues?: StrapiVenue[],
+  now = new Date(),
 ): StrapiMovie[] {
-  return moviesFromShowtimesOrdered(movies, showtimes, (st) => showtimeIsSummerOutdoor(st, venues));
+  return moviesFromShowtimesOrdered(
+    movies,
+    showtimes,
+    (st) => showtimeIsUpcoming(st, now) && showtimeIsSummerOutdoor(st, venues),
+  );
 }
 
 /**
@@ -197,6 +240,7 @@ export function moviesWithSummerOutdoorShowtimeThisCinemaWeek(
   return moviesFromShowtimesOrdered(movies, showtimes, (st) => {
     const dt = new Date(st.datetime);
     if (Number.isNaN(dt.getTime())) return false;
+    if (dt.getTime() < now.getTime()) return false;
     if (!showtimeIsSummerOutdoor(st, venues)) return false;
     return isoInCinemaWeek(dt, now);
   });
@@ -206,7 +250,7 @@ export function moviesWithSummerOutdoorShowtimeThisCinemaWeek(
 export function moviesWithShowtimeThisWeek(movies: StrapiMovie[], showtimes: StrapiShowtime[], now = new Date()): StrapiMovie[] {
   return moviesFromShowtimesOrdered(movies, showtimes, (st) => {
     const dt = new Date(st.datetime);
-    return !Number.isNaN(dt.getTime()) && isoInCalendarWeek(dt, now);
+    return !Number.isNaN(dt.getTime()) && dt.getTime() >= now.getTime() && isoInCalendarWeek(dt, now);
   });
 }
 
@@ -218,7 +262,12 @@ export function moviesWithShowtimeToday(movies: StrapiMovie[], showtimes: Strapi
 
   return moviesFromShowtimesOrdered(movies, showtimes, (st) => {
     const dt = new Date(st.datetime);
-    return !Number.isNaN(dt.getTime()) && dt.getTime() >= dayStart.getTime() && dt.getTime() < dayEnd.getTime();
+    return (
+      !Number.isNaN(dt.getTime()) &&
+      dt.getTime() >= now.getTime() &&
+      dt.getTime() >= dayStart.getTime() &&
+      dt.getTime() < dayEnd.getTime()
+    );
   });
 }
 

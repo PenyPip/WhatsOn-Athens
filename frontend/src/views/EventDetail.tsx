@@ -9,6 +9,7 @@ import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { normalizeCastFromStrapi, type StrapiMovie, type StrapiShowtime, type StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
+import { showtimeIsUpcoming } from "@/lib/homeMovieFilters";
 import { cn } from "@/lib/utils";
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
@@ -61,7 +62,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const eventShowtimes = useMemo((): StrapiShowtime[] => {
     const list = showtimes ?? [];
     if (!slug || type !== "movie") return [];
-    const filtered = list.filter((st) => st.movieSlug === slug);
+    const now = new Date();
+    const filtered = list.filter((st) => st.movieSlug === slug && showtimeIsUpcoming(st, now));
     return [...filtered].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
   }, [showtimes, slug, type]);
 
@@ -315,10 +317,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         </section>
         ) : null}
 
+        {isMovie ? (
         <section id="showtimes">
-          <h2 className={cn("font-display text-xl font-semibold", isMovie ? "mb-6" : "mb-2")}>Πού παίζει & ώρες</h2>
+          <h2 className="font-display text-xl font-semibold mb-6">Πού παίζει & ώρες</h2>
           {eventShowtimes.length === 0 ? (
-            <p className="text-muted-foreground text-sm">Δεν έχουν καταχωρηθεί προβολές ακόμη.</p>
+            <p className="text-muted-foreground text-sm">Δεν υπάρχουν επερχόμενες προβολές.</p>
           ) : (
             <div className="space-y-12 max-w-5xl">
               {showtimesByVenue.map(({ venueName, slots }) => {
@@ -341,6 +344,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </div>
           )}
         </section>
+        ) : null}
 
         {eventEditorialReviews.length > 0 && (
           <section>
