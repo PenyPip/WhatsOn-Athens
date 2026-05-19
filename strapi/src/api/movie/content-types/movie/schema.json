@@ -54,6 +54,11 @@
     "language": {
       "type": "string"
     },
+    "is_dubbed": {
+      "type": "boolean",
+      "default": false,
+      "description": "Εμφάνιση επισήμανσης «Μεταγλωτισμένη» στο site. Μπορείς επίσης να γράψεις «μεταγλωτισμένη» στο πεδίο γλώσσα."
+    },
     "age_rating": {
       "type": "string"
     },

@@ -537,6 +537,12 @@ export function normalizeCastFromStrapi(cast: unknown): string[] {
   return out;
 }
 
+function movieIsDubbedFromRaw(m: Record<string, unknown>): boolean {
+  if (m.is_dubbed === true) return true;
+  const lang = typeof m.language === "string" ? m.language.toLowerCase() : "";
+  return /μεταγλωτισ|μεταγλωτίσ|dubbed|\bdub\b/i.test(lang);
+}
+
 function mapMovie(
   raw: unknown,
   hydrate?: {
@@ -581,6 +587,7 @@ function mapMovie(
     genreSlugs,
     duration: m.duration,
     language: m.language,
+    isDubbed: movieIsDubbedFromRaw(m as Record<string, unknown>),
     ageRating: m.age_rating,
     synopsis: m.synopsis,
     criticScore: m.critic_score,
@@ -912,6 +919,8 @@ export interface StrapiMovie {
   genreSlugs: string[];
   duration: number;
   language: string;
+  /** CMS `is_dubbed` ή λέξη-κλειδί στο πεδίο γλώσσα. */
+  isDubbed: boolean;
   ageRating: string;
   synopsis: string;
   criticScore: number;

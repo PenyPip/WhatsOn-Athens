@@ -13,12 +13,13 @@ import type { StrapiMovie } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
   moviesReleasedInLastDays,
-  moviesWithFutureReleaseDate,
+  moviesComingAfterUpcomingCinemaWeek,
+  moviesForUpcomingCinemaWeek,
   moviesWithSummerOutdoorShowtimeThisCinemaWeek,
-  moviesWithShowtimeThisWeek,
   moviesWithShowtimeToday,
   summerVenuesWithShowtimesOrAll,
   enrichMoviesWithShowtimeGenre,
+  formatUpcomingCinemaWeekRange,
 } from "@/lib/homeMovieFilters";
 import VenueCard from "@/components/VenueCard";
 
@@ -105,6 +106,7 @@ function MovieRowScroll({
               score={movie.criticScore}
               posterUrl={movie.posterUrl}
               type="movie"
+              isDubbed={movie.isDubbed}
               uniformMovieSizing
               index={i}
               className="h-full w-full min-h-0 flex-1"
@@ -174,10 +176,11 @@ const Index = () => {
     () => moviesWithSummerOutdoorShowtimeThisCinemaWeek(movieList, stList, venueList),
     [movieList, stList, venueList],
   );
-  const weekMovies = useMemo(() => moviesWithShowtimeThisWeek(movieList, stList), [movieList, stList]);
+  const weekMovies = useMemo(() => moviesForUpcomingCinemaWeek(movieList, stList), [movieList, stList]);
+  const upcomingWeekLabel = useMemo(() => formatUpcomingCinemaWeekRange(), []);
   const todayMovies = useMemo(() => moviesWithShowtimeToday(movieList, stList), [movieList, stList]);
   const newMoviesList = useMemo(() => moviesReleasedInLastDays(movieList, 10), [movieList]);
-  const comingSoonMovies = useMemo(() => moviesWithFutureReleaseDate(movieList), [movieList]);
+  const comingSoonMovies = useMemo(() => moviesComingAfterUpcomingCinemaWeek(movieList), [movieList]);
 
   const sectionEl = (id: HomeSectionId, node: ReactNode) => <Fragment key={id}>{node}</Fragment>;
 
@@ -410,12 +413,13 @@ const Index = () => {
               "movies_week",
               <MovieRowScroll
                 loading={moviesLoading || showtimesLoading}
-                loadingMessage="Φόρτωση προβολών εβδομάδας..."
+                loadingMessage="Φόρτωση ταινιών εβδομάδας..."
                 fetchErrorMessage={moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={weekMovies}
                 muted
-                eyebrow="Τρέχουσα εβδομάδα"
-                title="Ταινίες της εβδομάδας"
+                eyebrow="Εβδομάδα κινηματογράφου"
+                title="Ταινίες της ερχόμενης εβδομάδας"
+                subtitle={upcomingWeekLabel}
                 moviesMoreHref="/movies?section=week"
               />,
             );
@@ -430,7 +434,7 @@ const Index = () => {
                 muted
                 eyebrow="Μελλοντική κυκλοφορία"
                 title="Προσεχώς"
-                emptyMessage="Δεν υπάρχουν ταινίες με ημερομηνία κυκλοφορίας μετά τη σημερινή μέρα."
+                emptyMessage="Δεν υπάρχουν ταινίες με κυκλοφορία μετά την επόμενη εβδομάδα κινηματογράφου."
                 moviesMoreHref="/movies?section=soon"
               />,
             );

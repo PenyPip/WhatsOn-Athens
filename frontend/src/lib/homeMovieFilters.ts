@@ -72,6 +72,7 @@ function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefined): St
     genreSlugs: slugs,
     duration: 0,
     language: "",
+    isDubbed: false,
     ageRating: "",
     synopsis: "",
     criticScore: 0,
@@ -360,4 +361,97 @@ export function moviesWithFutureReleaseDate(movies: StrapiMovie[], now = new Dat
   }
   withParsed.sort((a, b) => a.release.getTime() - b.release.getTime());
   return withParsed.map((x) => x.movie);
+}
+
+/** Άμεσα επόμενη εβδομάδα κινηματογράφου (Πέμπτη 00:00 έως Τετάρτη τέλος ημέρας). Αν έχουμε ήδη μπει στην τρέχουσα, η «επόμενη» είναι η μεθεπόμενη Πέμπτη. */
+export function getUpcomingCinemaWeekBounds(now = new Date()): { start: Date; end: Date } {
+  let start = startOfCinemaWeek(now);
+  if (now.getTime() >= start.getTime()) {
+    start = new Date(start);
+    start.setDate(start.getDate() + 7);
+  }
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function releaseDateInBounds(movie: StrapiMovie, start: Date, end: Date): boolean {
+  const release = parseReleaseDateLocal(movie.releaseDate ?? "");
+  if (!release) return false;
+  const r0 = startOfLocalDay(release).getTime();
+  return r0 >= start.getTime() && r0 <= end.getTime();
+}
+
+/** Προβολή μέσα στην άμεσα επόμενη εβδομάδα κινηματογράφου (μόνο μελλοντικές ώρες). */
+export function showtimeMatchesHomeUpcomingCinemaWeek(st: StrapiShowtime, now = new Date()): boolean {
+  const dt = new Date(st.datetime);
+  if (Number.isNaN(dt.getTime())) return false;
+  if (dt.getTime() < now.getTime()) return false;
+  const { start, end } = getUpcomingCinemaWeekBounds(now);
+  const t = dt.getTime();
+  return t >= start.getTime() && t <= end.getTime();
+}
+
+/**
+ * Ταινίες της επόμενης εβδομάδας κινηματογράφου: κυκλοφορία ή προβολή μέσα στο διάστημα.
+ * Πρώτα με release στην εβδομάδα, μετά με προβολή χωρίς release στην εβδομάδα.
+ */
+export function moviesForUpcomingCinemaWeek(
+  movies: StrapiMovie[],
+  showtimes: StrapiShowtime[],
+  now = new Date(),
+): StrapiMovie[] {
+  const { start, end } = getUpcomingCinemaWeekBounds(now);
+  const fromRelease = movies.filter((m) => releaseDateInBounds(m, start, end));
+  const releaseIds = new Set(fromRelease.map((m) => m.id));
+  const fromShowtimes = moviesFromShowtimesOrdered(movies, showtimes, (st) => {
+    const dt = new Date(st.datetime);
+    if (Number.isNaN(dt.getTime())) return false;
+    if (dt.getTime() < now.getTime()) return false;
+    const t = dt.getTime();
+    return t >= start.getTime() && t <= end.getTime();
+  });
+  const seen = new Set<number>();
+  const out: StrapiMovie[] = [];
+  for (const m of fromRelease) {
+    if (!seen.has(m.id)) {
+      seen.add(m.id);
+      out.push(m);
+    }
+  }
+  for (const m of fromShowtimes) {
+    if (!seen.has(m.id)) {
+      seen.add(m.id);
+      out.push(m);
+    }
+  }
+  return out;
+}
+
+/** Προσεχώς: κυκλοφορία μετά το τέλος της επόμενης εβδομάδας κινηματογράφου (όχι μέσα σε αυτή). */
+export function moviesComingAfterUpcomingCinemaWeek(movies: StrapiMovie[], now = new Date()): StrapiMovie[] {
+  const { end } = getUpcomingCinemaWeekBounds(now);
+  const afterEnd = new Date(end);
+  afterEnd.setDate(afterEnd.getDate() + 1);
+  afterEnd.setHours(0, 0, 0, 0);
+  const todayStart = startOfLocalDay(now);
+
+  const withParsed: { movie: StrapiMovie; release: Date }[] = [];
+  for (const movie of movies) {
+    const release = parseReleaseDateLocal(movie.releaseDate ?? "");
+    if (!release) continue;
+    const r0 = startOfLocalDay(release);
+    if (r0.getTime() < afterEnd.getTime()) continue;
+    if (r0.getTime() <= todayStart.getTime()) continue;
+    withParsed.push({ movie, release: r0 });
+  }
+  withParsed.sort((a, b) => a.release.getTime() - b.release.getTime());
+  return withParsed.map((x) => x.movie);
+}
+
+export function formatUpcomingCinemaWeekRange(now = new Date()): string {
+  const { start, end } = getUpcomingCinemaWeekBounds(now);
+  const fmt = new Intl.DateTimeFormat("el-GR", { day: "numeric", month: "short" });
+  return `${fmt.format(start)} – ${fmt.format(end)}`;
 }

@@ -12,12 +12,14 @@ import { movieTitleLines } from "@/lib/movieTitles";
 import {
   showtimeIsSummerOutdoor,
   showtimeMatchesHomeToday,
-  showtimeMatchesHomeThisWeek,
+  showtimeMatchesHomeUpcomingCinemaWeek,
   showtimeMatchesHomeSummerCinemaRow,
   showtimeIsUpcoming,
   moviesReleasedInLastDays,
-  moviesWithFutureReleaseDate,
+  moviesComingAfterUpcomingCinemaWeek,
+  moviesForUpcomingCinemaWeek,
   enrichMoviesWithShowtimeGenre,
+  formatUpcomingCinemaWeekRange,
 } from "@/lib/homeMovieFilters";
 
 const MOVIES_SECTION_QUERY_KEYS = ["today", "week", "summer", "new", "soon"] as const;
@@ -30,10 +32,10 @@ function parseMoviesSectionParam(raw: string | null): MoviesUrlSectionKey | null
 
 const MOVIES_SECTION_BANNER: Record<MoviesUrlSectionKey, string> = {
   today: "Φιλτράρισμα: Ταινίες σήμερα",
-  week: "Φιλτράρισμα: Ταινίες της εβδομάδας (Δευ–Κυρ)",
+  week: `Φιλτράρισμα: Ταινίες της ερχόμενης εβδομάδας (${formatUpcomingCinemaWeekRange()})`,
   summer: "Φιλτράρισμα: Θερινές προβολές (εβδομάδα σινεμά)",
   new: "Φιλτράρισμα: Τελευταίες κυκλοφορίες (10 μέρες)",
-  soon: "Φιλτράρισμα: Προσεχώς (ημερομηνία κυκλοφορίας μετά από σήμερα)",
+  soon: "Φιλτράρισμα: Προσεχώς (μετά την επόμενη εβδομάδα κινηματογράφου)",
 };
 
 const AREA_KEYS = ["athens", "thessaloniki", "other"] as const;
@@ -354,23 +356,27 @@ const Movies = () => {
     let programSt = baseSt;
     if (moviesSection === "today") {
       programSt = programSt.filter((st) => showtimeMatchesHomeToday(st, now));
-    } else if (moviesSection === "week") {
-      programSt = programSt.filter((st) => showtimeMatchesHomeThisWeek(st, now));
     } else if (moviesSection === "summer") {
       programSt = programSt.filter((st) => showtimeMatchesHomeSummerCinemaRow(st, venues, now));
     }
 
-    if (moviesSection === "new" || moviesSection === "soon") {
+    if (moviesSection === "new" || moviesSection === "soon" || moviesSection === "week") {
       const subset =
         moviesSection === "new"
           ? moviesReleasedInLastDays(moviesEnriched ?? [], 10, now)
-          : moviesWithFutureReleaseDate(moviesEnriched ?? [], now);
+          : moviesSection === "soon"
+            ? moviesComingAfterUpcomingCinemaWeek(moviesEnriched ?? [], now)
+            : moviesForUpcomingCinemaWeek(moviesEnriched ?? [], showtimes, now);
       if (subset.length === 0) return [];
 
       const ids = new Set(subset.map((m) => m.id));
 
       const byMovieVenues = new Map<number, Map<string, VenueShowingsBlock>>();
-      const stSubset = baseSt.filter((st) => ids.has(Number(st.movieId)));
+      const stSubset = baseSt.filter((st) => {
+        if (!ids.has(Number(st.movieId))) return false;
+        if (moviesSection === "week") return showtimeMatchesHomeUpcomingCinemaWeek(st, now);
+        return true;
+      });
 
       for (const st of stSubset) {
         const stDate = new Date(st.datetime);
@@ -419,7 +425,12 @@ const Movies = () => {
 
       return [
         {
-          label: moviesSection === "new" ? "Τελευταίες κυκλοφορίες" : "Προσεχώς",
+          label:
+            moviesSection === "new"
+              ? "Τελευταίες κυκλοφορίες"
+              : moviesSection === "week"
+                ? "Ερχόμενη εβδομάδα"
+                : "Προσεχώς",
           date: todayStart,
           entries,
         },
@@ -706,6 +717,7 @@ const Movies = () => {
                         score={movie.criticScore}
                         posterUrl={movie.posterUrl}
                         type="movie"
+                        isDubbed={movie.isDubbed}
                         tone="soft"
                         attachShowtimes={hasShowRows}
                         index={i}

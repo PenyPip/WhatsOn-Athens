@@ -563,6 +563,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'api::editorial-review.editorial-review'
     >;
     genre_display: Attribute.String;
+    is_dubbed: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
     movie_genres: Attribute.Relation<
       'api::movie.movie',

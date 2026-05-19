@@ -273,6 +273,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               ) : genreLabel ? (
                 <span>{genreLabel}</span>
               ) : null}
+              {movie?.isDubbed ? (
+                <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
+                  Μεταγλωτισμένη
+                </span>
+              ) : null}
               {movie?.language?.trim() ? (
                 <span className="flex items-center gap-1">
                   <Globe className="w-4 h-4" /> {movie.language.trim()}
@@ -451,6 +456,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   gradientFrom={isMovie ? undefined : (item as StrapiTheaterShow).gradientFrom}
                   gradientTo={isMovie ? undefined : (item as StrapiTheaterShow).gradientTo}
                   posterUrl={isMovie ? (item as StrapiMovie).posterUrl : item.posterUrl}
+                  isDubbed={isMovie ? (item as StrapiMovie).isDubbed : false}
                   type={type}
                   index={i}
                   className="w-full flex-1"

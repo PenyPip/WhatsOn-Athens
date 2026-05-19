@@ -18,6 +18,8 @@ interface EventCardProps {
   posterUrl?: string;
   type: "movie" | "theater";
   badge?: string;
+  /** Επισήμανση μεταγλωτισμένης ταινίας (δεξιά στην αφίσα). */
+  isDubbed?: boolean;
   /** Λίστες όπως /movies: ηπιότερο πλαίσιο (λιγότερο «λευκό» από το προεπιλεγμένο card-elevated). */
   tone?: "default" | "soft";
   /** Σε λίστα με προβολές: τα κορυφαία (αφίσα+λίζτ) διατείνονται ώστε οι καρτέλες στην ίδια σειρά να ευθυγραμμίζονται. */
@@ -41,6 +43,7 @@ const EventCard = ({
   posterUrl,
   type,
   badge,
+  isDubbed = false,
   tone = "default",
   attachShowtimes = false,
   uniformMovieSizing,
@@ -110,6 +113,11 @@ const EventCard = ({
           {badge && (
             <span className="absolute top-2 left-2 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider rounded bg-[#13143E] text-white z-10">
               {badge}
+            </span>
+          )}
+          {isDubbed && (
+            <span className="absolute top-2 right-2 z-10 rounded bg-amber-600/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm">
+              Μεταγλωτ.
             </span>
           )}
           {score && (
