@@ -78,7 +78,7 @@ const Hero = () => {
   const kicker = isTheater ? "Προτεινόμενη παράσταση" : "Προτεινόμενη ταινία";
 
   return (
-    <section className="relative h-[75vh] min-h-[500px] overflow-hidden bg-[#111111] md:-mt-28 md:pt-28">
+    <section className="relative h-[75vh] min-h-[500px] overflow-hidden bg-[#111111] max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28">
       <div className="absolute inset-0">
         {!isTheater && (featured as StrapiMovie).posterUrl ? (
           <>

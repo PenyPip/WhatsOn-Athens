@@ -29,8 +29,8 @@ const App = () => (
       <BrowserRouter>
         <ScrollToTop />
         <Navbar />
-        {/* Χώρος για fixed desktop nav (h-28)· το Hero το αναιρεί με -mt + pt. */}
-        <main className="min-h-screen md:pt-28">
+        {/* Χώρος για fixed nav — mobile πάνω, desktop h-28· το Hero το αναιρεί με -mt + pt. */}
+        <main className="min-h-screen max-md:pt-16 md:pt-28">
           <CookieConsentBanner />
           <Routes>
             <Route path="/" element={<Index />} />

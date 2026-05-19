@@ -43,6 +43,8 @@ function MovieRowScroll({
   subtitle,
   /** `/movies?section=…` — ίδιο φίλτρο με την ενότητα της αρχικής */
   moviesMoreHref,
+  /** Όλες οι ταινίες σε πλέγμα (2–3 σειρές) αντί για οριζόντια κύλιση. */
+  layout = "scroll",
 }: {
   loading: boolean;
   loadingMessage: string;
@@ -56,6 +58,7 @@ function MovieRowScroll({
   title: string;
   subtitle?: string;
   moviesMoreHref?: string;
+  layout?: "scroll" | "grid";
 }) {
   if (loading) {
     return <LoadingState message={loadingMessage} />;
@@ -86,6 +89,83 @@ function MovieRowScroll({
       </section>
     );
   }
+
+  if (layout === "grid") {
+    return (
+      <>
+        <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+          <motion.div
+            className="container max-w-7xl"
+            initial={{ opacity: 0, y: 10 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.45 }}
+          >
+            <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-muted-foreground opacity-75">
+              {eyebrow}
+            </span>
+            <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">{title}</h2>
+            {subtitle ? (
+              <p className="mt-1 max-w-xl font-body text-sm leading-relaxed text-muted-foreground">{subtitle}</p>
+            ) : null}
+            <ul
+              className="mt-6 grid list-none grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
+              aria-label={title}
+            >
+              {items.map((movie, i) => {
+                const tl = movieTitleLines(movie);
+                return (
+                  <li key={`${movie.id}-${movie.slug}`}>
+                    <motion.div
+                      initial={{ opacity: 0, y: 14 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      viewport={{ once: true, margin: "-40px" }}
+                      transition={{ duration: 0.4, delay: Math.min(i * 0.03, 0.2), ease: [0.25, 0.46, 0.45, 0.94] }}
+                      className="h-full"
+                    >
+                      <EventCard
+                        slug={movie.slug}
+                        title={tl.primary}
+                        titleSecondary={tl.secondary}
+                        subtitle={movie.director}
+                        genre={movie.genre}
+                        duration={movie.duration}
+                        score={movie.criticScore}
+                        posterUrl={movie.posterUrl}
+                        type="movie"
+                        isDubbed={movie.isDubbed}
+                        uniformMovieSizing
+                        index={i}
+                        className="h-full w-full"
+                      />
+                    </motion.div>
+                  </li>
+                );
+              })}
+            </ul>
+          </motion.div>
+        </section>
+        {moviesMoreHref ? (
+          <motion.div
+            className="relative border-b border-border/40 bg-muted/[0.12] pb-12 pt-4 text-center"
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+          >
+            <div className="container max-w-7xl">
+              <Link
+                to={moviesMoreHref}
+                className="inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
+              >
+                Δες περισσότερα
+              </Link>
+            </div>
+          </motion.div>
+        ) : null}
+      </>
+    );
+  }
+
   return (
     <>
       <HorizontalScroll spotlight={spotlight} muted={muted} eyebrow={eyebrow} title={title} subtitle={subtitle}>
@@ -243,7 +323,7 @@ const Index = () => {
                 spotlight
                 eyebrow="Καλοκαίρι · θερινές προβολές"
                 title="Θερινά σινεμά"
-                subtitle="Θερινές προβολές της εβδομάδας"
+                subtitle="Παίζουν τώρα"
                 moviesMoreHref="/movies?section=summer"
               />,
             );
@@ -420,6 +500,7 @@ const Index = () => {
                 eyebrow="Εβδομάδα κινηματογράφου"
                 title="Ταινίες της ερχόμενης εβδομάδας"
                 subtitle={upcomingWeekLabel}
+                layout="grid"
                 moviesMoreHref="/movies?section=week"
               />,
             );
