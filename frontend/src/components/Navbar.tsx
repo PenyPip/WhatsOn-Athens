@@ -109,7 +109,7 @@ function BrandLogo({ compact = false }: { compact?: boolean }) {
         >
           Cinema · Events · Culture
         </span>
-      </motion.div>
+      </div>
     </Link>
   );
 }
@@ -165,7 +165,7 @@ const Navbar = () => {
         <div className="container flex min-h-14 items-center gap-2.5 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <BrandLogo compact />
           <NavSearchTrigger onClick={() => setSearchOpen(true)} className="h-9 min-w-0 flex-1 px-3 text-xs" />
-        </motion.div>
+        </div>
       </nav>
 
       <nav className="fixed top-0 left-0 right-0 z-50 hidden md:block" style={{ background: NAV_GRADIENT }}>
@@ -205,8 +205,8 @@ const Navbar = () => {
                 <User className="h-5 w-5 text-white/60" />
               </Link>
             ) : null}
-          </motion.div>
-        </motion.div>
+          </div>
+        </div>
       </nav>
 
       <nav
@@ -245,7 +245,7 @@ const Navbar = () => {
               <span>Προφίλ</span>
             </Link>
           ) : null}
-        </motion.div>
+        </div>
       </nav>
     </>
   );
