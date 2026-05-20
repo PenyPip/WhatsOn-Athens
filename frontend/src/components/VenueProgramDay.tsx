@@ -39,7 +39,13 @@ type ProgramLine = { key: string; datetime: Date; hallName?: string; movie: Stra
 
 type ProgramDayGroup = {
   dayKey: string;
+  date: Date;
   label: string;
+  weekdayShort: string;
+  dayNumber: number;
+  monthShort: string;
+  isToday: boolean;
+  isTomorrow: boolean;
   lines: ProgramLine[];
 };
 
@@ -50,6 +56,8 @@ type ProgramWeekGroup = {
   heading: string;
   days: ProgramDayGroup[];
 };
+
+const WEEKDAY_SHORT_EL = ["Κυρ", "Δευ", "Τρί", "Τετ", "Πέμ", "Παρ", "Σάβ"] as const;
 
 function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
   const rows: ShowingRow[] = [];
@@ -74,13 +82,42 @@ function calendarDayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function formatProgramDayLabel(d: Date, now: Date): string {
+function buildDayMeta(d: Date, now: Date): Omit<ProgramDayGroup, "dayKey" | "lines"> {
   const todayKey = calendarDayKey(now);
   const key = calendarDayKey(d);
-  if (key === todayKey) return "Σήμερα";
   const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  if (key === calendarDayKey(tomorrow)) return "Αύριο";
-  return d.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
+  const isToday = key === todayKey;
+  const isTomorrow = key === calendarDayKey(tomorrow);
+  const monthShort = d.toLocaleDateString("el-GR", { month: "short" }).replace(/\.$/, "");
+
+  let label = d.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
+  if (isToday) label = "Σήμερα";
+  else if (isTomorrow) label = "Αύριο";
+
+  return {
+    date: d,
+    label,
+    weekdayShort: WEEKDAY_SHORT_EL[d.getDay()],
+    dayNumber: d.getDate(),
+    monthShort,
+    isToday,
+    isTomorrow,
+  };
+}
+
+function buildCinemaWeekColumns(weekStart: Date, filledDays: Map<string, ProgramLine[]>, now: Date): ProgramDayGroup[] {
+  const columns: ProgramDayGroup[] = [];
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
+    const dayKey = calendarDayKey(d);
+    const meta = buildDayMeta(d, now);
+    columns.push({
+      dayKey,
+      ...meta,
+      lines: filledDays.get(dayKey) ?? [],
+    });
+  }
+  return columns;
 }
 
 function groupProgramByCinemaWeek(lines: ProgramLine[], now: Date): ProgramWeekGroup[] {
@@ -106,20 +143,12 @@ function groupProgramByCinemaWeek(lines: ProgramLine[], now: Date): ProgramWeekG
         byDay.get(dayKey)!.push(line);
       }
 
-      const days: ProgramDayGroup[] = [...byDay.entries()]
-        .sort(([a], [b]) => a.localeCompare(b))
-        .map(([dayKey, dayLines]) => ({
-          dayKey,
-          label: formatProgramDayLabel(dayLines[0].datetime, now),
-          lines: dayLines,
-        }));
-
       return {
         weekKey,
         weekStart,
         weekEnd,
         heading: formatCinemaWeekHeading(weekStart, weekEnd, now),
-        days,
+        days: buildCinemaWeekColumns(weekStart, byDay, now),
       };
     });
 }
@@ -170,7 +199,109 @@ function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number 
   );
 }
 
-/** Σελίδα προγράμματος χώρου: όλες οι ταινίες πάνω, πρόγραμμα κάτω ανά εβδομάδα κινηματογράφου. */
+function VenueCalendarScreening({ line }: { line: ProgramLine }) {
+  const tl = movieTitleLines(line.movie);
+  return (
+    <div className="rounded-md bg-background px-2 py-1.5 shadow-sm ring-1 ring-border/25 transition-shadow hover:ring-[#13143E]/20">
+      <time
+        dateTime={line.datetime.toISOString()}
+        className="block text-sm font-bold tabular-nums leading-none text-[#13143E]"
+      >
+        {formatClock(line.datetime)}
+      </time>
+      <Link
+        to={`/movies/${line.movie.slug}`}
+        className="mt-1 block text-[11px] font-medium leading-snug text-foreground hover:text-primary hover:underline sm:text-xs"
+      >
+        {tl.primary}
+      </Link>
+      {line.hallName ? (
+        <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{line.hallName}</p>
+      ) : null}
+    </div>
+  );
+}
+
+function VenueCalendarDayCell({ day }: { day: ProgramDayGroup }) {
+  const hasShowings = day.lines.length > 0;
+
+  return (
+    <div
+      className={cn(
+        "flex min-h-[7.5rem] min-w-[5.5rem] flex-col sm:min-h-[8.5rem] lg:min-h-[9rem] lg:min-w-0",
+        day.isToday && "bg-[#13143E]/[0.045]",
+      )}
+    >
+      <div
+        className={cn(
+          "flex flex-col items-center border-b border-border/15 px-1.5 py-2 text-center sm:px-2",
+          day.isToday ? "bg-[#13143E]/[0.07]" : "bg-muted/30",
+        )}
+      >
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{day.weekdayShort}</span>
+        <span
+          className={cn(
+            "font-display text-xl font-bold tabular-nums leading-none sm:text-2xl",
+            day.isToday ? "text-[#13143E]" : "text-foreground",
+          )}
+        >
+          {day.dayNumber}
+        </span>
+        <span className="text-[10px] capitalize text-muted-foreground">{day.monthShort}</span>
+        {day.isToday ? (
+          <span className="mt-1 rounded-full bg-[#13143E] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
+            Σήμερα
+          </span>
+        ) : day.isTomorrow ? (
+          <span className="mt-1 text-[9px] font-medium text-muted-foreground">Αύριο</span>
+        ) : null}
+      </div>
+
+      <div className="flex flex-1 flex-col gap-1.5 p-1.5 sm:p-2">
+        {hasShowings ? (
+          day.lines.map((line) => <VenueCalendarScreening key={line.key} line={line} />)
+        ) : (
+          <p className="flex flex-1 items-center justify-center py-4 text-center text-[10px] text-muted-foreground/50">—</p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function VenueProgramCalendarWeek({ week }: { week: ProgramWeekGroup }) {
+  return (
+    <article className="overflow-hidden rounded-xl border border-border/20 bg-card/40 shadow-sm">
+      <header className="border-b border-border/15 bg-muted/25 px-4 py-3 md:px-5">
+        <h3 className="font-display text-base font-semibold capitalize leading-snug text-foreground md:text-lg">
+          {week.heading}
+        </h3>
+        <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
+          Εβδομάδα κινηματογράφου · Πέμπτη – Τετάρτη
+        </p>
+      </header>
+
+      {/* Κινητό: οριζόντια κύλιση 7 ημερών */}
+      <div className="lg:hidden">
+        <div className="flex divide-x divide-border/20 overflow-x-auto overscroll-x-contain">
+          {week.days.map((day) => (
+            <div key={day.dayKey} className="shrink-0">
+              <VenueCalendarDayCell day={day} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Desktop: πλήρες εβδομαδιαίο ημερολόγιο */}
+      <div className="hidden lg:grid lg:grid-cols-7 lg:divide-x lg:divide-border/20">
+        {week.days.map((day) => (
+          <VenueCalendarDayCell key={day.dayKey} day={day} />
+        ))}
+      </div>
+    </article>
+  );
+}
+
+/** Σελίδα προγράμματος χώρου: ταινίες πάνω, ημερολόγιο κάτω (Πέμπτη – Τετάρτη). */
 export default function VenueProgramLayout({ sections }: { sections: VenueProgramSection[] }) {
   const now = useMemo(() => new Date(), []);
 
@@ -220,52 +351,13 @@ export default function VenueProgramLayout({ sections }: { sections: VenueProgra
       ) : null}
 
       {programWeeks.length > 0 ? (
-        <section className="space-y-8 md:space-y-10">
-          <h2 className="font-display text-lg font-semibold md:text-2xl">Πρόγραμμα</h2>
+        <section className="space-y-5 md:space-y-6">
+          <div>
+            <h2 className="font-display text-lg font-semibold md:text-2xl">Πρόγραμμα</h2>
+            <p className="mt-1 text-sm text-muted-foreground">Εβδομαδιαίο ημερολόγιο προβολών</p>
+          </div>
           {programWeeks.map((week) => (
-            <div key={week.weekKey}>
-              <h3 className="font-display mb-3 text-base font-semibold capitalize leading-snug text-foreground md:text-lg">
-                {week.heading}
-              </h3>
-              <div className="space-y-4">
-                {week.days.map((day) => (
-                  <div key={day.dayKey}>
-                    <p className="mb-1.5 text-[11px] font-semibold capitalize text-muted-foreground sm:text-xs">
-                      {day.label}
-                    </p>
-                    <ul
-                      className={cn(
-                        "divide-y divide-border/50 overflow-hidden rounded-lg border border-border/15 bg-muted/20",
-                        "text-xs leading-snug sm:text-sm",
-                      )}
-                    >
-                      {day.lines.map((line) => {
-                        const tl = movieTitleLines(line.movie);
-                        return (
-                          <li
-                            key={line.key}
-                            className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-2.5 py-2 sm:gap-x-3 sm:px-3"
-                          >
-                            <span className="w-[2.75rem] shrink-0 font-semibold tabular-nums text-foreground sm:w-12">
-                              {formatClock(line.datetime)}
-                            </span>
-                            <Link
-                              to={`/movies/${line.movie.slug}`}
-                              className="min-w-0 flex-1 font-medium text-foreground hover:text-primary hover:underline"
-                            >
-                              {tl.primary}
-                            </Link>
-                            {line.hallName ? (
-                              <span className="shrink-0 text-[11px] text-muted-foreground sm:text-xs">{line.hallName}</span>
-                            ) : null}
-                          </li>
-                        );
-                      })}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            </div>
+            <VenueProgramCalendarWeek key={week.weekKey} week={week} />
           ))}
         </section>
       ) : null}
