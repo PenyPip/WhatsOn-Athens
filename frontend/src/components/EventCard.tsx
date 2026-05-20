@@ -65,7 +65,7 @@ const EventCard = ({
   /** Ομοιόμορφες καρτέλες για ταινίες ανά σειρά · θέατρο όχι. */
   const uniformMovie = uniformMovieSizing ?? isMovie;
   const secondaryLine = typeof titleSecondary === "string" && titleSecondary.trim() ? titleSecondary.trim() : "";
-  /** Σελίδα λίστας προβολών: το είδος κάτω από τον τίτλο μαζί με σκηνοθέτη και διάρκεια. */
+  /** Σελίδα λίστας προβολών: είδος (+ προαιρετικά διάρκεια) κάτω από τον τίτλο · όχι σκηνοθεσία. */
   const movieListingMeta = isMovie && attachShowtimes;
   /** Οριζόντια σειρά (αρχική, κ.λπ.): σταθερό ύψος τίτλου/υπότιτλου/ειδους. */
   const uniformScrollCard = uniformMovie && !movieListingMeta && !attachShowtimes;
@@ -213,12 +213,6 @@ const EventCard = ({
                   title={genreTrimmed}
                 >
                   {genreTrimmed.replace(/\s*·\s*/g, " · ")}
-                </p>
-              ) : null}
-              {typeof subtitle === "string" && subtitle.trim() ? (
-                <p className="line-clamp-2 break-words text-foreground/90">
-                  <span className="text-muted-foreground/85">Σκηνοθεσία · </span>
-                  {subtitle.trim()}
                 </p>
               ) : null}
               {showDuration ? (

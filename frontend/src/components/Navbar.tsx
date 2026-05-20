@@ -154,6 +154,8 @@ const Navbar = () => {
     { to: "/venues", label: "Χώροι", icon: Building2 },
   ];
 
+  const mobileTabCount = mobileLinks.length + (SHOW_PROFILE_IN_NAV ? 1 : 0);
+
   return (
     <>
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
@@ -210,10 +212,17 @@ const Navbar = () => {
       </nav>
 
       <nav
-        className="fixed bottom-0 left-0 right-0 z-50 border-t md:hidden"
-        style={{ background: NAV_GRADIENT, borderColor: "rgba(141,47,143,0.35)" }}
+        className="fixed bottom-0 left-0 right-0 z-50 overflow-hidden border-t md:hidden"
+        style={{
+          background: NAV_GRADIENT,
+          borderColor: "rgba(141,47,143,0.35)",
+          paddingBottom: "env(safe-area-inset-bottom, 0px)",
+        }}
       >
-        <div className="flex h-16 items-center justify-around px-2 pb-[max(0px,env(safe-area-inset-bottom))]">
+        <div
+          className="mx-auto grid h-14 w-full max-w-full items-stretch px-1"
+          style={{ gridTemplateColumns: `repeat(${mobileTabCount}, minmax(0, 1fr))` }}
+        >
           {mobileLinks.map((link) => {
             const Icon = link.icon;
             const isActive = location.pathname === link.to;
@@ -221,28 +230,28 @@ const Navbar = () => {
               <Link
                 key={link.to}
                 to={link.to}
-                className="flex flex-col items-center gap-1 text-xs transition-colors"
+                className="flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-center transition-colors"
                 style={{
                   color: isActive ? "#B47EC8" : "rgba(240,237,248,0.5)",
                   fontFamily: "DM Sans, sans-serif",
                 }}
               >
-                <Icon className="h-5 w-5" />
-                <span>{link.label}</span>
+                <Icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 2.25 : 2} />
+                <span className="w-full truncate text-[10px] leading-none">{link.label}</span>
               </Link>
             );
           })}
           {SHOW_PROFILE_IN_NAV ? (
             <Link
               to="/profile"
-              className="flex flex-col items-center gap-1 text-xs transition-colors"
+              className="flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-center transition-colors"
               style={{
                 color: location.pathname === "/profile" ? "#B47EC8" : "rgba(240,237,248,0.5)",
                 fontFamily: "DM Sans, sans-serif",
               }}
             >
-              <User className="h-5 w-5" />
-              <span>Προφίλ</span>
+              <User className="h-5 w-5 shrink-0" strokeWidth={location.pathname === "/profile" ? 2.25 : 2} />
+              <span className="w-full truncate text-[10px] leading-none">Προφίλ</span>
             </Link>
           ) : null}
         </div>

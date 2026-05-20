@@ -40,12 +40,9 @@ type ProgramLine = { key: string; datetime: Date; hallName?: string; movie: Stra
 type ProgramDayGroup = {
   dayKey: string;
   date: Date;
-  label: string;
   weekdayShort: string;
   dayNumber: number;
   monthShort: string;
-  isToday: boolean;
-  isTomorrow: boolean;
   lines: ProgramLine[];
 };
 
@@ -82,38 +79,35 @@ function calendarDayKey(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function buildDayMeta(d: Date, now: Date): Omit<ProgramDayGroup, "dayKey" | "lines"> {
-  const todayKey = calendarDayKey(now);
-  const key = calendarDayKey(d);
-  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
-  const isToday = key === todayKey;
-  const isTomorrow = key === calendarDayKey(tomorrow);
+function startOfToday(now: Date): Date {
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function isPastCalendarDay(d: Date, now: Date): boolean {
+  return d.getTime() < startOfToday(now).getTime();
+}
+
+function buildDayMeta(d: Date): Omit<ProgramDayGroup, "dayKey" | "lines"> {
   const monthShort = d.toLocaleDateString("el-GR", { month: "short" }).replace(/\.$/, "");
-
-  let label = d.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
-  if (isToday) label = "Σήμερα";
-  else if (isTomorrow) label = "Αύριο";
-
   return {
     date: d,
-    label,
     weekdayShort: WEEKDAY_SHORT_EL[d.getDay()],
     dayNumber: d.getDate(),
     monthShort,
-    isToday,
-    isTomorrow,
   };
 }
 
+/** Στήλες Πέμπτη–Τετάρτη · μόνο σήμερα και μελλοντικές ημέρες. */
 function buildCinemaWeekColumns(weekStart: Date, filledDays: Map<string, ProgramLine[]>, now: Date): ProgramDayGroup[] {
   const columns: ProgramDayGroup[] = [];
+  const todayStart = startOfToday(now);
   for (let i = 0; i < 7; i++) {
     const d = new Date(weekStart.getFullYear(), weekStart.getMonth(), weekStart.getDate() + i);
+    if (d.getTime() < todayStart.getTime()) continue;
     const dayKey = calendarDayKey(d);
-    const meta = buildDayMeta(d, now);
     columns.push({
       dayKey,
-      ...meta,
+      ...buildDayMeta(d),
       lines: filledDays.get(dayKey) ?? [],
     });
   }
@@ -129,10 +123,16 @@ function groupProgramByCinemaWeek(lines: ProgramLine[], now: Date): ProgramWeekG
     byWeek.get(weekKey)!.push(line);
   }
 
+  const todayStart = startOfToday(now);
+
   return [...byWeek.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([weekKey, weekLines]) => {
-      const sorted = [...weekLines].sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+      const sorted = [...weekLines]
+        .filter((line) => line.datetime.getTime() >= todayStart.getTime())
+        .sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+      if (!sorted.length) return null;
+
       const weekStart = startOfCinemaWeek(sorted[0].datetime);
       const weekEnd = endOfCinemaWeek(sorted[0].datetime);
 
@@ -143,14 +143,18 @@ function groupProgramByCinemaWeek(lines: ProgramLine[], now: Date): ProgramWeekG
         byDay.get(dayKey)!.push(line);
       }
 
+      const days = buildCinemaWeekColumns(weekStart, byDay, now);
+      if (!days.length) return null;
+
       return {
         weekKey,
         weekStart,
         weekEnd,
         heading: formatCinemaWeekHeading(weekStart, weekEnd, now),
-        days: buildCinemaWeekColumns(weekStart, byDay, now),
+        days,
       };
-    });
+    })
+    .filter((w): w is ProgramWeekGroup => w !== null);
 }
 
 function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number }) {
@@ -226,35 +230,13 @@ function VenueCalendarDayCell({ day }: { day: ProgramDayGroup }) {
   const hasShowings = day.lines.length > 0;
 
   return (
-    <div
-      className={cn(
-        "flex min-h-[7.5rem] min-w-[5.5rem] flex-col sm:min-h-[8.5rem] lg:min-h-[9rem] lg:min-w-0",
-        day.isToday && "bg-[#13143E]/[0.045]",
-      )}
-    >
-      <div
-        className={cn(
-          "flex flex-col items-center border-b border-border/15 px-1.5 py-2 text-center sm:px-2",
-          day.isToday ? "bg-[#13143E]/[0.07]" : "bg-muted/30",
-        )}
-      >
+    <div className="flex min-h-[7.5rem] min-w-[5.5rem] flex-col sm:min-h-[8.5rem] lg:min-h-[9rem] lg:min-w-0">
+      <div className="flex h-[3.75rem] shrink-0 flex-col items-center justify-center border-b border-border/15 bg-muted/30 px-1.5 text-center sm:h-[4rem] sm:px-2">
         <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{day.weekdayShort}</span>
-        <span
-          className={cn(
-            "font-display text-xl font-bold tabular-nums leading-none sm:text-2xl",
-            day.isToday ? "text-[#13143E]" : "text-foreground",
-          )}
-        >
+        <span className="font-display text-xl font-bold tabular-nums leading-none text-foreground sm:text-2xl">
           {day.dayNumber}
         </span>
         <span className="text-[10px] capitalize text-muted-foreground">{day.monthShort}</span>
-        {day.isToday ? (
-          <span className="mt-1 rounded-full bg-[#13143E] px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
-            Σήμερα
-          </span>
-        ) : day.isTomorrow ? (
-          <span className="mt-1 text-[9px] font-medium text-muted-foreground">Αύριο</span>
-        ) : null}
       </div>
 
       <div className="flex flex-1 flex-col gap-1.5 p-1.5 sm:p-2">
@@ -269,6 +251,8 @@ function VenueCalendarDayCell({ day }: { day: ProgramDayGroup }) {
 }
 
 function VenueProgramCalendarWeek({ week }: { week: ProgramWeekGroup }) {
+  const colCount = week.days.length;
+
   return (
     <article className="overflow-hidden rounded-xl border border-border/20 bg-card/40 shadow-sm">
       <header className="border-b border-border/15 bg-muted/25 px-4 py-3 md:px-5">
@@ -280,7 +264,6 @@ function VenueProgramCalendarWeek({ week }: { week: ProgramWeekGroup }) {
         </p>
       </header>
 
-      {/* Κινητό: οριζόντια κύλιση 7 ημερών */}
       <div className="lg:hidden">
         <div className="flex divide-x divide-border/20 overflow-x-auto overscroll-x-contain">
           {week.days.map((day) => (
@@ -291,8 +274,10 @@ function VenueProgramCalendarWeek({ week }: { week: ProgramWeekGroup }) {
         </div>
       </div>
 
-      {/* Desktop: πλήρες εβδομαδιαίο ημερολόγιο */}
-      <div className="hidden lg:grid lg:grid-cols-7 lg:divide-x lg:divide-border/20">
+      <div
+        className="hidden divide-x divide-border/20 lg:grid"
+        style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
+      >
         {week.days.map((day) => (
           <VenueCalendarDayCell key={day.dayKey} day={day} />
         ))}
