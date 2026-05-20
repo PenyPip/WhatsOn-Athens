@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { useSearchParams } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
@@ -9,7 +9,9 @@ import { useMovies, useShowtimes, useVenues, useMovieGenres } from "@/hooks/useS
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import {
   cinemaGroupKey,
+  findVenueFromStableKey,
   isValidExternalUrl,
+  moviesHrefForVenue,
   resolveCinemaGroupFromShowtimes,
 } from "@/lib/venueResolve";
 import VenueBookingLink from "@/components/VenueBookingLink";
@@ -132,6 +134,40 @@ function showtimeMatchesVenue(st: StrapiShowtime, venue: StrapiVenue): boolean {
 
 function formatShowtimeClock(d: Date): string {
   return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+/** Γραμμή προβολής στη λίστα: ώρα · σύνδεσμος κινηματογράφου (χωρίς θερινό / κράτηση). */
+function MovieListShowtimeRow({
+  row,
+  venues,
+  singleVenueFilter,
+}: {
+  row: ShowingRow;
+  venues: StrapiVenue[] | undefined;
+  singleVenueFilter: boolean;
+}) {
+  const venue = findVenueFromStableKey(venues, row.venueKey, row.venueLabel);
+  const programHref = moviesHrefForVenue(venue);
+
+  return (
+    <li className="font-body tabular-nums leading-relaxed">
+      <span className="font-semibold tabular-nums text-foreground">{formatShowtimeClock(row.datetime)}</span>
+      {singleVenueFilter ? (
+        row.hallName ? <span className="text-muted-foreground">{` · ${row.hallName}`}</span> : null
+      ) : (
+        <>
+          <span className="text-muted-foreground"> · </span>
+          {programHref ? (
+            <Link to={programHref} className="font-medium text-primary hover:underline">
+              {row.venueLabel}
+            </Link>
+          ) : (
+            <span className="text-muted-foreground">{row.venueLabel}</span>
+          )}
+        </>
+      )}
+    </li>
+  );
 }
 
 type ShowingSlot = {
@@ -701,26 +737,28 @@ const Movies = () => {
                         type="movie"
                         isDubbed={movie.isDubbed}
                         tone="soft"
-                        attachShowtimes={Boolean(venueFilter) && hasShowRows}
+                        attachShowtimes={hasShowRows}
                         index={i}
                         className="w-full"
                       />
-                      {venueFilter && hasShowRows ? (
+                      {hasShowRows ? (
                       <div className="shrink-0 border-t border-border/[0.1] px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
                         <ShowtimesExpandable listClassName="space-y-1">
                           {rows.map((row) => (
-                            <li key={row.key} className="font-body tabular-nums leading-relaxed">
-                              <span className="font-semibold tabular-nums text-foreground">{formatShowtimeClock(row.datetime)}</span>
-                              {row.hallName ? (
-                                <span className="text-muted-foreground">{` · ${row.hallName}`}</span>
-                              ) : null}
-                            </li>
+                            <MovieListShowtimeRow
+                              key={row.key}
+                              row={row}
+                              venues={venues}
+                              singleVenueFilter={Boolean(venueFilter)}
+                            />
                           ))}
                         </ShowtimesExpandable>
                       </div>
-                      ) : venueFilter && (moviesSection === "new" || moviesSection === "soon") ? (
+                      ) : moviesSection === "new" || moviesSection === "soon" ? (
                         <div className="border-t border-border/[0.1] px-2.5 py-3 text-center text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
-                          Δεν έχουν καταχωρηθεί προβολές για αυτό το σινεμά.
+                          {venueFilter
+                            ? "Δεν έχουν καταχωρηθεί προβολές για αυτό το σινεμά."
+                            : "Δεν έχουν καταχωρηθεί προβολές από σήμερα για αυτό το φίλτρο."}
                         </div>
                       ) : null}
                     </div>
