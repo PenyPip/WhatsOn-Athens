@@ -1,6 +1,5 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { ChevronDown } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
@@ -18,6 +17,7 @@ import {
 import { Link } from "react-router-dom";
 import { MapPin } from "lucide-react";
 import VenueBookingLink from "@/components/VenueBookingLink";
+import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
@@ -149,8 +149,6 @@ function formatShowtimeClock(d: Date): string {
   return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-const MOVIES_PREVIEW_COUNT = 3;
-
 type ShowingSlot = {
   datetime: Date;
   hallName?: string;
@@ -172,32 +170,6 @@ type ShowingRow = {
   hallName?: string;
   summerScreening?: boolean;
 };
-
-/** Στην προβολή «όλοι οι χώροι»: οι πρώτες μέχρι 3 είναι από διαφορετικά σινεμά · με συγκεκριμένο χώρο, απλά οι πρώτες ώρες. */
-function splitPreviewAndRest(rows: ShowingRow[], singleVenueOnly: boolean): { preview: ShowingRow[]; rest: ShowingRow[] } {
-  if (singleVenueOnly) {
-    return {
-      preview: rows.slice(0, MOVIES_PREVIEW_COUNT),
-      rest: rows.slice(MOVIES_PREVIEW_COUNT),
-    };
-  }
-  const preview: ShowingRow[] = [];
-  const rest: ShowingRow[] = [];
-  const seenVenueKey = new Set<string>();
-  for (const row of rows) {
-    if (preview.length < MOVIES_PREVIEW_COUNT) {
-      if (seenVenueKey.has(row.venueKey)) {
-        rest.push(row);
-      } else {
-        preview.push(row);
-        seenVenueKey.add(row.venueKey);
-      }
-    } else {
-      rest.push(row);
-    }
-  }
-  return { preview, rest };
-}
 
 function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
   const rows: ShowingRow[] = [];
@@ -772,7 +744,6 @@ const Movies = () => {
                     const tl = movieTitleLines(movie);
                     const rows = flattenShowingsToRows(showings);
                     const hasShowRows = rows.length > 0;
-                    const { preview, rest } = splitPreviewAndRest(rows, Boolean(venueFilter));
                     return (
                     <div
                       key={`${section.label}-${movie.slug}`}
@@ -797,35 +768,14 @@ const Movies = () => {
                       />
                       {hasShowRows ? (
                       <div className="shrink-0 border-t border-border/[0.1] px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
-                        <ul className="space-y-1">
-                          {preview.map((row) => (
+                        <ShowtimesExpandable listClassName="space-y-1">
+                          {rows.map((row) => (
                             <li key={row.key} className="font-body tabular-nums leading-relaxed">
                               <span className="font-semibold tabular-nums text-foreground">{formatShowtimeClock(row.datetime)}</span>
                               <ShowtimeVenueLabel row={row} singleVenueFilter={Boolean(venueFilter)} venues={venues} />
                             </li>
                           ))}
-                        </ul>
-                        {rest.length > 0 ? (
-                          <details className="group mt-2 shrink-0 border-t border-transparent pt-2">
-                            <summary className="flex cursor-pointer list-none items-center justify-between gap-2 rounded-md py-1 text-[11px] font-medium uppercase tracking-wide text-muted-foreground outline-none ring-offset-background hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring [&::-webkit-details-marker]:hidden">
-                              <span>{`Ακόμα ${rest.length} προβολή${rest.length === 1 ? "" : "ες"}`}</span>
-                              <ChevronDown
-                                aria-hidden
-                                className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-open:rotate-180"
-                              />
-                            </summary>
-                            <ul className="mt-2 space-y-1 border-l-2 border-border/[0.12] pl-2">
-                              {rest.map((row) => (
-                                <li key={row.key} className="font-body tabular-nums leading-relaxed">
-                                  <span className="font-semibold tabular-nums text-foreground">
-                                    {formatShowtimeClock(row.datetime)}
-                                  </span>
-                                  <ShowtimeVenueLabel row={row} singleVenueFilter={Boolean(venueFilter)} venues={venues} />
-                                </li>
-                              ))}
-                            </ul>
-                          </details>
-                        ) : null}
+                        </ShowtimesExpandable>
                       </div>
                       ) : moviesSection === "new" || moviesSection === "soon" ? (
                         <div className="border-t border-border/[0.1] px-2.5 py-3 text-center text-[11px] leading-relaxed text-muted-foreground sm:text-xs">

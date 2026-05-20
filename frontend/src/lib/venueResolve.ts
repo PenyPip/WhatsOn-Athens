@@ -18,9 +18,12 @@ function venuesMatchingNormalizedName(venues: StrapiVenue[], norm: string): Stra
   return venues.filter((v) => normalizeCinemaGroupName(v.name) === norm);
 }
 
-/** Προτίμηση κύριας εγγραφής χώρου (όχι μόνο «θερινό» στο όνομα). */
+/** Προτίμηση εγγραφής με slug (για σύνδεσμο «Πρόγραμμα») και χωρίς «θερινό» μόνο στο όνομα. */
 export function pickCanonicalVenue(venueList: StrapiVenue[]): StrapiVenue {
   const sorted = [...venueList].sort((a, b) => {
+    const aSlug = a.slug?.trim() ? 0 : 1;
+    const bSlug = b.slug?.trim() ? 0 : 1;
+    if (aSlug !== bSlug) return aSlug - bSlug;
     const aNorm = normalizeCinemaGroupName(a.name);
     const bNorm = normalizeCinemaGroupName(b.name);
     const aPlain = a.name.trim() === aNorm ? 0 : 1;
@@ -38,8 +41,10 @@ export function mergeVenueGroup(venueList: StrapiVenue[]): StrapiVenue | undefin
   const unique = [...new Map(venueList.map((v) => [v.id, v])).values()];
   const canonical = pickCanonicalVenue(unique);
   const displayName = normalizeCinemaGroupName(canonical.name) || canonical.name;
+  const slug = unique.map((v) => v.slug?.trim()).find(Boolean) ?? canonical.slug?.trim();
   return {
     ...canonical,
+    slug: slug || canonical.slug,
     name: displayName,
     googleMapsUrl: unique.find((v) => v.googleMapsUrl?.trim())?.googleMapsUrl ?? canonical.googleMapsUrl,
     moreLink: unique.find((v) => v.moreLink?.trim())?.moreLink ?? canonical.moreLink,
@@ -182,6 +187,21 @@ export function findVenueFromStableKey(
 export function moviesHrefForVenue(venue: StrapiVenue | undefined): string | undefined {
   const slug = venue?.slug?.trim();
   return slug ? `/movies?venue=${encodeURIComponent(slug)}` : undefined;
+}
+
+/** Σύνδεσμος λίστας ταινιών για χώρο — δοκιμή από όλες τις προβολές της ομάδας. */
+export function moviesHrefForShowtimes(
+  slots: StrapiShowtime[],
+  venues?: StrapiVenue[],
+): string | undefined {
+  const { venue } = resolveCinemaGroupFromShowtimes(slots, venues);
+  const fromGroup = moviesHrefForVenue(venue);
+  if (fromGroup) return fromGroup;
+  for (const st of slots) {
+    const href = moviesHrefForVenue(findVenueForShowtime(venues, st));
+    if (href) return href;
+  }
+  return undefined;
 }
 
 export function isValidExternalUrl(raw: string | undefined | null): raw is string {

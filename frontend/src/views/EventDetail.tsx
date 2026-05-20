@@ -36,8 +36,14 @@ import JsonLd from "@/components/JsonLd";
 import GenreLinks from "@/components/GenreLinks";
 import CinemaVenueLinks from "@/components/CinemaVenueLinks";
 import VenueBookingLink from "@/components/VenueBookingLink";
+import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
-import { cinemaGroupKey, isValidExternalUrl, resolveCinemaGroupFromShowtimes } from "@/lib/venueResolve";
+import {
+  cinemaGroupKey,
+  isValidExternalUrl,
+  moviesHrefForShowtimes,
+  resolveCinemaGroupFromShowtimes,
+} from "@/lib/venueResolve";
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
 function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; emphasized?: boolean }) {
@@ -377,13 +383,18 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 className="flex min-h-0 flex-col rounded-lg border border-border/80 bg-card/50 p-3 sm:p-4"
               >
                 <div className="mb-2 border-b border-border/60 pb-2">
-                  <CinemaVenueLinks venueName={venueName} venue={venue} compact />
+                  <CinemaVenueLinks
+                    venueName={venueName}
+                    venue={venue}
+                    programHref={moviesHrefForShowtimes(slots, venues)}
+                    compact
+                  />
                 </div>
-                <ul className="min-h-0 flex-1">
+                <ShowtimesExpandable listClassName="min-h-0 flex-1">
                   {slots.map((st) => (
                     <ShowtimeCompactRow key={st.id} st={st} emphasized />
                   ))}
-                </ul>
+                </ShowtimesExpandable>
                 {isValidExternalUrl(venue?.moreLink) ? (
                   <div className="mt-2 border-t border-border/50 pt-2">
                     <VenueBookingLink venue={venue} compact />

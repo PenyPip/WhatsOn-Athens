@@ -7,29 +7,26 @@ import { isValidExternalUrl, moviesHrefForVenue } from "@/lib/venueResolve";
 type CinemaVenueLinksProps = {
   venueName: string;
   venue?: StrapiVenue;
-  /** Υπάρχουν θερινές προβολές στην ίδια κάρτα (όχι ξεχωριστό σινεμά). */
-  hasSummerScreenings?: boolean;
+  /** Αν δοθεί, χρησιμοποιείται αντί για αυτόματο από `venue.slug`. */
+  programHref?: string;
   /** Μικρότερο UI μέσα σε λίστα προβολών. */
   compact?: boolean;
   className?: string;
 };
 
 /** Όνομα σινεμά + σύνδεσμοι προγράμματος & Google Maps. */
-export default function CinemaVenueLinks({ venueName, venue, compact = false, className }: CinemaVenueLinksProps) {
-  const moviesHref = moviesHrefForVenue(venue);
+export default function CinemaVenueLinks({
+  venueName,
+  venue,
+  programHref,
+  compact = false,
+  className,
+}: CinemaVenueLinksProps) {
+  const moviesHref = programHref ?? moviesHrefForVenue(venue);
   const mapsUrl = isValidExternalUrl(venue?.googleMapsUrl) ? venue!.googleMapsUrl.trim() : null;
   const address = venue?.address?.trim();
-  const nameEl = moviesHref ? (
-    <Link
-      to={moviesHref}
-      className={cn(
-        "font-display font-semibold text-[#13143E] transition-colors hover:text-[#13143E]/80",
-        compact ? "text-sm" : "text-sm md:text-base",
-      )}
-    >
-      {venueName}
-    </Link>
-  ) : (
+
+  const nameEl = (
     <span className={cn("font-display font-semibold text-[#13143E]", compact ? "text-sm" : "text-sm md:text-base")}>
       {venueName}
     </span>
