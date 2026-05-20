@@ -66,6 +66,7 @@ services:
       dockerfile: Dockerfile
       args:
         NEXT_PUBLIC_API_URL: /api
+        NEXT_PUBLIC_SITE_URL: https://the37n.gr
     ports:
       - "3000:80"
     depends_on:
