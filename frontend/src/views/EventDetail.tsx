@@ -28,6 +28,9 @@ import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { moviePageDescription, staticPageSeo, theaterPageDescription } from "@/lib/pageSeoCopy";
+import { buildMovieDetailJsonLd } from "@/lib/jsonLdMovieDetail";
+import { buildTheaterDetailJsonLd } from "@/lib/jsonLdTheaterDetail";
+import JsonLd from "@/components/JsonLd";
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
 function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; emphasized?: boolean }) {
@@ -172,6 +175,23 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const isMovieEarly = type === "movie";
   const movieEarly = isMovieEarly && event ? (event as StrapiMovie) : null;
+  const theaterEarly = type === "theater" && event ? (event as StrapiTheaterShow) : null;
+
+  const detailJsonLd = useMemo(() => {
+    if (isLoading || !event || !slug) return null;
+    if (movieEarly) {
+      return buildMovieDetailJsonLd({
+        movie: movieEarly,
+        slug,
+        genreLabel,
+        showtimes: eventShowtimes,
+      });
+    }
+    if (theaterEarly) {
+      return buildTheaterDetailJsonLd({ show: theaterEarly, slug });
+    }
+    return null;
+  }, [isLoading, event, slug, movieEarly, theaterEarly, genreLabel, eventShowtimes]);
 
   usePageSeo(
     useMemo(() => {
@@ -191,7 +211,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           description: moviePageDescription(movieEarly, genreLabel),
           path: `/movies/${slug}`,
           image: movieEarly.posterUrl,
-          imageAlt: `Αφίσα — ${tl.primary}`,
+          imageAlt: posterAltForMovie(movieEarly),
+          ogType: "video.movie" as const,
+          videoUrl: youtubeEmbedUrl(movieEarly.trailerUrl) ?? undefined,
         };
       }
       const show = event as StrapiTheaterShow;
@@ -200,7 +222,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         description: theaterPageDescription(show),
         path: `/theater/${slug}`,
         image: show.posterUrl,
-        imageAlt: show.title,
+        imageAlt: posterAltForTheater(show.title),
+        ogType: "article" as const,
       };
     }, [isLoading, event, type, slug, genreLabel, isMovieEarly, movieEarly]),
   );
@@ -355,6 +378,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   return (
     <div className="min-h-screen pb-20 md:pb-8">
+      {detailJsonLd ? <JsonLd data={detailJsonLd} /> : null}
       <section className="relative min-h-[50vh] overflow-hidden bg-[#13143E]">
         {!isMovie ? (
           <div

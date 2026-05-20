@@ -72,3 +72,18 @@ export function absolutePageUrl(path: string): string {
   const normalized = path.startsWith("/") ? path : `/${path}`;
   return new URL(normalized, getMetadataBase()).toString();
 }
+
+/** Open Graph `og:type` ανά είδος σελίδας. */
+export type OgPageType = "website" | "article" | "video.movie";
+
+export function inferOgType(path?: string): OgPageType {
+  const p = (path ?? "").trim();
+  if (p.startsWith("/movies/") && p.length > "/movies/".length) return "video.movie";
+  if (/^\/(theater|dining|reviews)\/[^/]+/.test(p)) return "article";
+  return "website";
+}
+
+export const defaultOgImageSize = { width: 1200, height: 630 } as const;
+
+/** Τυπικές διαστάσεις αφίσας 2:3 για og:image (όχι ιδανικό 1.91:1 αλλά καλύτερο από κενό). */
+export const posterOgImageSize = { width: 800, height: 1200 } as const;
