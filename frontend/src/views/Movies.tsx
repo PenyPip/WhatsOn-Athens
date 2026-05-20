@@ -9,20 +9,15 @@ import { useMovies, useShowtimes, useVenues, useMovieGenres } from "@/hooks/useS
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import {
   cinemaGroupKey,
-  findVenueFromStableKey,
   isValidExternalUrl,
-  moviesHrefForVenue,
   resolveCinemaGroupFromShowtimes,
 } from "@/lib/venueResolve";
-import { Link } from "react-router-dom";
-import { MapPin } from "lucide-react";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
   showtimeIsSummerOutdoor,
-  showtimeShowsOutdoorLabel,
   showtimeMatchesHomeToday,
   showtimeMatchesHomeUpcomingCinemaWeek,
   showtimeMatchesHomeSummerCinemaRow,
@@ -135,16 +130,6 @@ function showtimeMatchesVenue(st: StrapiShowtime, venue: StrapiVenue): boolean {
   return false;
 }
 
-function venueLabelFromShowtime(st: StrapiShowtime, venues: StrapiVenue[] | undefined): string {
-  if (venues?.length && st.venueId != null) {
-    const v = venues.find((x) => Number(x.id) === Number(st.venueId));
-    if (typeof v?.name === "string" && v.name.trim()) return v.name.trim();
-  }
-  const vn = typeof st.venue === "string" ? st.venue.trim() : "";
-  if (vn) return vn;
-  return "Άγνωστος χώρος";
-}
-
 function formatShowtimeClock(d: Date): string {
   return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
@@ -152,7 +137,6 @@ function formatShowtimeClock(d: Date): string {
 type ShowingSlot = {
   datetime: Date;
   hallName?: string;
-  summerScreening?: boolean;
 };
 
 type VenueShowingsBlock = {
@@ -168,7 +152,6 @@ type ShowingRow = {
   venueLabel: string;
   datetime: Date;
   hallName?: string;
-  summerScreening?: boolean;
 };
 
 function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
@@ -182,7 +165,6 @@ function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
         venueLabel: b.venueLabel,
         datetime: slot.datetime,
         hallName: slot.hallName,
-        summerScreening: slot.summerScreening,
       });
     }
   }
@@ -201,57 +183,6 @@ type DaySection = {
 };
 
 const FILTER_ALL = "__all__";
-
-function ShowtimeVenueLabel({
-  row,
-  singleVenueFilter,
-  venues,
-}: {
-  row: ShowingRow;
-  singleVenueFilter: boolean;
-  venues: StrapiVenue[] | undefined;
-}) {
-  if (singleVenueFilter) {
-    return row.hallName ? <span className="text-muted-foreground">{` · ${row.hallName}`}</span> : null;
-  }
-
-  const venue = findVenueFromStableKey(venues, row.venueKey, row.venueLabel);
-  const mapsUrl = isValidExternalUrl(venue?.googleMapsUrl) ? venue!.googleMapsUrl.trim() : null;
-  const moviesHref = moviesHrefForVenue(venue);
-  return (
-    <>
-      <span className="text-muted-foreground"> · </span>
-      {mapsUrl ? (
-        <a
-          href={mapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="inline-flex items-center gap-0.5 font-medium text-primary hover:underline"
-          title={`Χάρτης — ${row.venueLabel}`}
-        >
-          {row.venueLabel}
-          <MapPin className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
-        </a>
-      ) : moviesHref ? (
-        <Link to={moviesHref} className="font-medium text-primary hover:underline">
-          {row.venueLabel}
-        </Link>
-      ) : (
-        <span className="text-muted-foreground">{row.venueLabel}</span>
-      )}
-      {row.hallName ? <span className="text-muted-foreground/90">{` · ${row.hallName}`}</span> : null}
-      {row.summerScreening ? (
-        <span className="text-[10px] font-semibold uppercase text-amber-700 sm:text-xs"> · Θερινό</span>
-      ) : null}
-      {isValidExternalUrl(venue?.moreLink) ? (
-        <>
-          <span className="text-muted-foreground"> · </span>
-          <VenueBookingLink venue={venue} compact />
-        </>
-      ) : null}
-    </>
-  );
-}
 
 const Movies = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -441,7 +372,6 @@ const Movies = () => {
         block.slots.push({
           datetime: stDate,
           hallName: hallRaw || undefined,
-          summerScreening: showtimeShowsOutdoorLabel(st),
         });
       }
 
@@ -535,7 +465,6 @@ const Movies = () => {
       block.slots.push({
         datetime: stDate,
         hallName: hallRaw || undefined,
-        summerScreening: showtimeShowsOutdoorLabel(st),
       });
     }
 
@@ -579,13 +508,23 @@ const Movies = () => {
       <div className="section-black mb-6 max-md:-mt-16 max-md:py-5 max-md:pt-20 md:-mt-28 md:mb-8 md:py-10 md:pt-36">
         <div className="container">
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-            <h1 className="font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl">Ταινίες</h1>
-            <p className="text-sm text-white/60 md:text-base">Τώρα στα σινεμά σε όλη την Ελλάδα</p>
+            <h1 className="font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl">
+              {venueFilter ? venueFilter.name : "Ταινίες"}
+            </h1>
+            <p className="text-sm text-white/60 md:text-base">
+              {venueFilter ? "Πρόγραμμα προβολών" : "Τώρα στα σινεμά σε όλη την Ελλάδα"}
+            </p>
           </motion.div>
         </div>
       </div>
 
       <div className="container">
+        {venueFilter && isValidExternalUrl(venueFilter.moreLink) ? (
+          <div className="mb-6 flex flex-wrap items-center gap-3 md:mb-8">
+            <VenueBookingLink venue={venueFilter} variant="button" />
+          </div>
+        ) : null}
+
         {venueSlug && !venueFilter && !venuesLoading ? (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-950/[0.09] px-4 py-3.5 ring-1 ring-amber-600/18">
             <p className="text-sm text-amber-100/90">Ο σύνδεσμος χώρου δεν αντιστοιχεί σε καταχωρημένο venue.</p>
@@ -762,24 +701,26 @@ const Movies = () => {
                         type="movie"
                         isDubbed={movie.isDubbed}
                         tone="soft"
-                        attachShowtimes={hasShowRows}
+                        attachShowtimes={Boolean(venueFilter) && hasShowRows}
                         index={i}
                         className="w-full"
                       />
-                      {hasShowRows ? (
+                      {venueFilter && hasShowRows ? (
                       <div className="shrink-0 border-t border-border/[0.1] px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
                         <ShowtimesExpandable listClassName="space-y-1">
                           {rows.map((row) => (
                             <li key={row.key} className="font-body tabular-nums leading-relaxed">
                               <span className="font-semibold tabular-nums text-foreground">{formatShowtimeClock(row.datetime)}</span>
-                              <ShowtimeVenueLabel row={row} singleVenueFilter={Boolean(venueFilter)} venues={venues} />
+                              {row.hallName ? (
+                                <span className="text-muted-foreground">{` · ${row.hallName}`}</span>
+                              ) : null}
                             </li>
                           ))}
                         </ShowtimesExpandable>
                       </div>
-                      ) : moviesSection === "new" || moviesSection === "soon" ? (
+                      ) : venueFilter && (moviesSection === "new" || moviesSection === "soon") ? (
                         <div className="border-t border-border/[0.1] px-2.5 py-3 text-center text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
-                          Δεν έχουν καταχωρηθεί προβολές από σήμερα για αυτό το φίλτρο χώρου / θερινό.
+                          Δεν έχουν καταχωρηθεί προβολές για αυτό το σινεμά.
                         </div>
                       ) : null}
                     </div>
