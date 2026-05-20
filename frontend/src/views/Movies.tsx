@@ -16,6 +16,7 @@ import {
 } from "@/lib/venueResolve";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
+import VenueProgramDay from "@/components/VenueProgramDay";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
@@ -711,61 +712,64 @@ const Movies = () => {
           <LoadingState message="Φόρτωση ταινιών..." />
         ) : (
           <div className="space-y-10">
-            {groupedMovies.map((section) => (
-              <section key={section.label}>
-                <h2 className="font-display mb-3 text-lg font-semibold capitalize md:mb-4 md:text-2xl">{section.label}</h2>
-                <motion.div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4 items-start">
-                  {section.entries.map(({ movie, showings }, i) => {
-                    const tl = movieTitleLines(movie);
-                    const rows = flattenShowingsToRows(showings);
-                    const hasShowRows = rows.length > 0;
-                    return (
-                    <div
-                      key={`${section.label}-${movie.slug}`}
-                      className="group/movie-stack flex flex-col overflow-hidden rounded-lg bg-muted/30 ring-1 ring-border/[0.1] transition-[box-shadow] hover:shadow-[0_10px_32px_rgba(28,29,98,0.1)] hover:ring-border/[0.18]"
-                    >
-                      <EventCard
-                        slug={movie.slug}
-                        title={tl.primary}
-                        titleSecondary={tl.secondary}
-                        subtitle={movie.director ?? ""}
-                        genre={movie.genre}
-                        genreLinkItems={movieGenreLinkItems(movie, movieGenresList)}
-                        duration={movie.duration}
-                        score={movie.criticScore}
-                        posterUrl={movie.posterUrl}
-                        type="movie"
-                        isDubbed={movie.isDubbed}
-                        tone="soft"
-                        attachShowtimes={hasShowRows}
-                        index={i}
-                        className="w-full"
-                      />
-                      {hasShowRows ? (
-                      <div className="shrink-0 border-t border-border/[0.1] px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
-                        <ShowtimesExpandable listClassName="space-y-1">
-                          {rows.map((row) => (
-                            <MovieListShowtimeRow
-                              key={row.key}
-                              row={row}
-                              venues={venues}
-                              singleVenueFilter={Boolean(venueFilter)}
-                            />
-                          ))}
-                        </ShowtimesExpandable>
-                      </div>
-                      ) : moviesSection === "new" || moviesSection === "soon" ? (
-                        <div className="border-t border-border/[0.1] px-2.5 py-3 text-center text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
-                          {venueFilter
-                            ? "Δεν έχουν καταχωρηθεί προβολές για αυτό το σινεμά."
-                            : "Δεν έχουν καταχωρηθεί προβολές από σήμερα για αυτό το φίλτρο."}
+            {groupedMovies.map((section) =>
+              venueFilter ? (
+                <VenueProgramDay key={section.label} label={section.label} entries={section.entries} />
+              ) : (
+                <section key={section.label}>
+                  <h2 className="font-display mb-3 text-lg font-semibold capitalize md:mb-4 md:text-2xl">{section.label}</h2>
+                  <motion.div className="grid grid-cols-2 items-start gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                    {section.entries.map(({ movie, showings }, i) => {
+                      const tl = movieTitleLines(movie);
+                      const rows = flattenShowingsToRows(showings);
+                      const hasShowRows = rows.length > 0;
+                      return (
+                        <div
+                          key={`${section.label}-${movie.slug}`}
+                          className="group/movie-stack flex flex-col overflow-hidden rounded-lg bg-muted/30 ring-1 ring-border/[0.1] transition-[box-shadow] hover:shadow-[0_10px_32px_rgba(28,29,98,0.1)] hover:ring-border/[0.18]"
+                        >
+                          <EventCard
+                            slug={movie.slug}
+                            title={tl.primary}
+                            titleSecondary={tl.secondary}
+                            subtitle={movie.director ?? ""}
+                            genre={movie.genre}
+                            genreLinkItems={movieGenreLinkItems(movie, movieGenresList)}
+                            duration={movie.duration}
+                            score={movie.criticScore}
+                            posterUrl={movie.posterUrl}
+                            type="movie"
+                            isDubbed={movie.isDubbed}
+                            tone="soft"
+                            attachShowtimes={hasShowRows}
+                            index={i}
+                            className="w-full"
+                          />
+                          {hasShowRows ? (
+                            <div className="shrink-0 border-t border-border/[0.1] px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
+                              <ShowtimesExpandable listClassName="space-y-1">
+                                {rows.map((row) => (
+                                  <MovieListShowtimeRow
+                                    key={row.key}
+                                    row={row}
+                                    venues={venues}
+                                    singleVenueFilter={false}
+                                  />
+                                ))}
+                              </ShowtimesExpandable>
+                            </div>
+                          ) : moviesSection === "new" || moviesSection === "soon" ? (
+                            <div className="border-t border-border/[0.1] px-2.5 py-3 text-center text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
+                              Δεν έχουν καταχωρηθεί προβολές από σήμερα για αυτό το φίλτρο.
+                            </div>
+                          ) : null}
                         </div>
-                      ) : null}
-                    </div>
-                  );})}
-                </motion.div>
-              </section>
-            ))}
+                      );
+                    })}
+                  </motion.div>
+                </section>
+              ),
+            )}
           </div>
         )}
 
