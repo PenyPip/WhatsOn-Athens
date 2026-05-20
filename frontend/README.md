@@ -20,7 +20,7 @@ npm run lint
 
 Το `npm run build` τρέχει πρώτα `scripts/generate-sitemap.mjs` (δημιουργεί `public/sitemap.xml` και `public/robots.txt`). Για build σε Docker, βεβαιώσου ότι το Strapi είναι προσβάσιμο ή τρέξε `npm run sitemap` τοπικά πριν το build.
 
-**SEO server HTML (crawlers χωρίς JS):** κάθε static σελίδα από `app/page.tsx` / `app/[[...slug]]` βγάζει JSON-LD (`Organization`, `WebSite`, `WebPage`, `BreadcrumbList` + entity ανά path), `canonical`, `og:url` και στατικούς εσωτερικούς συνδέσμους (`StaticCrawlShell`).
+**SEO server HTML (crawlers χωρίς JS):** κάθε static σελίδα από `app/page.tsx` / `app/[[...slug]]` βγάζει JSON-LD (`Organization`, `WebSite`, `WebPage`, `BreadcrumbList` + entity ανά path), `canonical`, `og:url` και `StaticCrawlShell` (κρυφό περιεχόμενο + links: είδη → `/movies?genre=`, σινεμά → `/movies?venue=` + Google Maps URL από Strapi). Τα enrichment δεδομένα γράφονται στο build σε `src/generated/spa-crawl-enrichment.json` (μαζί με το sitemap).
 
 **SEO ανά σελίδα (SPA):** το hook `usePageSeo` ενημερώνει title, description, canonical και Open Graph όταν αλλάζει route (μετά hydration).
 

@@ -1012,9 +1012,9 @@ export interface StrapiShowtime {
   venue: string;
   /** όταν η σχέση venue υπάρχει αλλά δεν ήρθαν attributes στο REST */
   venueId?: number;
-  /** ρητό πεδίο CMS: εμφάνιση στην ενότητα «Θερινά σινεμά» */
+  /** CMS `summer_screening`: εξωτερική προβολή → ετικέτα «Θερινό» & φίλτρα θερινών */
   summerScreening: boolean;
-  /** από το συνδεδεμένο venue (boolean / heuristics όνομα–τύπος) */
+  /** Πληροφοριακό από venue (δεν εμφανίζεται αυτόματα ως «Θερινό» στην προβολή) */
   venueSummerOutdoor: boolean;
   availableSeats: number;
   price?: number;

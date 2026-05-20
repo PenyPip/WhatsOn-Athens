@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
+import GenreLinks from "@/components/GenreLinks";
+import type { GenreLinkItem } from "@/lib/movieGenreLinks";
 
 interface EventCardProps {
   slug: string;
@@ -10,6 +12,8 @@ interface EventCardProps {
   titleSecondary?: string;
   subtitle: string;
   genre: string;
+  /** Αν υπάρχουν slugs, το είδος γίνεται σύνδεσμος προς `/movies?genre=`. */
+  genreLinkItems?: GenreLinkItem[];
   duration: number;
   score?: number;
   /** Fallback όταν λείπει poster (π.χ. θέατρο) · οι ταινίες χρησιμοποιούν μόνο poster ή ουδέτερο φόντο */
@@ -36,6 +40,7 @@ const EventCard = ({
   titleSecondary,
   subtitle,
   genre,
+  genreLinkItems,
   duration,
   score,
   gradientFrom,
@@ -174,17 +179,25 @@ const EventCard = ({
               <p className="mt-0.5 text-sm font-medium leading-snug text-muted-foreground line-clamp-2">{titleSecondary}</p>
             ) : null}
             {isMovie && !movieListingMeta ? (
-              <p
-                className={cn(
-                  "mt-1 max-w-full truncate text-[10px] font-normal leading-snug tracking-tight text-muted-foreground/82",
-                  uniformScrollCard && "min-h-[1.125rem]",
-                  uniformScrollCard && !genreTrimmed && "invisible",
-                )}
-                title={genreTrimmed || undefined}
-                {...(!genreTrimmed && !uniformScrollCard ? { "aria-hidden": true as const } : {})}
-              >
-                {(genreTrimmed || (uniformScrollCard ? "\u00a0" : "")).replace(/\s*·\s*/g, " · ")}
-              </p>
+              genreLinkItems?.length ? (
+                <div
+                  className={cn("mt-1 min-h-[1.125rem] max-w-full", uniformScrollCard && !genreLinkItems.length && "invisible")}
+                >
+                  <GenreLinks items={genreLinkItems} variant="inline" className="text-[10px] md:text-[11px]" />
+                </div>
+              ) : (
+                <p
+                  className={cn(
+                    "mt-1 max-w-full truncate text-[10px] font-normal leading-snug tracking-tight text-muted-foreground/82",
+                    uniformScrollCard && "min-h-[1.125rem]",
+                    uniformScrollCard && !genreTrimmed && "invisible",
+                  )}
+                  title={genreTrimmed || undefined}
+                  {...(!genreTrimmed && !uniformScrollCard ? { "aria-hidden": true as const } : {})}
+                >
+                  {(genreTrimmed || (uniformScrollCard ? "\u00a0" : "")).replace(/\s*·\s*/g, " · ")}
+                </p>
+              )
             ) : null}
           </div>
           {isMovie && !movieListingMeta && uniformMovie ? (
@@ -192,7 +205,9 @@ const EventCard = ({
           ) : null}
           {movieListingMeta ? (
             <div className="mt-2 flex shrink-0 flex-col gap-1 text-[13px] leading-snug text-muted-foreground sm:text-sm">
-              {genreTrimmed ? (
+              {genreLinkItems?.length ? (
+                <GenreLinks items={genreLinkItems} variant="inline" className="text-[10px] md:text-[11px]" />
+              ) : genreTrimmed ? (
                 <p
                   className="line-clamp-2 max-w-full text-[10px] font-normal leading-snug tracking-tight text-muted-foreground/82 md:text-[11px]"
                   title={genreTrimmed}

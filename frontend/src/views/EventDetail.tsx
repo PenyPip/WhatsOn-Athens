@@ -11,6 +11,8 @@ import {
   useShowtimes,
   useMovieBySlug,
   useMovieGenreCatalog,
+  useMovieGenres,
+  useVenues,
 } from "@/hooks/useStrapi";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
@@ -23,7 +25,7 @@ import {
   type StrapiTheaterShow,
 } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
-import { showtimeIsUpcoming, enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
+import { showtimeIsUpcoming, showtimeShowsOutdoorLabel, enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
 import { usePageSeo } from "@/hooks/usePageSeo";
@@ -31,6 +33,11 @@ import { moviePageDescription, staticPageSeo, theaterPageDescription } from "@/l
 import { buildMovieDetailJsonLd } from "@/lib/jsonLdMovieDetail";
 import { buildTheaterDetailJsonLd } from "@/lib/jsonLdTheaterDetail";
 import JsonLd from "@/components/JsonLd";
+import GenreLinks from "@/components/GenreLinks";
+import CinemaVenueLinks from "@/components/CinemaVenueLinks";
+import VenueBookingLink from "@/components/VenueBookingLink";
+import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
+import { cinemaGroupKey, isValidExternalUrl, resolveCinemaGroupFromShowtimes } from "@/lib/venueResolve";
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
 function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; emphasized?: boolean }) {
@@ -57,7 +64,9 @@ function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; em
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground">
         {st.hallName ? <span>Αίθουσα · {st.hallName}</span> : null}
-        {st.venueSummerOutdoor ? <span className="text-xs font-semibold uppercase text-amber-700">Θερινό</span> : null}
+        {showtimeShowsOutdoorLabel(st) ? (
+          <span className="text-xs font-semibold uppercase text-amber-700">Θερινό</span>
+        ) : null}
         {st.price != null ? (
           <span className="font-semibold text-foreground">
             {Number.isInteger(st.price) ? `${st.price}` : st.price.toFixed(2)} €
@@ -111,6 +120,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { data: userReviews } = useUserReviews();
   const { data: showtimes } = useShowtimes();
   const { data: genreCatalog } = useMovieGenreCatalog();
+  const { data: movieGenresList } = useMovieGenres();
+  const { data: venues } = useVenues();
 
   const moviesEnriched = useMemo(
     () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
@@ -146,16 +157,20 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const showtimesByVenue = useMemo(() => {
     const m = new Map<string, StrapiShowtime[]>();
     for (const st of eventShowtimes) {
-      const key = typeof st.venue === "string" && st.venue.trim() ? st.venue.trim() : "Χώρος χωρίς όνομα";
+      const key = cinemaGroupKey(st, venues);
       if (!m.has(key)) m.set(key, []);
       m.get(key)!.push(st);
     }
-    const keys = [...m.keys()].sort((a, b) => a.localeCompare(b, "el"));
-    return keys.map((venueName) => ({
-      venueName,
-      slots: [...(m.get(venueName) ?? [])].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime()),
-    }));
-  }, [eventShowtimes]);
+    return [...m.entries()]
+      .map(([key, slots]) => {
+        const sorted = [...slots].sort(
+          (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime(),
+        );
+        const { venueName, venue } = resolveCinemaGroupFromShowtimes(sorted, venues);
+        return { key, venueName, slots: sorted, venue };
+      })
+      .sort((a, b) => a.venueName.localeCompare(b.venueName, "el"));
+  }, [eventShowtimes, venues]);
 
   const genreLabel = useMemo(() => {
     if (!event) return "";
@@ -177,6 +192,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const movieEarly = isMovieEarly && event ? (event as StrapiMovie) : null;
   const theaterEarly = type === "theater" && event ? (event as StrapiTheaterShow) : null;
 
+  const genreLinkItems = useMemo(
+    () => (movieEarly ? movieGenreLinkItems(movieEarly, movieGenresList) : []),
+    [movieEarly, movieGenresList],
+  );
+
   const detailJsonLd = useMemo(() => {
     if (isLoading || !event || !slug) return null;
     if (movieEarly) {
@@ -185,13 +205,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         slug,
         genreLabel,
         showtimes: eventShowtimes,
+        venues: venues ?? [],
       });
     }
     if (theaterEarly) {
       return buildTheaterDetailJsonLd({ show: theaterEarly, slug });
     }
     return null;
-  }, [isLoading, event, slug, movieEarly, theaterEarly, genreLabel, eventShowtimes]);
+  }, [isLoading, event, slug, movieEarly, theaterEarly, genreLabel, eventShowtimes, venues]);
 
   usePageSeo(
     useMemo(() => {
@@ -262,9 +283,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const headline = isMovie && movie ? movieTitleLines(movie) : { primary: event.title, secondary: undefined as string | undefined };
 
-  const movieGenreParts = isMovie && movie && genreLabel
-    ? genreLabel.split(/\s*·\s*/).map((s) => s.trim()).filter(Boolean)
-    : [];
   const hasCast = castList.length > 0;
   const showCriticScoreBadge =
     Boolean(movie) && eventEditorialReviews.length > 0 && Number(movie?.criticScore) > 0;
@@ -291,12 +309,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         {isMovie ? (
           infoField(
             "Είδος",
-            genreLabel ? (
-              movieGenreParts.length > 1 ? (
-                <span className="line-clamp-3 text-xs leading-snug">{movieGenreParts.join(" · ")}</span>
-              ) : (
-                genreLabel
-              )
+            genreLinkItems.length ? (
+              <GenreLinks items={genreLinkItems} />
+            ) : genreLabel ? (
+              <span className="line-clamp-3 text-xs leading-snug">{genreLabel}</span>
             ) : (
               <span className="text-muted-foreground">—</span>
             ),
@@ -353,21 +369,26 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <p className="text-sm text-muted-foreground">Δεν υπάρχουν επερχόμενες προβολές.</p>
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
-          {showtimesByVenue.map(({ venueName, slots }) => {
+          {showtimesByVenue.map(({ key, venueName, slots, venue }) => {
             if (!slots.length) return null;
             return (
               <div
-                key={venueName}
+                key={key}
                 className="flex min-h-0 flex-col rounded-lg border border-border/80 bg-card/50 p-3 sm:p-4"
               >
-                <h3 className="font-display mb-2 border-b border-border/60 pb-2 text-sm font-semibold text-[#13143E]">
-                  {venueName}
-                </h3>
+                <div className="mb-2 border-b border-border/60 pb-2">
+                  <CinemaVenueLinks venueName={venueName} venue={venue} compact />
+                </div>
                 <ul className="min-h-0 flex-1">
                   {slots.map((st) => (
                     <ShowtimeCompactRow key={st.id} st={st} emphasized />
                   ))}
                 </ul>
+                {isValidExternalUrl(venue?.moreLink) ? (
+                  <div className="mt-2 border-t border-border/50 pt-2">
+                    <VenueBookingLink venue={venue} compact />
+                  </div>
+                ) : null}
               </div>
             );
           })}
@@ -458,24 +479,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </span>
               ) : null}
               {movie ? (
-                genreLabel ? (
-                  movieGenreParts.length > 1 ? (
-                    <span className="flex flex-wrap items-center gap-1.5">
-                      <span className="text-white/55 text-xs font-semibold uppercase tracking-wider">Είδος</span>
-                      {movieGenreParts.map((g, i) => (
-                        <span
-                          key={`${g}-${i}`}
-                          className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white"
-                        >
-                          {g}
-                        </span>
-                      ))}
-                    </span>
-                  ) : (
-                    <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white">
-                      Είδος · {genreLabel}
-                    </span>
-                  )
+                genreLinkItems.length ? (
+                  <GenreLinks items={genreLinkItems} prefix="Είδος" variant="hero" />
+                ) : genreLabel ? (
+                  <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white">
+                    Είδος · {genreLabel}
+                  </span>
                 ) : (
                   <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white/75">
                     Είδος · —

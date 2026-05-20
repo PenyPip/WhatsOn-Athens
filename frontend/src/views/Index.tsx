@@ -7,9 +7,10 @@ import LoadingState from "@/components/LoadingState";
 import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
-import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues, useMovieGenres } from "@/hooks/useStrapi";
+import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import { layoutShowsHero, type HomeSectionId } from "@/config/home";
-import type { StrapiMovie } from "@/lib/api";
+import type { StrapiMovie, StrapiMovieGenre } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
   moviesReleasedInLastDays,
@@ -46,12 +47,13 @@ function MovieRowScroll({
   subtitle,
   /** `/movies?section=…` — ίδιο φίλτρο με την ενότητα της αρχικής */
   moviesMoreHref,
-  /** Όλες οι ταινίες σε πλέγμα (2–3 σειρές) αντί για οριζόντια κύλιση. */
+  movieGenresList,
   layout = "scroll",
 }: {
   loading: boolean;
   loadingMessage: string;
   items: StrapiMovie[];
+  movieGenresList?: StrapiMovieGenre[];
   emptyMessage?: string;
   /** Όταν το query αποτύχει (δίκτυο/403) — όχι «κενό CMS». */
   fetchErrorMessage?: string;
@@ -132,6 +134,7 @@ function MovieRowScroll({
                         titleSecondary={tl.secondary}
                         subtitle={movie.director}
                         genre={movie.genre}
+                        genreLinkItems={movieGenreLinkItems(movie, movieGenresList)}
                         duration={movie.duration}
                         score={movie.criticScore}
                         posterUrl={movie.posterUrl}
@@ -185,6 +188,7 @@ function MovieRowScroll({
               titleSecondary={tl.secondary}
               subtitle={movie.director}
               genre={movie.genre}
+              genreLinkItems={movieGenreLinkItems(movie, movieGenresList)}
               duration={movie.duration}
               score={movie.criticScore}
               posterUrl={movie.posterUrl}
@@ -234,6 +238,7 @@ const Index = () => {
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues();
   const { data: theaterShows, isLoading: theaterLoading, isError: theaterError } = useTheaterShows();
   const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants();
+  const { data: movieGenresList } = useMovieGenres();
 
   const apiSectionFailed = moviesError || showtimesError || venuesError || theaterError || restaurantsError;
 
@@ -316,6 +321,7 @@ const Index = () => {
                 eyebrow="Σήμερα"
                 title="Ταινίες σήμερα"
                 moviesMoreHref="/movies?section=today"
+                movieGenresList={movieGenresList}
               />,
             );
           case "summer_cinema":
@@ -333,6 +339,7 @@ const Index = () => {
                 title="Θερινά σινεμά"
                 subtitle="Παίζουν τώρα"
                 moviesMoreHref="/movies?section=summer"
+                movieGenresList={movieGenresList}
               />,
             );
           case "summer_venues":
@@ -494,6 +501,7 @@ const Index = () => {
                 eyebrow="Τελευταίες κυκλοφορίες"
                 title="Νέες ταινίες"
                 moviesMoreHref="/movies?section=new"
+                movieGenresList={movieGenresList}
               />,
             );
           case "movies_week":
@@ -510,6 +518,7 @@ const Index = () => {
                 subtitle={upcomingWeekLabel}
                 layout="grid"
                 moviesMoreHref="/movies?section=week"
+                movieGenresList={movieGenresList}
               />,
             );
           case "coming_soon":
@@ -525,6 +534,7 @@ const Index = () => {
                 title="Προσεχώς"
                 emptyMessage="Δεν υπάρχουν ταινίες με κυκλοφορία μετά την επόμενη εβδομάδα κινηματογράφου."
                 moviesMoreHref="/movies?section=soon"
+                movieGenresList={movieGenresList}
               />,
             );
           case "dining":

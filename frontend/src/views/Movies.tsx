@@ -7,10 +7,22 @@ import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMovies, useShowtimes, useVenues, useMovieGenres } from "@/hooks/useStrapi";
+import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
+import {
+  cinemaGroupKey,
+  findVenueFromStableKey,
+  isValidExternalUrl,
+  moviesHrefForVenue,
+  resolveCinemaGroupFromShowtimes,
+} from "@/lib/venueResolve";
+import { Link } from "react-router-dom";
+import { MapPin } from "lucide-react";
+import VenueBookingLink from "@/components/VenueBookingLink";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
   showtimeIsSummerOutdoor,
+  showtimeShowsOutdoorLabel,
   showtimeMatchesHomeToday,
   showtimeMatchesHomeUpcomingCinemaWeek,
   showtimeMatchesHomeSummerCinemaRow,
@@ -133,18 +145,6 @@ function venueLabelFromShowtime(st: StrapiShowtime, venues: StrapiVenue[] | unde
   return "Άγνωστος χώρος";
 }
 
-/** Ένα κλειδί ανά φυσικό σινεμά — ώστε να μην εμφανίζονται πολλές γραμμές για τον ίδιο χώρο. */
-function stableVenueKey(st: StrapiShowtime, venues: StrapiVenue[] | undefined): string {
-  if (st.venueId != null) return `v:${Number(st.venueId)}`;
-  const vn = typeof st.venue === "string" ? st.venue.trim() : "";
-  if (venues?.length && vn) {
-    const byName = venues.filter((x) => x.name.trim() === vn);
-    if (byName.length === 1) return `v:${byName[0].id}`;
-  }
-  const label = venueLabelFromShowtime(st, venues);
-  return `n:${label.trim().toLowerCase().replace(/\s+/g, " ")}`;
-}
-
 function formatShowtimeClock(d: Date): string {
   return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
@@ -154,6 +154,7 @@ const MOVIES_PREVIEW_COUNT = 3;
 type ShowingSlot = {
   datetime: Date;
   hallName?: string;
+  summerScreening?: boolean;
 };
 
 type VenueShowingsBlock = {
@@ -169,6 +170,7 @@ type ShowingRow = {
   venueLabel: string;
   datetime: Date;
   hallName?: string;
+  summerScreening?: boolean;
 };
 
 /** Στην προβολή «όλοι οι χώροι»: οι πρώτες μέχρι 3 είναι από διαφορετικά σινεμά · με συγκεκριμένο χώρο, απλά οι πρώτες ώρες. */
@@ -208,6 +210,7 @@ function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
         venueLabel: b.venueLabel,
         datetime: slot.datetime,
         hallName: slot.hallName,
+        summerScreening: slot.summerScreening,
       });
     }
   }
@@ -226,6 +229,57 @@ type DaySection = {
 };
 
 const FILTER_ALL = "__all__";
+
+function ShowtimeVenueLabel({
+  row,
+  singleVenueFilter,
+  venues,
+}: {
+  row: ShowingRow;
+  singleVenueFilter: boolean;
+  venues: StrapiVenue[] | undefined;
+}) {
+  if (singleVenueFilter) {
+    return row.hallName ? <span className="text-muted-foreground">{` · ${row.hallName}`}</span> : null;
+  }
+
+  const venue = findVenueFromStableKey(venues, row.venueKey, row.venueLabel);
+  const mapsUrl = isValidExternalUrl(venue?.googleMapsUrl) ? venue!.googleMapsUrl.trim() : null;
+  const moviesHref = moviesHrefForVenue(venue);
+  return (
+    <>
+      <span className="text-muted-foreground"> · </span>
+      {mapsUrl ? (
+        <a
+          href={mapsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-0.5 font-medium text-primary hover:underline"
+          title={`Χάρτης — ${row.venueLabel}`}
+        >
+          {row.venueLabel}
+          <MapPin className="h-3 w-3 shrink-0 opacity-70" aria-hidden />
+        </a>
+      ) : moviesHref ? (
+        <Link to={moviesHref} className="font-medium text-primary hover:underline">
+          {row.venueLabel}
+        </Link>
+      ) : (
+        <span className="text-muted-foreground">{row.venueLabel}</span>
+      )}
+      {row.hallName ? <span className="text-muted-foreground/90">{` · ${row.hallName}`}</span> : null}
+      {row.summerScreening ? (
+        <span className="text-[10px] font-semibold uppercase text-amber-700 sm:text-xs"> · Θερινό</span>
+      ) : null}
+      {isValidExternalUrl(venue?.moreLink) ? (
+        <>
+          <span className="text-muted-foreground"> · </span>
+          <VenueBookingLink venue={venue} compact />
+        </>
+      ) : null}
+    </>
+  );
+}
 
 const Movies = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -398,15 +452,15 @@ const Movies = () => {
         if (!movie) continue;
 
         const hallRaw = typeof st.hallName === "string" ? st.hallName.trim() : "";
-        const venueLabel = venueLabelFromShowtime(st, venues);
-        const venueKey = stableVenueKey(st, venues);
+        const venueKey = cinemaGroupKey(st, venues);
         const slotDedupeKey = `${Math.floor(stDate.getTime() / 60000)}-${hallRaw}`;
 
         if (!byMovieVenues.has(movie.id)) byMovieVenues.set(movie.id, new Map());
         const byVenue = byMovieVenues.get(movie.id)!;
 
         if (!byVenue.has(venueKey)) {
-          byVenue.set(venueKey, { key: venueKey, venueLabel, slots: [] });
+          const { venueName } = resolveCinemaGroupFromShowtimes([st], venues);
+          byVenue.set(venueKey, { key: venueKey, venueLabel: venueName, slots: [] });
         }
         const block = byVenue.get(venueKey)!;
         if (block.slots.some((s) => `${Math.floor(s.datetime.getTime() / 60000)}-${s.hallName ?? ""}` === slotDedupeKey)) {
@@ -415,6 +469,7 @@ const Movies = () => {
         block.slots.push({
           datetime: stDate,
           hallName: hallRaw || undefined,
+          summerScreening: showtimeShowsOutdoorLabel(st),
         });
       }
 
@@ -487,8 +542,7 @@ const Movies = () => {
       if (!movie) continue;
 
       const hallRaw = typeof st.hallName === "string" ? st.hallName.trim() : "";
-      const venueLabel = venueLabelFromShowtime(st, venues);
-      const venueKey = stableVenueKey(st, venues);
+      const venueKey = cinemaGroupKey(st, venues);
       const slotDedupeKey = `${Math.floor(stDate.getTime() / 60000)}-${hallRaw}`;
 
       if (!sectionMovieShowings.has(sectionKey)) {
@@ -499,7 +553,8 @@ const Movies = () => {
       const byVenue = byMovie.get(movie.id)!;
 
       if (!byVenue.has(venueKey)) {
-        byVenue.set(venueKey, { key: venueKey, venueLabel, slots: [] });
+        const { venueName } = resolveCinemaGroupFromShowtimes([st], venues);
+        byVenue.set(venueKey, { key: venueKey, venueLabel: venueName, slots: [] });
       }
       const block = byVenue.get(venueKey)!;
       if (block.slots.some((s) => `${Math.floor(s.datetime.getTime() / 60000)}-${s.hallName ?? ""}` === slotDedupeKey)) {
@@ -508,6 +563,7 @@ const Movies = () => {
       block.slots.push({
         datetime: stDate,
         hallName: hallRaw || undefined,
+        summerScreening: showtimeShowsOutdoorLabel(st),
       });
     }
 
@@ -728,6 +784,7 @@ const Movies = () => {
                         titleSecondary={tl.secondary}
                         subtitle={movie.director ?? ""}
                         genre={movie.genre}
+                        genreLinkItems={movieGenreLinkItems(movie, movieGenresList)}
                         duration={movie.duration}
                         score={movie.criticScore}
                         posterUrl={movie.posterUrl}
@@ -744,18 +801,7 @@ const Movies = () => {
                           {preview.map((row) => (
                             <li key={row.key} className="font-body tabular-nums leading-relaxed">
                               <span className="font-semibold tabular-nums text-foreground">{formatShowtimeClock(row.datetime)}</span>
-                              {venueFilter ? (
-                                row.hallName ? (
-                                  <span className="text-muted-foreground">{` · ${row.hallName}`}</span>
-                                ) : null
-                              ) : (
-                                <>
-                                  <span className="text-muted-foreground">{` · ${row.venueLabel}`}</span>
-                                  {row.hallName ? (
-                                    <span className="text-muted-foreground/90">{` · ${row.hallName}`}</span>
-                                  ) : null}
-                                </>
-                              )}
+                              <ShowtimeVenueLabel row={row} singleVenueFilter={Boolean(venueFilter)} venues={venues} />
                             </li>
                           ))}
                         </ul>
@@ -774,18 +820,7 @@ const Movies = () => {
                                   <span className="font-semibold tabular-nums text-foreground">
                                     {formatShowtimeClock(row.datetime)}
                                   </span>
-                                  {venueFilter ? (
-                                    row.hallName ? (
-                                      <span className="text-muted-foreground">{` · ${row.hallName}`}</span>
-                                    ) : null
-                                  ) : (
-                                    <>
-                                      <span className="text-muted-foreground">{` · ${row.venueLabel}`}</span>
-                                      {row.hallName ? (
-                                        <span className="text-muted-foreground/90">{` · ${row.hallName}`}</span>
-                                      ) : null}
-                                    </>
-                                  )}
+                                  <ShowtimeVenueLabel row={row} singleVenueFilter={Boolean(venueFilter)} venues={venues} />
                                 </li>
                               ))}
                             </ul>

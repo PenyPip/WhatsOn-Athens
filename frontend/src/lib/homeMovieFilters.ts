@@ -1,20 +1,16 @@
-import { venueLooksSummerOutdoor, movieGenreSlugsToDisplayLine, type StrapiMovie, type StrapiShowtime, type StrapiVenue } from "@/lib/api";
+import { movieGenreSlugsToDisplayLine, type StrapiMovie, type StrapiShowtime, type StrapiVenue } from "@/lib/api";
 
-function mappedVenueIsSummerOutdoor(v: StrapiVenue): boolean {
-  if (v.summerOutdoor) return true;
-  return venueLooksSummerOutdoor({
-    summer_outdoor: v.summerOutdoor,
-    name: v.name,
-    type: v.type,
-  });
+/**
+ * Εξωτερική/θερινή προβολή — μόνο το πεδίο «θερινή προβολή» στην εγγραφή προβολής (CMS).
+ * Το «Θερινό» στο site δεν κληρονομείται από τον χώρο.
+ */
+export function showtimeIsSummerOutdoor(_showtime: StrapiShowtime, _venues?: StrapiVenue[] | undefined): boolean {
+  return Boolean(_showtime.summerScreening);
 }
 
-export function showtimeIsSummerOutdoor(showtime: StrapiShowtime, venues: StrapiVenue[] | undefined): boolean {
-  if (showtime.summerScreening) return true;
-  if (showtime.venueSummerOutdoor) return true;
-  if (!venues?.length || showtime.venueId == null) return false;
-  const v = venues.find((x) => Number(x.id) === Number(showtime.venueId));
-  return v ? mappedVenueIsSummerOutdoor(v) : false;
+/** Εμφάνιση ετικέτας «Θερινό» δίπλα σε μία προβολή. */
+export function showtimeShowsOutdoorLabel(showtime: StrapiShowtime): boolean {
+  return Boolean(showtime.summerScreening);
 }
 
 /** Έναρξη προβολής ακόμα δεν έχει περάσει (τελευταίες στιγμές `now`, τοπική ζώνη). */

@@ -57,7 +57,96 @@ function pickLastmod(row) {
   }
 }
 
-async function fetchCollection(pluralApi) {
+function pickString(attrs, key) {
+  const v = attrs[key];
+  return typeof v === "string" && v.trim() ? v.trim() : "";
+}
+
+function relationList(attrs, key) {
+  const raw = attrs[key];
+  if (!raw) return [];
+  if (Array.isArray(raw)) return raw;
+  if (raw.data && Array.isArray(raw.data)) return raw.data;
+  return [];
+}
+
+/** Δεδομένα για StaticCrawlShell (crawlers χωρίς JS). */
+async function buildCrawlEnrichment() {
+  const empty = { genres: [], venues: [], movies: [] };
+
+  try {
+    const [genreRows, venueRows, movieRows] = await Promise.all([
+      fetchCollection("movie-genres", {
+        extraFields: ["label", "sort_order"],
+        sort: "sort_order:asc",
+      }),
+      fetchCollection("venues", {
+        extraFields: ["name", "address", "google_maps_url"],
+      }),
+      fetchCollection("movies", {
+        extraFields: ["title"],
+        populate: "populate[movie_genres][fields][0]=slug&populate[movie_genres][fields][1]=label",
+      }),
+    ]);
+
+    const genres = genreRows
+      .map((row) => {
+        const a = entryAttrs(row);
+        const slug = pickSlug(row);
+        if (!slug) return null;
+        return {
+          slug: slug.toLowerCase(),
+          label: pickString(a, "label") || slug,
+          href: `/movies?genre=${encodeURIComponent(slug.toLowerCase())}`,
+        };
+      })
+      .filter(Boolean);
+
+    const venues = venueRows
+      .map((row) => {
+        const a = entryAttrs(row);
+        const slug = pickSlug(row);
+        if (!slug) return null;
+        const name = pickString(a, "name") || slug;
+        const googleMapsUrl = pickString(a, "google_maps_url");
+        return {
+          slug,
+          name,
+          address: pickString(a, "address") || undefined,
+          googleMapsUrl: googleMapsUrl || undefined,
+          moviesHref: `/movies?venue=${encodeURIComponent(slug)}`,
+          venuesHref: "/venues",
+        };
+      })
+      .filter(Boolean);
+
+    const movies = movieRows
+      .map((row) => {
+        const a = entryAttrs(row);
+        const slug = pickSlug(row);
+        if (!slug) return null;
+        const genreSlugs = relationList(a, "movie_genres")
+          .map((g) => pickSlug(g) || pickString(entryAttrs(g), "slug"))
+          .filter(Boolean)
+          .map((s) => s.toLowerCase());
+        return {
+          path: `/movies/${encodeURIComponent(slug)}`,
+          slug,
+          title: pickString(a, "title") || slug,
+          genreSlugs: [...new Set(genreSlugs)],
+        };
+      })
+      .filter(Boolean);
+
+    return { genres, venues, movies };
+  } catch (err) {
+    console.warn(`[sitemap] crawl enrichment: skip (${err.message})`);
+    return empty;
+  }
+}
+
+async function fetchCollection(pluralApi, opts = {}) {
+  const { extraFields = [], populate = "", sort = "" } = opts;
   const out = [];
   const pageSize = 100;
   for (let page = 1; page <= 50; page++) {
@@ -66,9 +155,12 @@ async function fetchCollection(pluralApi) {
     url.searchParams.set("pagination[pageSize]", String(pageSize));
     url.searchParams.set("fields[0]", "slug");
     url.searchParams.set("fields[1]", "updatedAt");
+    extraFields.forEach((f, i) => url.searchParams.set(`fields[${i + 2}]`, f));
+    if (sort) url.searchParams.set("sort[0]", sort);
     url.searchParams.set("publicationState", "live");
+    const fullUrl = populate ? `${url.toString()}&${populate}` : url.toString();
 
-    const res = await fetch(url, { headers: { Accept: "application/json" } });
+    const res = await fetch(fullUrl, { headers: { Accept: "application/json" } });
     if (!res.ok) {
       throw new Error(`${pluralApi}: HTTP ${res.status}`);
     }
@@ -165,8 +257,18 @@ async function main() {
     "utf8",
   );
 
+  const crawlEnrichment = await buildCrawlEnrichment();
+  writeFileSync(
+    join(generatedDir, "spa-crawl-enrichment.json"),
+    `${JSON.stringify(crawlEnrichment, null, 2)}\n`,
+    "utf8",
+  );
+
   console.log(`[sitemap] Wrote ${all.length} URLs → public/sitemap.xml`);
   console.log(`[sitemap] ${spaSlugParams.length} SPA paths → src/generated/spa-static-paths.json`);
+  console.log(
+    `[sitemap] crawl: ${crawlEnrichment.genres.length} genres, ${crawlEnrichment.venues.length} venues, ${crawlEnrichment.movies.length} movies → spa-crawl-enrichment.json`,
+  );
   console.log(`[sitemap] robots.txt → Sitemap: ${SITE_URL}/sitemap.xml`);
 }
 
