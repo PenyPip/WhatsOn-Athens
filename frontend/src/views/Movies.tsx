@@ -16,7 +16,7 @@ import {
 } from "@/lib/venueResolve";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
-import VenueProgramDay from "@/components/VenueProgramDay";
+import VenueProgramLayout from "@/components/VenueProgramDay";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
@@ -712,10 +712,11 @@ const Movies = () => {
           <LoadingState message="Φόρτωση ταινιών..." />
         ) : (
           <div className="space-y-10">
-            {groupedMovies.map((section) =>
-              venueFilter ? (
-                <VenueProgramDay key={section.label} label={section.label} entries={section.entries} />
-              ) : (
+            {venueFilter && groupedMovies.length > 0 ? (
+              <VenueProgramLayout sections={groupedMovies} />
+            ) : null}
+            {!venueFilter
+              ? groupedMovies.map((section) => (
                 <section key={section.label}>
                   <h2 className="font-display mb-3 text-lg font-semibold capitalize md:mb-4 md:text-2xl">{section.label}</h2>
                   <motion.div className="grid grid-cols-2 items-start gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
@@ -768,8 +769,8 @@ const Movies = () => {
                     })}
                   </motion.div>
                 </section>
-              ),
-            )}
+              ))
+              : null}
           </div>
         )}
 

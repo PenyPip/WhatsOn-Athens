@@ -94,7 +94,7 @@ function endOfWeekSunday(d: Date): Date {
 }
 
 /** Εβδομάδα κινηματογράφου (συνηθισμένο πρόγραμμα Ελλάδας): Πέμπτη 00:00 έως Τετάρτη 23:59:59.999, ίδια τοπική ζώνη. */
-function startOfCinemaWeek(d: Date): Date {
+export function startOfCinemaWeek(d: Date): Date {
   const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
   const dow = x.getDay();
   const daysSinceThursday = (dow - 4 + 7) % 7;
@@ -103,7 +103,7 @@ function startOfCinemaWeek(d: Date): Date {
   return x;
 }
 
-function endOfCinemaWeek(d: Date): Date {
+export function endOfCinemaWeek(d: Date): Date {
   const start = startOfCinemaWeek(d);
   const end = new Date(start);
   end.setDate(end.getDate() + 6);
@@ -448,6 +448,19 @@ export function moviesComingAfterUpcomingCinemaWeek(movies: StrapiMovie[], now =
 
 export function formatUpcomingCinemaWeekRange(now = new Date()): string {
   const { start, end } = getUpcomingCinemaWeekBounds(now);
+  return formatCinemaWeekRange(start, end);
+}
+
+/** Ετικέτα εβδομάδας κινηματογράφου (Πέμπτη – Τετάρτη). */
+export function formatCinemaWeekRange(start: Date, end: Date): string {
   const fmt = new Intl.DateTimeFormat("el-GR", { day: "numeric", month: "short" });
   return `${fmt.format(start)} – ${fmt.format(end)}`;
+}
+
+/** Τίτλος ενότητας προγράμματος · σημειώνει την τρέχουσα εβδομάδα όταν ταιριάζει. */
+export function formatCinemaWeekHeading(start: Date, end: Date, now = new Date()): string {
+  const dayFmt = new Intl.DateTimeFormat("el-GR", { weekday: "long", day: "numeric", month: "short" });
+  const range = `${dayFmt.format(start)} – ${dayFmt.format(end)}`;
+  const isCurrent = start.getTime() === startOfCinemaWeek(now).getTime();
+  return isCurrent ? `Τρέχουσα εβδομάδα · ${range}` : range;
 }

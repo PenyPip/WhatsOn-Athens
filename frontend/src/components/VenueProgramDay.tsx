@@ -1,6 +1,12 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import type { StrapiMovie } from "@/lib/api";
+import {
+  endOfCinemaWeek,
+  formatCinemaWeekHeading,
+  startOfCinemaWeek,
+} from "@/lib/homeMovieFilters";
 import { movieTitleLines, posterAltForMovie } from "@/lib/movieTitles";
 import { cn } from "@/lib/utils";
 
@@ -17,10 +23,32 @@ export type VenueProgramDayEntry = {
   showings: VenueShowingsBlock[];
 };
 
+export type VenueProgramSection = {
+  label: string;
+  date: Date;
+  entries: VenueProgramDayEntry[];
+};
+
 type ShowingRow = {
   key: string;
   datetime: Date;
   hallName?: string;
+};
+
+type ProgramLine = { key: string; datetime: Date; hallName?: string; movie: StrapiMovie };
+
+type ProgramDayGroup = {
+  dayKey: string;
+  label: string;
+  lines: ProgramLine[];
+};
+
+type ProgramWeekGroup = {
+  weekKey: string;
+  weekStart: Date;
+  weekEnd: Date;
+  heading: string;
+  days: ProgramDayGroup[];
 };
 
 function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
@@ -42,6 +70,60 @@ function formatClock(d: Date): string {
   return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
+function calendarDayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatProgramDayLabel(d: Date, now: Date): string {
+  const todayKey = calendarDayKey(now);
+  const key = calendarDayKey(d);
+  if (key === todayKey) return "Σήμερα";
+  const tomorrow = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1);
+  if (key === calendarDayKey(tomorrow)) return "Αύριο";
+  return d.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
+}
+
+function groupProgramByCinemaWeek(lines: ProgramLine[], now: Date): ProgramWeekGroup[] {
+  const byWeek = new Map<string, ProgramLine[]>();
+  for (const line of lines) {
+    const weekStart = startOfCinemaWeek(line.datetime);
+    const weekKey = calendarDayKey(weekStart);
+    if (!byWeek.has(weekKey)) byWeek.set(weekKey, []);
+    byWeek.get(weekKey)!.push(line);
+  }
+
+  return [...byWeek.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([weekKey, weekLines]) => {
+      const sorted = [...weekLines].sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+      const weekStart = startOfCinemaWeek(sorted[0].datetime);
+      const weekEnd = endOfCinemaWeek(sorted[0].datetime);
+
+      const byDay = new Map<string, ProgramLine[]>();
+      for (const line of sorted) {
+        const dayKey = calendarDayKey(line.datetime);
+        if (!byDay.has(dayKey)) byDay.set(dayKey, []);
+        byDay.get(dayKey)!.push(line);
+      }
+
+      const days: ProgramDayGroup[] = [...byDay.entries()]
+        .sort(([a], [b]) => a.localeCompare(b))
+        .map(([dayKey, dayLines]) => ({
+          dayKey,
+          label: formatProgramDayLabel(dayLines[0].datetime, now),
+          lines: dayLines,
+        }));
+
+      return {
+        weekKey,
+        weekStart,
+        weekEnd,
+        heading: formatCinemaWeekHeading(weekStart, weekEnd, now),
+        days,
+      };
+    });
+}
+
 function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number }) {
   const tl = movieTitleLines(movie);
   const alt = posterAltForMovie(movie);
@@ -50,7 +132,7 @@ function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number 
     <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.2) }}
+      transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.24) }}
     >
       <Link
         to={`/movies/${movie.slug}`}
@@ -88,83 +170,105 @@ function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number 
   );
 }
 
-type ProgramLine = { key: string; datetime: Date; hallName?: string; movie: StrapiMovie };
+/** Σελίδα προγράμματος χώρου: όλες οι ταινίες πάνω, πρόγραμμα κάτω ανά εβδομάδα κινηματογράφου. */
+export default function VenueProgramLayout({ sections }: { sections: VenueProgramSection[] }) {
+  const now = useMemo(() => new Date(), []);
 
-export default function VenueProgramDay({
-  label,
-  entries,
-}: {
-  label: string;
-  entries: VenueProgramDayEntry[];
-}) {
-  const uniqueMovies = [...new Map(entries.map((e) => [e.movie.id, e.movie])).values()];
+  const { uniqueMovies, programWeeks } = useMemo(() => {
+    const allEntries = sections.flatMap((s) => s.entries);
 
-  const programLines: ProgramLine[] = entries
-    .flatMap(({ movie, showings }) =>
-      flattenShowingsToRows(showings).map((row) => ({
-        key: `${movie.id}-${row.key}`,
-        datetime: row.datetime,
-        hallName: row.hallName,
-        movie,
-      })),
-    )
-    .sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+    const programLines: ProgramLine[] = allEntries
+      .flatMap(({ movie, showings }) =>
+        flattenShowingsToRows(showings).map((row) => ({
+          key: `${movie.id}-${row.key}`,
+          datetime: row.datetime,
+          hallName: row.hallName,
+          movie,
+        })),
+      )
+      .sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
 
-  if (!uniqueMovies.length && !programLines.length) return null;
+    const firstShowByMovie = new Map<number, number>();
+    for (const line of programLines) {
+      const t = line.datetime.getTime();
+      const prev = firstShowByMovie.get(line.movie.id);
+      if (prev === undefined || t < prev) firstShowByMovie.set(line.movie.id, t);
+    }
+
+    const movies = [...new Map(allEntries.map((e) => [e.movie.id, e.movie])).values()];
+    movies.sort((a, b) => (firstShowByMovie.get(a.id) ?? 0) - (firstShowByMovie.get(b.id) ?? 0));
+
+    return {
+      uniqueMovies: movies,
+      programWeeks: groupProgramByCinemaWeek(programLines, now),
+    };
+  }, [sections, now]);
+
+  if (!uniqueMovies.length && !programWeeks.length) return null;
 
   return (
-    <section>
-      <h2 className="font-display mb-4 text-lg font-semibold capitalize md:text-2xl">{label}</h2>
-
+    <div className="space-y-10 md:space-y-12">
       {uniqueMovies.length > 0 ? (
-        <div className="mb-5 md:mb-6">
-          <p className="mb-2.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground md:text-[11px]">
-            Ταινίες
-          </p>
+        <section>
+          <h2 className="font-display mb-3 text-lg font-semibold md:mb-4 md:text-2xl">Ταινίες</h2>
           <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8">
             {uniqueMovies.map((movie, i) => (
               <VenueMoviePoster key={movie.id} movie={movie} index={i} />
             ))}
           </div>
-        </div>
+        </section>
       ) : null}
 
-      {programLines.length > 0 ? (
-        <div>
-          <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground md:text-[11px]">
-            Πρόγραμμα
-          </p>
-          <ul
-            className={cn(
-              "divide-y divide-border/50 overflow-hidden rounded-lg border border-border/15 bg-muted/20",
-              "text-xs leading-snug sm:text-sm",
-            )}
-          >
-            {programLines.map((line) => {
-              const tl = movieTitleLines(line.movie);
-              return (
-                <li
-                  key={line.key}
-                  className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-2.5 py-2 sm:gap-x-3 sm:px-3"
-                >
-                  <span className="w-[2.75rem] shrink-0 font-semibold tabular-nums text-foreground sm:w-12">
-                    {formatClock(line.datetime)}
-                  </span>
-                  <Link
-                    to={`/movies/${line.movie.slug}`}
-                    className="min-w-0 flex-1 font-medium text-foreground hover:text-primary hover:underline"
-                  >
-                    {tl.primary}
-                  </Link>
-                  {line.hallName ? (
-                    <span className="shrink-0 text-[11px] text-muted-foreground sm:text-xs">{line.hallName}</span>
-                  ) : null}
-                </li>
-              );
-            })}
-          </ul>
-        </div>
+      {programWeeks.length > 0 ? (
+        <section className="space-y-8 md:space-y-10">
+          <h2 className="font-display text-lg font-semibold md:text-2xl">Πρόγραμμα</h2>
+          {programWeeks.map((week) => (
+            <div key={week.weekKey}>
+              <h3 className="font-display mb-3 text-base font-semibold capitalize leading-snug text-foreground md:text-lg">
+                {week.heading}
+              </h3>
+              <div className="space-y-4">
+                {week.days.map((day) => (
+                  <div key={day.dayKey}>
+                    <p className="mb-1.5 text-[11px] font-semibold capitalize text-muted-foreground sm:text-xs">
+                      {day.label}
+                    </p>
+                    <ul
+                      className={cn(
+                        "divide-y divide-border/50 overflow-hidden rounded-lg border border-border/15 bg-muted/20",
+                        "text-xs leading-snug sm:text-sm",
+                      )}
+                    >
+                      {day.lines.map((line) => {
+                        const tl = movieTitleLines(line.movie);
+                        return (
+                          <li
+                            key={line.key}
+                            className="flex flex-wrap items-baseline gap-x-2 gap-y-0.5 px-2.5 py-2 sm:gap-x-3 sm:px-3"
+                          >
+                            <span className="w-[2.75rem] shrink-0 font-semibold tabular-nums text-foreground sm:w-12">
+                              {formatClock(line.datetime)}
+                            </span>
+                            <Link
+                              to={`/movies/${line.movie.slug}`}
+                              className="min-w-0 flex-1 font-medium text-foreground hover:text-primary hover:underline"
+                            >
+                              {tl.primary}
+                            </Link>
+                            {line.hallName ? (
+                              <span className="shrink-0 text-[11px] text-muted-foreground sm:text-xs">{line.hallName}</span>
+                            ) : null}
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </section>
       ) : null}
-    </section>
+    </div>
   );
 }
