@@ -256,12 +256,9 @@ function VenueProgramCalendarWeek({ week }: { week: ProgramWeekGroup }) {
   return (
     <article className="overflow-hidden rounded-xl border border-border/20 bg-card/40 shadow-sm">
       <header className="border-b border-border/15 bg-muted/25 px-4 py-3 md:px-5">
-        <h3 className="font-display text-base font-semibold capitalize leading-snug text-foreground md:text-lg">
+        <h3 className="font-display text-base font-semibold leading-snug text-foreground md:text-lg">
           {week.heading}
         </h3>
-        <p className="mt-0.5 text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">
-          Εβδομάδα κινηματογράφου · Πέμπτη – Τετάρτη
-        </p>
       </header>
 
       <div className="lg:hidden">

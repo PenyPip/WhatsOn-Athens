@@ -457,10 +457,11 @@ export function formatCinemaWeekRange(start: Date, end: Date): string {
   return `${fmt.format(start)} – ${fmt.format(end)}`;
 }
 
-/** Τίτλος ενότητας προγράμματος · σημειώνει την τρέχουσα εβδομάδα όταν ταιριάζει. */
+/** Τίτλος ενότητας προγράμματος χώρου (χωρίς ονόματα ημερών). */
 export function formatCinemaWeekHeading(start: Date, end: Date, now = new Date()): string {
-  const dayFmt = new Intl.DateTimeFormat("el-GR", { weekday: "long", day: "numeric", month: "short" });
-  const range = `${dayFmt.format(start)} – ${dayFmt.format(end)}`;
+  const fmt = new Intl.DateTimeFormat("el-GR", { day: "numeric", month: "short" });
+  const endLabel = fmt.format(end).replace(/\.$/, "");
   const isCurrent = start.getTime() === startOfCinemaWeek(now).getTime();
-  return isCurrent ? `Τρέχουσα εβδομάδα · ${range}` : range;
+  if (isCurrent) return `Τρέχουσα εβδομάδα · μέχρι ${endLabel}`;
+  return formatCinemaWeekRange(start, end);
 }

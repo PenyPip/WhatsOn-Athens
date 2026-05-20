@@ -617,24 +617,23 @@ const Movies = () => {
         ) : null}
 
         <div className="mb-5 rounded-xl border border-border/15 bg-muted/25 ring-1 ring-border/[0.06] max-md:mb-4 md:mb-6">
-          <Collapsible open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen} className="md:contents">
-            <div className="flex items-center justify-between gap-2 px-3 py-2.5 md:hidden">
+          {/* Κινητό: συμπτυσμένα φίλτρα */}
+          <Collapsible open={mobileFiltersOpen} onOpenChange={setMobileFiltersOpen} className="md:hidden">
+            <div className="flex justify-end px-3 py-2.5">
               <CollapsibleTrigger asChild>
                 <button
                   type="button"
-                  className="flex min-w-0 flex-1 items-center gap-2 rounded-lg border border-border/15 bg-background/50 px-3 py-2.5 text-left transition-colors hover:bg-background/80"
+                  className="inline-flex max-w-full min-w-0 items-center gap-2 rounded-lg border border-border/15 bg-background/50 px-3 py-2 transition-colors hover:bg-background/80"
                   aria-expanded={mobileFiltersOpen}
                 >
                   <SlidersHorizontal className="h-4 w-4 shrink-0 text-[#13143E]" aria-hidden />
-                  <span className="min-w-0 flex-1">
+                  <span className="min-w-0 text-left">
                     <span className="block text-xs font-semibold text-foreground">Φίλτρα</span>
                     {activeFilterSummary.length > 0 ? (
-                      <span className="mt-0.5 block truncate text-[10px] text-muted-foreground">
+                      <span className="mt-0.5 block max-w-[11rem] truncate text-[10px] text-muted-foreground sm:max-w-[14rem]">
                         {activeFilterSummary.join(" · ")}
                       </span>
-                    ) : (
-                      <span className="mt-0.5 block text-[10px] text-muted-foreground">Πάτησε για επιλογές</span>
-                    )}
+                    ) : null}
                   </span>
                   <ChevronDown
                     className={cn(
@@ -646,23 +645,9 @@ const Movies = () => {
                 </button>
               </CollapsibleTrigger>
             </div>
-
-            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down md:contents md:data-[state=closed]:!grid">
-              <div className="space-y-3 px-3 pb-3 md:space-y-4 md:px-5 md:py-5">
-                <div className="hidden flex-wrap items-center justify-between gap-x-3 gap-y-2 md:mb-1 md:flex">
-                  <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Φίλτρα</p>
-                  <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border/10 bg-background/40 px-3 py-2.5 transition-colors hover:bg-background/65">
-                    <input
-                      type="checkbox"
-                      checked={summerOutdoorOnly}
-                      onChange={() => setSummerOutdoorOnly((x) => !x)}
-                      className="h-4 w-4 shrink-0 rounded border-input text-[#13143E] accent-[#13143E] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    />
-                    <span className="text-sm font-medium text-foreground">Θερινές μόνο</span>
-                  </label>
-                </div>
-
-                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/10 bg-background/40 px-2.5 py-2 transition-colors hover:bg-background/65 md:hidden">
+            <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+              <div className="space-y-3 px-3 pb-3">
+                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/10 bg-background/40 px-2.5 py-2 transition-colors hover:bg-background/65">
                   <input
                     type="checkbox"
                     checked={summerOutdoorOnly}
@@ -671,8 +656,7 @@ const Movies = () => {
                   />
                   <span className="text-xs font-medium text-foreground">Θερινές μόνο</span>
                 </label>
-
-                <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+                <div className="grid grid-cols-2 gap-2.5">
             <div className="space-y-1 md:space-y-2">
               <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-city-label">
                 Πόλη
@@ -777,6 +761,123 @@ const Movies = () => {
               </div>
             </CollapsibleContent>
           </Collapsible>
+
+          {/* Desktop: πάντα ορατά */}
+          <div className="hidden space-y-4 px-5 py-5 md:block">
+            <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+              <p className="text-[11px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Φίλτρα</p>
+              <label className="flex cursor-pointer items-center gap-2 rounded-lg border border-border/10 bg-background/40 px-3 py-2.5 transition-colors hover:bg-background/65">
+                <input
+                  type="checkbox"
+                  checked={summerOutdoorOnly}
+                  onChange={() => setSummerOutdoorOnly((x) => !x)}
+                  className="h-4 w-4 shrink-0 rounded border-input text-[#13143E] accent-[#13143E] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                />
+                <span className="text-sm font-medium text-foreground">Θερινές μόνο</span>
+              </label>
+            </div>
+            <div className="grid grid-cols-2 gap-2.5 sm:gap-4 xl:grid-cols-4">
+            <div className="space-y-1 md:space-y-2">
+              <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-city-label-desktop">
+                Πόλη
+              </span>
+              <Select
+                value={areaFilter ?? FILTER_ALL}
+                onValueChange={(v) => setAreaParam(v === FILTER_ALL ? null : (v as AreaKey))}
+                disabled={venuesLoading || Boolean(venueFilter)}
+              >
+                <SelectTrigger aria-labelledby="movies-filter-city-label-desktop" className="h-9 w-full text-xs md:h-10 md:text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  <SelectItem value={FILTER_ALL}>Παντού</SelectItem>
+                  {(AREA_KEYS as readonly AreaKey[]).map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {AREA_LABELS[key]}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {areaFilter === "athens" && !venueFilter ? (
+              <div className="col-span-2 space-y-1 sm:col-span-2 xl:col-span-1 md:space-y-2">
+                <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-district-label-desktop">
+                  Περιοχή
+                </span>
+                <Select
+                  value={districtFilter ?? FILTER_ALL}
+                  onValueChange={(v) =>
+                    setDistrictParam(v === FILTER_ALL ? null : (v as AthensDistrictKey))
+                  }
+                  disabled={venuesLoading}
+                >
+                  <SelectTrigger aria-labelledby="movies-filter-district-label-desktop" className="h-9 w-full text-xs md:h-10 md:text-sm">
+                    <SelectValue placeholder="Όλη η Αθήνα" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    <SelectItem value={FILTER_ALL}>Όλη η Αθήνα</SelectItem>
+                    {(ATHENS_DISTRICT_KEYS as readonly AthensDistrictKey[]).map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {ATHENS_DISTRICT_LABELS[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
+            <div className="space-y-1 md:space-y-2">
+              <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-venue-label-desktop">
+                Σινεμά
+              </span>
+              <Select
+                value={venueSelectValue}
+                onValueChange={(v) => setVenueParam(v === FILTER_ALL ? null : v)}
+                disabled={venuesLoading}
+              >
+                <SelectTrigger aria-labelledby="movies-filter-venue-label-desktop" className="h-9 w-full text-xs md:h-10 md:text-sm">
+                  <SelectValue placeholder="Όλα τα σινεμά" />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
+                  {venuesForSelect.map((v) => (
+                    <SelectItem key={v.id} value={v.slug}>
+                      {v.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1 md:space-y-2">
+              <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-genre-label-desktop">
+                Είδος
+              </span>
+              <Select
+                value={genreFilterSlug ?? FILTER_ALL}
+                onValueChange={(v) => setGenreParam(v === FILTER_ALL ? null : v)}
+                disabled={isLoading}
+              >
+                <SelectTrigger aria-labelledby="movies-filter-genre-label-desktop" className="h-9 w-full text-xs md:h-10 md:text-sm">
+                  <SelectValue placeholder="Όλα τα είδη" />
+                </SelectTrigger>
+                <SelectContent position="popper">
+                  <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
+                  {[...(movieGenresList ?? [])]
+                    .sort((a, b) => a.sortOrder - b.sortOrder)
+                    .map((g) => (
+                      <SelectItem key={g.id} value={g.slug.toLowerCase()}>
+                        {g.label}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+            {venueFilter ? (
+              <p className="text-xs text-muted-foreground">
+                Τα φίλτρα πόλης και περιοχής Αθήνας είναι αδρανή όταν έχεις επιλέξει συγκεκριμένο σινεμά.
+              </p>
+            ) : null}
+          </div>
         </div>
 
         {isLoading || showtimesLoading || (needsVenueData && venuesLoading) ? (
