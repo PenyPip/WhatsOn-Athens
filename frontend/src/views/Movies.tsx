@@ -228,8 +228,6 @@ type DaySection = {
 const FILTER_ALL = "__all__";
 
 const Movies = () => {
-  usePageSeo(staticPageSeo.movies);
-
   const [searchParams, setSearchParams] = useSearchParams();
   const venueSlug = searchParams.get("venue")?.trim() || "";
   const rawArea = searchParams.get("area")?.trim().toLowerCase() ?? "";
@@ -243,6 +241,17 @@ const Movies = () => {
   const rawGenre = searchParams.get("genre")?.trim().toLowerCase() ?? "";
   const genreFilterSlug = rawGenre || null;
   const moviesSection = parseMoviesSectionParam(searchParams.get("section"));
+
+  const hasListFilters = Boolean(
+    venueSlug || areaFilter || districtFilter || genreFilterSlug || moviesSection,
+  );
+
+  usePageSeo({
+    ...staticPageSeo.movies,
+    canonicalPath: "/movies",
+    path: "/movies",
+    noIndex: hasListFilters,
+  });
 
   const clearMoviesSectionParam = () => {
     const next = new URLSearchParams(searchParams);

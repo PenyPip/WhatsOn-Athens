@@ -1,3 +1,4 @@
+import { lazy, Suspense } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -6,18 +7,20 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import ScrollToTop from "@/components/ScrollToTop";
 import Navbar from "@/components/Navbar";
 import CookieConsentBanner from "@/components/CookieConsentBanner";
-import Index from "./views/Index";
-import Movies from "./views/Movies";
-import TheaterPage from "./views/Theater";
-import EventDetail from "./views/EventDetail";
-import Venues from "./views/Venues";
-import Dining from "./views/Dining";
-import DiningDetail from "./views/DiningDetail";
-import Reviews from "./views/Reviews";
-import ReviewDetail from "./views/ReviewDetail";
-import Profile from "./views/Profile";
-import NotFound from "./views/NotFound";
-import Privacy from "./views/Privacy";
+import LoadingState from "@/components/LoadingState";
+
+const Index = lazy(() => import("./views/Index"));
+const Movies = lazy(() => import("./views/Movies"));
+const TheaterPage = lazy(() => import("./views/Theater"));
+const EventDetail = lazy(() => import("./views/EventDetail"));
+const Venues = lazy(() => import("./views/Venues"));
+const Dining = lazy(() => import("./views/Dining"));
+const DiningDetail = lazy(() => import("./views/DiningDetail"));
+const Reviews = lazy(() => import("./views/Reviews"));
+const ReviewDetail = lazy(() => import("./views/ReviewDetail"));
+const Profile = lazy(() => import("./views/Profile"));
+const NotFound = lazy(() => import("./views/NotFound"));
+const Privacy = lazy(() => import("./views/Privacy"));
 
 const queryClient = new QueryClient();
 
@@ -29,24 +32,25 @@ const App = () => (
       <BrowserRouter>
         <ScrollToTop />
         <Navbar />
-        {/* Χώρος για fixed nav — mobile πάνω, desktop h-28· το Hero το αναιρεί με -mt + pt. */}
         <main className="min-h-screen max-md:pt-16 md:pt-28">
           <CookieConsentBanner />
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/movies" element={<Movies />} />
-            <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
-            <Route path="/theater" element={<TheaterPage />} />
-            <Route path="/theater/:slug" element={<EventDetail type="theater" />} />
-            <Route path="/venues" element={<Venues />} />
-            <Route path="/dining" element={<Dining />} />
-            <Route path="/dining/:slug" element={<DiningDetail />} />
-            <Route path="/reviews" element={<Reviews />} />
-            <Route path="/reviews/:slug" element={<ReviewDetail />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/privacy" element={<Privacy />} />
-            <Route path="*" element={<NotFound />} />
-          </Routes>
+          <Suspense fallback={<LoadingState message="Φόρτωση…" />}>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/movies" element={<Movies />} />
+              <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
+              <Route path="/theater" element={<TheaterPage />} />
+              <Route path="/theater/:slug" element={<EventDetail type="theater" />} />
+              <Route path="/venues" element={<Venues />} />
+              <Route path="/dining" element={<Dining />} />
+              <Route path="/dining/:slug" element={<DiningDetail />} />
+              <Route path="/reviews" element={<Reviews />} />
+              <Route path="/reviews/:slug" element={<ReviewDetail />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/privacy" element={<Privacy />} />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Suspense>
         </main>
       </BrowserRouter>
     </TooltipProvider>

@@ -15,6 +15,18 @@ export function movieTitleLines(m: Pick<StrapiMovie, "title" | "originalTitle">)
 }
 
 /** Για αναζήτηση: όλα τα πιθανά ονόματα. */
+/** Περιγραφικό alt για αφίσες ταινίας (SEO & προσβασιμότητα). */
+export function posterAltForMovie(m: Pick<StrapiMovie, "title" | "originalTitle">): string {
+  const tl = movieTitleLines(m);
+  return tl.secondary ? `Αφίσα ταινίας «${tl.primary}» (${tl.secondary})` : `Αφίσα ταινίας «${tl.primary}»`;
+}
+
+/** Περιγραφικό alt για αφίσες θεάτρου. */
+export function posterAltForTheater(title: string): string {
+  const t = title.trim() || "παράσταση";
+  return `Αφίσα παράστασης «${t}»`;
+}
+
 export function movieTitlesSearchBlob(m: Pick<StrapiMovie, "title" | "originalTitle">): string {
   const lines = movieTitleLines(m);
   const parts = new Set<string>();

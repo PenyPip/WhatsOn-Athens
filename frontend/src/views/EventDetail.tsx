@@ -22,7 +22,7 @@ import {
   type StrapiShowtime,
   type StrapiTheaterShow,
 } from "@/lib/api";
-import { movieTitleLines } from "@/lib/movieTitles";
+import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import { showtimeIsUpcoming, enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
@@ -368,7 +368,24 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             {/* eslint-disable-next-line @next/next/no-img-element -- αφίσες Strapi, static export */}
             <img
               src={movie.posterUrl}
-              alt=""
+              alt={posterAltForMovie(movie)}
+              width={1200}
+              height={1800}
+              fetchPriority="high"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover opacity-35"
+            />
+          </>
+        ) : !isMovie && (event as StrapiTheaterShow).posterUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={(event as StrapiTheaterShow).posterUrl}
+              alt={posterAltForTheater((event as StrapiTheaterShow).title)}
+              width={1200}
+              height={1800}
+              fetchPriority="high"
+              decoding="async"
               className="absolute inset-0 h-full w-full object-cover opacity-35"
             />
           </>

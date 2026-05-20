@@ -11,8 +11,10 @@ export type PageSeoInput = {
   /** Τίτλος χωρίς το «· 37Ν» (προστίθεται αυτόματα). */
   title: string;
   description?: string;
-  /** Διαδρομή για canonical & og:url, π.χ. `/movies/foo`. */
+  /** Διαδρομή για og:url (και canonical αν λείπει το canonicalPath). */
   path?: string;
+  /** Καθαρό canonical χωρίς query (π.χ. `/movies` με ενεργά φίλτρα στο URL). */
+  canonicalPath?: string;
   /** Σχετικό ή απόλυτο URL εικόνας (αφίσα κ.λπ.). */
   image?: string | null;
   imageAlt?: string;
@@ -96,13 +98,14 @@ export function usePageSeo(input: PageSeoInput | null | undefined) {
 
     const fullTitle = formatPageTitle(input.title);
     const description = truncateDescription(input.description?.trim() || siteSeo.description);
-    const pageUrl = input.path ? absolutePageUrl(input.path) : absolutePageUrl("/");
+    const canonicalUrl = absolutePageUrl(input.canonicalPath ?? input.path ?? "/");
+    const pageUrl = input.path ? absolutePageUrl(input.path) : canonicalUrl;
     const imageUrl = resolvePublicAssetUrl(input.image) ?? resolvePublicAssetUrl(siteSeo.ogImagePath);
     const imageAlt = input.imageAlt?.trim() || siteSeo.ogImageAlt;
 
     document.title = fullTitle;
     managedRef.current.push({ el: upsertMeta("name", "description", description), key: "description" });
-    managedRef.current.push({ el: upsertLink("canonical", pageUrl), key: "canonical" });
+    managedRef.current.push({ el: upsertLink("canonical", canonicalUrl), key: "canonical" });
 
     upsertMeta("property", "og:title", fullTitle);
     upsertMeta("property", "og:description", description);

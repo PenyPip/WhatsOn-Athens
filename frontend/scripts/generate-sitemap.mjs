@@ -9,6 +9,7 @@ import { fileURLToPath } from "node:url";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const publicDir = join(__dirname, "..", "public");
+const generatedDir = join(__dirname, "..", "src", "generated");
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || "https://the37n.gr").replace(/\/$/, "");
 const STRAPI_ORIGIN = (process.env.SITEMAP_STRAPI_URL || process.env.STRAPI_INTERNAL_URL || "http://127.0.0.1:1337").replace(
@@ -154,7 +155,18 @@ async function main() {
   writeFileSync(join(publicDir, "sitemap.xml"), xml, "utf8");
   writeFileSync(join(publicDir, "robots.txt"), robots, "utf8");
 
+  const spaSlugParams = all
+    .map((u) => u.path)
+    .filter((p) => p !== "/")
+    .map((path) => ({ slug: path.split("/").filter(Boolean) }));
+  writeFileSync(
+    join(generatedDir, "spa-static-paths.json"),
+    `${JSON.stringify(spaSlugParams, null, 2)}\n`,
+    "utf8",
+  );
+
   console.log(`[sitemap] Wrote ${all.length} URLs → public/sitemap.xml`);
+  console.log(`[sitemap] ${spaSlugParams.length} SPA paths → src/generated/spa-static-paths.json`);
   console.log(`[sitemap] robots.txt → Sitemap: ${SITE_URL}/sitemap.xml`);
 }
 

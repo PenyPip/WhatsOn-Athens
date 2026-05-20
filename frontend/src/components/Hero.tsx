@@ -4,7 +4,7 @@ import { useMemo } from "react";
 import { useMovies, useTheaterShows, useHomeLayout, useShowtimes } from "@/hooks/useStrapi";
 import { layoutShowsHero } from "@/config/home";
 import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
-import { movieTitleLines } from "@/lib/movieTitles";
+import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 
 function clampIndex(n: number, length: number): number {
@@ -85,7 +85,11 @@ const Hero = () => {
             {/* eslint-disable-next-line @next/next/no-img-element -- hero poster Strapi, static export */}
             <img
               src={(featured as StrapiMovie).posterUrl}
-              alt=""
+              alt={posterAltForMovie(featured as StrapiMovie)}
+              width={1200}
+              height={1800}
+              fetchPriority="high"
+              decoding="async"
               className="h-full w-full object-cover opacity-55"
             />
           </>
@@ -94,7 +98,11 @@ const Hero = () => {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={(featured as StrapiTheaterShow).posterUrl}
-              alt=""
+              alt={posterAltForTheater((featured as StrapiTheaterShow).title)}
+              width={1200}
+              height={1800}
+              fetchPriority="high"
+              decoding="async"
               className="h-full w-full object-cover opacity-55"
             />
           </>

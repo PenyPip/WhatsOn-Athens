@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues } from "@/hooks/useStrapi";
-import type { HomeSectionId } from "@/config/home";
+import { layoutShowsHero, type HomeSectionId } from "@/config/home";
 import type { StrapiMovie } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
@@ -24,6 +24,7 @@ import {
 import VenueCard from "@/components/VenueCard";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+import { siteSeo } from "@/lib/siteMetadata";
 
 const summerStrip = [
   "Θερινό σινεμά",
@@ -270,6 +271,9 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
+      {!layoutShowsHero(layout) ? (
+        <h1 className="sr-only">{siteSeo.titleDefault}</h1>
+      ) : null}
       {apiSectionFailed ? (
         <div className="section-black border-b border-amber-500/30 bg-amber-950/25 px-4 py-3 md:py-4">
           <div className="container max-w-7xl text-center text-sm text-amber-100/90 font-body md:text-left md:text-[0.9375rem]">

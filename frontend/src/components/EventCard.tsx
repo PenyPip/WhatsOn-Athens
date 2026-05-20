@@ -106,6 +106,10 @@ const EventCard = ({
               <img
                 src={posterUrl}
                 alt={posterAlt}
+                width={400}
+                height={600}
+                loading="lazy"
+                decoding="async"
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </>

@@ -22,4 +22,6 @@ npm run lint
 
 **SEO ανά σελίδα (SPA):** το hook `usePageSeo` ενημερώνει title, description, canonical και Open Graph όταν αλλάζει route.
 
+**Crawl / on-page:** `app/[[...slug]]` για όλα τα deep links· canonical καθαρό σε `/movies` (φίλτρα `noindex`)· περιγραφικά `alt` σε αφίσες· lazy-loaded routes στο `App.tsx`.
+
 Σε **`next dev`**, με `STRAPI_INTERNAL_URL` (στο Docker dev: `http://strapi:1337`) γίνεται proxy των `/admin`, `/api`, `/uploads` προς το Strapi — έτσι μπορείς να ανοίξεις π.χ. `http://localhost:3000/admin` χωρίς 404 στο Next.
