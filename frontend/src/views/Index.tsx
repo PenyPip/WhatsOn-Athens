@@ -23,8 +23,6 @@ import {
 } from "@/lib/homeMovieFilters";
 import VenueCard from "@/components/VenueCard";
 import { usePageSeo } from "@/hooks/usePageSeo";
-import JsonLd from "@/components/JsonLd";
-import { buildHomeJsonLd } from "@/lib/jsonLdHome";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { siteSeo } from "@/lib/siteMetadata";
 
@@ -229,7 +227,6 @@ function MovieRowScroll({
 
 const Index = () => {
   usePageSeo(staticPageSeo.home);
-  const homeJsonLd = useMemo(() => buildHomeJsonLd(), []);
 
   const layout = useHomeLayout();
   const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies();
@@ -274,7 +271,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      <JsonLd data={homeJsonLd} />
       {!layoutShowsHero(layout) ? (
         <h1 className="sr-only">{siteSeo.titleDefault}</h1>
       ) : null}

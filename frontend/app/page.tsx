@@ -1,6 +1,18 @@
+import type { Metadata } from "next";
 import SpaRoot from "@/components/SpaRoot";
+import ServerJsonLd from "@/components/ServerJsonLd";
+import StaticCrawlShell from "@/components/StaticCrawlShell";
+import { buildMetadataForPath } from "@/lib/pageMetadataServer";
 
-/** Αρχική — React Router SPA shell. */
+export const metadata: Metadata = buildMetadataForPath("/");
+
+/** Αρχική — React Router SPA shell + server SEO. */
 export default function Home() {
-  return <SpaRoot />;
+  return (
+    <>
+      <ServerJsonLd path="/" />
+      <StaticCrawlShell path="/" />
+      <SpaRoot />
+    </>
+  );
 }

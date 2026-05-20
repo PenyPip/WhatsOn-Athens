@@ -35,6 +35,7 @@ FROM nginx:alpine
 COPY --from=builder /front/out /usr/share/nginx/html
 
 COPY --from=builder /front/nginx-spa.conf /etc/nginx/conf.d/default.conf
+COPY --from=builder /front/nginx-security-headers.conf /etc/nginx/nginx-security-headers.conf
 
 EXPOSE 80
 

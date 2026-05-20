@@ -11,9 +11,13 @@ export const metadata: Metadata = {
   description: siteSeo.description,
   keywords: [...siteSeo.keywords],
   applicationName: siteSeo.siteName,
+  alternates: {
+    canonical: "/",
+  },
   openGraph: {
     type: "website",
     locale: "el_GR",
+    url: "/",
     siteName: siteSeo.siteName,
     title: siteSeo.titleDefault,
     description: siteSeo.description,
