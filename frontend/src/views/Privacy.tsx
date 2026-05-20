@@ -1,6 +1,5 @@
 "use client";
 
-import { useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import Footer from "@/components/Footer";
@@ -9,6 +8,8 @@ import {
   clearCookieConsent,
   COOKIE_BANNER_OPEN_EVENT,
 } from "@/lib/cookieConsent";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 const LAST_UPDATED = "Μάιος 2026";
 
@@ -22,13 +23,7 @@ function openCookieBannerAgain() {
  * Πρότυπο νομικών κειμένων — συμπλήρωσε στοιχεία εταιρείας / DPO / email επικοινωνίας πριν από production.
  */
 const Privacy = () => {
-  useEffect(() => {
-    const prev = document.title;
-    document.title = "Απόρρητο & cookies · 37Ν";
-    return () => {
-      document.title = prev;
-    };
-  }, []);
+  usePageSeo(staticPageSeo.privacy);
 
   return (
     <div className="min-h-screen pt-36 pb-20 md:pb-8">

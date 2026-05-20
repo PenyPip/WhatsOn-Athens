@@ -1,8 +1,12 @@
 import { motion } from "framer-motion";
 import { User, Heart, Star } from "lucide-react";
 import Footer from "@/components/Footer";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 const Profile = () => {
+  usePageSeo(staticPageSeo.profile);
+
   return (
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
       <div className="section-black py-10 -mt-28 pt-36 mb-8">

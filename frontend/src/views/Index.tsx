@@ -22,6 +22,8 @@ import {
   formatUpcomingCinemaWeekRange,
 } from "@/lib/homeMovieFilters";
 import VenueCard from "@/components/VenueCard";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 const summerStrip = [
   "Θερινό σινεμά",
@@ -223,6 +225,8 @@ function MovieRowScroll({
 };
 
 const Index = () => {
+  usePageSeo(staticPageSeo.home);
+
   const layout = useHomeLayout();
   const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies();
   const { data: showtimes, isLoading: showtimesLoading, isError: showtimesError } = useShowtimes();

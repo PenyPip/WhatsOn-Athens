@@ -1,13 +1,33 @@
 import { useParams, Link } from "react-router-dom";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { useEditorialReviewBySlug } from "@/hooks/useStrapi";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
+import { truncateDescription } from "@/lib/siteMetadata";
 
 const ReviewDetail = () => {
   const { slug } = useParams();
   const { data: review, isLoading } = useEditorialReviewBySlug(slug ?? "");
+
+  usePageSeo(
+    useMemo(() => {
+      if (isLoading) return { title: "Κριτική", enabled: false };
+      if (!review) {
+        return { ...staticPageSeo.notFound, path: slug ? `/reviews/${slug}` : "/reviews" };
+      }
+      return {
+        title: review.title,
+        description: truncateDescription(
+          (review.body ?? "").trim() || `Κριτική για ${review.contentTitle} — ${review.author}.`,
+        ),
+        path: `/reviews/${review.slug}`,
+      };
+    }, [isLoading, review, slug]),
+  );
 
   if (isLoading) {
     return (

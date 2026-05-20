@@ -4,10 +4,14 @@ import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useTheaterShows } from "@/hooks/useStrapi";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 const tags = ["Όλα", "Δράμα", "Μιούζικαλ", "Κωμωδία", "Χορός", "Κλασικό"];
 
 const TheaterPage = () => {
+  usePageSeo(staticPageSeo.theater);
+
   const { data: theaterShows, isLoading } = useTheaterShows();
   const [tag, setTag] = useState("Όλα");
 

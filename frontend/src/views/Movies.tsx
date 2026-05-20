@@ -21,6 +21,8 @@ import {
   enrichMoviesWithShowtimeGenre,
   formatUpcomingCinemaWeekRange,
 } from "@/lib/homeMovieFilters";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 const MOVIES_SECTION_QUERY_KEYS = ["today", "week", "summer", "new", "soon"] as const;
 export type MoviesUrlSectionKey = (typeof MOVIES_SECTION_QUERY_KEYS)[number];
@@ -226,6 +228,8 @@ type DaySection = {
 const FILTER_ALL = "__all__";
 
 const Movies = () => {
+  usePageSeo(staticPageSeo.movies);
+
   const [searchParams, setSearchParams] = useSearchParams();
   const venueSlug = searchParams.get("venue")?.trim() || "";
   const rawArea = searchParams.get("area")?.trim().toLowerCase() ?? "";

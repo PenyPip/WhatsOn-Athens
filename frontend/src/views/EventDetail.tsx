@@ -26,6 +26,8 @@ import { movieTitleLines } from "@/lib/movieTitles";
 import { showtimeIsUpcoming, enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { moviePageDescription, staticPageSeo, theaterPageDescription } from "@/lib/pageSeoCopy";
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
 function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; emphasized?: boolean }) {
@@ -167,6 +169,41 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   }, [event, type, showtimes, slug, genreCatalog]);
 
   const castList = useMemo((): string[] => (event ? normalizeCastFromStrapi(event.cast) : []), [event]);
+
+  const isMovieEarly = type === "movie";
+  const movieEarly = isMovieEarly && event ? (event as StrapiMovie) : null;
+
+  usePageSeo(
+    useMemo(() => {
+      if (isLoading) {
+        return { title: type === "movie" ? "Ταινία" : "Παράσταση", enabled: false };
+      }
+      if (!event) {
+        return {
+          ...staticPageSeo.notFound,
+          path: slug ? (type === "movie" ? `/movies/${slug}` : `/theater/${slug}`) : undefined,
+        };
+      }
+      if (isMovieEarly && movieEarly) {
+        const tl = movieTitleLines(movieEarly);
+        return {
+          title: tl.primary,
+          description: moviePageDescription(movieEarly, genreLabel),
+          path: `/movies/${slug}`,
+          image: movieEarly.posterUrl,
+          imageAlt: `Αφίσα — ${tl.primary}`,
+        };
+      }
+      const show = event as StrapiTheaterShow;
+      return {
+        title: show.title,
+        description: theaterPageDescription(show),
+        path: `/theater/${slug}`,
+        image: show.posterUrl,
+        imageAlt: show.title,
+      };
+    }, [isLoading, event, type, slug, genreLabel, isMovieEarly, movieEarly]),
+  );
 
   if (isLoading) {
     return (

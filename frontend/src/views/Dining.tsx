@@ -4,11 +4,15 @@ import RestaurantCard from "@/components/RestaurantCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useRestaurants } from "@/hooks/useStrapi";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 const cuisines = ["Όλα", "Ελληνική", "Ιαπωνο-ελληνική", "Γαλλο-μεσογειακή", "Μοριακή Γαστρονομία"];
 const priceRanges = ["Όλα", "€€", "€€€", "€€€€"];
 
 const Dining = () => {
+  usePageSeo(staticPageSeo.dining);
+
   const { data: restaurants, isLoading } = useRestaurants();
   const [cuisine, setCuisine] = useState("Όλα");
   const [price, setPrice] = useState("Όλα");

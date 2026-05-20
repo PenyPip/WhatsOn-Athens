@@ -4,11 +4,15 @@ import EditorialCard from "@/components/EditorialCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useEditorialReviews } from "@/hooks/useStrapi";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 const categories = ["Όλα", "Ταινία", "Θέατρο", "Φαγητό"];
 const categoryMap: Record<string, string> = { "Ταινία": "movie", "Θέατρο": "theater", "Φαγητό": "restaurant" };
 
 const Reviews = () => {
+  usePageSeo(staticPageSeo.reviews);
+
   const { data: editorialReviews, isLoading } = useEditorialReviews();
   const [category, setCategory] = useState("Όλα");
 

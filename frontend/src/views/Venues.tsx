@@ -3,8 +3,12 @@ import VenueCard from "@/components/VenueCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useVenues } from "@/hooks/useStrapi";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 const Venues = () => {
+  usePageSeo(staticPageSeo.venues);
+
   const { data: venues, isLoading } = useVenues();
 
   return (

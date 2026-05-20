@@ -1,4 +1,5 @@
 import { useParams, Link } from "react-router-dom";
+import { useMemo } from "react";
 import { motion } from "framer-motion";
 import { MapPin, Phone, Globe, Instagram, ArrowLeft, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -7,6 +8,9 @@ import RestaurantCard from "@/components/RestaurantCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
+import { truncateDescription } from "@/lib/siteMetadata";
 
 const DiningDetail = () => {
   const { slug } = useParams();
@@ -14,6 +18,26 @@ const DiningDetail = () => {
   const { data: userReviews } = useUserReviews();
 
   const restaurant = restaurants?.find((r) => r.slug === slug);
+
+  usePageSeo(
+    useMemo(() => {
+      if (isLoading) return { title: "Εστιατόριο", enabled: false };
+      if (!restaurant) {
+        return { ...staticPageSeo.notFound, path: slug ? `/dining/${slug}` : "/dining" };
+      }
+      const place = [restaurant.neighborhood, restaurant.city].filter(Boolean).join(", ");
+      return {
+        title: restaurant.name,
+        description: truncateDescription(
+          (restaurant.synopsis ?? "").trim() ||
+            `${restaurant.name} — ${restaurant.cuisine}${place ? `, ${place}` : ""}.`,
+        ),
+        path: `/dining/${restaurant.slug}`,
+        image: restaurant.posterUrl,
+        imageAlt: restaurant.name,
+      };
+    }, [isLoading, restaurant, slug]),
+  );
 
   if (isLoading) {
     return (

@@ -1,8 +1,12 @@
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { usePageSeo } from "@/hooks/usePageSeo";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 const NotFound = () => {
   const location = useLocation();
+
+  usePageSeo({ ...staticPageSeo.notFound, path: location.pathname });
 
   useEffect(() => {
     console.error("404 Error: User attempted to access non-existent route:", location.pathname);
