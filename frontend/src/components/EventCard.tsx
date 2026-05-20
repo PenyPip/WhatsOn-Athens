@@ -65,7 +65,7 @@ const EventCard = ({
   /** Ομοιόμορφες καρτέλες για ταινίες ανά σειρά · θέατρο όχι. */
   const uniformMovie = uniformMovieSizing ?? isMovie;
   const secondaryLine = typeof titleSecondary === "string" && titleSecondary.trim() ? titleSecondary.trim() : "";
-  /** Σελίδα λίστας προβολών: είδος (+ προαιρετικά διάρκεια) κάτω από τον τίτλο · όχι σκηνοθεσία. */
+  /** Λίστα /movies με προβολές: διάρκεια στην αφίσα, χωρίς είδος κάτω. */
   const movieListingMeta = isMovie && attachShowtimes;
   /** Οριζόντια σειρά (αρχική, κ.λπ.): σταθερό ύψος τίτλου/υπότιτλου/ειδους. */
   const uniformScrollCard = uniformMovie && !movieListingMeta && !attachShowtimes;
@@ -129,6 +129,11 @@ const EventCard = ({
               Μεταγλωτ.
             </span>
           )}
+          {movieListingMeta && showDuration ? (
+            <span className="absolute bottom-2 right-2 z-10 rounded bg-[#13143E]/92 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white shadow-sm">
+              {duration}′
+            </span>
+          ) : null}
           {score && (
             <div
               className={cn(
@@ -156,7 +161,7 @@ const EventCard = ({
           <div
             className={cn(
               "flex shrink-0 flex-col",
-              uniformScrollCard ? "min-h-[7.25rem]" : isMovie ? "min-h-[5.5rem]" : "min-h-[2.75rem]",
+              uniformScrollCard ? "min-h-[7.25rem]" : isMovie ? (movieListingMeta ? "min-h-[4.25rem]" : "min-h-[5.5rem]") : "min-h-[2.75rem]",
             )}
           >
             <h3
@@ -203,26 +208,7 @@ const EventCard = ({
           {isMovie && !movieListingMeta && uniformMovie ? (
             <div className="min-h-0 flex-1 shrink grow basis-0" aria-hidden />
           ) : null}
-          {movieListingMeta ? (
-            <div className="mt-2 flex shrink-0 flex-col gap-1 text-[13px] leading-snug text-muted-foreground sm:text-sm">
-              {genreLinkItems?.length ? (
-                <GenreLinks items={genreLinkItems} variant="inline" className="text-[10px] md:text-[11px]" />
-              ) : genreTrimmed ? (
-                <p
-                  className="line-clamp-2 max-w-full text-[10px] font-normal leading-snug tracking-tight text-muted-foreground/82 md:text-[11px]"
-                  title={genreTrimmed}
-                >
-                  {genreTrimmed.replace(/\s*·\s*/g, " · ")}
-                </p>
-              ) : null}
-              {showDuration ? (
-                <div className="flex shrink-0 items-center gap-1 pt-0.5 text-sm text-muted-foreground">
-                  <Clock className="h-3.5 w-3.5 shrink-0" />
-                  <span>{duration}&nbsp;′</span>
-                </div>
-              ) : null}
-            </div>
-          ) : (
+          {movieListingMeta ? null : (
             <>
               <p className="mb-1 mt-2 min-h-[1.3125rem] shrink-0 text-sm leading-snug text-muted-foreground line-clamp-1">
                 {subtitleLine}

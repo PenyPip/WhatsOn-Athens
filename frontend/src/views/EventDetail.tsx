@@ -1,7 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useMemo, type ReactNode } from "react";
 import { motion } from "framer-motion";
-import { Clock, Globe, Users, ArrowLeft, MapPin, ChevronDown, Play } from "lucide-react";
+import { Clock, Globe, Users, ArrowLeft, MapPin, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   useMovies,
@@ -531,7 +531,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 >
                   <Play className="h-4 w-4 shrink-0" aria-hidden />
                   Τρέιλερ
-                  <ChevronDown className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
                 </a>
               ) : null}
             </div>
