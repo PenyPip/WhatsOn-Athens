@@ -211,17 +211,13 @@ const Navbar = () => {
         </div>
       </nav>
 
-      <nav
-        className="fixed bottom-0 left-0 right-0 z-50 overflow-hidden border-t md:hidden"
-        style={{
-          background: NAV_GRADIENT,
-          borderColor: "rgba(141,47,143,0.35)",
-          paddingBottom: "env(safe-area-inset-bottom, 0px)",
-        }}
-      >
+      <nav className="mobile-bottom-nav md:hidden" aria-label="Κύρια πλοήγηση κινητού">
         <div
-          className="mx-auto grid h-14 w-full max-w-full items-stretch px-1"
-          style={{ gridTemplateColumns: `repeat(${mobileTabCount}, minmax(0, 1fr))` }}
+          className="mobile-bottom-nav__inner mx-auto grid w-full max-w-full items-stretch px-1"
+          style={{
+            background: NAV_GRADIENT,
+            gridTemplateColumns: `repeat(${mobileTabCount}, minmax(0, 1fr))`,
+          }}
         >
           {mobileLinks.map((link) => {
             const Icon = link.icon;

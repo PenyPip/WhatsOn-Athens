@@ -1,6 +1,12 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { getMetadataBase, siteSeo } from "@/lib/siteMetadata";
 import "@/index.css";
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: getMetadataBase(),
@@ -50,8 +56,8 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="el">
-      <body className="antialiased">{children}</body>
+    <html lang="el" className="h-full">
+      <body className="min-h-full antialiased max-md:overscroll-y-none">{children}</body>
     </html>
   );
 }

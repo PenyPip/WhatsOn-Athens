@@ -30,6 +30,8 @@ interface EventCardProps {
   attachShowtimes?: boolean;
   /** Με προβολές: αν δεν οριστεί, ευθυγράμμιση «πάνω» μερών όπως στις άλλες ταινίες (ίδια default με ταινίες). */
   uniformMovieSizing?: boolean;
+  /** Αρχική / συμπαγής κάρτα: διάρκεια στην αφίσα, χωρίς σκηνοθέτη, είδος, διάρκεια κάτω. */
+  compactMovieMeta?: boolean;
   className?: string;
   index?: number;
 }
@@ -52,6 +54,7 @@ const EventCard = ({
   tone = "default",
   attachShowtimes = false,
   uniformMovieSizing,
+  compactMovieMeta = false,
   className = "",
   index = 0,
 }: EventCardProps) => {
@@ -65,8 +68,8 @@ const EventCard = ({
   /** Ομοιόμορφες καρτέλες για ταινίες ανά σειρά · θέατρο όχι. */
   const uniformMovie = uniformMovieSizing ?? isMovie;
   const secondaryLine = typeof titleSecondary === "string" && titleSecondary.trim() ? titleSecondary.trim() : "";
-  /** Λίστα /movies με προβολές: διάρκεια στην αφίσα, χωρίς είδος κάτω. */
-  const movieListingMeta = isMovie && attachShowtimes;
+  /** Λίστα /movies ή αρχική: διάρκεια στην αφίσα, χωρίς είδος/σκηνοθέτη κάτω. */
+  const movieListingMeta = isMovie && (attachShowtimes || compactMovieMeta);
   /** Οριζόντια σειρά (αρχική, κ.λπ.): σταθερό ύψος τίτλου/υπότιτλου/ειδους. */
   const uniformScrollCard = uniformMovie && !movieListingMeta && !attachShowtimes;
 
@@ -130,7 +133,10 @@ const EventCard = ({
             </span>
           )}
           {movieListingMeta && showDuration ? (
-            <span className="absolute bottom-2 right-2 z-10 rounded bg-[#13143E]/92 px-1.5 py-0.5 text-[10px] font-semibold tabular-nums text-white shadow-sm">
+            <span
+              className="absolute bottom-2 right-2 z-10 flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold leading-none tabular-nums text-[#13143E] shadow-[0_1px_5px_rgba(0,0,0,0.35)] ring-1 ring-[#13143E]/25"
+              aria-label={`Διάρκεια ${duration} λεπτά`}
+            >
               {duration}′
             </span>
           ) : null}

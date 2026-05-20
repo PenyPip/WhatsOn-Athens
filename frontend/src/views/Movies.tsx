@@ -21,6 +21,7 @@ import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import VenueProgramLayout from "@/components/VenueProgramDay";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
+import { cn } from "@/lib/utils";
 import {
   showtimeIsSummerOutdoor,
   showtimeMatchesHomeToday,
@@ -223,6 +224,38 @@ type DaySection = {
 
 const FILTER_ALL = "__all__";
 
+/** Ίδιο πλάτος στα κύρια φίλτρα — συμπαγές, με truncate στο trigger. */
+const MOVIES_FILTER_CELL = "min-w-0 space-y-0.5";
+const MOVIES_FILTER_TRIGGER = "h-8 w-full min-w-0 px-2 text-xs";
+const moviesFilterGridClass = (fourColumns: boolean) =>
+  cn(
+    "grid w-full max-w-full grid-cols-3 gap-2",
+    fourColumns
+      ? "md:w-max md:grid-cols-[repeat(4,minmax(0,7.25rem))]"
+      : "md:w-max md:grid-cols-[repeat(3,minmax(0,7.25rem))]",
+  );
+const MOVIES_FILTER_DISTRICT_CELL = cn(MOVIES_FILTER_CELL, "col-span-3 md:col-span-1");
+
+function SummerOutdoorToggle({
+  checked,
+  onChange,
+}: {
+  checked: boolean;
+  onChange: () => void;
+}) {
+  return (
+    <label className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border/10 bg-background/40 px-2.5 transition-colors hover:bg-background/65">
+      <input
+        type="checkbox"
+        checked={checked}
+        onChange={onChange}
+        className="h-3.5 w-3.5 shrink-0 rounded border-input text-[#13143E] accent-[#13143E] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      />
+      <span className="whitespace-nowrap text-xs font-medium text-foreground">Θερινά</span>
+    </label>
+  );
+}
+
 const Movies = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const venueSlug = searchParams.get("venue")?.trim() || "";
@@ -342,7 +375,7 @@ const Movies = () => {
 
   const activeFilterSummary = useMemo(() => {
     const parts: string[] = [];
-    if (summerOutdoorOnly) parts.push("Θερινές μόνο");
+    if (summerOutdoorOnly) parts.push("Θερινά");
     if (venueFilter) parts.push(venueFilter.name);
     else {
       if (areaFilter) parts.push(AREA_LABELS[areaFilter]);
@@ -639,18 +672,14 @@ const Movies = () => {
             </div>
             <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
               <div className="space-y-3 px-3 pb-3">
-                <label className="flex cursor-pointer items-center gap-2 rounded-md border border-border/10 bg-background/40 px-2.5 py-2 transition-colors hover:bg-background/65">
-                  <input
-                    type="checkbox"
-                    checked={summerOutdoorOnly}
-                    onChange={() => setSummerOutdoorOnly((x) => !x)}
-                    className="h-3.5 w-3.5 shrink-0 rounded border-input text-[#13143E] accent-[#13143E] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  />
-                  <span className="text-xs font-medium text-foreground">Θερινές μόνο</span>
-                </label>
-                <div className="grid grid-cols-2 gap-2.5">
-            <div className="space-y-1 md:space-y-2">
-              <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-city-label">
+                <div className="flex flex-wrap items-end gap-2">
+                <div
+                  className={moviesFilterGridClass(
+                    areaFilter === "athens" && !venueFilter,
+                  )}
+                >
+            <div className={MOVIES_FILTER_CELL}>
+              <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-city-label">
                 Πόλη
               </span>
               <Select
@@ -658,7 +687,7 @@ const Movies = () => {
                 onValueChange={(v) => setAreaParam(v === FILTER_ALL ? null : (v as AreaKey))}
                 disabled={venuesLoading || Boolean(venueFilter)}
               >
-                <SelectTrigger aria-labelledby="movies-filter-city-label" className="h-9 w-full text-xs md:h-10 md:text-sm">
+                <SelectTrigger aria-labelledby="movies-filter-city-label" className={MOVIES_FILTER_TRIGGER}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
@@ -671,34 +700,8 @@ const Movies = () => {
                 </SelectContent>
               </Select>
             </div>
-            {areaFilter === "athens" && !venueFilter ? (
-              <div className="col-span-2 space-y-1 sm:col-span-2 xl:col-span-1 md:space-y-2">
-                <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-district-label">
-                  Περιοχή
-                </span>
-                <Select
-                  value={districtFilter ?? FILTER_ALL}
-                  onValueChange={(v) =>
-                    setDistrictParam(v === FILTER_ALL ? null : (v as AthensDistrictKey))
-                  }
-                  disabled={venuesLoading}
-                >
-                  <SelectTrigger aria-labelledby="movies-filter-district-label" className="h-9 w-full text-xs md:h-10 md:text-sm">
-                    <SelectValue placeholder="Όλη η Αθήνα" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    <SelectItem value={FILTER_ALL}>Όλη η Αθήνα</SelectItem>
-                    {(ATHENS_DISTRICT_KEYS as readonly AthensDistrictKey[]).map((key) => (
-                      <SelectItem key={key} value={key}>
-                        {ATHENS_DISTRICT_LABELS[key]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
-            <div className="space-y-1 md:space-y-2">
-              <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-venue-label">
+            <div className={MOVIES_FILTER_CELL}>
+              <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-venue-label">
                 Σινεμά
               </span>
               <Select
@@ -706,8 +709,8 @@ const Movies = () => {
                 onValueChange={(v) => setVenueParam(v === FILTER_ALL ? null : v)}
                 disabled={venuesLoading}
               >
-                <SelectTrigger aria-labelledby="movies-filter-venue-label" className="h-9 w-full text-xs md:h-10 md:text-sm">
-                  <SelectValue placeholder="Όλα τα σινεμά" />
+                <SelectTrigger aria-labelledby="movies-filter-venue-label" className={MOVIES_FILTER_TRIGGER}>
+                  <SelectValue placeholder="Όλα" />
                 </SelectTrigger>
                 <SelectContent position="popper">
                   <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
@@ -719,8 +722,8 @@ const Movies = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-1 md:space-y-2">
-              <span className="text-[10px] font-medium text-muted-foreground md:text-xs" id="movies-filter-genre-label">
+            <div className={MOVIES_FILTER_CELL}>
+              <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-genre-label">
                 Είδος
               </span>
               <Select
@@ -728,8 +731,8 @@ const Movies = () => {
                 onValueChange={(v) => setGenreParam(v === FILTER_ALL ? null : v)}
                 disabled={isLoading}
               >
-                <SelectTrigger aria-labelledby="movies-filter-genre-label" className="h-9 w-full text-xs md:h-10 md:text-sm">
-                  <SelectValue placeholder="Όλα τα είδη" />
+                <SelectTrigger aria-labelledby="movies-filter-genre-label" className={MOVIES_FILTER_TRIGGER}>
+                  <SelectValue placeholder="Όλα" />
                 </SelectTrigger>
                 <SelectContent position="popper">
                   <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
@@ -743,7 +746,38 @@ const Movies = () => {
                 </SelectContent>
               </Select>
             </div>
+            {areaFilter === "athens" && !venueFilter ? (
+              <div className={MOVIES_FILTER_DISTRICT_CELL}>
+                <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-district-label">
+                  Περιοχή
+                </span>
+                <Select
+                  value={districtFilter ?? FILTER_ALL}
+                  onValueChange={(v) =>
+                    setDistrictParam(v === FILTER_ALL ? null : (v as AthensDistrictKey))
+                  }
+                  disabled={venuesLoading}
+                >
+                  <SelectTrigger aria-labelledby="movies-filter-district-label" className={MOVIES_FILTER_TRIGGER}>
+                    <SelectValue placeholder="Όλη η Αθήνα" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    <SelectItem value={FILTER_ALL}>Όλη η Αθήνα</SelectItem>
+                    {(ATHENS_DISTRICT_KEYS as readonly AthensDistrictKey[]).map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {ATHENS_DISTRICT_LABELS[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
           </div>
+                  <SummerOutdoorToggle
+                    checked={summerOutdoorOnly}
+                    onChange={() => setSummerOutdoorOnly((x) => !x)}
+                  />
+                </div>
 
                 {venueFilter ? (
                   <p className="text-xs text-muted-foreground">
@@ -756,20 +790,14 @@ const Movies = () => {
 
           {/* Desktop: πάντα ορατά · συμπαγές */}
           <div className="hidden space-y-2 px-3.5 py-3 md:block lg:px-4">
-            <div className="flex flex-wrap items-center justify-between gap-2">
-              <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Φίλτρα</p>
-              <label className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border/10 bg-background/40 px-2 py-1 transition-colors hover:bg-background/65">
-                <input
-                  type="checkbox"
-                  checked={summerOutdoorOnly}
-                  onChange={() => setSummerOutdoorOnly((x) => !x)}
-                  className="h-3.5 w-3.5 shrink-0 rounded border-input text-[#13143E] accent-[#13143E] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                />
-                <span className="text-xs font-medium text-foreground">Θερινές μόνο</span>
-              </label>
-            </div>
-            <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
-            <div className="space-y-0.5">
+            <p className="text-[10px] font-medium uppercase tracking-[0.12em] text-muted-foreground">Φίλτρα</p>
+            <div className="flex flex-wrap items-end gap-2 lg:gap-3">
+            <div
+              className={moviesFilterGridClass(
+                areaFilter === "athens" && !venueFilter,
+              )}
+            >
+            <div className={MOVIES_FILTER_CELL}>
               <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-city-label-desktop">
                 Πόλη
               </span>
@@ -778,7 +806,7 @@ const Movies = () => {
                 onValueChange={(v) => setAreaParam(v === FILTER_ALL ? null : (v as AreaKey))}
                 disabled={venuesLoading || Boolean(venueFilter)}
               >
-                <SelectTrigger aria-labelledby="movies-filter-city-label-desktop" className="h-8 w-full text-xs">
+                <SelectTrigger aria-labelledby="movies-filter-city-label-desktop" className={MOVIES_FILTER_TRIGGER}>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent position="popper">
@@ -791,33 +819,7 @@ const Movies = () => {
                 </SelectContent>
               </Select>
             </div>
-            {areaFilter === "athens" && !venueFilter ? (
-              <div className="col-span-2 space-y-0.5 sm:col-span-2 lg:col-span-1">
-                <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-district-label-desktop">
-                  Περιοχή
-                </span>
-                <Select
-                  value={districtFilter ?? FILTER_ALL}
-                  onValueChange={(v) =>
-                    setDistrictParam(v === FILTER_ALL ? null : (v as AthensDistrictKey))
-                  }
-                  disabled={venuesLoading}
-                >
-                  <SelectTrigger aria-labelledby="movies-filter-district-label-desktop" className="h-8 w-full text-xs">
-                    <SelectValue placeholder="Όλη η Αθήνα" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    <SelectItem value={FILTER_ALL}>Όλη η Αθήνα</SelectItem>
-                    {(ATHENS_DISTRICT_KEYS as readonly AthensDistrictKey[]).map((key) => (
-                      <SelectItem key={key} value={key}>
-                        {ATHENS_DISTRICT_LABELS[key]}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            ) : null}
-            <div className="space-y-0.5">
+            <div className={MOVIES_FILTER_CELL}>
               <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-venue-label-desktop">
                 Σινεμά
               </span>
@@ -826,8 +828,8 @@ const Movies = () => {
                 onValueChange={(v) => setVenueParam(v === FILTER_ALL ? null : v)}
                 disabled={venuesLoading}
               >
-                <SelectTrigger aria-labelledby="movies-filter-venue-label-desktop" className="h-8 w-full text-xs">
-                  <SelectValue placeholder="Όλα τα σινεμά" />
+                <SelectTrigger aria-labelledby="movies-filter-venue-label-desktop" className={MOVIES_FILTER_TRIGGER}>
+                  <SelectValue placeholder="Όλα" />
                 </SelectTrigger>
                 <SelectContent position="popper">
                   <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
@@ -839,7 +841,7 @@ const Movies = () => {
                 </SelectContent>
               </Select>
             </div>
-            <div className="space-y-0.5">
+            <div className={MOVIES_FILTER_CELL}>
               <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-genre-label-desktop">
                 Είδος
               </span>
@@ -848,8 +850,8 @@ const Movies = () => {
                 onValueChange={(v) => setGenreParam(v === FILTER_ALL ? null : v)}
                 disabled={isLoading}
               >
-                <SelectTrigger aria-labelledby="movies-filter-genre-label-desktop" className="h-8 w-full text-xs">
-                  <SelectValue placeholder="Όλα τα είδη" />
+                <SelectTrigger aria-labelledby="movies-filter-genre-label-desktop" className={MOVIES_FILTER_TRIGGER}>
+                  <SelectValue placeholder="Όλα" />
                 </SelectTrigger>
                 <SelectContent position="popper">
                   <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
@@ -863,7 +865,38 @@ const Movies = () => {
                 </SelectContent>
               </Select>
             </div>
+            {areaFilter === "athens" && !venueFilter ? (
+              <div className={MOVIES_FILTER_DISTRICT_CELL}>
+                <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-district-label-desktop">
+                  Περιοχή
+                </span>
+                <Select
+                  value={districtFilter ?? FILTER_ALL}
+                  onValueChange={(v) =>
+                    setDistrictParam(v === FILTER_ALL ? null : (v as AthensDistrictKey))
+                  }
+                  disabled={venuesLoading}
+                >
+                  <SelectTrigger aria-labelledby="movies-filter-district-label-desktop" className={MOVIES_FILTER_TRIGGER}>
+                    <SelectValue placeholder="Όλη η Αθήνα" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    <SelectItem value={FILTER_ALL}>Όλη η Αθήνα</SelectItem>
+                    {(ATHENS_DISTRICT_KEYS as readonly AthensDistrictKey[]).map((key) => (
+                      <SelectItem key={key} value={key}>
+                        {ATHENS_DISTRICT_LABELS[key]}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            ) : null}
           </div>
+              <SummerOutdoorToggle
+                checked={summerOutdoorOnly}
+                onChange={() => setSummerOutdoorOnly((x) => !x)}
+              />
+            </div>
             {venueFilter ? (
               <p className="text-[11px] leading-snug text-muted-foreground">
                 Τα φίλτρα πόλης και περιοχής Αθήνας είναι αδρανή όταν έχεις επιλέξει συγκεκριμένο σινεμά.

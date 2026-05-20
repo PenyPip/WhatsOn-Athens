@@ -32,7 +32,7 @@ const App = () => (
       <BrowserRouter>
         <ScrollToTop />
         <Navbar />
-        <main className="min-h-screen max-md:pt-16 md:pt-28">
+        <main className="min-h-screen max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] max-md:pt-16 md:pt-28">
           <CookieConsentBanner />
           <Suspense fallback={<LoadingState message="Φόρτωση…" />}>
             <Routes>

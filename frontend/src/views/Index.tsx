@@ -8,7 +8,6 @@ import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues, useMovieGenres } from "@/hooks/useStrapi";
-import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import { layoutShowsHero, type HomeSectionId } from "@/config/home";
 import type { StrapiMovie, StrapiMovieGenre } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
@@ -132,15 +131,15 @@ function MovieRowScroll({
                         slug={movie.slug}
                         title={tl.primary}
                         titleSecondary={tl.secondary}
-                        subtitle={movie.director}
-                        genre={movie.genre}
-                        genreLinkItems={movieGenreLinkItems(movie, movieGenresList)}
+                        subtitle=""
+                        genre=""
                         duration={movie.duration}
                         score={movie.criticScore}
                         posterUrl={movie.posterUrl}
                         type="movie"
                         isDubbed={movie.isDubbed}
                         uniformMovieSizing
+                        compactMovieMeta
                         index={i}
                         className="h-full w-full"
                       />
@@ -186,15 +185,15 @@ function MovieRowScroll({
               slug={movie.slug}
               title={tl.primary}
               titleSecondary={tl.secondary}
-              subtitle={movie.director}
-              genre={movie.genre}
-              genreLinkItems={movieGenreLinkItems(movie, movieGenresList)}
+              subtitle=""
+              genre=""
               duration={movie.duration}
               score={movie.criticScore}
               posterUrl={movie.posterUrl}
               type="movie"
               isDubbed={movie.isDubbed}
               uniformMovieSizing
+              compactMovieMeta
               index={i}
               className="h-full w-full min-h-0 flex-1"
             />
