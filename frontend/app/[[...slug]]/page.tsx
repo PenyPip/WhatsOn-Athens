@@ -6,17 +6,22 @@ import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
 import spaPaths from "@/generated/spa-static-paths.json";
 
-type SpaPathParams = { slug: string[] };
+type SpaPathParams = { slug?: string[] };
 
 type PageProps = {
   params: Promise<SpaPathParams>;
 };
 
+/** Αρχική `/` — απαιτείται ρητά με `output: export` και optional catch-all. */
+const HOME_STATIC_PARAMS: SpaPathParams = { slug: [] };
+
 /**
  * Catch-all για React Router: κάθε path σερβίρει SPA shell + server SEO (JSON-LD, canonical, crawl links).
  */
 export function generateStaticParams(): SpaPathParams[] {
-  return spaPaths as SpaPathParams[];
+  const fromSitemap = spaPaths as SpaPathParams[];
+  const hasHome = fromSitemap.some((p) => !p.slug?.length);
+  return hasHome ? fromSitemap : [HOME_STATIC_PARAMS, ...fromSitemap];
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {

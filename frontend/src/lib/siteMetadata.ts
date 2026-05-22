@@ -1,5 +1,8 @@
 /** Κοινά SEO / Open Graph — root layout + hooks ανά σελίδα. */
 
+/** Google Analytics 4 (φόρτωση μόνο με «Αποδοχή όλων» cookies). */
+export const GA_MEASUREMENT_ID = "G-MHNBRQMW3M";
+
 export const siteSeo = {
   siteName: "37Ν",
   titleDefault: "37Ν — Ταινίες & θέατρο στην Αθήνα και τη Θεσσαλονίκη",
