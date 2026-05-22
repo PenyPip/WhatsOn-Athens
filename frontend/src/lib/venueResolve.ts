@@ -1,4 +1,5 @@
 import type { StrapiShowtime, StrapiVenue } from "@/lib/api";
+import { isCinemaVenue } from "@/lib/venueType";
 
 /** Κανονικοποίηση ονόματος — ίδιο σινεμά αν υπάρχουν «Θερινό» / θερινό σινεμά κ.λπ. */
 export function normalizeCinemaGroupName(name: string): string {
@@ -185,7 +186,8 @@ export function findVenueFromStableKey(
 }
 
 export function moviesHrefForVenue(venue: StrapiVenue | undefined): string | undefined {
-  const slug = venue?.slug?.trim();
+  if (!venue || !isCinemaVenue(venue)) return undefined;
+  const slug = venue.slug?.trim();
   return slug ? `/movies?venue=${encodeURIComponent(slug)}` : undefined;
 }
 

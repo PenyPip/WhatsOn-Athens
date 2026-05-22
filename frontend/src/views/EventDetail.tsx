@@ -26,6 +26,7 @@ import {
 } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import { showtimeIsUpcoming, showtimeShowsOutdoorLabel, enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
+import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
 import { usePageSeo } from "@/hooks/usePageSeo";
@@ -70,9 +71,7 @@ function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; em
       </div>
       <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground">
         {st.hallName ? <span>Αίθουσα · {st.hallName}</span> : null}
-        {showtimeShowsOutdoorLabel(st) ? (
-          <span className="text-xs font-semibold uppercase text-amber-700">Θερινό</span>
-        ) : null}
+        {showtimeShowsOutdoorLabel(st) ? <SummerScreeningIndicator className="text-amber-600" /> : null}
         {st.price != null ? (
           <span className="font-semibold text-foreground">
             {Number.isInteger(st.price) ? `${st.price}` : st.price.toFixed(2)} €

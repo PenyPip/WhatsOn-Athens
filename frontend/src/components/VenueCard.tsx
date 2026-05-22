@@ -2,6 +2,7 @@ import { ChevronRight, ExternalLink, MapPin, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import type { StrapiVenue } from "@/lib/api";
+import { programHrefForVenue, programLinkLabelForVenue, venueKindLabel } from "@/lib/venueType";
 
 const cityLabels: Record<string, string> = {
   athens: "Αθήνα",
@@ -34,6 +35,8 @@ const VenueCard = ({
   compact = false,
   className,
 }: VenueCardProps) => {
+  const programHref = moviesHref ?? programHrefForVenue(venue);
+  const programLabel = programLinkLabelForVenue(venue);
   const isSpotlight = variant === "spotlight";
   const headingClass = cn(
     "font-display font-semibold leading-snug",
@@ -52,14 +55,14 @@ const VenueCard = ({
       <div className={cn("flex items-start justify-between gap-2", compact ? "mb-2" : "mb-3")}>
         <h3 className={headingClass}>{venue.name}</h3>
         <div className="pointer-events-none flex flex-wrap justify-end gap-1.5 shrink-0">
-          {venue.type ? (
+          {venueKindLabel(venue.type) ? (
             <span
               className={cn(
                 "px-2 py-0.5 text-[10px] uppercase tracking-wider rounded font-medium",
                 isSpotlight ? "border border-white/10 bg-black/35 text-white/90" : "bg-[#111111] text-white",
               )}
             >
-              {venue.type}
+              {venueKindLabel(venue.type)}
             </span>
           ) : null}
           {venue.summerOutdoor ? (
@@ -84,7 +87,7 @@ const VenueCard = ({
         ) : null}
         {cityLabel(venue) ? <p className={cityClass}>{cityLabel(venue)}</p> : null}
       </div>
-      {moviesHref ? (
+      {programHref ? (
         <p
           className={cn(
             "pointer-events-none mt-auto inline-flex items-center gap-0.5 font-medium leading-snug",
@@ -92,7 +95,7 @@ const VenueCard = ({
             isSpotlight ? "text-amber-200/95" : "text-primary",
           )}
         >
-          Πρόγραμμα ταινιών σε αυτόν τον χώρο
+          {programLabel}
           <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
         </p>
       ) : null}
@@ -158,7 +161,7 @@ const VenueCard = ({
   const pageShell = cn(
     "card-elevated relative flex h-full flex-col text-left transition-colors",
     compact ? "p-4" : "p-6 min-h-[296px]",
-    moviesHref && "hover:border-primary/35",
+    programHref && "hover:border-primary/35",
   );
 
   const cardShell = (
@@ -168,15 +171,15 @@ const VenueCard = ({
         className,
       )}
     >
-      {moviesHref ? (
+      {programHref ? (
         <>
           <Link
-            to={moviesHref}
+            to={programHref}
             className={cn(
               "absolute inset-0 z-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400",
               compact ? "rounded-xl" : "rounded-lg",
             )}
-            aria-label={`Πρόγραμμα ταινιών στο χώρο ${venue.name}`}
+            aria-label={`${programLabel} — ${venue.name}`}
           />
           <div className="relative z-[1] flex min-h-0 flex-1 flex-col pointer-events-none">
             {mainContent}
@@ -196,8 +199,8 @@ const VenueCard = ({
     <div
       className={cn(
         "flex h-full flex-col",
-        moviesHref && layout === "carousel" && !compact && "min-w-[260px] max-w-[280px] shrink-0 sm:min-w-[280px] sm:max-w-[300px]",
-        moviesHref && layout === "grid" && "min-w-0 w-full",
+        programHref && layout === "carousel" && !compact && "min-w-[260px] max-w-[280px] shrink-0 sm:min-w-[280px] sm:max-w-[300px]",
+        programHref && layout === "grid" && "min-w-0 w-full",
       )}
     >
       {cardShell}

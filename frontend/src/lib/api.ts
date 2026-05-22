@@ -1,5 +1,6 @@
 import type { MappedHomepage, HomeSectionId } from "@/config/home";
 import { FALLBACK_SECTIONS, normalizeHomeSectionId } from "@/config/home";
+import { normalizeVenueKind, type VenueKind } from "@/lib/venueType";
 
 const API_PREFIX = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
 
@@ -722,9 +723,6 @@ export function venueLooksSummerOutdoor(attrs: Record<string, unknown>): boolean
   const nm = attrs.name;
   if (typeof nm === "string" && typePattern.test(nm)) return true;
 
-  const raw = attrs.type;
-  if (typeof raw === "string" && raw.trim() && typePattern.test(raw)) return true;
-
   return false;
 }
 
@@ -888,7 +886,7 @@ function mapVenue(raw: unknown): StrapiVenue {
     googleMapsUrl: v.google_maps_url,
     moreLink: typeof v.more_link === "string" ? v.more_link.trim() : "",
     seatsTotal: v.seats_total,
-    type: v.type || "",
+    type: normalizeVenueKind(v.type) ?? "cinema",
     summerOutdoor,
   };
 }
@@ -985,7 +983,7 @@ export interface StrapiVenue {
   /** ιστότοπος / κρατήσεις — εμφανίζεται ως «Περισσότερα» */
   moreLink: string;
   seatsTotal: number;
-  type: string;
+  type: VenueKind;
   summerOutdoor: boolean;
 }
 

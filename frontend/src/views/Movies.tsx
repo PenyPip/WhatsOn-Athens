@@ -18,12 +18,15 @@ import {
 } from "@/lib/venueResolve";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
+import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import VenueProgramLayout from "@/components/VenueProgramDay";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { cn } from "@/lib/utils";
+import { isCinemaVenue } from "@/lib/venueType";
 import {
   showtimeIsSummerOutdoor,
+  showtimeShowsOutdoorLabel,
   showtimeMatchesHomeToday,
   showtimeMatchesHomeUpcomingCinemaWeek,
   showtimeMatchesHomeSummerCinemaRow,
@@ -154,8 +157,11 @@ function MovieListShowtimeRow({
   const programHref = moviesHrefForVenue(venue);
 
   return (
-    <li className="font-body tabular-nums leading-relaxed">
-      <span className="font-semibold tabular-nums text-foreground">{formatShowtimeClock(row.datetime)}</span>
+    <li className="font-body flex flex-wrap items-center gap-1 tabular-nums leading-relaxed">
+      <span className="inline-flex items-center gap-1 font-semibold tabular-nums text-foreground">
+        {formatShowtimeClock(row.datetime)}
+        {row.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
+      </span>
       {singleVenueFilter ? (
         row.hallName ? <span className="text-muted-foreground">{` · ${row.hallName}`}</span> : null
       ) : (
@@ -177,7 +183,25 @@ function MovieListShowtimeRow({
 type ShowingSlot = {
   datetime: Date;
   hallName?: string;
+  /** CMS `summer_screening` — θερινή προβολή. */
+  summerScreening?: boolean;
 };
+
+function appendShowingSlot(block: VenueShowingsBlock, stDate: Date, hallRaw: string, summerScreening: boolean) {
+  const slotDedupeKey = `${Math.floor(stDate.getTime() / 60000)}-${hallRaw}`;
+  const existing = block.slots.find(
+    (s) => `${Math.floor(s.datetime.getTime() / 60000)}-${s.hallName ?? ""}` === slotDedupeKey,
+  );
+  if (existing) {
+    if (summerScreening) existing.summerScreening = true;
+    return;
+  }
+  block.slots.push({
+    datetime: stDate,
+    hallName: hallRaw || undefined,
+    ...(summerScreening ? { summerScreening: true } : {}),
+  });
+}
 
 type VenueShowingsBlock = {
   key: string;
@@ -192,6 +216,7 @@ type ShowingRow = {
   venueLabel: string;
   datetime: Date;
   hallName?: string;
+  summerScreening?: boolean;
 };
 
 function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
@@ -205,10 +230,37 @@ function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
         venueLabel: b.venueLabel,
         datetime: slot.datetime,
         hallName: slot.hallName,
+        summerScreening: slot.summerScreening,
       });
     }
   }
   return rows.sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+}
+
+function showtimeDayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function formatShowtimeDayLabel(d: Date): string {
+  return d.toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" });
+}
+
+type ShowtimeDayGroup = { dayKey: string; dayLabel: string; rows: ShowingRow[] };
+
+function groupShowtimeRowsByDay(rows: ShowingRow[]): ShowtimeDayGroup[] {
+  const map = new Map<string, ShowingRow[]>();
+  for (const row of rows) {
+    const key = showtimeDayKey(row.datetime);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key)!.push(row);
+  }
+  return [...map.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([dayKey, dayRows]) => ({
+      dayKey,
+      dayLabel: formatShowtimeDayLabel(dayRows[0].datetime),
+      rows: dayRows,
+    }));
 }
 
 type MovieDayEntry = {
@@ -224,17 +276,11 @@ type DaySection = {
 
 const FILTER_ALL = "__all__";
 
-/** Ίδιο πλάτος στα κύρια φίλτρα — συμπαγές, με truncate στο trigger. */
-const MOVIES_FILTER_CELL = "min-w-0 space-y-0.5";
-const MOVIES_FILTER_TRIGGER = "h-8 w-full min-w-0 px-2 text-xs";
-const moviesFilterGridClass = (fourColumns: boolean) =>
-  cn(
-    "grid w-full max-w-full grid-cols-3 gap-2",
-    fourColumns
-      ? "md:w-max md:grid-cols-[repeat(4,minmax(0,7.25rem))]"
-      : "md:w-max md:grid-cols-[repeat(3,minmax(0,7.25rem))]",
-  );
-const MOVIES_FILTER_DISTRICT_CELL = cn(MOVIES_FILTER_CELL, "col-span-3 md:col-span-1");
+/** Φίλτρα λίστας ταινιών — συμπαγές πλάτος, ευανάγνωστα κείμενα. */
+const MOVIES_FILTER_LABEL = "text-xs font-medium text-muted-foreground";
+const MOVIES_FILTER_CELL = "w-[8.5rem] min-w-0 shrink-0 space-y-1";
+const MOVIES_FILTER_DISTRICT_CELL = "w-[9.25rem] min-w-0 shrink-0 space-y-1";
+const MOVIES_FILTER_TRIGGER = "h-9 w-full min-w-0 px-2.5 text-sm";
 
 function SummerOutdoorToggle({
   checked,
@@ -244,14 +290,14 @@ function SummerOutdoorToggle({
   onChange: () => void;
 }) {
   return (
-    <label className="flex h-8 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border/10 bg-background/40 px-2.5 transition-colors hover:bg-background/65">
+    <label className="flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-md border border-border/10 bg-background/40 px-2.5 transition-colors hover:bg-background/65">
       <input
         type="checkbox"
         checked={checked}
         onChange={onChange}
         className="h-3.5 w-3.5 shrink-0 rounded border-input text-[#13143E] accent-[#13143E] ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
       />
-      <span className="whitespace-nowrap text-xs font-medium text-foreground">Θερινά</span>
+      <span className="whitespace-nowrap text-sm font-medium text-foreground">Θερινά</span>
     </label>
   );
 }
@@ -318,6 +364,7 @@ const Movies = () => {
   /** Μόνο σινεμά με ταινίες + τρέχον φίλτρο πόλης/περιοχής Αθήνας. */
   const venuesForSelect = useMemo(() => {
     return venuesSorted.filter((v) => {
+      if (!isCinemaVenue(v)) return false;
       if (!venueIdsWithMovieShowtime.has(v.id)) return false;
       const cityNorm = normalizeVenueCity(v.city);
       if (areaFilter && cityNorm !== areaFilter) return false;
@@ -453,7 +500,6 @@ const Movies = () => {
 
         const hallRaw = typeof st.hallName === "string" ? st.hallName.trim() : "";
         const venueKey = cinemaGroupKey(st, venues);
-        const slotDedupeKey = `${Math.floor(stDate.getTime() / 60000)}-${hallRaw}`;
 
         if (!byMovieVenues.has(movie.id)) byMovieVenues.set(movie.id, new Map());
         const byVenue = byMovieVenues.get(movie.id)!;
@@ -463,13 +509,7 @@ const Movies = () => {
           byVenue.set(venueKey, { key: venueKey, venueLabel: venueName, slots: [] });
         }
         const block = byVenue.get(venueKey)!;
-        if (block.slots.some((s) => `${Math.floor(s.datetime.getTime() / 60000)}-${s.hallName ?? ""}` === slotDedupeKey)) {
-          continue;
-        }
-        block.slots.push({
-          datetime: stDate,
-          hallName: hallRaw || undefined,
-        });
+        appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
       }
 
       const entries: MovieDayEntry[] = subset.map((movie) => {
@@ -542,7 +582,6 @@ const Movies = () => {
 
       const hallRaw = typeof st.hallName === "string" ? st.hallName.trim() : "";
       const venueKey = cinemaGroupKey(st, venues);
-      const slotDedupeKey = `${Math.floor(stDate.getTime() / 60000)}-${hallRaw}`;
 
       if (!sectionMovieShowings.has(sectionKey)) {
         sectionMovieShowings.set(sectionKey, new Map());
@@ -556,13 +595,7 @@ const Movies = () => {
         byVenue.set(venueKey, { key: venueKey, venueLabel: venueName, slots: [] });
       }
       const block = byVenue.get(venueKey)!;
-      if (block.slots.some((s) => `${Math.floor(s.datetime.getTime() / 60000)}-${s.hallName ?? ""}` === slotDedupeKey)) {
-        continue;
-      }
-      block.slots.push({
-        datetime: stDate,
-        hallName: hallRaw || undefined,
-      });
+      appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
     }
 
     const sections: DaySection[] = [...sectionMovieShowings.keys()].map((key) => {
@@ -659,9 +692,9 @@ const Movies = () => {
                 >
                   <SlidersHorizontal className="h-4 w-4 shrink-0 text-[#13143E]" aria-hidden />
                   <span className="min-w-0 text-left">
-                    <span className="block text-xs font-semibold text-foreground">Φίλτρα</span>
+                    <span className="block text-sm font-semibold text-foreground">Φίλτρα</span>
                     {activeFilterSummary.length > 0 ? (
-                      <span className="mt-0.5 block max-w-[11rem] truncate text-[10px] text-muted-foreground sm:max-w-[14rem] md:max-w-[22rem]">
+                      <span className="mt-0.5 block max-w-[11rem] truncate text-xs text-muted-foreground sm:max-w-[14rem] md:max-w-[22rem]">
                         {activeFilterSummary.join(" · ")}
                       </span>
                     ) : null}
@@ -672,13 +705,9 @@ const Movies = () => {
             <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
               <div className="space-y-3 px-3 pb-3 md:px-3.5 lg:px-4">
                 <div className="flex flex-wrap items-end gap-2 lg:gap-3">
-                  <div
-                    className={moviesFilterGridClass(
-                      areaFilter === "athens" && !venueFilter,
-                    )}
-                  >
+                  <div className="flex flex-wrap items-end gap-2">
                     <div className={MOVIES_FILTER_CELL}>
-                      <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-city-label">
+                      <span className={MOVIES_FILTER_LABEL} id="movies-filter-city-label">
                         Πόλη
                       </span>
                       <Select
@@ -699,55 +728,9 @@ const Movies = () => {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className={MOVIES_FILTER_CELL}>
-                      <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-venue-label">
-                        Σινεμά
-                      </span>
-                      <Select
-                        value={venueSelectValue}
-                        onValueChange={(v) => setVenueParam(v === FILTER_ALL ? null : v)}
-                        disabled={venuesLoading}
-                      >
-                        <SelectTrigger aria-labelledby="movies-filter-venue-label" className={MOVIES_FILTER_TRIGGER}>
-                          <SelectValue placeholder="Όλα" />
-                        </SelectTrigger>
-                        <SelectContent position="popper">
-                          <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
-                          {venuesForSelect.map((v) => (
-                            <SelectItem key={v.id} value={v.slug}>
-                              {v.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className={MOVIES_FILTER_CELL}>
-                      <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-genre-label">
-                        Είδος
-                      </span>
-                      <Select
-                        value={genreFilterSlug ?? FILTER_ALL}
-                        onValueChange={(v) => setGenreParam(v === FILTER_ALL ? null : v)}
-                        disabled={isLoading}
-                      >
-                        <SelectTrigger aria-labelledby="movies-filter-genre-label" className={MOVIES_FILTER_TRIGGER}>
-                          <SelectValue placeholder="Όλα" />
-                        </SelectTrigger>
-                        <SelectContent position="popper">
-                          <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
-                          {[...(movieGenresList ?? [])]
-                            .sort((a, b) => a.sortOrder - b.sortOrder)
-                            .map((g) => (
-                              <SelectItem key={g.id} value={g.slug.toLowerCase()}>
-                                {g.label}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
                     {areaFilter === "athens" && !venueFilter ? (
                       <div className={MOVIES_FILTER_DISTRICT_CELL}>
-                        <span className="text-[10px] font-medium text-muted-foreground" id="movies-filter-district-label">
+                        <span className={MOVIES_FILTER_LABEL} id="movies-filter-district-label">
                           Περιοχή
                         </span>
                         <Select
@@ -772,6 +755,52 @@ const Movies = () => {
                       </div>
                     ) : null}
                   </div>
+                  <div className={MOVIES_FILTER_CELL}>
+                    <span className={MOVIES_FILTER_LABEL} id="movies-filter-venue-label">
+                      Σινεμά
+                    </span>
+                    <Select
+                      value={venueSelectValue}
+                      onValueChange={(v) => setVenueParam(v === FILTER_ALL ? null : v)}
+                      disabled={venuesLoading}
+                    >
+                      <SelectTrigger aria-labelledby="movies-filter-venue-label" className={MOVIES_FILTER_TRIGGER}>
+                        <SelectValue placeholder="Όλα" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
+                        {venuesForSelect.map((v) => (
+                          <SelectItem key={v.id} value={v.slug}>
+                            {v.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className={MOVIES_FILTER_CELL}>
+                    <span className={MOVIES_FILTER_LABEL} id="movies-filter-genre-label">
+                      Είδος
+                    </span>
+                    <Select
+                      value={genreFilterSlug ?? FILTER_ALL}
+                      onValueChange={(v) => setGenreParam(v === FILTER_ALL ? null : v)}
+                      disabled={isLoading}
+                    >
+                      <SelectTrigger aria-labelledby="movies-filter-genre-label" className={MOVIES_FILTER_TRIGGER}>
+                        <SelectValue placeholder="Όλα" />
+                      </SelectTrigger>
+                      <SelectContent position="popper">
+                        <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
+                        {[...(movieGenresList ?? [])]
+                          .sort((a, b) => a.sortOrder - b.sortOrder)
+                          .map((g) => (
+                            <SelectItem key={g.id} value={g.slug.toLowerCase()}>
+                              {g.label}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <SummerOutdoorToggle
                     checked={summerOutdoorOnly}
                     onChange={() => setSummerOutdoorOnly((x) => !x)}
@@ -791,12 +820,21 @@ const Movies = () => {
             ) : null}
             {!venueFilter
               ? groupedMovies.map((section) => (
-                <section key={section.label}>
-                  <h2 className="font-display mb-3 text-lg font-semibold capitalize md:mb-4 md:text-2xl">{section.label}</h2>
+                <section
+                  key={section.label}
+                  className="rounded-xl border border-border/15 bg-muted/20 p-4 ring-1 ring-border/[0.06] md:p-5"
+                >
+                  <h2 className="font-display mb-1 text-lg font-semibold capitalize text-[#13143E] md:mb-2 md:text-2xl">
+                    {section.label}
+                  </h2>
+                  <p className="mb-4 text-xs text-muted-foreground md:mb-5">
+                    Όλες οι προβολές παρακάτω ανήκουν σε αυτή την ημέρα
+                  </p>
                   <motion.div className="grid grid-cols-2 items-start gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                     {section.entries.map(({ movie, showings }, i) => {
                       const tl = movieTitleLines(movie);
                       const rows = flattenShowingsToRows(showings);
+                      const dayGroups = groupShowtimeRowsByDay(rows);
                       const hasShowRows = rows.length > 0;
                       return (
                         <div
@@ -821,17 +859,28 @@ const Movies = () => {
                             className="w-full"
                           />
                           {hasShowRows ? (
-                            <div className="shrink-0 border-t border-border/[0.1] px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
-                              <ShowtimesExpandable listClassName="space-y-1">
-                                {rows.map((row) => (
-                                  <MovieListShowtimeRow
-                                    key={row.key}
-                                    row={row}
-                                    venues={venues}
-                                    singleVenueFilter={false}
-                                  />
+                            <div className="shrink-0 border-t border-border/[0.12] bg-background/40 px-2.5 pb-2 pt-2 text-xs leading-snug text-muted-foreground sm:text-sm">
+                              <div className="space-y-2">
+                                {dayGroups.map((group) => (
+                                  <div key={group.dayKey}>
+                                    {dayGroups.length > 1 ? (
+                                      <p className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-[#13143E]">
+                                        {group.dayLabel}
+                                      </p>
+                                    ) : null}
+                                    <ShowtimesExpandable listClassName="space-y-1.5">
+                                      {group.rows.map((row) => (
+                                        <MovieListShowtimeRow
+                                          key={row.key}
+                                          row={row}
+                                          venues={venues}
+                                          singleVenueFilter={false}
+                                        />
+                                      ))}
+                                    </ShowtimesExpandable>
+                                  </div>
                                 ))}
-                              </ShowtimesExpandable>
+                              </div>
                             </div>
                           ) : moviesSection === "new" || moviesSection === "soon" ? (
                             <div className="border-t border-border/[0.1] px-2.5 py-3 text-center text-[11px] leading-relaxed text-muted-foreground sm:text-xs">

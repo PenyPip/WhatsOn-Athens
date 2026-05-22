@@ -8,9 +8,10 @@ import {
   startOfCinemaWeek,
 } from "@/lib/homeMovieFilters";
 import { movieTitleLines, posterAltForMovie } from "@/lib/movieTitles";
+import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import { cn } from "@/lib/utils";
 
-type ShowingSlot = { datetime: Date; hallName?: string };
+type ShowingSlot = { datetime: Date; hallName?: string; summerScreening?: boolean };
 
 type VenueShowingsBlock = {
   key: string;
@@ -33,9 +34,16 @@ type ShowingRow = {
   key: string;
   datetime: Date;
   hallName?: string;
+  summerScreening?: boolean;
 };
 
-type ProgramLine = { key: string; datetime: Date; hallName?: string; movie: StrapiMovie };
+type ProgramLine = {
+  key: string;
+  datetime: Date;
+  hallName?: string;
+  summerScreening?: boolean;
+  movie: StrapiMovie;
+};
 
 type ProgramDayGroup = {
   dayKey: string;
@@ -65,6 +73,7 @@ function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
         key: `${b.key}-${slot.datetime.getTime()}-${slot.hallName ?? ""}`,
         datetime: slot.datetime,
         hallName: slot.hallName,
+        summerScreening: slot.summerScreening,
       });
     }
   }
@@ -73,6 +82,10 @@ function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
 
 function formatClock(d: Date): string {
   return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false });
+}
+
+function isTodayCalendarDay(d: Date, now: Date): boolean {
+  return calendarDayKey(d) === calendarDayKey(now);
 }
 
 function calendarDayKey(d: Date): string {
@@ -206,13 +219,16 @@ function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number 
 function VenueCalendarScreening({ line }: { line: ProgramLine }) {
   const tl = movieTitleLines(line.movie);
   return (
-    <div className="rounded-md bg-background px-2 py-1.5 shadow-sm ring-1 ring-border/25 transition-shadow hover:ring-[#13143E]/20">
-      <time
-        dateTime={line.datetime.toISOString()}
-        className="block text-sm font-bold tabular-nums leading-none text-[#13143E]"
-      >
-        {formatClock(line.datetime)}
-      </time>
+    <div className="rounded-md border-l-[3px] border-l-[#13143E] bg-background py-2 pl-2.5 pr-2 shadow-sm ring-1 ring-border/20 transition-shadow hover:ring-[#13143E]/25">
+      <div className="flex items-center gap-1">
+        <time
+          dateTime={line.datetime.toISOString()}
+          className="text-sm font-bold tabular-nums leading-none text-[#13143E]"
+        >
+          {formatClock(line.datetime)}
+        </time>
+        {line.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
+      </div>
       <Link
         to={`/movies/${line.movie.slug}`}
         className="mt-1 block text-[11px] font-medium leading-snug text-foreground hover:text-primary hover:underline sm:text-xs"
@@ -226,58 +242,80 @@ function VenueCalendarScreening({ line }: { line: ProgramLine }) {
   );
 }
 
-function VenueCalendarDayCell({ day }: { day: ProgramDayGroup }) {
-  const hasShowings = day.lines.length > 0;
-
+/** Επικεφαλίδα ημέρας — στοίχιση αριστερά μέσα στη στήλη του οριζόντιου ημερολογίου. */
+function VenueDayHeader({ day, isToday }: { day: ProgramDayGroup; isToday: boolean }) {
   return (
-    <div className="flex min-h-[7.5rem] min-w-[5.5rem] flex-col sm:min-h-[8.5rem] lg:min-h-[9rem] lg:min-w-0">
-      <div className="flex h-[3.75rem] shrink-0 flex-col items-center justify-center border-b border-border/15 bg-muted/30 px-1.5 text-center sm:h-[4rem] sm:px-2">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">{day.weekdayShort}</span>
+    <header
+      className={cn(
+        "flex w-full shrink-0 flex-col items-start gap-0.5 border-b px-2.5 py-2.5 text-left sm:px-3",
+        isToday ? "border-[#13143E]/25 bg-[#13143E]/[0.08]" : "border-border/15 bg-muted/35",
+      )}
+    >
+      <span
+        className={cn(
+          "text-[10px] font-bold uppercase tracking-wide",
+          isToday ? "text-[#13143E]" : "text-muted-foreground",
+        )}
+      >
+        {day.weekdayShort}
+      </span>
+      <div className="flex items-baseline gap-1.5">
         <span className="font-display text-xl font-bold tabular-nums leading-none text-foreground sm:text-2xl">
           {day.dayNumber}
         </span>
-        <span className="text-[10px] capitalize text-muted-foreground">{day.monthShort}</span>
+        <span className="text-[10px] capitalize text-muted-foreground sm:text-[11px]">{day.monthShort}</span>
       </div>
+    </header>
+  );
+}
 
-      <div className="flex flex-1 flex-col gap-1.5 p-1.5 sm:p-2">
-        {hasShowings ? (
+/** Στήλη μίας ημέρας στο οριζόντιο ημερολόγιο. */
+function VenueCalendarDayColumn({ day, isToday }: { day: ProgramDayGroup; isToday: boolean }) {
+  return (
+    <div
+      className={cn(
+        "flex min-h-[8rem] min-w-[6.25rem] flex-col sm:min-h-[8.5rem] sm:min-w-[6.75rem] lg:min-h-[9rem] lg:min-w-0",
+        isToday && "bg-[#13143E]/[0.03]",
+      )}
+      aria-label={`${day.weekdayShort} ${day.dayNumber} ${day.monthShort}`}
+    >
+      <VenueDayHeader day={day} isToday={isToday} />
+      <div className="flex flex-1 flex-col items-stretch gap-2 p-2 text-left">
+        {day.lines.length > 0 ? (
           day.lines.map((line) => <VenueCalendarScreening key={line.key} line={line} />)
         ) : (
-          <p className="flex flex-1 items-center justify-center py-4 text-center text-[10px] text-muted-foreground/50">—</p>
+          <p className="py-4 text-left text-[10px] text-muted-foreground/50">—</p>
         )}
       </div>
     </div>
   );
 }
 
-function VenueProgramCalendarWeek({ week }: { week: ProgramWeekGroup }) {
+function VenueProgramCalendarWeek({ week, now }: { week: ProgramWeekGroup; now: Date }) {
   const colCount = week.days.length;
 
   return (
     <article className="overflow-hidden rounded-xl border border-border/20 bg-card/40 shadow-sm">
-      <header className="border-b border-border/15 bg-muted/25 px-4 py-3 md:px-5">
+      <header className="border-b border-border/15 bg-muted/25 px-4 py-3 text-left md:px-5">
         <h3 className="font-display text-base font-semibold leading-snug text-foreground md:text-lg">
           {week.heading}
         </h3>
+        <p className="mt-1 text-xs text-muted-foreground">Εβδομαδιαίο ημερολόγιο προβολών</p>
       </header>
 
-      <div className="lg:hidden">
-        <div className="flex divide-x divide-border/20 overflow-x-auto overscroll-x-contain">
+      <div className="overflow-x-auto overscroll-x-contain">
+        <div
+          className="grid min-w-max divide-x divide-border/20 lg:min-w-0 lg:w-full"
+          style={{ gridTemplateColumns: `repeat(${colCount}, minmax(6.25rem, 1fr))` }}
+        >
           {week.days.map((day) => (
-            <div key={day.dayKey} className="shrink-0">
-              <VenueCalendarDayCell day={day} />
-            </div>
+            <VenueCalendarDayColumn
+              key={day.dayKey}
+              day={day}
+              isToday={isTodayCalendarDay(day.date, now)}
+            />
           ))}
         </div>
-      </div>
-
-      <div
-        className="hidden divide-x divide-border/20 lg:grid"
-        style={{ gridTemplateColumns: `repeat(${colCount}, minmax(0, 1fr))` }}
-      >
-        {week.days.map((day) => (
-          <VenueCalendarDayCell key={day.dayKey} day={day} />
-        ))}
       </div>
     </article>
   );
@@ -296,6 +334,7 @@ export default function VenueProgramLayout({ sections }: { sections: VenueProgra
           key: `${movie.id}-${row.key}`,
           datetime: row.datetime,
           hallName: row.hallName,
+          summerScreening: row.summerScreening,
           movie,
         })),
       )
@@ -339,7 +378,7 @@ export default function VenueProgramLayout({ sections }: { sections: VenueProgra
             <p className="mt-1 text-sm text-muted-foreground">Εβδομαδιαίο ημερολόγιο προβολών</p>
           </div>
           {programWeeks.map((week) => (
-            <VenueProgramCalendarWeek key={week.weekKey} week={week} />
+            <VenueProgramCalendarWeek key={week.weekKey} week={week} now={now} />
           ))}
         </section>
       ) : null}

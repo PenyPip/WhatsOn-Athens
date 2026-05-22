@@ -1,4 +1,5 @@
 import { movieGenreSlugsToDisplayLine, type StrapiMovie, type StrapiShowtime, type StrapiVenue } from "@/lib/api";
+import { isCinemaVenue } from "@/lib/venueType";
 
 /**
  * Εξωτερική/θερινή προβολή — μόνο το πεδίο «θερινή προβολή» στην εγγραφή προβολής (CMS).
@@ -25,7 +26,9 @@ export function showtimeIsUpcoming(st: StrapiShowtime, now = new Date()): boolea
  * Αν κανείς δεν έχει τέτοια προβολή, επιστρέφονται όλοι οι θερινοί για να μην μένει κενή η ενότητα.
  */
 export function summerVenuesWithShowtimesOrAll(venues: StrapiVenue[], showtimes: StrapiShowtime[], now = new Date()): StrapiVenue[] {
-  const summerVenues = venues.filter((v) => v.summerOutdoor).sort((a, b) => a.name.localeCompare(b.name, "el"));
+  const summerVenues = venues
+    .filter((v) => isCinemaVenue(v) && v.summerOutdoor)
+    .sort((a, b) => a.name.localeCompare(b.name, "el"));
   const idWithSummerShow = new Set<number>();
   for (const st of showtimes) {
     if (st.movieId == null || st.venueId == null) continue;

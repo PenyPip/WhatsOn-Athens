@@ -7,6 +7,7 @@ import { useMovies, useVenues, useShowtimes } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
+import { venueKindLabel } from "@/lib/venueType";
 
 function normalizeSearch(s: string): string {
   const raw = typeof s === "string" ? s : String(s ?? "");
@@ -27,7 +28,14 @@ function movieMatches(movie: StrapiMovie, q: string): boolean {
 
 function venueMatches(venue: StrapiVenue, q: string): boolean {
   if (!q) return true;
-  const hay = [venue.name ?? "", venue.slug ?? "", venue.address ?? "", venue.type ?? "", venue.city ?? ""]
+  const hay = [
+    venue.name ?? "",
+    venue.slug ?? "",
+    venue.address ?? "",
+    venueKindLabel(venue.type),
+    venue.type,
+    venue.city ?? "",
+  ]
     .join(" ")
     .toLowerCase();
   const nq = normalizeSearch(q);
@@ -162,7 +170,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
                     <CommandItem
                       key={`venue-${v.id}`}
                       value={`venue-${v.id}-${v.slug ?? ""}-${v.name ?? ""}`}
-                      keywords={[v.name ?? "", v.slug ?? "", v.address ?? "", v.type ?? "", v.city ?? ""].filter(Boolean)}
+                      keywords={[v.name ?? "", v.slug ?? "", v.address ?? "", venueKindLabel(v.type), v.city ?? ""].filter(Boolean)}
                       onSelect={() => runVenue(v.slug ?? "")}
                       className="gap-3"
                     >

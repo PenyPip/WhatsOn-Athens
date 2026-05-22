@@ -845,7 +845,9 @@ export interface ApiVenueVenue extends Schema.CollectionType {
       'oneToMany',
       'api::theater-show.theater-show'
     >;
-    type: Attribute.String;
+    type: Attribute.Enumeration<['cinema', 'theater']> &
+      Attribute.Required &
+      Attribute.DefaultTo<'cinema'>;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::venue.venue',

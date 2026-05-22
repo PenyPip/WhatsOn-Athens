@@ -79,9 +79,9 @@ services:
     volumes:
       - ./frontend:/front:delegated
       - /front/node_modules
-      - /front/.next
     environment:
       NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
       # Proxy από Next προς Strapi για /admin · /api · /uploads (ίδια λογική με nginx)
       STRAPI_INTERNAL_URL: http://strapi:1337
 
