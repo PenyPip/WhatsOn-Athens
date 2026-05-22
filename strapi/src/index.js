@@ -77,5 +77,12 @@ module.exports = {
     } catch (e) {
       strapi.log.warn('[whatson bootstrap public API permissions]', e);
     }
+
+    try {
+      const { expandAllPendingRepeatShowtimes } = require('./api/showtime/services/showtime-repeat');
+      await expandAllPendingRepeatShowtimes(strapi);
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap showtime repeat]', e);
+    }
   },
 };
