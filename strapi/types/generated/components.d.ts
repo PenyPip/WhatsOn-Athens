@@ -27,6 +27,17 @@ export interface HomeLayoutSection extends Schema.Component {
   };
 }
 
+export interface SchedulingSkipDay extends Schema.Component {
+  collectionName: 'components_scheduling_skip_days';
+  info: {
+    description: '\u0394\u03B5\u03BD \u03B4\u03B7\u03BC\u03B9\u03BF\u03C5\u03C1\u03B3\u03B5\u03AF\u03C4\u03B1\u03B9 (\u03AE \u03B4\u03B9\u03B1\u03B3\u03C1\u03AC\u03C6\u03B5\u03C4\u03B1\u03B9) \u03C0\u03C1\u03BF\u03B2\u03BF\u03BB\u03AE \u03B1\u03C5\u03C4\u03AE \u03C4\u03B7\u03BD \u03B7\u03BC\u03B5\u03C1\u03BF\u03BC\u03B7\u03BD\u03AF\u03B1 \u03BC\u03AD\u03C3\u03B1 \u03C3\u03C4\u03BF \u03B4\u03B9\u03AC\u03C3\u03C4\u03B7\u03BC\u03B1 \u03B5\u03C0\u03B1\u03BD\u03AC\u03BB\u03B7\u03C8\u03B7\u03C2.';
+    displayName: '\u0397\u03BC\u03AD\u03C1\u03B1 \u03B5\u03BE\u03B1\u03AF\u03C1\u03B5\u03C3\u03B7\u03C2';
+  };
+  attributes: {
+    day: Attribute.Date & Attribute.Required;
+  };
+}
+
 export interface SharedCastName extends Schema.Component {
   collectionName: 'components_shared_cast_names';
   info: {
@@ -42,6 +53,7 @@ declare module '@strapi/types' {
   export module Shared {
     export interface Components {
       'home.layout-section': HomeLayoutSection;
+      'scheduling.skip-day': SchedulingSkipDay;
       'shared.cast-name': SharedCastName;
     }
   }

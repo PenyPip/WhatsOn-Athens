@@ -1,0 +1,13 @@
+{
+  "collectionName": "components_scheduling_skip_days",
+  "info": {
+    "displayName": "Ημέρα εξαίρεσης",
+    "description": "Δεν δημιουργείται (ή διαγράφεται) προβολή αυτή την ημερομηνία μέσα στο διάστημα επανάληψης."
+  },
+  "attributes": {
+    "day": {
+      "type": "date",
+      "required": true
+    }
+  }
+}
