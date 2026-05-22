@@ -191,10 +191,16 @@ export function moviesHrefForVenue(venue: StrapiVenue | undefined): string | und
   return slug ? `/movies?venue=${encodeURIComponent(slug)}` : undefined;
 }
 
+function moviesHrefFromVenueSlug(slug: string | undefined): string | undefined {
+  const s = slug?.trim();
+  return s ? `/movies?venue=${encodeURIComponent(s)}` : undefined;
+}
+
 /** Σύνδεσμος λίστας ταινιών για χώρο — δοκιμή από όλες τις προβολές της ομάδας. */
 export function moviesHrefForShowtimes(
   slots: StrapiShowtime[],
   venues?: StrapiVenue[],
+  groupKey?: string,
 ): string | undefined {
   const { venue } = resolveCinemaGroupFromShowtimes(slots, venues);
   const fromGroup = moviesHrefForVenue(venue);
@@ -202,6 +208,14 @@ export function moviesHrefForShowtimes(
   for (const st of slots) {
     const href = moviesHrefForVenue(findVenueForShowtime(venues, st));
     if (href) return href;
+    const fromSlotSlug = moviesHrefFromVenueSlug(st.venueSlug);
+    if (fromSlotSlug) return fromSlotSlug;
+  }
+  if (groupKey?.startsWith("cinema:")) {
+    const tail = groupKey.slice(7);
+    if (tail && !tail.startsWith("n:")) {
+      return moviesHrefFromVenueSlug(tail);
+    }
   }
   return undefined;
 }

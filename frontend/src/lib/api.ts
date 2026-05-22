@@ -771,6 +771,10 @@ function mapShowtime(
   const summerScreening = ss === true || ss === "true" || ss === 1;
   const venueId = strapiRelationNumericId(s.venue as unknown);
   const vAttrs = strapiRelationAttrs(s.venue as unknown);
+  const venueSlug =
+    typeof vAttrs?.slug === "string" && vAttrs.slug.trim()
+      ? vAttrs.slug.trim()
+      : undefined;
   const venue =
     typeof vAttrs?.name === "string" && vAttrs.name
       ? vAttrs.name
@@ -832,6 +836,7 @@ function mapShowtime(
     datetime,
     venue,
     venueId,
+    venueSlug,
     hallId,
     hallName,
     summerScreening,
@@ -1010,6 +1015,8 @@ export interface StrapiShowtime {
   venue: string;
   /** όταν η σχέση venue υπάρχει αλλά δεν ήρθαν attributes στο REST */
   venueId?: number;
+  /** Slug χώρου από populate venue — για σύνδεσμο «Πρόγραμμα» χωρίς πλήρη λίστα venues */
+  venueSlug?: string;
   /** CMS `summer_screening`: εξωτερική προβολή → ετικέτα «Θερινό» & φίλτρα θερινών */
   summerScreening: boolean;
   /** Πληροφοριακό από venue (δεν εμφανίζεται αυτόματα ως «Θερινό» στην προβολή) */
@@ -1118,7 +1125,7 @@ export const api = {
     }),
 
   getVenues: () =>
-    fetchAPI<any[]>("/venues").then((d) => (Array.isArray(d) ? d : []).map((x) => mapVenue(x))),
+    fetchAPIPagedEntries("/venues", {}).then((rows) => rows.map((x) => mapVenue(x))),
 
   getEditorialReviews: () =>
     fetchAPI<any[]>("/editorial-reviews").then((d) => (Array.isArray(d) ? d : []).map((x) => mapEditorialReview(x))),

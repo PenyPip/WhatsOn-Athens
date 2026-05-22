@@ -385,7 +385,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   <CinemaVenueLinks
                     venueName={venueName}
                     venue={venue}
-                    programHref={moviesHrefForShowtimes(slots, venues)}
+                    programHref={moviesHrefForShowtimes(slots, venues, key)}
+                    showProgramButton
                     compact
                   />
                 </div>

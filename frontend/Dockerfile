@@ -16,7 +16,9 @@ ENV NODE_ENV=development
 
 EXPOSE 3000
 
-CMD ["npm", "run", "dev"]
+RUN chmod +x /front/scripts/docker-dev-entrypoint.sh
+
+CMD ["/front/scripts/docker-dev-entrypoint.sh"]
 
 FROM base AS builder
 
