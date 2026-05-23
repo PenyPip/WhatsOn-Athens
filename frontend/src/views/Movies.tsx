@@ -652,9 +652,9 @@ const Movies = () => {
             <h1 className="font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl">
               {venueFilter ? venueFilter.name : "Ταινίες"}
             </h1>
-            <p className="text-sm text-white/60 md:text-base">
-              {venueFilter ? "Πρόγραμμα προβολών" : "Τώρα στα σινεμά σε όλη την Ελλάδα"}
-            </p>
+            {!venueFilter ? (
+              <p className="text-sm text-white/60 md:text-base">Τώρα στα σινεμά σε όλη την Ελλάδα</p>
+            ) : null}
             {venueFilter ? (
               <div className="mt-3 space-y-1.5 text-sm text-white/75 md:mt-4">
                 {venueFilter.address?.trim() ? (
@@ -688,9 +688,14 @@ const Movies = () => {
       </div>
 
       <div className="container">
-        {venueFilter && isValidExternalUrl(venueFilter.moreLink) ? (
-          <div className="mb-6 flex flex-wrap items-center gap-3 md:mb-8">
-            <VenueBookingLink venue={venueFilter} variant="button" />
+        {venueFilter ? (
+          <div className="mb-5 md:mb-6">
+            <p className="text-sm font-medium text-muted-foreground md:text-base">Πρόγραμμα προβολών</p>
+            {isValidExternalUrl(venueFilter.moreLink) ? (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <VenueBookingLink venue={venueFilter} variant="button" />
+              </div>
+            ) : null}
           </div>
         ) : null}
 

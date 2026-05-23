@@ -539,8 +539,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       </section>
 
       <div className="container mt-8 space-y-10 md:mt-10 md:space-y-12">
-        {movieShowtimesSection}
-
         {isMovie ? (
           <>
             <motion.section
@@ -665,6 +663,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             );})}
           </div>
         </section>
+
+        {movieShowtimesSection}
       </div>
 
       <Footer />
