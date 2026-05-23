@@ -16,9 +16,9 @@ ENV NODE_ENV=development
 
 EXPOSE 3000
 
-RUN chmod +x /front/scripts/docker-dev-entrypoint.sh
-
-CMD ["/front/scripts/docker-dev-entrypoint.sh"]
+# Το node:20 entrypoint τρέχει `node` σε μη-executable αρχεία — χρησιμοποιούμε sh ρητά.
+ENTRYPOINT []
+CMD ["sh", "/front/scripts/docker-dev-entrypoint.sh"]
 
 FROM base AS builder
 

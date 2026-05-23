@@ -301,15 +301,15 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const infoField = (label: string, value: ReactNode) => (
     <div className="min-w-0">
-      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-      <div className="mt-0.5 text-sm font-medium leading-snug text-foreground">{value}</div>
+      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <div className="mt-1 text-base font-medium leading-snug text-foreground">{value}</div>
     </div>
   );
 
   const movieInfoAside = hasInfoBlock ? (
-    <aside className="card-elevated mx-auto h-fit w-full max-w-[280px] rounded-2xl p-4 md:mx-0 md:max-w-[260px] md:sticky md:top-28 lg:top-32">
-      <h2 className="font-display mb-3 text-center text-sm font-semibold md:text-left">Πληροφορίες</h2>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-3">
+    <aside className="card-elevated mx-auto h-fit w-full max-w-[300px] rounded-2xl p-5 md:mx-0 md:max-w-[280px] md:sticky md:top-28 lg:top-32">
+      <h2 className="font-display mb-4 text-center text-base font-semibold md:text-left md:text-lg">Πληροφορίες</h2>
+      <div className="grid grid-cols-2 gap-x-3 gap-y-4">
         {hasDirector ? infoField("Σκηνοθεσία", directorLabel) : null}
         {isMovie ? (
           infoField(
@@ -317,7 +317,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             genreLinkItems.length ? (
               <GenreLinks items={genreLinkItems} />
             ) : genreLabel ? (
-              <span className="line-clamp-3 text-xs leading-snug">{genreLabel}</span>
+              <span className="line-clamp-3 text-sm leading-snug">{genreLabel}</span>
             ) : (
               <span className="text-muted-foreground">—</span>
             ),
@@ -340,18 +340,18 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           : null}
       </div>
       {hasCast ? (
-        <div className="mt-3 border-t border-border pt-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ηθοποιοί</p>
-          <ul className="mt-1.5 flex flex-wrap gap-1" role="list">
+        <div className="mt-4 border-t border-border pt-4">
+          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ηθοποιοί</p>
+          <ul className="mt-2 flex flex-wrap gap-1.5" role="list">
             {castList.slice(0, 6).map((name, i) => (
               <li key={`${name}-${i}`}>
-                <span className="inline-flex max-w-full items-center rounded-md border border-border/80 bg-muted/40 px-2 py-0.5 text-[11px] font-medium leading-snug text-foreground">
+                <span className="inline-flex max-w-full items-center rounded-md border border-border/80 bg-muted/40 px-2.5 py-1 text-xs font-medium leading-snug text-foreground md:text-sm">
                   {name}
                 </span>
               </li>
             ))}
             {castList.length > 6 ? (
-              <li className="text-[11px] text-muted-foreground">+{castList.length - 6}</li>
+              <li className="text-xs text-muted-foreground md:text-sm">+{castList.length - 6}</li>
             ) : null}
           </ul>
         </div>
@@ -636,6 +636,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           </div>
         ) : null}
 
+        {movieShowtimesSection}
+
         <section>
           <h2 className="font-display text-xl font-semibold mb-4">Μπορεί να σου αρέσει</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-stretch">
@@ -663,8 +665,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             );})}
           </div>
         </section>
-
-        {movieShowtimesSection}
       </div>
 
       <Footer />
