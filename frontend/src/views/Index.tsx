@@ -73,6 +73,10 @@ function HomeSeoIntro() {
   );
 }
 
+/** Καθυστερεί paint/εικόνες κάτω από το fold χωρίς να αφαιρεί nodes (SEO). */
+const BELOW_FOLD_PAINT =
+  "[content-visibility:auto] [contain-intrinsic-size:auto_300px]";
+
 const summerStrip = [
   "Θερινό σινεμά",
   "Περιοδείες ανά την Ελλάδα",
@@ -114,7 +118,7 @@ function MovieRowScroll({
   }
   if (fetchErrorMessage) {
     return (
-      <section className="relative section-black py-12 md:py-16 border-y border-white/[0.07]">
+      <section className={`relative section-black py-12 md:py-16 border-y border-white/[0.07] ${BELOW_FOLD_PAINT}`}>
         <div className="container max-w-7xl">
           <div className="max-w-xl rounded-xl border border-amber-500/25 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
             <p className="font-display text-lg tracking-tight text-amber-100">{title}</p>
@@ -126,7 +130,7 @@ function MovieRowScroll({
   }
   if (items.length === 0) {
     return (
-      <section className="relative section-black py-12 md:py-16 border-y border-white/[0.07]">
+      <section className={`relative section-black py-12 md:py-16 border-y border-white/[0.07] ${BELOW_FOLD_PAINT}`}>
         <div className="container max-w-7xl">
           <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
             <p className="font-display text-lg tracking-tight text-white">{title}</p>
@@ -173,7 +177,6 @@ function MovieRowScroll({
                         isDubbed={movie.isDubbed}
                         uniformMovieSizing
                         compactMovieMeta
-                        posterPriority={i < 4}
                         index={i}
                         className="h-full w-full"
                       />
@@ -223,7 +226,6 @@ function MovieRowScroll({
               isDubbed={movie.isDubbed}
               uniformMovieSizing
               compactMovieMeta
-              posterPriority={i < 3}
               index={i}
               className="h-full w-full min-h-0 flex-1"
             />
@@ -304,7 +306,11 @@ const Index = () => {
   const newMoviesList = useMemo(() => moviesReleasedInLastDays(movieList, 10), [movieList]);
   const comingSoonMovies = useMemo(() => moviesComingAfterUpcomingCinemaWeek(movieList), [movieList]);
 
-  const sectionEl = (id: HomeSectionId, node: ReactNode) => <Fragment key={id}>{node}</Fragment>;
+  const sectionEl = (id: HomeSectionId, node: ReactNode, belowFold = false) => (
+    <Fragment key={id}>
+      {belowFold ? <div className={BELOW_FOLD_PAINT}>{node}</div> : node}
+    </Fragment>
+  );
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
@@ -363,6 +369,7 @@ const Index = () => {
                 title="Ταινίες σήμερα"
                 moviesMoreHref={moviesSectionPath("today")}
               />,
+              true,
             );
           case "summer_cinema":
             return sectionEl(
@@ -380,6 +387,7 @@ const Index = () => {
                 subtitle="Παίζουν τώρα"
                 moviesMoreHref={moviesSectionPath("summer")}
               />,
+              true,
             );
           case "summer_venues":
             return sectionEl(
@@ -459,6 +467,7 @@ const Index = () => {
                   </section>
                 )}
               </>,
+              true,
             );
           case "tours":
             return sectionEl(
@@ -511,6 +520,7 @@ const Index = () => {
                   )}
                 </div>
               </div>,
+              true,
             );
           case "new_movies":
             return sectionEl(
@@ -525,6 +535,7 @@ const Index = () => {
                 title="Νέες ταινίες"
                 moviesMoreHref={moviesSectionPath("new")}
               />,
+              true,
             );
           case "movies_week":
             return sectionEl(
@@ -541,6 +552,7 @@ const Index = () => {
                 layout="grid"
                 moviesMoreHref={moviesSectionPath("week")}
               />,
+              true,
             );
           case "coming_soon":
             return sectionEl(
@@ -556,6 +568,7 @@ const Index = () => {
                 emptyMessage="Δεν υπάρχουν ταινίες με κυκλοφορία μετά την επόμενη εβδομάδα κινηματογράφου."
                 moviesMoreHref={moviesSectionPath("soon")}
               />,
+              true,
             );
           case "dining":
             return sectionEl(
@@ -584,6 +597,7 @@ const Index = () => {
                   ))}
                 </HorizontalScroll>
               ),
+              true,
             );
           case "newsletter":
             return sectionEl(
@@ -609,13 +623,14 @@ const Index = () => {
                   </div>
                 </div>
               </div>,
+              true,
             );
           default:
             return null;
         }
       })}
 
-      <footer className="section-black py-12 border-t border-white/10">
+      <footer className={`section-black py-12 border-t border-white/10 ${BELOW_FOLD_PAINT}`}>
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>

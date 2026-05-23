@@ -1,6 +1,7 @@
 import type { DehydratedState } from "@tanstack/react-query";
 import { layoutShowsHero, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
 import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
+import { posterLcpSrc } from "@/lib/posterDelivery";
 import { resolvePublicAssetUrl } from "@/lib/siteMetadata";
 
 function clampIndex(n: number, length: number): number {
@@ -47,10 +48,14 @@ export function homeHeroPosterHref(path: string, dehydratedState?: DehydratedSta
   const featured = theater ?? movie;
   if (!featured) return null;
 
-  const posterPath = theater
-    ? (featured as StrapiTheaterShow).posterUrl
-    : (featured as StrapiMovie).posterUrl;
+  if (theater) {
+    const path = (featured as StrapiTheaterShow).posterUrl?.trim();
+    if (!path) return null;
+    return resolvePublicAssetUrl(path) ?? null;
+  }
 
-  if (!posterPath?.trim()) return null;
-  return resolvePublicAssetUrl(posterPath) ?? null;
+  const featuredMovie = featured as StrapiMovie;
+  const href = posterLcpSrc(featuredMovie.posterUrl, featuredMovie.posterSrcSet);
+  if (!href) return null;
+  return resolvePublicAssetUrl(href) ?? href;
 }

@@ -222,7 +222,7 @@ export function strapiPosterSrcSet(media: unknown): { src: string; srcSet?: stri
   }
 
   const src =
-    strapiMediaUrl(media, "medium") ??
+    strapiMediaUrl(media, "small") ??
     (typeof attrs.url === "string" ? normalizeUploadedUrl(attrs.url) : undefined);
   if (!src) return null;
 
@@ -594,7 +594,7 @@ function mapMovie(
     bySlug: Map<string, StrapiMovieGenre>;
   },
   linkIndex?: MovieGenreLinkIndex,
-  posterPrefer: "medium" | "large" = "medium",
+  posterPrefer: "small" | "medium" | "large" = "small",
 ): StrapiMovie {
   const m = unwrapStrapiEntry(raw);
   const gf = movieGenresFromMovieRaw(m as Record<string, unknown>, hydrate);

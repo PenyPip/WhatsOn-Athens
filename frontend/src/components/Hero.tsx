@@ -4,6 +4,7 @@ import { layoutShowsHero, type ResolvedHomepageLayout } from "@/config/home";
 import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
+import { posterLcpSrc } from "@/lib/posterDelivery";
 
 const HERO_SECTION_CLASS =
   "relative h-[75vh] min-h-[500px] overflow-hidden bg-[#111111] max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28";
@@ -67,13 +68,10 @@ const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
   }
 
   const featured = theater ?? movie;
-  const stillLoading = !featured && movies.length === 0 && theaterShows.length === 0;
-
-  if (stillLoading) {
-    return <HeroSkeleton />;
+  if (!featured) {
+    if (movies.length === 0 && theaterShows.length === 0) return <HeroSkeleton />;
+    return null;
   }
-
-  if (!featured) return null;
 
   const isTheater = Boolean(theater);
   const movieTitles = !isTheater ? movieTitleLines(featured as StrapiMovie) : null;
@@ -114,14 +112,17 @@ const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
           <>
             {/* eslint-disable-next-line @next/next/no-img-element -- hero poster Strapi, static export */}
             <img
-              src={(featured as StrapiMovie).posterUrl}
+              src={
+                posterLcpSrc((featured as StrapiMovie).posterUrl, (featured as StrapiMovie).posterSrcSet) ??
+                (featured as StrapiMovie).posterUrl
+              }
               srcSet={(featured as StrapiMovie).posterSrcSet}
               alt={posterAltForMovie(featured as StrapiMovie)}
-              width={800}
-              height={1200}
+              width={640}
+              height={960}
               fetchPriority="high"
               decoding="async"
-              sizes="100vw"
+              sizes="(max-width: 768px) 100vw, 800px"
               className="h-full w-full object-cover opacity-55"
             />
           </>

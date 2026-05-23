@@ -24,7 +24,7 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ["var(--font-literata)", "Georgia", "serif"],
+        display: ["Georgia", "Times New Roman", "serif"],
         body: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
         brand: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
       },

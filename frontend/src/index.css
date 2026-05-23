@@ -61,18 +61,18 @@
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-literata), Georgia, serif;
+    font-family: Georgia, "Times New Roman", serif;
     font-optical-sizing: auto;
-    font-synthesis: none;
+    font-synthesis: weight;
     color: hsl(var(--foreground));
   }
 }
 
 @layer utilities {
   .font-display {
-    font-family: var(--font-literata), Georgia, serif;
+    font-family: Georgia, "Times New Roman", serif;
     font-optical-sizing: auto;
-    font-synthesis: none;
+    font-synthesis: weight;
   }
 
   .font-body {
