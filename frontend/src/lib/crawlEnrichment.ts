@@ -1,4 +1,6 @@
 import crawlData from "@/generated/spa-crawl-enrichment.json";
+import { parseMoviesFilterPath } from "@/lib/moviesFilterPaths";
+import { moviesAreaSeo, moviesGenreSeo, moviesSectionSeo } from "@/lib/moviesFilterSeo";
 import { truncateDescription } from "@/lib/siteMetadata";
 
 export type CrawlGenre = { slug: string; label: string; href: string };
@@ -88,6 +90,22 @@ export function crawlVenueByProgramPath(path: string): CrawlVenue | null {
 }
 
 export function crawlSeoCopyForPath(path: string): { title: string; description: string } | null {
+  const normalized = path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
+  const filterPath = parseMoviesFilterPath(normalized);
+  if (filterPath.section) {
+    const s = moviesSectionSeo(filterPath.section);
+    return { title: s.title, description: s.description };
+  }
+  if (filterPath.genreSlug) {
+    const g = crawlEnrichment.genres.find((x) => x.slug === filterPath.genreSlug);
+    const s = moviesGenreSeo(filterPath.genreSlug, g?.label);
+    return { title: s.title, description: s.description };
+  }
+  if (filterPath.area) {
+    const s = moviesAreaSeo(filterPath.area);
+    return { title: s.title, description: s.description };
+  }
+
   const venue = crawlVenueByProgramPath(path);
   if (venue) {
     const addr = venue.address?.trim();

@@ -17,9 +17,22 @@ const STRAPI_ORIGIN = (process.env.SITEMAP_STRAPI_URL || process.env.STRAPI_INTE
   "",
 );
 
+const MOVIES_SECTION_PATHS = ["today", "week", "summer", "new", "soon"];
+const MOVIES_AREA_PATHS = ["athens", "thessaloniki", "other"];
+
 const STATIC_ROUTES = [
   { path: "/", priority: "1.0", changefreq: "daily" },
   { path: "/movies", priority: "0.9", changefreq: "daily" },
+  ...MOVIES_SECTION_PATHS.map((s) => ({
+    path: `/movies/${s}`,
+    priority: "0.88",
+    changefreq: "daily",
+  })),
+  ...MOVIES_AREA_PATHS.map((a) => ({
+    path: `/movies/area/${a}`,
+    priority: "0.82",
+    changefreq: "daily",
+  })),
   { path: "/theater", priority: "0.9", changefreq: "weekly" },
   { path: "/venues", priority: "0.7", changefreq: "weekly" },
   { path: "/dining", priority: "0.6", changefreq: "weekly" },
@@ -123,7 +136,7 @@ async function buildCrawlEnrichment() {
         return {
           slug: slug.toLowerCase(),
           label: pickString(a, "label") || slug,
-          href: `/movies?genre=${encodeURIComponent(slug.toLowerCase())}`,
+          href: `/movies/genre/${encodeURIComponent(slug.toLowerCase())}`,
         };
       })
       .filter(Boolean);
@@ -321,7 +334,14 @@ async function main() {
     lastmod: new Date().toISOString().slice(0, 10),
   }));
 
-  const all = [...staticWithDates, ...dynamic, ...venueProgramUrls];
+  const genreUrls = (crawlEnrichmentForSitemap.genres ?? []).map((g) => ({
+    path: g.href.startsWith("/") ? g.href : `/movies/genre/${encodeURIComponent(g.slug)}`,
+    lastmod: new Date().toISOString().slice(0, 10),
+    priority: "0.8",
+    changefreq: "weekly",
+  }));
+
+  const all = [...staticWithDates, ...dynamic, ...venueProgramUrls, ...genreUrls];
   const xml = buildXml(all);
   const robots = buildRobots();
 

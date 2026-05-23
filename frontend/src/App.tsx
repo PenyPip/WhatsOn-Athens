@@ -16,7 +16,6 @@ import Reviews from "./views/Reviews";
 import ReviewDetail from "./views/ReviewDetail";
 import Privacy from "./views/Privacy";
 
-/** Χαμηλής SEO σημασίας — παραμένουν lazy. */
 const Profile = lazy(() => import("./views/Profile"));
 const NotFound = lazy(() => import("./views/NotFound"));
 
@@ -25,6 +24,13 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/movies" element={<Movies />} />
+      <Route path="/movies/today" element={<Movies />} />
+      <Route path="/movies/week" element={<Movies />} />
+      <Route path="/movies/summer" element={<Movies />} />
+      <Route path="/movies/new" element={<Movies />} />
+      <Route path="/movies/soon" element={<Movies />} />
+      <Route path="/movies/genre/:genreSlug" element={<Movies />} />
+      <Route path="/movies/area/:areaKey" element={<Movies />} />
       <Route path="/movies/venue/:venueSlug" element={<Movies />} />
       <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
       <Route path="/theater" element={<TheaterPage />} />
@@ -70,7 +76,6 @@ function AppShell() {
 }
 
 type AppProps = {
-  /** Pathname για MemoryRouter στο SSR / πρώτο client paint (χωρίς hydration mismatch). */
   ssrPath?: string;
 };
 

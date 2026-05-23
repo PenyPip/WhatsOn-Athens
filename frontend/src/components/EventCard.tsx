@@ -11,7 +11,7 @@ interface EventCardProps {
   titleSecondary?: string;
   subtitle: string;
   genre: string;
-  /** Αν υπάρχουν slugs, το είδος γίνεται σύνδεσμος προς `/movies?genre=`. */
+  /** Αν υπάρχουν slugs, το είδος γίνεται σύνδεσμος προς `/movies/genre/…`. */
   genreLinkItems?: GenreLinkItem[];
   duration: number;
   score?: number;

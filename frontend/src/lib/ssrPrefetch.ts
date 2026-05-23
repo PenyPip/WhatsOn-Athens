@@ -1,5 +1,6 @@
 import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
 
 const queryDefaults = {
   staleTime: 120_000,
@@ -106,7 +107,7 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
 
     if (normalized === "/") {
       await prefetchHomeBundle(qc);
-    } else if (normalized === "/movies" || matchMoviesVenueSlug(normalized)) {
+    } else if (normalized === "/movies" || matchMoviesVenueSlug(normalized) || isMoviesFilterListPath(normalized)) {
       await prefetchMoviesList(qc);
     } else if (movieSlug) {
       await prefetchMovieDetail(qc, movieSlug);

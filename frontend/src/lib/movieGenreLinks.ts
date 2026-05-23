@@ -1,9 +1,10 @@
 import type { StrapiMovie, StrapiMovieGenre } from "@/lib/api";
 import { slugToDisplayName } from "@/lib/jsonLdPage";
+import { moviesGenrePath } from "@/lib/moviesFilterPaths";
 
 export type GenreLinkItem = { slug: string; label: string };
 
-/** Σύνδεσμοι προς `/movies?genre=slug` από slugs ταινίας + κατάλογο CMS. */
+/** Σύνδεσμοι προς `/movies/genre/slug` από slugs ταινίας + κατάλογο CMS. */
 export function movieGenreLinkItems(
   movie: StrapiMovie | null | undefined,
   genresList: StrapiMovieGenre[] | undefined,
@@ -25,5 +26,5 @@ export function movieGenreLinkItems(
 }
 
 export function moviesGenreHref(slug: string): string {
-  return `/movies?genre=${encodeURIComponent(slug.trim().toLowerCase())}`;
+  return moviesGenrePath(slug);
 }

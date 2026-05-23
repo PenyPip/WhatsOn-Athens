@@ -1,4 +1,5 @@
 import { crawlSeoCopyForPath, crawlVenueByProgramPath } from "@/lib/crawlEnrichment";
+import { isMoviesReservedSegment, parseMoviesFilterPath } from "@/lib/moviesFilterPaths";
 import { absolutePageUrl, resolvePublicAssetUrl, siteSeo, truncateDescription } from "@/lib/siteMetadata";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
@@ -68,7 +69,7 @@ export function seoCopyForPath(path: string): { title: string; description: stri
     const slug = parts[1];
     const name = slugToDisplayName(slug);
     const sectionLabel = SECTION_LABELS[section] ?? section;
-    if (section === "movies") {
+    if (section === "movies" && parts.length === 2 && !isMoviesReservedSegment(parts[1])) {
       return {
         title: name,
         description: truncateDescription(`Προβολές, ώρες και σινεμά για ${name} — ${siteSeo.siteName}.`),
@@ -119,7 +120,7 @@ function breadcrumbList(path: string, pageName: string): JsonLdNode {
       name: SECTION_LABELS[section] ?? slugToDisplayName(section),
       item: absolutePageUrl(`/${section}`),
     });
-  } else if (parts[0] === "movies" && parts[1] === "venue" && parts[2]) {
+  } else if (parts[0] === "movies" && (parts[1] === "venue" || parts[1] === "genre" || parts[1] === "area" || isMoviesReservedSegment(parts[1]))) {
     items.push({
       "@type": "ListItem",
       position: 2,
@@ -158,29 +159,8 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
       ...(venue?.address ? { address: { "@type": "PostalAddress", streetAddress: venue.address } } : {}),
     });
   }
-  if (parts[0] === "movies" && parts.length >= 2 && parts[1] !== "venue") {
-    return [
-      stripEmpty({
-        "@type": "Movie",
-        "@id": `${pageUrl}#movie`,
-        name: pageName,
-        url: pageUrl,
-        inLanguage: "el",
-      }),
-      stripEmpty({
-        "@type": "Product",
-        "@id": `${pageUrl}#product`,
-        name: `${pageName} — προβολή σινεμά`,
-        url: pageUrl,
-        category: "Movie ticket",
-        offers: {
-          "@type": "Offer",
-          url: `${pageUrl}#showtimes`,
-          availability: "https://schema.org/InStock",
-          priceCurrency: "EUR",
-        },
-      }),
-    ];
+  if (parts[0] === "movies" && parts.length === 2 && !isMoviesReservedSegment(parts[1])) {
+    return null;
   }
   if (parts[0] === "theater" && parts.length >= 2) {
     return stripEmpty({

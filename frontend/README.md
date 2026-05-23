@@ -24,7 +24,7 @@ npm run lint
 
 **SEO client navigation:** το `usePageSeo` ενημερώνει title/description όταν αλλάζει route στο SPA (μετά το πρώτο load).
 
-**Crawl / on-page:** `app/[[...slug]]` για όλα τα deep links· canonical καθαρό σε `/movies` (φίλτρα `noindex`)· περιγραφικά `alt` σε αφίσες· lazy-loaded routes στο `App.tsx`.
+**Indexable filter URLs:** `/movies/today`, `/movies/week`, `/movies/summer`, `/movies/new`, `/movies/soon`, `/movies/genre/[slug]`, `/movies/area/[city]`, `/movies/venue/[slug]` — στο sitemap· παλιά `?section=` / `?genre=` / `?venue=` κάνουν redirect. Επιπλέον φίλτρα σε query → `noindex`.
 
 **Security headers:** `nginx-security-headers.conf` (HSTS, X-Frame-Options, nosniff, κ.λπ.) — στο production proxy πρόσθεσε τα ίδια headers στο `nginx.conf` (block `location /` προς frontend).
 

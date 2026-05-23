@@ -24,6 +24,7 @@ import {
 import VenueCard from "@/components/VenueCard";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { siteSeo } from "@/lib/siteMetadata";
 
@@ -48,7 +49,7 @@ function HomeSeoIntro() {
           <strong className="font-medium text-foreground">θεατρικές παραστάσεις</strong> στην{" "}
           <strong className="font-medium text-foreground">Αθήνα</strong>, τη{" "}
           <strong className="font-medium text-foreground">Θεσσαλονίκη</strong> και σε όλη την Ελλάδα. Δες{" "}
-          <Link to="/movies?section=today" className="text-[#13143E] underline decoration-[#13143E]/30 underline-offset-2 hover:decoration-[#13143E]">
+          <Link to={moviesSectionPath("today")} className="text-[#13143E] underline decoration-[#13143E]/30 underline-offset-2 hover:decoration-[#13143E]">
             πρόγραμμα ταινιών σήμερα
           </Link>
           , φίλτρα ανά <Link to="/venues" className="text-[#13143E] underline decoration-[#13143E]/30 underline-offset-2 hover:decoration-[#13143E]">σινεμά και χώρο</Link>
@@ -85,7 +86,7 @@ function MovieRowScroll({
   eyebrow,
   title,
   subtitle,
-  /** `/movies?section=…` — ίδιο φίλτρο με την ενότητα της αρχικής */
+  /** `/movies/today` κ.λπ. — ίδιο φίλτρο με την ενότητα της αρχικής */
   moviesMoreHref,
   movieGenresList,
   layout = "scroll",
@@ -364,7 +365,7 @@ const Index = () => {
                 muted
                 eyebrow="Σήμερα"
                 title="Ταινίες σήμερα"
-                moviesMoreHref="/movies?section=today"
+                moviesMoreHref={moviesSectionPath("today")}
                 movieGenresList={movieGenresList}
               />,
             );
@@ -382,7 +383,7 @@ const Index = () => {
                 eyebrow="Καλοκαίρι · θερινές προβολές"
                 title="Θερινά σινεμά"
                 subtitle="Παίζουν τώρα"
-                moviesMoreHref="/movies?section=summer"
+                moviesMoreHref={moviesSectionPath("summer")}
                 movieGenresList={movieGenresList}
               />,
             );
@@ -544,7 +545,7 @@ const Index = () => {
                 muted
                 eyebrow="Τελευταίες κυκλοφορίες"
                 title="Νέες ταινίες"
-                moviesMoreHref="/movies?section=new"
+                moviesMoreHref={moviesSectionPath("new")}
                 movieGenresList={movieGenresList}
               />,
             );
@@ -561,7 +562,7 @@ const Index = () => {
                 title="Ταινίες της ερχόμενης εβδομάδας"
                 subtitle={upcomingWeekLabel}
                 layout="grid"
-                moviesMoreHref="/movies?section=week"
+                moviesMoreHref={moviesSectionPath("week")}
                 movieGenresList={movieGenresList}
               />,
             );
@@ -577,7 +578,7 @@ const Index = () => {
                 eyebrow="Μελλοντική κυκλοφορία"
                 title="Προσεχώς"
                 emptyMessage="Δεν υπάρχουν ταινίες με κυκλοφορία μετά την επόμενη εβδομάδα κινηματογράφου."
-                moviesMoreHref="/movies?section=soon"
+                moviesMoreHref={moviesSectionPath("soon")}
                 movieGenresList={movieGenresList}
               />,
             );
