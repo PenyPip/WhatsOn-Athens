@@ -314,7 +314,6 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      {!layoutShowsHero(layout) ? <HomeSeoIntro /> : null}
       {apiSectionFailed ? (
         <div className="section-black border-b border-amber-500/30 bg-amber-950/25 px-4 py-3 md:py-4">
           <div className="container max-w-7xl text-center text-sm text-amber-100/90 font-body md:text-left md:text-[0.9375rem]">
@@ -334,7 +333,6 @@ const Index = () => {
                   showtimes={stList}
                   theaterShows={theaterShows ?? []}
                 />
-                <HomeSeoIntro />
               </>,
             );
           case "strip":
@@ -629,6 +627,10 @@ const Index = () => {
             return null;
         }
       })}
+
+      <div className={BELOW_FOLD_PAINT}>
+        <HomeSeoIntro />
+      </div>
 
       <footer className={`section-black py-12 border-t border-white/10 ${BELOW_FOLD_PAINT}`}>
         <div className="container">

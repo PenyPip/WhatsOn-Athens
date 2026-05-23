@@ -18,16 +18,11 @@ function queryData<T>(state: DehydratedState, queryKey: string): T | undefined {
   return entry.state.data as T;
 }
 
-/** Ίδια λογική με `Hero` — URL αφίσας για LCP preload στην αρχική. */
-export function homeHeroPosterHref(path: string, dehydratedState?: DehydratedState): string | null {
-  if (path !== "/" || !dehydratedState) return null;
-
-  const layout = resolveHomepageLayout(queryData<MappedHomepage>(dehydratedState, "homepage") ?? null);
-  if (!layoutShowsHero(layout)) return null;
-
-  const movies = queryData<StrapiMovie[]>(dehydratedState, "movies") ?? [];
-  const theaterShows = queryData<StrapiTheaterShow[]>(dehydratedState, "theaterShows") ?? [];
-
+function resolveFeatured(
+  layout: ReturnType<typeof resolveHomepageLayout>,
+  movies: StrapiMovie[],
+  theaterShows: StrapiTheaterShow[],
+): { theater: StrapiTheaterShow | null; movie: StrapiMovie | null } {
   const theaterSlug = layout.heroTheaterSlug ?? undefined;
   const movieSlug = layout.heroMovieSlug ?? undefined;
 
@@ -45,17 +40,57 @@ export function homeHeroPosterHref(path: string, dehydratedState?: DehydratedSta
     movie = movies[idx] ?? movies[0] ?? null;
   }
 
-  const featured = theater ?? movie;
-  if (!featured) return null;
+  return { theater, movie };
+}
 
-  if (theater) {
-    const path = (featured as StrapiTheaterShow).posterUrl?.trim();
-    if (!path) return null;
-    return resolvePublicAssetUrl(path) ?? null;
+export type HomeLcpDisplay = {
+  posterHref: string;
+  title: string;
+  /** CMS ενότητα hero — το SPA σχεδιάζει το πλήρες hero. */
+  hasHeroSection: boolean;
+};
+
+/** LCP αφίσα + τίτλος για `/` (με ή χωρίς CMS hero). */
+export function homeLcpDisplay(path: string, dehydratedState?: DehydratedState): HomeLcpDisplay | null {
+  if (path !== "/" || !dehydratedState) return null;
+
+  const layout = resolveHomepageLayout(queryData<MappedHomepage>(dehydratedState, "homepage") ?? null);
+  const movies = queryData<StrapiMovie[]>(dehydratedState, "movies") ?? [];
+  const theaterShows = queryData<StrapiTheaterShow[]>(dehydratedState, "theaterShows") ?? [];
+  const hasHeroSection = layoutShowsHero(layout);
+
+  const { theater, movie } = resolveFeatured(layout, movies, theaterShows);
+  const featured = theater ?? movie;
+
+  let posterPath: string | null = null;
+  let title = "";
+
+  if (theater?.posterUrl?.trim()) {
+    posterPath = theater.posterUrl.trim();
+    title = theater.title;
+  } else if (movie) {
+    const href = posterLcpSrc(movie.posterUrl, movie.posterSrcSet) ?? movie.posterUrl?.trim();
+    if (href) posterPath = href;
+    title = movie.title;
   }
 
-  const featuredMovie = featured as StrapiMovie;
-  const href = posterLcpSrc(featuredMovie.posterUrl, featuredMovie.posterSrcSet);
-  if (!href) return null;
-  return resolvePublicAssetUrl(href) ?? href;
+  if (!posterPath && !hasHeroSection) {
+    const fallback = movies.find((m) => m.posterUrl?.trim());
+    if (fallback) {
+      posterPath = posterLcpSrc(fallback.posterUrl, fallback.posterSrcSet) ?? fallback.posterUrl!.trim();
+      title = fallback.title;
+    }
+  }
+
+  if (!posterPath) return null;
+
+  const posterHref = resolvePublicAssetUrl(posterPath) ?? posterPath;
+  return { posterHref, title, hasHeroSection };
+}
+
+/** Preload hero — μόνο όταν υπάρχει CMS hero (αλλιώς το static LCP block). */
+export function homeHeroPosterHref(path: string, dehydratedState?: DehydratedState): string | null {
+  const lcp = homeLcpDisplay(path, dehydratedState);
+  if (!lcp?.hasHeroSection) return null;
+  return lcp.posterHref;
 }

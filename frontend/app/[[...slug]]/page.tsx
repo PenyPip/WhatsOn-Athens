@@ -3,7 +3,8 @@ import SpaRoot from "@/components/SpaRoot";
 import ServerJsonLd from "@/components/ServerJsonLd";
 import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
-import { homeHeroPosterHref } from "@/lib/homeHeroLcp";
+import HomeStaticLcp from "@/components/HomeStaticLcp";
+import { homeHeroPosterHref, homeLcpDisplay } from "@/lib/homeHeroLcp";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
 import spaPaths from "@/generated/spa-static-paths.json";
 
@@ -34,12 +35,17 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
   const { slug } = await params;
   const path = pathFromSlugParam(slug);
   const dehydratedState = await prefetchRouteData(path);
+  const lcp = homeLcpDisplay(path, dehydratedState);
   const heroPoster = homeHeroPosterHref(path, dehydratedState);
+  const preloadPoster = heroPoster ?? (!lcp?.hasHeroSection ? lcp?.posterHref : null);
 
   return (
     <>
-      {heroPoster ? <link rel="preload" as="image" href={heroPoster} fetchPriority="high" /> : null}
+      {preloadPoster ? <link rel="preload" as="image" href={preloadPoster} fetchPriority="high" /> : null}
       <ServerJsonLd path={path} />
+      {path === "/" && lcp && !lcp.hasHeroSection ? (
+        <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} />
+      ) : null}
       <SpaRoot ssrPath={path} dehydratedState={dehydratedState} />
     </>
   );
