@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { useMemo } from "react";
 import { useMovies, useTheaterShows, useHomeLayout, useShowtimes } from "@/hooks/useStrapi";
 import { layoutShowsHero } from "@/config/home";
@@ -7,22 +6,46 @@ import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 
+const HERO_SECTION_CLASS =
+  "relative h-[75vh] min-h-[500px] overflow-hidden bg-[#111111] max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28";
+
 function clampIndex(n: number, length: number): number {
   if (length <= 0) return 0;
   if (Number.isNaN(n)) return Math.min(2, Math.max(0, length - 1));
   return Math.max(0, Math.min(length - 1, n));
 }
 
+function HeroSkeleton() {
+  return (
+    <section className={HERO_SECTION_CLASS} aria-hidden="true">
+      <div className="absolute inset-0 bg-[#13143E]" />
+      <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-[#111111]/40 to-transparent" />
+      <div className="relative z-10 container flex h-full items-end pb-16 md:pb-20">
+        <div className="max-w-2xl w-full space-y-4 pb-2">
+          <div className="h-3 w-48 rounded bg-white/10" />
+          <div className="h-12 w-4/5 max-w-md rounded bg-white/10 md:h-16" />
+          <div className="h-4 w-full max-w-lg rounded bg-white/10" />
+          <div className="h-4 w-5/6 max-w-md rounded bg-white/10" />
+          <div className="h-10 w-36 rounded bg-white/15" />
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const Hero = () => {
   const layout = useHomeLayout();
-  const { data: movies } = useMovies();
+  const { data: movies, isLoading: moviesLoading } = useMovies();
   const { data: showtimes } = useShowtimes();
-  const { data: theaterShows } = useTheaterShows();
+  const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows();
 
   const moviesEnriched = useMemo(
     () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
     [movies, showtimes],
   );
+
+  const moviesForPick = moviesEnriched.length ? moviesEnriched : (movies ?? []);
+
   if (!layoutShowsHero(layout)) return null;
 
   const theaterSlug = layout.heroTheaterSlug ?? undefined;
@@ -35,14 +58,20 @@ const Hero = () => {
     theater = theaterShows?.find((s) => s.slug === theaterSlug) ?? null;
   }
   if (!theater && movieSlug) {
-    movie = moviesEnriched?.find((m) => m.slug === movieSlug) ?? null;
+    movie = moviesForPick.find((m) => m.slug === movieSlug) ?? null;
   }
-  if (!theater && !movie && moviesEnriched?.length) {
-    const idx = clampIndex(layout.featuredMovieIndex, moviesEnriched.length);
-    movie = moviesEnriched[idx] ?? moviesEnriched[0] ?? null;
+  if (!theater && !movie && moviesForPick.length) {
+    const idx = clampIndex(layout.featuredMovieIndex, moviesForPick.length);
+    movie = moviesForPick[idx] ?? moviesForPick[0] ?? null;
   }
 
   const featured = theater ?? movie;
+  const stillLoading = !featured && (moviesLoading || theaterLoading);
+
+  if (stillLoading) {
+    return <HeroSkeleton />;
+  }
+
   if (!featured) return null;
 
   const isTheater = Boolean(theater);
@@ -78,7 +107,7 @@ const Hero = () => {
   const kicker = isTheater ? "Προτεινόμενη παράσταση" : "Προτεινόμενη ταινία";
 
   return (
-    <section className="relative h-[75vh] min-h-[500px] overflow-hidden bg-[#111111] max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28">
+    <section className={HERO_SECTION_CLASS}>
       <div className="absolute inset-0">
         {!isTheater && (featured as StrapiMovie).posterUrl ? (
           <>
@@ -119,13 +148,8 @@ const Hero = () => {
       </div>
       <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-[#111111]/40 to-transparent" />
 
-      <div className="relative z-10 container h-full flex items-end pb-16 md:pb-20">
-        <motion.div
-          className="max-w-2xl"
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.7, ease: "easeOut" }}
-        >
+      <div className="relative z-10 container flex h-full items-end pb-16 md:pb-20">
+        <div className="max-w-2xl">
           <span className="mb-3 block font-body text-[10px] uppercase tracking-[0.28em] text-amber-200/90 md:text-[11px]">{eyebrow}</span>
           {(heroGenreLabel ?? "").trim() ? (
             <span className="mb-2 inline-flex rounded border border-white/15 bg-white/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200/95">
@@ -133,28 +157,28 @@ const Hero = () => {
             </span>
           ) : null}
           <span className="mb-2 block text-xs font-body uppercase tracking-[0.2em] text-white/55">{kicker}</span>
-          <div className="w-16 h-0.5 bg-amber-400/85 mb-5" />
-          <h2 className="font-display text-4xl md:text-6xl font-bold mb-2 leading-tight text-white">
+          <div className="mb-5 h-0.5 w-16 bg-amber-400/85" />
+          <h2 className="font-display mb-2 text-4xl font-bold leading-tight text-white md:text-6xl">
             {isTheater ? featured.title : movieTitles!.primary}
           </h2>
           {!isTheater && movieTitles?.secondary ? (
-            <p className="font-display text-2xl md:text-4xl font-medium leading-tight text-white/85 mb-4">{movieTitles.secondary}</p>
+            <p className="font-display mb-4 text-2xl font-medium leading-tight text-white/85 md:text-4xl">{movieTitles.secondary}</p>
           ) : null}
-          <p className="text-white/60 text-base md:text-lg mb-6 leading-relaxed max-w-lg font-body">{featured.synopsis}</p>
+          <p className="mb-6 max-w-lg font-body text-base leading-relaxed text-white/60 md:text-lg">{featured.synopsis}</p>
           <div className="flex items-center gap-4">
             <Link
               to={to}
-              className="inline-flex items-center px-6 py-3 bg-white text-[#111111] text-sm font-semibold rounded hover:bg-white/90 transition-colors"
+              className="inline-flex items-center rounded bg-white px-6 py-3 text-sm font-semibold text-[#111111] transition-colors hover:bg-white/90"
             >
               Δες λεπτομέρειες
             </Link>
-            <span className="text-white/40 text-sm">{featured.duration}&apos;</span>
+            <span className="text-sm text-white/40">{featured.duration}&apos;</span>
           </div>
-          <p className="text-xs text-white/30 mt-6 font-body">
+          <p className="mt-6 font-body text-xs text-white/30">
             Σκηνοθεσία: {featured.director} · {featured.cast?.slice(0, 3).join(", ")}
             {isTheater ? ` · ${(featured as StrapiTheaterShow).venue}` : ""}
           </p>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

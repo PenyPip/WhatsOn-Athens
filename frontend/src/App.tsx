@@ -9,8 +9,8 @@ import GoogleAnalytics from "@/components/GoogleAnalytics";
 import Navbar from "@/components/Navbar";
 import CookieConsentBanner from "@/components/CookieConsentBanner";
 import LoadingState from "@/components/LoadingState";
+import Index from "./views/Index";
 
-const Index = lazy(() => import("./views/Index"));
 const Movies = lazy(() => import("./views/Movies"));
 const TheaterPage = lazy(() => import("./views/Theater"));
 const EventDetail = lazy(() => import("./views/EventDetail"));
@@ -23,7 +23,14 @@ const Profile = lazy(() => import("./views/Profile"));
 const NotFound = lazy(() => import("./views/NotFound"));
 const Privacy = lazy(() => import("./views/Privacy"));
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 60_000,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

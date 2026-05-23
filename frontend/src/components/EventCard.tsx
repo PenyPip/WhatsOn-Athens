@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import GenreLinks from "@/components/GenreLinks";
@@ -56,7 +55,7 @@ const EventCard = ({
   uniformMovieSizing,
   compactMovieMeta = false,
   className = "",
-  index = 0,
+  index: _index = 0,
 }: EventCardProps) => {
   const showGradientFallback =
     !posterUrl && typeof gradientFrom === "string" && typeof gradientTo === "string";
@@ -74,16 +73,13 @@ const EventCard = ({
   const uniformScrollCard = uniformMovie && !movieListingMeta && !attachShowtimes;
 
   return (
-    <motion.div
+    <div
       className={cn(
         attachShowtimes
           ? "flex w-full min-w-0 shrink-0 flex-col"
           : "flex h-full min-h-0 min-w-0 flex-1 flex-col",
         className,
       )}
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.05 }}
     >
       <Link
         to={`/${type === "movie" ? "movies" : "theater"}/${slug}`}
@@ -242,7 +238,7 @@ const EventCard = ({
           )}
         </div>
       </Link>
-    </motion.div>
+    </div>
   );
 };
 

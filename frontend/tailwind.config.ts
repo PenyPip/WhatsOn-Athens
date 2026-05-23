@@ -14,8 +14,9 @@ export default {
     },
     extend: {
       fontFamily: {
-        display: ['Literata', 'Georgia', 'serif'],
-        body: ['"DM Sans"', 'system-ui', 'sans-serif'],
+        display: ["var(--font-literata)", "Georgia", "serif"],
+        body: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
+        brand: ["var(--font-unbounded)", "system-ui", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",
