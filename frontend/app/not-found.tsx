@@ -1,13 +1,10 @@
 import SpaRoot from "@/components/SpaRoot";
+import { prefetchRouteData } from "@/lib/ssrPrefetch";
 
 /**
- * Catch-all για το dev server και το static export:
- * οποιοδήποτε URL δεν αντιστοιχεί σε Next page (π.χ. /movies/foo)
- * φορτώνει το React Router SPA που χειρίζεται την πλοήγηση client-side.
- *
- * Σε production το nginx (`try_files … /index.html`) κάνει το ίδιο
- * χωρίς να χρειαστεί ποτέ να σερβιριστεί το 404.html.
+ * Fallback SPA για dev· σε production το nginx σερβίρει το pre-rendered HTML ανά path.
  */
-export default function NotFound() {
-  return <SpaRoot />;
+export default async function NotFound() {
+  const dehydratedState = await prefetchRouteData("/");
+  return <SpaRoot ssrPath="/" dehydratedState={dehydratedState} />;
 }

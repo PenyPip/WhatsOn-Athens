@@ -1,5 +1,6 @@
 import type { MappedHomepage, HomeSectionId } from "@/config/home";
 import { FALLBACK_SECTIONS, normalizeHomeSectionId } from "@/config/home";
+import { apiRequestBaseUrl } from "@/lib/apiRequestBase";
 import { normalizeVenueKind, type VenueKind } from "@/lib/venueType";
 
 const API_PREFIX = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
@@ -39,12 +40,6 @@ function mapHomepageLayoutSections(layoutSections: unknown): HomeSectionId[] {
     out.push(norm);
   }
   return out;
-}
-
-function apiRequestBaseUrl(): string {
-  /** Origin περιλαμβάνει θύρα (:3000)· χωρίς αυτό τα `/api` χτυπάνε λάθος host (π.χ. :80) και «σβήνει» όλη η αρχική. */
-  if (API_PREFIX.startsWith("http://") || API_PREFIX.startsWith("https://")) return API_PREFIX;
-  return window.location.origin;
 }
 
 async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): Promise<T> {

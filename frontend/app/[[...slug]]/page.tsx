@@ -1,9 +1,9 @@
 import type { Metadata } from "next";
 import SpaRoot from "@/components/SpaRoot";
 import ServerJsonLd from "@/components/ServerJsonLd";
-import StaticCrawlShell from "@/components/StaticCrawlShell";
 import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
+import { prefetchRouteData } from "@/lib/ssrPrefetch";
 import spaPaths from "@/generated/spa-static-paths.json";
 
 type SpaPathParams = { slug?: string[] };
@@ -16,7 +16,7 @@ type PageProps = {
 const HOME_STATIC_PARAMS: SpaPathParams = { slug: [] };
 
 /**
- * Catch-all για React Router: κάθε path σερβίρει SPA shell + server SEO (JSON-LD, canonical, crawl links).
+ * Catch-all για React Router: κάθε path — SSR HTML στο build (prefetch Strapi) + JSON-LD / metadata.
  */
 export function generateStaticParams(): SpaPathParams[] {
   const fromSitemap = spaPaths as SpaPathParams[];
@@ -32,12 +32,12 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function SpaCatchAllPage({ params }: PageProps) {
   const { slug } = await params;
   const path = pathFromSlugParam(slug);
+  const dehydratedState = await prefetchRouteData(path);
 
   return (
     <>
       <ServerJsonLd path={path} />
-      <StaticCrawlShell path={path} />
-      <SpaRoot />
+      <SpaRoot ssrPath={path} dehydratedState={dehydratedState} />
     </>
   );
 }

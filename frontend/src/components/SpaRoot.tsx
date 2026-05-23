@@ -1,10 +1,20 @@
 "use client";
 
-import dynamic from "next/dynamic";
+import SpaProviders from "@/components/SpaProviders";
+import App from "@/App";
+import type { DehydratedState } from "@tanstack/react-query";
 
-const App = dynamic(() => import("@/App"), { ssr: false });
+type SpaRootProps = {
+  /** Pathname χωρίς query (π.χ. `/movies/foo`). */
+  ssrPath: string;
+  dehydratedState?: DehydratedState;
+};
 
-/** Client boundary για το React Router app — δυναμικό import ώστε το static export να μην κάνει SSR στο Router. */
-export default function SpaRoot() {
-  return <App />;
+/** Client boundary — SSR στο build με prefetch + MemoryRouter μέχρι hydration. */
+export default function SpaRoot({ ssrPath, dehydratedState }: SpaRootProps) {
+  return (
+    <SpaProviders dehydratedState={dehydratedState}>
+      <App ssrPath={ssrPath} />
+    </SpaProviders>
+  );
 }

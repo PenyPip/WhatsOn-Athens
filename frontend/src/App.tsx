@@ -1,9 +1,5 @@
-import { lazy, Suspense } from "react";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import { lazy, Suspense, useEffect, useState } from "react";
+import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import Navbar from "@/components/Navbar";
@@ -23,47 +19,67 @@ const Profile = lazy(() => import("./views/Profile"));
 const NotFound = lazy(() => import("./views/NotFound"));
 const Privacy = lazy(() => import("./views/Privacy"));
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      staleTime: 60_000,
-      refetchOnWindowFocus: false,
-    },
-  },
-});
+function AppRoutes() {
+  return (
+    <Suspense fallback={<LoadingState message="Φόρτωση…" />}>
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/movies" element={<Movies />} />
+        <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
+        <Route path="/theater" element={<TheaterPage />} />
+        <Route path="/theater/:slug" element={<EventDetail type="theater" />} />
+        <Route path="/venues" element={<Venues />} />
+        <Route path="/dining" element={<Dining />} />
+        <Route path="/dining/:slug" element={<DiningDetail />} />
+        <Route path="/reviews" element={<Reviews />} />
+        <Route path="/reviews/:slug" element={<ReviewDetail />} />
+        <Route path="/profile" element={<Profile />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </Suspense>
+  );
+}
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <ScrollToTop />
-        <GoogleAnalytics />
-        <Navbar />
-        <main className="min-h-screen max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] max-md:pt-16 md:pt-28">
-          <CookieConsentBanner />
-          <Suspense fallback={<LoadingState message="Φόρτωση…" />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/movies" element={<Movies />} />
-              <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
-              <Route path="/theater" element={<TheaterPage />} />
-              <Route path="/theater/:slug" element={<EventDetail type="theater" />} />
-              <Route path="/venues" element={<Venues />} />
-              <Route path="/dining" element={<Dining />} />
-              <Route path="/dining/:slug" element={<DiningDetail />} />
-              <Route path="/reviews" element={<Reviews />} />
-              <Route path="/reviews/:slug" element={<ReviewDetail />} />
-              <Route path="/profile" element={<Profile />} />
-              <Route path="/privacy" element={<Privacy />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </main>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+function AppShell() {
+  return (
+    <>
+      <ScrollToTop />
+      <GoogleAnalytics />
+      <Navbar />
+      <main className="min-h-screen max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] max-md:pt-16 md:pt-28">
+        <CookieConsentBanner />
+        <AppRoutes />
+      </main>
+    </>
+  );
+}
+
+type AppProps = {
+  /** Pathname για MemoryRouter στο SSR / πρώτο client paint (χωρίς hydration mismatch). */
+  ssrPath?: string;
+};
+
+const App = ({ ssrPath = "/" }: AppProps) => {
+  const [clientNav, setClientNav] = useState(false);
+
+  useEffect(() => {
+    setClientNav(true);
+  }, []);
+
+  if (!clientNav) {
+    return (
+      <MemoryRouter initialEntries={[ssrPath]} initialIndex={0}>
+        <AppShell />
+      </MemoryRouter>
+    );
+  }
+
+  return (
+    <BrowserRouter>
+      <AppShell />
+    </BrowserRouter>
+  );
+};
 
 export default App;
