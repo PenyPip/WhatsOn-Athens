@@ -16,11 +16,26 @@ interface HorizontalScrollProps {
 const SCROLL_BTN_SLOT_CLASS = "relative z-20 flex w-[4.75rem] shrink-0 items-center justify-end gap-1";
 
 const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children }: HorizontalScrollProps) => {
+  const sectionRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [visible, setVisible] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const rafRef = useRef(0);
+
+  useEffect(() => {
+    const root = sectionRef.current;
+    if (!root) return undefined;
+    const io = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) setVisible(true);
+      },
+      { rootMargin: "120px 0px" },
+    );
+    io.observe(root);
+    return () => io.disconnect();
+  }, []);
 
   const syncScrollEdges = useCallback(() => {
     const el = scrollRef.current;
@@ -45,6 +60,7 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
   }, [syncScrollEdges]);
 
   useEffect(() => {
+    if (!visible) return undefined;
     const el = scrollRef.current;
     scheduleSync();
     if (!el) return undefined;
@@ -60,7 +76,7 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
       el.removeEventListener("scroll", scheduleSync);
       window.removeEventListener("resize", scheduleSync);
     };
-  }, [scheduleSync]);
+  }, [scheduleSync, visible]);
 
   const scroll = (dir: "left" | "right") => {
     const el = scrollRef.current;
@@ -157,6 +173,7 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
 
   return (
     <section
+      ref={sectionRef}
       className={cn(
         "relative",
         muted && "border-y border-border/40 bg-muted/20 py-8",

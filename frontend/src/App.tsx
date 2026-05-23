@@ -3,7 +3,7 @@ import { Route, Routes } from "react-router-dom";
 import UrlBackedMemoryRouter from "@/components/UrlBackedMemoryRouter";
 import ScrollToTop from "@/components/ScrollToTop";
 import Navbar from "@/components/Navbar";
-import CookieConsentBanner from "@/components/CookieConsentBanner";
+import DeferredCookieConsent from "@/components/DeferredCookieConsent";
 import RouteFallback from "@/components/RouteFallback";
 import Index from "./views/Index";
 
@@ -62,7 +62,7 @@ function AppShell() {
       </Suspense>
       <Navbar />
       <main className="min-h-screen max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] max-md:pt-16 md:pt-28">
-        <CookieConsentBanner />
+        <DeferredCookieConsent />
         <AppRoutes />
       </main>
     </>

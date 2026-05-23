@@ -9,7 +9,7 @@ import {
   type MappedHomepage,
 } from "@/config/home";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
-import { slimHomeQueryCache } from "@/lib/slimDehydrate";
+import { slimListQueryCache } from "@/lib/slimDehydrate";
 
 const queryDefaults = {
   staleTime: 120_000,
@@ -63,7 +63,7 @@ async function prefetchHomeBundle(qc: QueryClient) {
   }
 
   await Promise.all(tasks);
-  slimHomeQueryCache(qc);
+  slimListQueryCache(qc);
 }
 
 async function prefetchMoviesList(qc: QueryClient) {
@@ -72,13 +72,8 @@ async function prefetchMoviesList(qc: QueryClient) {
     qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
-    qc.prefetchQuery({
-      queryKey: ["movieGenreCatalog"],
-      queryFn: api.getMovieGenreCatalog,
-      staleTime: 600_000,
-      retry: 1,
-    }),
   ]);
+  slimListQueryCache(qc);
 }
 
 async function prefetchMovieDetail(qc: QueryClient, slug: string) {

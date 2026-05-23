@@ -1,8 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { StrapiMovie, StrapiRestaurant, StrapiShowtime } from "@/lib/api";
+import type { StrapiMovie, StrapiMovieGenre, StrapiRestaurant, StrapiShowtime, StrapiVenue } from "@/lib/api";
 
-/** Μικρότερο dehydrated state — λιγότερο HTML/JS payload στην αρχική. */
-export function slimHomeQueryCache(qc: QueryClient): void {
+function slimMoviesShowtimes(qc: QueryClient): void {
   const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
   if (showtimes?.length) {
     qc.setQueryData(
@@ -64,4 +63,45 @@ export function slimHomeQueryCache(qc: QueryClient): void {
       })),
     );
   }
+
+  const genres = qc.getQueryData<StrapiMovieGenre[]>(["movieGenres"]);
+  if (genres?.length) {
+    qc.setQueryData(
+      ["movieGenres"],
+      genres.map((g) => ({
+        id: g.id,
+        documentId: g.documentId,
+        slug: g.slug,
+        label: g.label,
+        sortOrder: g.sortOrder,
+      })),
+    );
+  }
+
+  const venues = qc.getQueryData<StrapiVenue[]>(["venues"]);
+  if (venues?.length) {
+    qc.setQueryData(
+      ["venues"],
+      venues.map((v) => ({
+        id: v.id,
+        slug: v.slug,
+        name: v.name,
+        address: v.address,
+        city: v.city,
+        type: v.type,
+        summerOutdoor: v.summerOutdoor,
+        googleMapsUrl: v.googleMapsUrl,
+        moreLink: v.moreLink,
+        seatsTotal: v.seatsTotal,
+      })),
+    );
+  }
 }
+
+/** Μικρότερο dehydrated state — αρχική + λίστα ταινιών (λιγότερο HTML). */
+export function slimListQueryCache(qc: QueryClient): void {
+  slimMoviesShowtimes(qc);
+}
+
+/** @deprecated Use slimListQueryCache */
+export const slimHomeQueryCache = slimListQueryCache;
