@@ -1,62 +1,53 @@
-import { lazy, Suspense, useEffect, useState } from "react";
-import LoadingState from "@/components/LoadingState";
+import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
 import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
-import GoogleAnalytics from "@/components/GoogleAnalytics";
 import Navbar from "@/components/Navbar";
-import CookieConsentBanner from "@/components/CookieConsentBanner";
+const CookieConsentBanner = lazy(() => import("@/components/CookieConsentBanner"));
+import RouteFallback from "@/components/RouteFallback";
 import Index from "./views/Index";
-import Movies from "./views/Movies";
-import TheaterPage from "./views/Theater";
-import EventDetail from "./views/EventDetail";
-import Venues from "./views/Venues";
-import Dining from "./views/Dining";
-import DiningDetail from "./views/DiningDetail";
-import Reviews from "./views/Reviews";
-import ReviewDetail from "./views/ReviewDetail";
-import Privacy from "./views/Privacy";
 
-const Profile = lazy(() => import("./views/Profile"));
-const NotFound = lazy(() => import("./views/NotFound"));
+const GoogleAnalytics = lazy(() => import("@/components/GoogleAnalytics"));
+const Movies = lazy(() => import(/* webpackChunkName: "movies" */ "./views/Movies"));
+const TheaterPage = lazy(() => import(/* webpackChunkName: "theater" */ "./views/Theater"));
+const EventDetail = lazy(() => import(/* webpackChunkName: "event-detail" */ "./views/EventDetail"));
+const Venues = lazy(() => import(/* webpackChunkName: "venues" */ "./views/Venues"));
+const Dining = lazy(() => import(/* webpackChunkName: "dining" */ "./views/Dining"));
+const DiningDetail = lazy(() => import(/* webpackChunkName: "dining-detail" */ "./views/DiningDetail"));
+const Reviews = lazy(() => import(/* webpackChunkName: "reviews" */ "./views/Reviews"));
+const ReviewDetail = lazy(() => import(/* webpackChunkName: "review-detail" */ "./views/ReviewDetail"));
+const Privacy = lazy(() => import(/* webpackChunkName: "privacy" */ "./views/Privacy"));
+const Profile = lazy(() => import(/* webpackChunkName: "profile" */ "./views/Profile"));
+const NotFound = lazy(() => import(/* webpackChunkName: "not-found" */ "./views/NotFound"));
+
+/** Suspense μόνο για lazy routes — η αρχική δεν αντικαθίσταται από placeholder (CLS). */
+function LazyPage({ children }: { children: ReactNode }) {
+  return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;
+}
 
 function AppRoutes() {
   return (
     <Routes>
       <Route path="/" element={<Index />} />
-      <Route path="/movies" element={<Movies />} />
-      <Route path="/movies/today" element={<Movies />} />
-      <Route path="/movies/week" element={<Movies />} />
-      <Route path="/movies/summer" element={<Movies />} />
-      <Route path="/movies/new" element={<Movies />} />
-      <Route path="/movies/soon" element={<Movies />} />
-      <Route path="/movies/genre/:genreSlug" element={<Movies />} />
-      <Route path="/movies/area/:areaKey" element={<Movies />} />
-      <Route path="/movies/venue/:venueSlug" element={<Movies />} />
-      <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
-      <Route path="/theater" element={<TheaterPage />} />
-      <Route path="/theater/:slug" element={<EventDetail type="theater" />} />
-      <Route path="/venues" element={<Venues />} />
-      <Route path="/dining" element={<Dining />} />
-      <Route path="/dining/:slug" element={<DiningDetail />} />
-      <Route path="/reviews" element={<Reviews />} />
-      <Route path="/reviews/:slug" element={<ReviewDetail />} />
-      <Route
-        path="/profile"
-        element={
-          <Suspense fallback={<LoadingState message="Φόρτωση…" />}>
-            <Profile />
-          </Suspense>
-        }
-      />
-      <Route path="/privacy" element={<Privacy />} />
-      <Route
-        path="*"
-        element={
-          <Suspense fallback={<LoadingState message="Φόρτωση…" />}>
-            <NotFound />
-          </Suspense>
-        }
-      />
+      <Route path="/movies" element={<LazyPage><Movies /></LazyPage>} />
+      <Route path="/movies/today" element={<LazyPage><Movies /></LazyPage>} />
+      <Route path="/movies/week" element={<LazyPage><Movies /></LazyPage>} />
+      <Route path="/movies/summer" element={<LazyPage><Movies /></LazyPage>} />
+      <Route path="/movies/new" element={<LazyPage><Movies /></LazyPage>} />
+      <Route path="/movies/soon" element={<LazyPage><Movies /></LazyPage>} />
+      <Route path="/movies/genre/:genreSlug" element={<LazyPage><Movies /></LazyPage>} />
+      <Route path="/movies/area/:areaKey" element={<LazyPage><Movies /></LazyPage>} />
+      <Route path="/movies/venue/:venueSlug" element={<LazyPage><Movies /></LazyPage>} />
+      <Route path="/movies/:slug" element={<LazyPage><EventDetail type="movie" /></LazyPage>} />
+      <Route path="/theater" element={<LazyPage><TheaterPage /></LazyPage>} />
+      <Route path="/theater/:slug" element={<LazyPage><EventDetail type="theater" /></LazyPage>} />
+      <Route path="/venues" element={<LazyPage><Venues /></LazyPage>} />
+      <Route path="/dining" element={<LazyPage><Dining /></LazyPage>} />
+      <Route path="/dining/:slug" element={<LazyPage><DiningDetail /></LazyPage>} />
+      <Route path="/reviews" element={<LazyPage><Reviews /></LazyPage>} />
+      <Route path="/reviews/:slug" element={<LazyPage><ReviewDetail /></LazyPage>} />
+      <Route path="/profile" element={<LazyPage><Profile /></LazyPage>} />
+      <Route path="/privacy" element={<LazyPage><Privacy /></LazyPage>} />
+      <Route path="*" element={<LazyPage><NotFound /></LazyPage>} />
     </Routes>
   );
 }
@@ -65,10 +56,14 @@ function AppShell() {
   return (
     <>
       <ScrollToTop />
-      <GoogleAnalytics />
+      <Suspense fallback={null}>
+        <GoogleAnalytics />
+      </Suspense>
       <Navbar />
       <main className="min-h-screen max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] max-md:pt-16 md:pt-28">
-        <CookieConsentBanner />
+        <Suspense fallback={null}>
+          <CookieConsentBanner />
+        </Suspense>
         <AppRoutes />
       </main>
     </>

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --hostname 0.0.0.0 -p 3000",
     "dev:clean": "rm -rf .next && next dev --hostname 0.0.0.0 -p 3000",
-    "build": "node scripts/generate-sitemap.mjs && next build",
+    "build": "node scripts/generate-sitemap.mjs && next build && node scripts/compress-static.mjs",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "preview": "npx serve@14 out -l 3000 -s",
     "preview:prod": "bash ./scripts/serve-export-with-api.sh",
@@ -64,6 +64,12 @@
     "vaul": "^0.9.9",
     "zod": "^3.25.76"
   },
+  "browserslist": [
+    "chrome >= 111",
+    "edge >= 111",
+    "firefox >= 111",
+    "safari >= 16.4"
+  ],
   "devDependencies": {
     "@eslint/eslintrc": "^3.2.0",
     "@tailwindcss/typography": "^0.5.16",

@@ -1,8 +1,11 @@
+import { lazy, Suspense, useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Film, Theater, UtensilsCrossed, Building2, User, Search } from "lucide-react";
-import { motion } from "framer-motion";
-import { useState } from "react";
-import { GlobalSearch, useGlobalSearchShortcut } from "@/components/GlobalSearch";
+import { useGlobalSearchShortcut } from "@/hooks/globalSearchShortcut";
+
+const GlobalSearch = lazy(() =>
+  import("@/components/GlobalSearch").then((m) => ({ default: m.GlobalSearch })),
+);
 import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 
 const NAV_GRADIENT =
@@ -158,7 +161,11 @@ const Navbar = () => {
 
   return (
     <>
-      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+      {searchOpen ? (
+        <Suspense fallback={null}>
+          <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
+        </Suspense>
+      ) : null}
 
       <nav
         className="fixed top-0 left-0 right-0 z-50 border-b md:hidden"
@@ -190,14 +197,13 @@ const Navbar = () => {
                   style={{ fontFamily: "DM Sans, sans-serif" }}
                 >
                   {link.label}
-                  {location.pathname === link.to && (
-                    <motion.div
-                      layoutId="nav-indicator"
+                  {location.pathname === link.to ? (
+                    <span
                       className="absolute -bottom-1 left-0 right-0 h-0.5"
                       style={{ background: "linear-gradient(110deg, #7C2B76, #1C1D62)" }}
-                      transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                      aria-hidden
                     />
-                  )}
+                  ) : null}
                 </Link>
               ))}
             </div>

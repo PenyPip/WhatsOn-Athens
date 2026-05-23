@@ -2,7 +2,17 @@ import type { Config } from "tailwindcss";
 
 export default {
   darkMode: ["class"],
-  content: ["./app/**/*.{ts,tsx}", "./src/**/*.{ts,tsx}"],
+  content: [
+    "./app/**/*.{ts,tsx}",
+    "./src/**/*.{ts,tsx}",
+    /* shadcn boilerplate — μόνο ό,τι χρησιμοποιεί η εφαρμογή (λιγότερο unused CSS). */
+    "!./src/components/ui/**/*",
+    "./src/components/ui/button.tsx",
+    "./src/components/ui/dialog.tsx",
+    "./src/components/ui/command.tsx",
+    "./src/components/ui/collapsible.tsx",
+    "./src/components/ui/select.tsx",
+  ],
   prefix: "",
   theme: {
     container: {

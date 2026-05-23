@@ -1,5 +1,4 @@
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
 import { ExternalLink, MapPin, SlidersHorizontal } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
@@ -731,7 +730,7 @@ const Movies = () => {
     <div className="min-h-screen pb-20 md:pb-8">
       <div className="section-black mb-6 max-md:-mt-16 max-md:py-5 max-md:pt-20 md:-mt-28 md:mb-8 md:py-10 md:pt-36">
         <div className="container">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <div>
             <h1 className="font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl">
               {pageH1}
             </h1>
@@ -782,7 +781,7 @@ const Movies = () => {
                 ) : null}
               </div>
             ) : null}
-          </motion.div>
+          </div>
         </div>
       </div>
 
@@ -962,7 +961,7 @@ const Movies = () => {
                   <p className="mb-4 text-xs text-muted-foreground md:mb-5">
                     Όλες οι προβολές παρακάτω ανήκουν σε αυτή την ημέρα
                   </p>
-                  <motion.div className="grid grid-cols-2 items-start gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+                  <div className="grid grid-cols-2 items-start gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                     {section.entries.map(({ movie, showings }, i) => {
                       const tl = movieTitleLines(movie);
                       const rows = flattenShowingsToRows(showings);
@@ -1022,7 +1021,7 @@ const Movies = () => {
                         </div>
                       );
                     })}
-                  </motion.div>
+                  </div>
                 </section>
               ))
               : null}

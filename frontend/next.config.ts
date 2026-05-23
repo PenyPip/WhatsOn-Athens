@@ -16,6 +16,9 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   outputFileTracingRoot: __dirname,
+  experimental: {
+    optimizePackageImports: ["lucide-react", "date-fns"],
+  },
   async rewrites() {
     /* Static export στην παραγωγή: χωρίς Node server τα rewrites δεν τρέχουν (αντικατάσταση: nginx.conf). */
     if (process.env.NODE_ENV !== "development") return [];

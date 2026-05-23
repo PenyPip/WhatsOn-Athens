@@ -3,6 +3,7 @@ import SpaRoot from "@/components/SpaRoot";
 import ServerJsonLd from "@/components/ServerJsonLd";
 import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
+import { homeHeroPosterHref } from "@/lib/homeHeroLcp";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
 import spaPaths from "@/generated/spa-static-paths.json";
 
@@ -33,9 +34,11 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
   const { slug } = await params;
   const path = pathFromSlugParam(slug);
   const dehydratedState = await prefetchRouteData(path);
+  const heroPoster = homeHeroPosterHref(path, dehydratedState);
 
   return (
     <>
+      {heroPoster ? <link rel="preload" as="image" href={heroPoster} fetchPriority="high" /> : null}
       <ServerJsonLd path={path} />
       <SpaRoot ssrPath={path} dehydratedState={dehydratedState} />
     </>

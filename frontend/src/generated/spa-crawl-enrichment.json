@@ -3,7 +3,7 @@
     {
       "slug": "aisthimatiki",
       "label": "αισθηματική",
-      "href": "/movies?genre=aisthimatiki"
+      "href": "/movies/genre/aisthimatiki"
     }
   ],
   "venues": [
@@ -12,7 +12,7 @@
       "name": "Εθνικό Θέατρο",
       "address": "Αγίου Κωνσταντίνου 22-24, Αθήνα",
       "googleMapsUrl": "https://maps.app.goo.gl/ethniko",
-      "moviesHref": "/movies?venue=ethniko-theatro",
+      "moviesHref": "/movies/venue/ethniko-theatro",
       "venuesHref": "/venues"
     },
     {
@@ -20,7 +20,7 @@
       "name": "Μέγαρο Μουσικής Αθηνών",
       "address": "Βασ. Σοφίας & Κοκκάλη, Αθήνα",
       "googleMapsUrl": "https://maps.app.goo.gl/megaro",
-      "moviesHref": "/movies?venue=megaro-mousikis",
+      "moviesHref": "/movies/venue/megaro-mousikis",
       "venuesHref": "/venues"
     },
     {
@@ -28,7 +28,7 @@
       "name": "Ολύμπιον",
       "address": "Πλατεία Αριστοτέλους 10, Θεσσαλονίκη",
       "googleMapsUrl": "https://maps.app.goo.gl/olympion",
-      "moviesHref": "/movies?venue=olympion",
+      "moviesHref": "/movies/venue/olympion",
       "venuesHref": "/venues"
     },
     {
@@ -36,7 +36,7 @@
       "name": "Θέατρο Παλλάς",
       "address": "Βουκουρεστίου 5, Αθήνα",
       "googleMapsUrl": "https://maps.app.goo.gl/pallas",
-      "moviesHref": "/movies?venue=theatro-pallas",
+      "moviesHref": "/movies/venue/theatro-pallas",
       "venuesHref": "/venues"
     },
     {
@@ -44,7 +44,7 @@
       "name": "Village Cinemas @ The Mall",
       "address": "Ανδρέα Παπανδρέου 35, Μαρούσι",
       "googleMapsUrl": "https://maps.app.goo.gl/village",
-      "moviesHref": "/movies?venue=village-the-mall",
+      "moviesHref": "/movies/venue/village-the-mall",
       "venuesHref": "/venues"
     },
     {
@@ -52,13 +52,13 @@
       "name": "Ίδρυμα Σταύρος Νιάρχος",
       "address": "Λεωφ. Συγγρού 364, Καλλιθέα",
       "googleMapsUrl": "https://maps.app.goo.gl/snfcc",
-      "moviesHref": "/movies?venue=snfcc",
+      "moviesHref": "/movies/venue/snfcc",
       "venuesHref": "/venues"
     },
     {
       "slug": "venue",
       "name": "Αλεξάνδρα",
-      "moviesHref": "/movies?venue=venue",
+      "moviesHref": "/movies/venue/venue",
       "venuesHref": "/venues"
     }
   ],
@@ -67,7 +67,63 @@
       "path": "/movies/devil",
       "slug": "devil",
       "title": "devil",
-      "genreSlugs": []
+      "genreSlugs": [],
+      "posterUrl": "http://127.0.0.1:1337/uploads/poster_new_617007128d.webp"
+    }
+  ],
+  "theaterShows": [],
+  "restaurants": [
+    {
+      "path": "/dining/kouzina-42",
+      "slug": "kouzina-42",
+      "title": "Κουζίνα 42"
+    },
+    {
+      "path": "/dining/spondi",
+      "slug": "spondi",
+      "title": "Spondi"
+    },
+    {
+      "path": "/dining/ama-lachei",
+      "slug": "ama-lachei",
+      "title": "Αμά Λαχεί"
+    },
+    {
+      "path": "/dining/nolan-athens",
+      "slug": "nolan-athens",
+      "title": "Nolan"
+    },
+    {
+      "path": "/dining/ergon-agora",
+      "slug": "ergon-agora",
+      "title": "ΕΡΓΟΝ Αγορά"
+    },
+    {
+      "path": "/dining/funky-gourmet",
+      "slug": "funky-gourmet",
+      "title": "Funky Gourmet"
+    }
+  ],
+  "reviews": [
+    {
+      "path": "/reviews/mideia-national",
+      "slug": "mideia-national",
+      "title": "Μια Ηλεκτρική Βραδιά στο Εθνικό"
+    },
+    {
+      "path": "/reviews/dune-2-sci-fi",
+      "slug": "dune-2-sci-fi",
+      "title": "Το Sci-Fi Ξαναορίζεται"
+    },
+    {
+      "path": "/reviews/poor-things-masterwork",
+      "slug": "poor-things-masterwork",
+      "title": "Ένα Αριστούργημα Παραλογίας"
+    },
+    {
+      "path": "/reviews/nolan-review",
+      "slug": "nolan-review",
+      "title": "Nolan: Η Αθήνα Συναντά το Τόκιο"
     }
   ]
 }

@@ -6,6 +6,57 @@
   },
   {
     "slug": [
+      "movies",
+      "today"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "week"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "summer"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "new"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "soon"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "area",
+      "athens"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "area",
+      "thessaloniki"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "area",
+      "other"
+    ]
+  },
+  {
+    "slug": [
       "theater"
     ]
   },
@@ -93,6 +144,62 @@
     "slug": [
       "reviews",
       "nolan-review"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
+      "ethniko-theatro"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
+      "megaro-mousikis"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
+      "olympion"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
+      "theatro-pallas"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
+      "village-the-mall"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
+      "snfcc"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
+      "venue"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "genre",
+      "aisthimatiki"
     ]
   }
 ]

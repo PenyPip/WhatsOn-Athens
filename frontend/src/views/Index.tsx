@@ -4,7 +4,6 @@ import HorizontalScroll from "@/components/HorizontalScroll";
 import EventCard from "@/components/EventCard";
 import RestaurantCard from "@/components/RestaurantCard";
 import LoadingState from "@/components/LoadingState";
-import { motion } from "framer-motion";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues, useMovieGenres } from "@/hooks/useStrapi";
@@ -140,13 +139,7 @@ function MovieRowScroll({
     return (
       <>
         <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
-          <motion.div
-            className="container max-w-7xl"
-            initial={{ opacity: 0, y: 10 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.45 }}
-          >
+          <div className="container max-w-7xl">
             <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-muted-foreground opacity-75">
               {eyebrow}
             </span>
@@ -162,13 +155,7 @@ function MovieRowScroll({
                 const tl = movieTitleLines(movie);
                 return (
                   <li key={`${movie.id}-${movie.slug}`}>
-                    <motion.div
-                      initial={{ opacity: 0, y: 14 }}
-                      whileInView={{ opacity: 1, y: 0 }}
-                      viewport={{ once: true, margin: "-40px" }}
-                      transition={{ duration: 0.4, delay: Math.min(i * 0.03, 0.2), ease: [0.25, 0.46, 0.45, 0.94] }}
-                      className="h-full"
-                    >
+                    <div className="h-full">
                       <EventCard
                         slug={movie.slug}
                         title={tl.primary}
@@ -185,20 +172,15 @@ function MovieRowScroll({
                         index={i}
                         className="h-full w-full"
                       />
-                    </motion.div>
+                    </div>
                   </li>
                 );
               })}
             </ul>
-          </motion.div>
+          </div>
         </section>
         {moviesMoreHref ? (
-          <motion.div
-            className="relative border-b border-border/40 bg-muted/[0.12] pb-12 pt-4 text-center"
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-          >
+          <div className="relative border-b border-border/40 bg-muted/[0.12] pb-12 pt-4 text-center">
             <div className="container max-w-7xl">
               <Link
                 to={moviesMoreHref}
@@ -207,7 +189,7 @@ function MovieRowScroll({
                 Δες περισσότερα
               </Link>
             </div>
-          </motion.div>
+          </div>
         ) : null}
       </>
     );
@@ -422,19 +404,14 @@ const Index = () => {
                       className="pointer-events-none absolute -right-20 top-0 h-56 w-56 rounded-full bg-amber-500/15 blur-[90px]"
                     />
                     <div className="relative z-[1] container max-w-7xl">
-                      <motion.div
-                        initial={{ opacity: 0, y: 10 }}
-                        whileInView={{ opacity: 1, y: 0 }}
-                        viewport={{ once: true }}
-                        transition={{ duration: 0.45 }}
-                      >
+                      <div>
                         <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-amber-300/95">
                           Χώροι
                         </span>
                         <h2 className="font-display text-3xl font-bold leading-tight text-white md:text-4xl md:leading-[1.12]">
                           Τα θερινά σινεμά
                         </h2>
-                      </motion.div>
+                      </div>
 
                       <ul
                         className="mt-8 grid list-none grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3"
@@ -442,13 +419,7 @@ const Index = () => {
                       >
                         {summerVenuesForHome.map((venue, i) => (
                           <li key={venue.id}>
-                            <motion.div
-                              initial={{ opacity: 0, y: 14 }}
-                              whileInView={{ opacity: 1, y: 0 }}
-                              viewport={{ once: true, margin: "-40px" }}
-                              transition={{ duration: 0.4, delay: Math.min(i * 0.05, 0.25), ease: [0.25, 0.46, 0.45, 0.94] }}
-                              className="h-full"
-                            >
+                            <div className="h-full">
                               <VenueCard
                                 venue={venue}
                                 variant="spotlight"
@@ -456,7 +427,7 @@ const Index = () => {
                                 compact
                                 moviesHref={moviesVenueProgramPath(venue.slug)}
                               />
-                            </motion.div>
+                            </div>
                           </li>
                         ))}
                       </ul>
@@ -483,19 +454,14 @@ const Index = () => {
               <div className="section-black relative overflow-hidden py-14 md:py-20">
                 <div aria-hidden className="pointer-events-none absolute -left-20 top-1/4 h-72 w-72 rounded-full bg-amber-500/10 blur-[90px]" />
                 <div className="container relative z-[1] max-w-7xl">
-                  <motion.div
-                    initial={{ opacity: 0, y: 16 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.5 }}
-                  >
+                  <div>
                     <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.24em] text-amber-200/85">
                       Σεζόν & περιοδική κίνηση
                     </span>
                     <h2 className="font-display text-3xl font-bold leading-tight text-white md:text-5xl md:leading-[1.1]">
                       Περιοδείες & παραστάσεις που ταξιδεύουν
                     </h2>
-                  </motion.div>
+                  </div>
                   {theaterLoading ? (
                     <LoadingState message="Φόρτωση παραστάσεων..." />
                   ) : theaterError ? (
@@ -615,12 +581,7 @@ const Index = () => {
               "newsletter",
               <div className="section-black py-10">
                 <div className="container max-w-7xl text-center">
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    whileInView={{ opacity: 1 }}
-                    viewport={{ once: true }}
-                    transition={{ duration: 0.6 }}
-                  >
+                  <div>
                     <h3 className="font-display text-xl font-bold text-white mb-2">Μάθε τι παίζει κάθε εβδομάδα.</h3>
                     <p className="text-white/50 text-sm mb-5">Γράψου στο newsletter μας.</p>
                     <div className="flex items-center justify-center gap-2 max-w-md mx-auto">
@@ -636,7 +597,7 @@ const Index = () => {
                         Εγγραφή
                       </button>
                     </div>
-                  </motion.div>
+                  </div>
                 </div>
               </div>,
             );

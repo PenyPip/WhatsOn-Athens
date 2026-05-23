@@ -2,9 +2,6 @@
 
 import { useState } from "react";
 import { QueryClient, QueryClientProvider, HydrationBoundary, type DehydratedState } from "@tanstack/react-query";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
 
 type SpaProvidersProps = {
   children: React.ReactNode;
@@ -26,13 +23,7 @@ export default function SpaProviders({ children, dehydratedState }: SpaProviders
 
   return (
     <QueryClientProvider client={queryClient}>
-      <HydrationBoundary state={dehydratedState}>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          {children}
-        </TooltipProvider>
-      </HydrationBoundary>
+      <HydrationBoundary state={dehydratedState}>{children}</HydrationBoundary>
     </QueryClientProvider>
   );
 }
