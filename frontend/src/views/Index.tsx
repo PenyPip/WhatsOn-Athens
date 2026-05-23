@@ -26,6 +26,46 @@ import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { siteSeo } from "@/lib/siteMetadata";
 
+/** Ορατό SEO κείμενο αρχικής — λέξεις-κλειδιά + περισσότερο κείμενο για crawlers. */
+function HomeSeoIntro() {
+  const home = staticPageSeo.home;
+  return (
+    <section
+      className="border-b border-border/50 bg-muted/15 py-8 md:py-10"
+      aria-labelledby="home-page-title"
+    >
+      <div className="container max-w-7xl">
+        <h1
+          id="home-page-title"
+          className="font-display text-2xl font-bold tracking-tight text-foreground md:text-3xl"
+        >
+          {home.h1}
+        </h1>
+        <p className="mt-3 max-w-3xl font-body text-sm leading-relaxed text-muted-foreground md:text-base">
+          Το {siteSeo.siteName} είναι ο οδηγός σου για <strong className="font-medium text-foreground">ταινίες στα σινεμά</strong>,
+          <strong className="font-medium text-foreground"> θερινά σινεμά</strong> και{" "}
+          <strong className="font-medium text-foreground">θεατρικές παραστάσεις</strong> στην{" "}
+          <strong className="font-medium text-foreground">Αθήνα</strong>, τη{" "}
+          <strong className="font-medium text-foreground">Θεσσαλονίκη</strong> και σε όλη την Ελλάδα. Δες{" "}
+          <Link to="/movies?section=today" className="text-[#13143E] underline decoration-[#13143E]/30 underline-offset-2 hover:decoration-[#13143E]">
+            πρόγραμμα ταινιών σήμερα
+          </Link>
+          , φίλτρα ανά <Link to="/venues" className="text-[#13143E] underline decoration-[#13143E]/30 underline-offset-2 hover:decoration-[#13143E]">σινεμά και χώρο</Link>
+          , ή ξεκίνα από τη{" "}
+          <Link to="/movies" className="text-[#13143E] underline decoration-[#13143E]/30 underline-offset-2 hover:decoration-[#13143E]">
+            πλήρη λίστα ταινιών
+          </Link>
+          .
+        </p>
+        <p className="mt-3 max-w-3xl font-body text-sm leading-relaxed text-muted-foreground md:text-base">
+          Ενημερώνουμε ώρες προβολών, αφίσες και πληροφορίες ανά ταινία — ώστε να βρίσκεις γρήγορα τι παίζεται σε κάθε σινεμά,
+          συμπεριλαμβανομένων θερινών προβολών και ειδικών ενοτήτων όπως νέες ταινίες και εβδομάδα κινηματογράφου.
+        </p>
+      </div>
+    </section>
+  );
+}
+
 const summerStrip = [
   "Θερινό σινεμά",
   "Περιοδείες ανά την Ελλάδα",
@@ -275,9 +315,7 @@ const Index = () => {
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      {!layoutShowsHero(layout) ? (
-        <h1 className="sr-only">{siteSeo.titleDefault}</h1>
-      ) : null}
+      {!layoutShowsHero(layout) ? <HomeSeoIntro /> : null}
       {apiSectionFailed ? (
         <div className="section-black border-b border-amber-500/30 bg-amber-950/25 px-4 py-3 md:py-4">
           <div className="container max-w-7xl text-center text-sm text-amber-100/90 font-body md:text-left md:text-[0.9375rem]">
@@ -288,7 +326,13 @@ const Index = () => {
       {layout.sections.map((id) => {
         switch (id) {
           case "hero":
-            return sectionEl("hero", <Hero />);
+            return sectionEl(
+              "hero",
+              <>
+                <Hero />
+                <HomeSeoIntro />
+              </>,
+            );
           case "strip":
             return sectionEl(
               "strip",
