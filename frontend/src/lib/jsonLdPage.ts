@@ -1,4 +1,4 @@
-import { crawlSeoCopyForPath, crawlVenueByProgramPath } from "@/lib/crawlEnrichment";
+import { crawlEntityByPath, crawlSeoCopyForPath, crawlVenueByProgramPath } from "@/lib/crawlEnrichment";
 import { isMoviesReservedSegment, parseMoviesFilterPath } from "@/lib/moviesFilterPaths";
 import { absolutePageUrl, resolvePublicAssetUrl, siteSeo, truncateDescription } from "@/lib/siteMetadata";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
@@ -160,7 +160,18 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
     });
   }
   if (parts[0] === "movies" && parts.length === 2 && !isMoviesReservedSegment(parts[1])) {
-    return null;
+    const hit = crawlEntityByPath(path);
+    const movie = hit?.kind === "movie" ? hit.entity : null;
+    const poster = movie?.posterUrl ? resolvePublicAssetUrl(movie.posterUrl) : undefined;
+    return stripEmpty({
+      "@type": "Movie",
+      "@id": `${pageUrl}#movie`,
+      name: movie?.title ?? pageName,
+      url: pageUrl,
+      inLanguage: "el",
+      ...(poster ? { image: poster, thumbnailUrl: poster } : {}),
+      ...(movie?.synopsis?.trim() ? { description: truncateDescription(movie.synopsis.trim()) } : {}),
+    });
   }
   if (parts[0] === "theater" && parts.length >= 2) {
     return stripEmpty({

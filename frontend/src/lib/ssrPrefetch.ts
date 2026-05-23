@@ -54,7 +54,7 @@ async function prefetchHomeBundle(qc: QueryClient) {
   if (homeNeedsVenues(sections)) {
     tasks.push(qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }));
   }
-  if (homeNeedsTheater(sections) || layoutShowsHero(layout)) {
+  if (homeNeedsTheater(sections)) {
     tasks.push(qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }));
   }
   if (homeNeedsDining(sections)) {

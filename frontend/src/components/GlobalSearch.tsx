@@ -8,26 +8,13 @@ import type { StrapiMovie, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 import { venueKindLabel } from "@/lib/venueType";
-
-function normalizeSearch(s: string): string {
-  const raw = typeof s === "string" ? s : String(s ?? "");
-  const t = raw.trim().toLowerCase();
-  try {
-    return t.normalize("NFD").replace(/\p{M}/gu, "");
-  } catch {
-    return t;
-  }
-}
+import { textMatchesSearch } from "@/lib/searchTokens";
 
 function movieMatches(movie: StrapiMovie, q: string): boolean {
-  if (!q) return true;
-  const hay = movieTitlesSearchBlob(movie).toLowerCase();
-  const nq = normalizeSearch(q);
-  return normalizeSearch(hay).includes(nq);
+  return textMatchesSearch(movieTitlesSearchBlob(movie), q);
 }
 
 function venueMatches(venue: StrapiVenue, q: string): boolean {
-  if (!q) return true;
   const hay = [
     venue.name ?? "",
     venue.slug ?? "",
@@ -35,11 +22,10 @@ function venueMatches(venue: StrapiVenue, q: string): boolean {
     venueKindLabel(venue.type),
     venue.type,
     venue.city ?? "",
-  ]
-    .join(" ")
-    .toLowerCase();
-  const nq = normalizeSearch(q);
-  return normalizeSearch(hay).includes(nq);
+    "37Ν",
+    "37n",
+  ].join(" ");
+  return textMatchesSearch(hay, q);
 }
 
 function cmpVenueNames(a: StrapiVenue, b: StrapiVenue): number {

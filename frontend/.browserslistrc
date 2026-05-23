@@ -1,3 +1,4 @@
+supports es6-module
 chrome >= 93
 edge >= 93
 firefox >= 92

@@ -1,6 +1,5 @@
 import type { Metadata, Viewport } from "next";
 import { getMetadataBase, siteSeo } from "@/lib/siteMetadata";
-import { dmSans } from "@/lib/fonts";
 import "@/index.css";
 
 export const viewport: Viewport = {
@@ -55,9 +54,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="el" className="h-full">
-      <body
-        className={`${dmSans.variable} min-h-full antialiased max-md:overscroll-y-none`}
-      >
+      <body className="min-h-full antialiased max-md:overscroll-y-none">
         {children}
       </body>
     </html>

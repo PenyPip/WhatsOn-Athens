@@ -27,12 +27,15 @@ export function posterAltForTheater(title: string): string {
   return `Αφίσα παράστασης «${t}»`;
 }
 
-export function movieTitlesSearchBlob(m: Pick<StrapiMovie, "title" | "originalTitle">): string {
+export function movieTitlesSearchBlob(m: Pick<StrapiMovie, "title" | "originalTitle" | "slug">): string {
   const lines = movieTitleLines(m);
   const parts = new Set<string>();
-  for (const x of [m.title, m.originalTitle, lines.primary, lines.secondary]) {
+  for (const x of [m.title, m.originalTitle, lines.primary, lines.secondary, m.slug]) {
     const t = typeof x === "string" ? x.trim() : "";
     if (t) parts.add(t);
   }
+  parts.add("37Ν");
+  parts.add("37n");
+  parts.add("the37n");
   return [...parts].join(" ");
 }

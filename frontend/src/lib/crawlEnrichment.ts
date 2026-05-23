@@ -125,9 +125,9 @@ export function crawlSeoCopyForPath(path: string): { title: string; description:
   if (hit.kind === "movie") {
     const m = hit.entity;
     const desc = m.synopsis?.trim()
-      ? truncateDescription(`${m.title}. ${m.synopsis.trim()}`)
-      : truncateDescription(`Προβολές, ώρες και σινεμά για ${m.title}.`);
-    return { title: m.title, description: desc };
+      ? truncateDescription(`${m.title}. ${m.synopsis.trim()} — 37Ν.`)
+      : truncateDescription(`Προβολές, ώρες και σινεμά για «${m.title}» στο 37Ν (the37n.gr).`);
+    return { title: `${m.title} — πρόγραμμα σινεμά`, description: desc };
   }
   if (hit.kind === "theater") {
     const s = hit.entity;

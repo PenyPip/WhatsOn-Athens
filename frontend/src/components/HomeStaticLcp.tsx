@@ -7,8 +7,8 @@ type HomeStaticLcpProps = {
 export default function HomeStaticLcp({ posterHref, title }: HomeStaticLcpProps) {
   return (
     <div
+      id="home-static-lcp"
       className="relative max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28 h-[min(75vh,520px)] min-h-[380px] overflow-hidden bg-[#111111]"
-      aria-hidden="true"
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
@@ -17,7 +17,7 @@ export default function HomeStaticLcp({ posterHref, title }: HomeStaticLcpProps)
         width={640}
         height={960}
         fetchPriority="high"
-        decoding="async"
+        decoding="sync"
         sizes="(max-width: 768px) 100vw, 800px"
         className="absolute inset-0 h-full w-full object-cover opacity-55"
       />
