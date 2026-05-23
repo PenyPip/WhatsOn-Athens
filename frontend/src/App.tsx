@@ -1,8 +1,9 @@
-import { lazy, Suspense, useEffect, useState, type ReactNode } from "react";
-import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
+import { lazy, Suspense, type ReactNode } from "react";
+import { Route, Routes } from "react-router-dom";
+import UrlBackedMemoryRouter from "@/components/UrlBackedMemoryRouter";
 import ScrollToTop from "@/components/ScrollToTop";
 import Navbar from "@/components/Navbar";
-const CookieConsentBanner = lazy(() => import("@/components/CookieConsentBanner"));
+import CookieConsentBanner from "@/components/CookieConsentBanner";
 import RouteFallback from "@/components/RouteFallback";
 import Index from "./views/Index";
 
@@ -61,9 +62,7 @@ function AppShell() {
       </Suspense>
       <Navbar />
       <main className="min-h-screen max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] max-md:pt-16 md:pt-28">
-        <Suspense fallback={null}>
-          <CookieConsentBanner />
-        </Suspense>
+        <CookieConsentBanner />
         <AppRoutes />
       </main>
     </>
@@ -74,26 +73,10 @@ type AppProps = {
   ssrPath?: string;
 };
 
-const App = ({ ssrPath = "/" }: AppProps) => {
-  const [clientNav, setClientNav] = useState(false);
-
-  useEffect(() => {
-    setClientNav(true);
-  }, []);
-
-  if (!clientNav) {
-    return (
-      <MemoryRouter initialEntries={[ssrPath]} initialIndex={0}>
-        <AppShell />
-      </MemoryRouter>
-    );
-  }
-
-  return (
-    <BrowserRouter>
-      <AppShell />
-    </BrowserRouter>
-  );
-};
+const App = ({ ssrPath = "/" }: AppProps) => (
+  <UrlBackedMemoryRouter ssrPath={ssrPath}>
+    <AppShell />
+  </UrlBackedMemoryRouter>
+);
 
 export default App;

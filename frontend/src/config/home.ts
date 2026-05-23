@@ -88,3 +88,15 @@ export function resolveHomepageLayout(mapped: MappedHomepage | null): ResolvedHo
 export function layoutShowsHero(layout: ResolvedHomepageLayout): boolean {
   return layout.sections.includes("hero");
 }
+
+export function homeNeedsVenues(sections: readonly HomeSectionId[]): boolean {
+  return sections.includes("summer_venues") || sections.includes("summer_cinema");
+}
+
+export function homeNeedsTheater(sections: readonly HomeSectionId[]): boolean {
+  return sections.includes("tours") || sections.includes("hero");
+}
+
+export function homeNeedsDining(sections: readonly HomeSectionId[]): boolean {
+  return sections.includes("dining");
+}

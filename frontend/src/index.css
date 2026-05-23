@@ -22,7 +22,7 @@
     --secondary-foreground: 240 30% 30%;
 
     --muted: 240 20% 92%;
-    --muted-foreground: 240 15% 45%;
+    --muted-foreground: 240 20% 38%;
 
     --accent: 295 48% 32%;
     --accent-foreground: 0 0% 100%;
@@ -81,8 +81,10 @@
     font-synthesis: none;
   }
 
-  .font-mono {
-    font-family: 'Unbounded', sans-serif;
+  .font-brand {
+    font-family: var(--font-unbounded), system-ui, sans-serif;
+    font-optical-sizing: auto;
+    font-synthesis: none;
   }
 
   .card-elevated {

@@ -1,8 +1,7 @@
 import { Link } from "react-router-dom";
 import { useMemo } from "react";
-import { useMovies, useTheaterShows, useHomeLayout, useShowtimes } from "@/hooks/useStrapi";
-import { layoutShowsHero } from "@/config/home";
-import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
+import { layoutShowsHero, type ResolvedHomepageLayout } from "@/config/home";
+import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 
@@ -33,18 +32,20 @@ function HeroSkeleton() {
   );
 }
 
-const Hero = () => {
-  const layout = useHomeLayout();
-  const { data: movies, isLoading: moviesLoading } = useMovies();
-  const { data: showtimes } = useShowtimes();
-  const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows();
+type HeroProps = {
+  layout: ResolvedHomepageLayout;
+  movies: StrapiMovie[];
+  showtimes: StrapiShowtime[];
+  theaterShows: StrapiTheaterShow[];
+};
 
+const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
   const moviesEnriched = useMemo(
-    () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
+    () => enrichMoviesWithShowtimeGenre(movies, showtimes),
     [movies, showtimes],
   );
 
-  const moviesForPick = moviesEnriched.length ? moviesEnriched : (movies ?? []);
+  const moviesForPick = moviesEnriched.length ? moviesEnriched : movies;
 
   if (!layoutShowsHero(layout)) return null;
 
@@ -55,7 +56,7 @@ const Hero = () => {
   let movie: StrapiMovie | null = null;
 
   if (theaterSlug) {
-    theater = theaterShows?.find((s) => s.slug === theaterSlug) ?? null;
+    theater = theaterShows.find((s) => s.slug === theaterSlug) ?? null;
   }
   if (!theater && movieSlug) {
     movie = moviesForPick.find((m) => m.slug === movieSlug) ?? null;
@@ -66,7 +67,7 @@ const Hero = () => {
   }
 
   const featured = theater ?? movie;
-  const stillLoading = !featured && (moviesLoading || theaterLoading);
+  const stillLoading = !featured && movies.length === 0 && theaterShows.length === 0;
 
   if (stillLoading) {
     return <HeroSkeleton />;
@@ -119,6 +120,7 @@ const Hero = () => {
               height={1800}
               fetchPriority="high"
               decoding="async"
+              sizes="100vw"
               className="h-full w-full object-cover opacity-55"
             />
           </>
@@ -132,6 +134,7 @@ const Hero = () => {
               height={1800}
               fetchPriority="high"
               decoding="async"
+              sizes="100vw"
               className="h-full w-full object-cover opacity-55"
             />
           </>
@@ -156,15 +159,15 @@ const Hero = () => {
               Είδος · {heroGenreLabel}
             </span>
           ) : null}
-          <span className="mb-2 block text-xs font-body uppercase tracking-[0.2em] text-white/55">{kicker}</span>
+          <span className="mb-2 block text-xs font-body uppercase tracking-[0.2em] text-white/70">{kicker}</span>
           <div className="mb-5 h-0.5 w-16 bg-amber-400/85" />
           <h2 className="font-display mb-2 text-4xl font-bold leading-tight text-white md:text-6xl">
             {isTheater ? featured.title : movieTitles!.primary}
           </h2>
           {!isTheater && movieTitles?.secondary ? (
-            <p className="font-display mb-4 text-2xl font-medium leading-tight text-white/85 md:text-4xl">{movieTitles.secondary}</p>
+            <p className="font-display mb-4 text-2xl font-medium leading-tight text-white/90 md:text-4xl">{movieTitles.secondary}</p>
           ) : null}
-          <p className="mb-6 max-w-lg font-body text-base leading-relaxed text-white/60 md:text-lg">{featured.synopsis}</p>
+          <p className="mb-6 max-w-lg font-body text-base leading-relaxed text-white/75 md:text-lg">{featured.synopsis}</p>
           <div className="flex items-center gap-4">
             <Link
               to={to}
@@ -172,9 +175,9 @@ const Hero = () => {
             >
               Δες λεπτομέρειες
             </Link>
-            <span className="text-sm text-white/40">{featured.duration}&apos;</span>
+            <span className="text-sm text-white/60">{featured.duration}&apos;</span>
           </div>
-          <p className="mt-6 font-body text-xs text-white/30">
+          <p className="mt-6 font-body text-xs text-white/55">
             Σκηνοθεσία: {featured.director} · {featured.cast?.slice(0, 3).join(", ")}
             {isTheater ? ` · ${(featured as StrapiTheaterShow).venue}` : ""}
           </p>

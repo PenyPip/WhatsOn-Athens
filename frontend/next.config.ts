@@ -17,7 +17,7 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingRoot: __dirname,
   experimental: {
-    optimizePackageImports: ["lucide-react", "date-fns"],
+    optimizePackageImports: ["lucide-react", "date-fns", "@tanstack/react-query"],
   },
   async rewrites() {
     /* Static export στην παραγωγή: χωρίς Node server τα rewrites δεν τρέχουν (αντικατάσταση: nginx.conf). */

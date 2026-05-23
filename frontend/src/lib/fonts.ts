@@ -5,22 +5,24 @@ export const dmSans = DM_Sans({
   display: "swap",
   adjustFontFallback: true,
   variable: "--font-dm-sans",
-  weight: ["400", "600", "700"],
+  weight: ["400", "700"],
 });
 
+/** Headings — χωρίς preload (λιγότερα render-blocking). */
 export const literata = Literata({
   subsets: ["latin", "latin-ext"],
   display: "swap",
+  preload: false,
   adjustFontFallback: true,
   variable: "--font-literata",
-  weight: ["400", "600", "700"],
+  weight: ["400", "700"],
 });
 
-/** Logo/nav — χωρίς preload (λιγότερα render-blocking requests). */
+/** Logo/nav — preload + fallback για σταθερές διαστάσεις (CLS). */
 export const unbounded = Unbounded({
   subsets: ["latin", "latin-ext"],
   display: "swap",
-  preload: false,
+  preload: true,
   adjustFontFallback: true,
   variable: "--font-unbounded",
   weight: ["300", "700"],

@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useLayoutEffect, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,11 +13,14 @@ interface HorizontalScrollProps {
   children: ReactNode;
 }
 
+const SCROLL_BTN_SLOT_CLASS = "relative z-20 flex w-[4.75rem] shrink-0 items-center justify-end gap-1";
+
 const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children }: HorizontalScrollProps) => {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [overflowing, setOverflowing] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
+  const rafRef = useRef(0);
 
   const syncScrollEdges = useCallback(() => {
     const el = scrollRef.current;
@@ -36,22 +39,28 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
     setCanScrollRight(ov && scrollLeft < maxLeft - eps);
   }, []);
 
-  useLayoutEffect(() => {
+  const scheduleSync = useCallback(() => {
+    cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(syncScrollEdges);
+  }, [syncScrollEdges]);
+
+  useEffect(() => {
     const el = scrollRef.current;
-    syncScrollEdges();
+    scheduleSync();
     if (!el) return undefined;
 
-    const ro = new ResizeObserver(() => syncScrollEdges());
+    const ro = new ResizeObserver(() => scheduleSync());
     ro.observe(el);
-    el.addEventListener("scroll", syncScrollEdges, { passive: true });
-    window.addEventListener("resize", syncScrollEdges);
+    el.addEventListener("scroll", scheduleSync, { passive: true });
+    window.addEventListener("resize", scheduleSync);
 
     return () => {
+      cancelAnimationFrame(rafRef.current);
       ro.disconnect();
-      el.removeEventListener("scroll", syncScrollEdges);
-      window.removeEventListener("resize", syncScrollEdges);
+      el.removeEventListener("scroll", scheduleSync);
+      window.removeEventListener("resize", scheduleSync);
     };
-  }, [syncScrollEdges]);
+  }, [scheduleSync]);
 
   const scroll = (dir: "left" | "right") => {
     const el = scrollRef.current;
@@ -95,43 +104,42 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
             </p>
           )}
         </div>
-        {overflowing ? (
-          <div
+        {/* Σταθερό πλάτος — τα κουμπιά δεν εμφανίζονται ξαφνικά (CLS). */}
+        <div
+          className={cn(
+            SCROLL_BTN_SLOT_CLASS,
+            !overflowing && "invisible pointer-events-none",
+            muted && overflowing && "opacity-60",
+          )}
+          aria-hidden={!overflowing}
+        >
+          <button
+            type="button"
+            disabled={!canScrollLeft}
+            onClick={() => scroll("left")}
             className={cn(
-              "relative z-20 flex shrink-0 items-center gap-1",
-              muted && "opacity-60",
+              "rounded-full border border-foreground/15 p-2 transition-colors",
+              canScrollLeft ? "hover:bg-foreground hover:text-background" : "cursor-default opacity-35",
             )}
+            aria-label="Κύλιγμα αριστερά"
+            tabIndex={overflowing ? 0 : -1}
           >
-            <button
-              type="button"
-              disabled={!canScrollLeft}
-              onClick={() => scroll("left")}
-              className={cn(
-                "rounded-full border border-foreground/15 p-2 transition-colors",
-                canScrollLeft
-                  ? "hover:bg-foreground hover:text-background"
-                  : "cursor-default opacity-35",
-              )}
-              aria-label="Κύλιση αριστερά"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button
-              type="button"
-              disabled={!canScrollRight}
-              onClick={() => scroll("right")}
-              className={cn(
-                "rounded-full border border-foreground/15 p-2 transition-colors",
-                canScrollRight
-                  ? "hover:bg-foreground hover:text-background"
-                  : "cursor-default opacity-35",
-              )}
-              aria-label="Κύλιση δεξιά"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          </div>
-        ) : null}
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            type="button"
+            disabled={!canScrollRight}
+            onClick={() => scroll("right")}
+            className={cn(
+              "rounded-full border border-foreground/15 p-2 transition-colors",
+              canScrollRight ? "hover:bg-foreground hover:text-background" : "cursor-default opacity-35",
+            )}
+            aria-label="Κύλιγμα δεξιά"
+            tabIndex={overflowing ? 0 : -1}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
+        </div>
       </div>
       <div className="min-w-0 max-w-full">
         <div

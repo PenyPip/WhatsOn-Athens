@@ -1,6 +1,15 @@
 import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import {
+  homeNeedsDining,
+  homeNeedsTheater,
+  homeNeedsVenues,
+  layoutShowsHero,
+  resolveHomepageLayout,
+  type MappedHomepage,
+} from "@/config/home";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
+import { slimHomeQueryCache } from "@/lib/slimDehydrate";
 
 const queryDefaults = {
   staleTime: 120_000,
@@ -33,15 +42,28 @@ function matchMoviesVenueSlug(path: string): string | null {
 }
 
 async function prefetchHomeBundle(qc: QueryClient) {
-  await Promise.all([
-    qc.prefetchQuery({ queryKey: ["homepage"], queryFn: api.getHomepage, ...queryDefaults }),
+  await qc.prefetchQuery({ queryKey: ["homepage"], queryFn: api.getHomepage, ...queryDefaults });
+  const layout = resolveHomepageLayout(qc.getQueryData<MappedHomepage>(["homepage"]) ?? null);
+  const sections = layout.sections;
+
+  const tasks: Promise<unknown>[] = [
     qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMovies, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants, ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
-  ]);
+  ];
+
+  if (homeNeedsVenues(sections)) {
+    tasks.push(qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }));
+  }
+  if (homeNeedsTheater(sections) || layoutShowsHero(layout)) {
+    tasks.push(qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }));
+  }
+  if (homeNeedsDining(sections)) {
+    tasks.push(qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants, ...queryDefaults }));
+  }
+
+  await Promise.all(tasks);
+  slimHomeQueryCache(qc);
 }
 
 async function prefetchMoviesList(qc: QueryClient) {

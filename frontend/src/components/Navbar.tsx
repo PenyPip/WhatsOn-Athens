@@ -16,41 +16,14 @@ function BrandLogo({ compact = false }: { compact?: boolean }) {
     return (
       <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2">
         <div className="flex items-baseline gap-0.5">
-          <span
-            style={{
-              fontFamily: "Unbounded, sans-serif",
-              fontWeight: 300,
-              fontSize: "1.65rem",
-              color: "#F0EDF8",
-              letterSpacing: "-2px",
-              lineHeight: 1,
-            }}
-          >
+          <span className="font-brand text-[1.65rem] font-light leading-none tracking-[-2px] text-[#F0EDF8]">
             37
           </span>
-          <sup
-            style={{
-              fontFamily: '"Literata", Georgia, serif',
-              fontStyle: "italic",
-              fontWeight: 400,
-              fontSize: "0.75rem",
-              color: "rgba(240,237,248,0.7)",
-              verticalAlign: "super",
-            }}
-          >
+          <sup className="font-display text-[0.75rem] font-normal not-italic text-[#F0EDF8]/70 align-super">
             °N
           </sup>
         </div>
-        <span
-          className="hidden min-[380px]:block truncate"
-          style={{
-            fontFamily: "Unbounded, sans-serif",
-            fontWeight: 700,
-            fontSize: "0.55rem",
-            color: "#FFFFFF",
-            letterSpacing: "2.5px",
-          }}
-        >
+        <span className="font-brand hidden min-[380px]:block truncate text-[0.55rem] font-bold tracking-[2.5px] text-white">
           ATHENS GUIDE
         </span>
       </Link>
@@ -60,28 +33,10 @@ function BrandLogo({ compact = false }: { compact?: boolean }) {
   return (
     <Link to="/" className="flex shrink-0 items-center gap-4">
       <div className="flex items-baseline gap-0.5">
-        <span
-          style={{
-            fontFamily: "Unbounded, sans-serif",
-            fontWeight: 300,
-            fontSize: "3rem",
-            color: "#F0EDF8",
-            letterSpacing: "-3px",
-            lineHeight: 1,
-          }}
-        >
+        <span className="font-brand text-5xl font-light leading-none tracking-[-3px] text-[#F0EDF8] md:text-[3rem]">
           37
         </span>
-        <sup
-          style={{
-            fontFamily: '"Literata", Georgia, serif',
-            fontStyle: "italic",
-            fontWeight: 400,
-            fontSize: "1.4rem",
-            color: "rgba(240,237,248,0.7)",
-            verticalAlign: "super",
-          }}
-        >
+        <sup className="font-display text-[1.4rem] font-normal not-italic text-[#F0EDF8]/70 align-super">
           °N
         </sup>
       </div>
@@ -89,27 +44,10 @@ function BrandLogo({ compact = false }: { compact?: boolean }) {
         className="flex flex-col gap-1"
         style={{ borderLeft: "1px solid rgba(240,237,248,0.2)", paddingLeft: "16px" }}
       >
-        <span
-          style={{
-            fontFamily: "Unbounded, sans-serif",
-            fontWeight: 700,
-            fontSize: "0.8rem",
-            color: "#FFFFFF",
-            letterSpacing: "3px",
-          }}
-        >
+        <span className="font-brand text-[0.8rem] font-bold tracking-[3px] text-white">
           ATHENS GUIDE
         </span>
-        <span
-          style={{
-            fontFamily: "DM Sans, sans-serif",
-            fontWeight: 400,
-            fontSize: "0.72rem",
-            color: "rgba(240,237,248,0.65)",
-            letterSpacing: "2.5px",
-            textTransform: "uppercase",
-          }}
-        >
+        <span className="font-body text-[0.72rem] font-normal uppercase tracking-[2.5px] text-[#F0EDF8]/65">
           Cinema · Events · Culture
         </span>
       </div>
@@ -132,7 +70,7 @@ function NavSearchTrigger({
       className={`flex cursor-pointer items-center gap-2 rounded-full border border-white/20 bg-black/25 text-left text-white/70 transition hover:border-white/35 hover:bg-black/35 hover:text-white ${className}`}
     >
       <Search className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-      <span className="min-w-0 flex-1 truncate font-body text-white/55">Ταινίες, χώροι…</span>
+      <span className="min-w-0 flex-1 truncate font-body text-white/75">Ταινίες, χώροι…</span>
     </button>
   );
 }
@@ -191,10 +129,9 @@ const Navbar = () => {
                 <Link
                   key={link.to}
                   to={link.to}
-                  className={`relative text-base transition-colors ${
-                    location.pathname === link.to ? "text-white" : "text-white/60 hover:text-white"
+                  className={`font-body relative text-base transition-colors ${
+                    location.pathname === link.to ? "text-white" : "text-white/75 hover:text-white"
                   }`}
-                  style={{ fontFamily: "DM Sans, sans-serif" }}
                 >
                   {link.label}
                   {location.pathname === link.to ? (
@@ -234,7 +171,7 @@ const Navbar = () => {
                 to={link.to}
                 className="flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-center transition-colors"
                 style={{
-                  color: isActive ? "#B47EC8" : "rgba(240,237,248,0.5)",
+                  color: isActive ? "#B47EC8" : "rgba(240,237,248,0.72)",
                   fontFamily: "DM Sans, sans-serif",
                 }}
               >

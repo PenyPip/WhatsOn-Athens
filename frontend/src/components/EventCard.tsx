@@ -31,6 +31,8 @@ interface EventCardProps {
   uniformMovieSizing?: boolean;
   /** Αρχική / συμπαγής κάρτα: διάρκεια στην αφίσα, χωρίς σκηνοθέτη, είδος, διάρκεια κάτω. */
   compactMovieMeta?: boolean;
+  /** Πρώτες ορατές αφίσες — LCP / image delivery */
+  posterPriority?: boolean;
   className?: string;
   index?: number;
 }
@@ -54,6 +56,7 @@ const EventCard = ({
   attachShowtimes = false,
   uniformMovieSizing,
   compactMovieMeta = false,
+  posterPriority = false,
   className = "",
   index: _index = 0,
 }: EventCardProps) => {
@@ -112,8 +115,10 @@ const EventCard = ({
                 alt={posterAlt}
                 width={400}
                 height={600}
-                loading="lazy"
+                loading={posterPriority ? "eager" : "lazy"}
+                fetchPriority={posterPriority ? "high" : undefined}
                 decoding="async"
+                sizes="(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 200px"
                 className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </>

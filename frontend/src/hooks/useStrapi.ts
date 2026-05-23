@@ -41,26 +41,27 @@ export const useMovieGenreCatalog = () =>
 export const useMovieBySlug = (slug: string) =>
   useQuery({ queryKey: ["movie", slug], queryFn: () => api.getMovieBySlug(slug), enabled: !!slug });
 
-export const useTheaterShows = () =>
+export const useTheaterShows = (enabled = true) =>
   useQuery({
     queryKey: ["theaterShows"],
     queryFn: api.getTheaterShows,
     staleTime: 120_000,
     throwOnError: false,
     retry: 1,
+    enabled,
   });
 
 export const useTheaterShowBySlug = (slug: string) =>
   useQuery({ queryKey: ["theaterShow", slug], queryFn: () => api.getTheaterShowBySlug(slug), enabled: !!slug });
 
-export const useRestaurants = () =>
-  useQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants });
+export const useRestaurants = (enabled = true) =>
+  useQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants, enabled });
 
 export const useRestaurantBySlug = (slug: string) =>
   useQuery({ queryKey: ["restaurant", slug], queryFn: () => api.getRestaurantBySlug(slug), enabled: !!slug });
 
-export const useVenues = () =>
-  useQuery({ queryKey: ["venues"], queryFn: api.getVenues, throwOnError: false, retry: 1 });
+export const useVenues = (enabled = true) =>
+  useQuery({ queryKey: ["venues"], queryFn: api.getVenues, throwOnError: false, retry: 1, enabled });
 
 export const useEditorialReviews = () =>
   useQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews });

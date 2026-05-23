@@ -7,7 +7,13 @@ import LoadingState from "@/components/LoadingState";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues, useMovieGenres } from "@/hooks/useStrapi";
-import { layoutShowsHero, type HomeSectionId } from "@/config/home";
+import {
+  homeNeedsDining,
+  homeNeedsTheater,
+  homeNeedsVenues,
+  layoutShowsHero,
+  type HomeSectionId,
+} from "@/config/home";
 import type { StrapiMovie, StrapiMovieGenre } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
@@ -127,7 +133,7 @@ function MovieRowScroll({
           <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
             <p className="font-display text-lg tracking-tight text-white">{title}</p>
             {emptyMessage ? (
-              <p className="mt-3 text-sm leading-relaxed text-white/55 font-body">{emptyMessage}</p>
+              <p className="mt-3 text-sm leading-relaxed text-white/70 font-body">{emptyMessage}</p>
             ) : null}
           </div>
         </div>
@@ -169,6 +175,7 @@ function MovieRowScroll({
                         isDubbed={movie.isDubbed}
                         uniformMovieSizing
                         compactMovieMeta
+                        posterPriority={i < 4}
                         index={i}
                         className="h-full w-full"
                       />
@@ -218,6 +225,7 @@ function MovieRowScroll({
               isDubbed={movie.isDubbed}
               uniformMovieSizing
               compactMovieMeta
+              posterPriority={i < 3}
               index={i}
               className="h-full w-full min-h-0 flex-1"
             />
@@ -256,11 +264,16 @@ const Index = () => {
   usePageSeo(staticPageSeo.home);
 
   const layout = useHomeLayout();
+  const sections = layout.sections;
+  const needsVenues = homeNeedsVenues(sections);
+  const needsTheater = homeNeedsTheater(sections);
+  const needsDining = homeNeedsDining(sections);
+
   const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies();
   const { data: showtimes, isLoading: showtimesLoading, isError: showtimesError } = useShowtimes();
-  const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues();
-  const { data: theaterShows, isLoading: theaterLoading, isError: theaterError } = useTheaterShows();
-  const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants();
+  const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues);
+  const { data: theaterShows, isLoading: theaterLoading, isError: theaterError } = useTheaterShows(needsTheater);
+  const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(needsDining);
   const { data: movieGenresList } = useMovieGenres();
 
   const apiSectionFailed = moviesError || showtimesError || venuesError || theaterError || restaurantsError;
@@ -313,7 +326,12 @@ const Index = () => {
             return sectionEl(
               "hero",
               <>
-                <Hero />
+                <Hero
+                  layout={layout}
+                  movies={movieList}
+                  showtimes={stList}
+                  theaterShows={theaterShows ?? []}
+                />
                 <HomeSeoIntro />
               </>,
             );
@@ -391,7 +409,7 @@ const Index = () => {
                     <div className="container max-w-7xl">
                       <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
                         <p className="font-display text-lg tracking-tight text-white">Τα θερινά σινεμά</p>
-                        <p className="mt-3 text-sm leading-relaxed text-white/55 font-body">
+                        <p className="mt-3 text-sm leading-relaxed text-white/70 font-body">
                           Δεν υπάρχουν θερινοί χώροι προς το παρόν.
                         </p>
                       </div>
@@ -470,7 +488,7 @@ const Index = () => {
                     </div>
                   ) : (theaterShows ?? []).length === 0 ? (
                     <div className="mt-10 max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
-                      <p className="text-sm leading-relaxed text-white/55 font-body">Δεν υπάρχουν παραστάσεις προς το παρόν.</p>
+                      <p className="text-sm leading-relaxed text-white/70 font-body">Δεν υπάρχουν παραστάσεις προς το παρόν.</p>
                     </div>
                   ) : (
                     <div className="mt-10 flex items-stretch gap-4 overflow-x-auto scrollbar-hide pb-2">
@@ -666,40 +684,40 @@ const Index = () => {
                   </span>
                 </div>
               </div>
-              <p className="text-white/40 text-xs mt-2 leading-relaxed">Ο οδηγός σου για ψυχαγωγία και γαστρονομία στην Αθήνα.</p>
+              <p className="text-white/65 text-xs mt-2 leading-relaxed">Ο οδηγός σου για ψυχαγωγία και γαστρονομία στην Αθήνα.</p>
             </div>
             <div>
-              <h4 className="text-xs uppercase tracking-[0.15em] text-white/50 mb-3">Εξερεύνηση</h4>
+              <h4 className="text-xs uppercase tracking-[0.15em] text-white/70 mb-3">Εξερεύνηση</h4>
               <div className="space-y-2 text-sm">
-                <a href="/movies" className="block text-white/60 hover:text-white transition-colors">
+                <a href="/movies" className="block text-white/75 hover:text-white transition-colors">
                   Ταινίες
                 </a>
-                <a href="/theater" className="block text-white/60 hover:text-white transition-colors">
+                <a href="/theater" className="block text-white/75 hover:text-white transition-colors">
                   Θέατρο
                 </a>
-                <a href="/dining" className="block text-white/60 hover:text-white transition-colors">
+                <a href="/dining" className="block text-white/75 hover:text-white transition-colors">
                   Φαγητό
                 </a>
               </div>
             </div>
             <div>
-              <h4 className="text-xs uppercase tracking-[0.15em] text-white/50 mb-3">Περιεχόμενο</h4>
+              <h4 className="text-xs uppercase tracking-[0.15em] text-white/70 mb-3">Περιεχόμενο</h4>
               <div className="space-y-2 text-sm">
-                <a href="/venues" className="block text-white/60 hover:text-white transition-colors">
+                <a href="/venues" className="block text-white/75 hover:text-white transition-colors">
                   Χώροι
                 </a>
               </div>
             </div>
             <div>
-              <h4 className="text-xs uppercase tracking-[0.15em] text-white/50 mb-3">Social</h4>
+              <h4 className="text-xs uppercase tracking-[0.15em] text-white/70 mb-3">Social</h4>
               <div className="space-y-2 text-sm">
-                <span className="block text-white/60">Instagram</span>
-                <span className="block text-white/60">Facebook</span>
+                <span className="block text-white/75">Instagram</span>
+                <span className="block text-white/75">Facebook</span>
               </div>
             </div>
           </div>
           <div className="border-t border-white/10 pt-6 text-center">
-            <p className="text-xs text-white/30">© 2025 37°N Athens. Με ❤️ από την Αθήνα.</p>
+            <p className="text-xs text-white/55">© 2025 37°N Athens. Με ❤️ από την Αθήνα.</p>
           </div>
         </div>
       </footer>
