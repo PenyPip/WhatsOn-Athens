@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
-import { SlidersHorizontal } from "lucide-react";
+import { ExternalLink, MapPin, SlidersHorizontal } from "lucide-react";
 import { Link, useSearchParams } from "react-router-dom";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import EventCard from "@/components/EventCard";
@@ -39,6 +39,17 @@ import {
 } from "@/lib/homeMovieFilters";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+
+const VENUE_CITY_LABELS: Record<string, string> = {
+  athens: "Αθήνα",
+  thessaloniki: "Θεσσαλονίκη",
+  other: "Άλλο",
+};
+
+function venueCityLabel(venue: StrapiVenue): string {
+  const c = typeof venue.city === "string" ? venue.city.trim().toLowerCase() : "";
+  return VENUE_CITY_LABELS[c] ?? venue.city ?? "";
+}
 
 const MOVIES_SECTION_QUERY_KEYS = ["today", "week", "summer", "new", "soon"] as const;
 export type MoviesUrlSectionKey = (typeof MOVIES_SECTION_QUERY_KEYS)[number];
@@ -644,6 +655,34 @@ const Movies = () => {
             <p className="text-sm text-white/60 md:text-base">
               {venueFilter ? "Πρόγραμμα προβολών" : "Τώρα στα σινεμά σε όλη την Ελλάδα"}
             </p>
+            {venueFilter ? (
+              <div className="mt-3 space-y-1.5 text-sm text-white/75 md:mt-4">
+                {venueFilter.address?.trim() ? (
+                  <p className="flex items-start gap-2 max-w-2xl">
+                    <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-white/45" aria-hidden />
+                    {isValidExternalUrl(venueFilter.googleMapsUrl) ? (
+                      <a
+                        href={venueFilter.googleMapsUrl.trim()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex flex-wrap items-center gap-1 underline decoration-white/25 underline-offset-2 hover:text-white hover:decoration-white/50"
+                      >
+                        <span>{venueFilter.address.trim()}</span>
+                        <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                        <span className="sr-only"> (χάρτης)</span>
+                      </a>
+                    ) : (
+                      <span>{venueFilter.address.trim()}</span>
+                    )}
+                  </p>
+                ) : null}
+                {venueCityLabel(venueFilter) ? (
+                  <p className="pl-6 text-xs font-medium uppercase tracking-wide text-white/50 md:text-sm">
+                    {venueCityLabel(venueFilter)}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
           </motion.div>
         </div>
       </div>
