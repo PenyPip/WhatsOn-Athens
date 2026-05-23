@@ -8,13 +8,16 @@ type SpaRootProps = {
   /** Pathname χωρίς query (π.χ. `/movies/foo`). */
   ssrPath: string;
   dehydratedState?: DehydratedState;
+  suppressHydrationWarning?: boolean;
 };
 
 /** Client boundary — SSR στο build με prefetch + MemoryRouter μέχρι hydration. */
-export default function SpaRoot({ ssrPath, dehydratedState }: SpaRootProps) {
+export default function SpaRoot({ ssrPath, dehydratedState, suppressHydrationWarning }: SpaRootProps) {
   return (
-    <SpaProviders dehydratedState={dehydratedState}>
-      <App ssrPath={ssrPath} />
-    </SpaProviders>
+    <div suppressHydrationWarning={suppressHydrationWarning}>
+      <SpaProviders dehydratedState={dehydratedState}>
+        <App ssrPath={ssrPath} />
+      </SpaProviders>
+    </div>
   );
 }

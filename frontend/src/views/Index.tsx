@@ -628,7 +628,7 @@ const Index = () => {
         }
       })}
 
-      <div className={BELOW_FOLD_PAINT}>
+      <div className={`${BELOW_FOLD_PAINT} [content-visibility:auto] [contain-intrinsic-size:auto_0px]`}>
         <HomeSeoIntro />
       </div>
 

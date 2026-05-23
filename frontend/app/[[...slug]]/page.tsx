@@ -39,14 +39,14 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
   const heroPoster = homeHeroPosterHref(path, dehydratedState);
   const preloadPoster = heroPoster ?? (!lcp?.hasHeroSection ? lcp?.posterHref : null);
 
+  const showStaticLcp = path === "/" && lcp && !lcp.hasHeroSection;
+
   return (
     <>
       {preloadPoster ? <link rel="preload" as="image" href={preloadPoster} fetchPriority="high" /> : null}
+      {showStaticLcp ? <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} /> : null}
       <ServerJsonLd path={path} />
-      {path === "/" && lcp && !lcp.hasHeroSection ? (
-        <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} />
-      ) : null}
-      <SpaRoot ssrPath={path} dehydratedState={dehydratedState} />
+      <SpaRoot ssrPath={path} dehydratedState={dehydratedState} suppressHydrationWarning={showStaticLcp} />
     </>
   );
 }
