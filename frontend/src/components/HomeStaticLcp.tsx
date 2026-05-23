@@ -4,7 +4,13 @@ type HomeStaticLcpProps = {
   title: string;
 };
 
-const CRITICAL_CSS = `#home-static-lcp{position:relative;overflow:hidden;background:#111;margin-top:-4rem;padding-top:4rem;min-height:380px;height:min(75vh,520px);contain:layout style paint}@media(min-width:768px){#home-static-lcp{margin-top:-7rem;padding-top:7rem}}#home-static-lcp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:1}#home-static-lcp .home-static-lcp__shade{position:absolute;inset:0;background:linear-gradient(to top,#111 0%,rgba(17,17,17,.45) 45%,rgba(17,17,17,.15) 100%);pointer-events:none}`;
+const CRITICAL_CSS =
+  "html,body{margin:0;min-height:100%}body{font-family:system-ui,-apple-system,sans-serif;background:#111;color:#f0edf8}" +
+  "#home-static-lcp{position:relative;overflow:hidden;background:#111;margin-top:-4rem;padding-top:4rem;min-height:380px;height:min(75vh,520px);contain:layout style paint}" +
+  "@media(min-width:768px){#home-static-lcp{margin-top:-7rem;padding-top:7rem}}" +
+  "#home-static-lcp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:1}" +
+  "#home-static-lcp .home-static-lcp__shade{position:absolute;inset:0;background:linear-gradient(to top,#111 0%,rgba(17,17,17,.45) 45%,rgba(17,17,17,.15) 100%);pointer-events:none}" +
+  ".sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}";
 
 export default function HomeStaticLcp({ posterHref, title }: HomeStaticLcpProps) {
   return (

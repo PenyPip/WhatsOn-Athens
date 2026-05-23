@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { QueryClient, QueryClientProvider, HydrationBoundary, type DehydratedState } from "@tanstack/react-query";
+import { readRqBootstrapState } from "@/lib/rqBootstrap";
 
 type SpaProvidersProps = {
   children: React.ReactNode;
@@ -21,9 +22,11 @@ export default function SpaProviders({ children, dehydratedState }: SpaProviders
       }),
   );
 
+  const [bootstrapState] = useState(() => dehydratedState ?? readRqBootstrapState());
+
   return (
     <QueryClientProvider client={queryClient}>
-      <HydrationBoundary state={dehydratedState}>{children}</HydrationBoundary>
+      <HydrationBoundary state={bootstrapState}>{children}</HydrationBoundary>
     </QueryClientProvider>
   );
 }

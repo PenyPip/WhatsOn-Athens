@@ -103,5 +103,21 @@ export function slimListQueryCache(qc: QueryClient): void {
   slimMoviesShowtimes(qc);
 }
 
+const HOME_SHOWTIME_HORIZON_MS = 21 * 24 * 60 * 60 * 1000;
+
+/** Λιγότερες εγγραφές showtimes στο bootstrap αρχικής (ταχύτερο JSON.parse). */
+export function trimHomeShowtimesDehydrate(qc: QueryClient): void {
+  const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
+  if (!showtimes?.length) return;
+  const until = Date.now() + HOME_SHOWTIME_HORIZON_MS;
+  qc.setQueryData(
+    ["showtimes"],
+    showtimes.filter((st) => {
+      const t = Date.parse(st.datetime);
+      return Number.isFinite(t) && t <= until;
+    }),
+  );
+}
+
 /** @deprecated Use slimListQueryCache */
 export const slimHomeQueryCache = slimListQueryCache;

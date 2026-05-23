@@ -32,6 +32,7 @@ import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { siteSeo } from "@/lib/siteMetadata";
+import HideHomeStaticLcp from "@/components/HideHomeStaticLcp";
 
 /** Ορατό SEO κείμενο αρχικής — λέξεις-κλειδιά + περισσότερο κείμενο για crawlers. */
 function HomeSeoIntro() {
@@ -42,12 +43,12 @@ function HomeSeoIntro() {
       aria-labelledby="home-page-title"
     >
       <div className="container max-w-7xl">
-        <h1
+        <h2
           id="home-page-title"
           className="font-display text-2xl font-bold tracking-tight text-foreground md:text-3xl"
         >
           {home.h1}
-        </h1>
+        </h2>
         <p className="mt-3 max-w-3xl font-body text-sm leading-relaxed text-muted-foreground md:text-base">
           Το {siteSeo.siteName} είναι ο οδηγός σου για <strong className="font-medium text-foreground">ταινίες στα σινεμά</strong>,
           <strong className="font-medium text-foreground"> θερινά σινεμά</strong> και{" "}
@@ -312,8 +313,11 @@ const Index = () => {
     </Fragment>
   );
 
+  const hideStaticLcpShell = !layoutShowsHero(layout);
+
   return (
     <div className="min-h-screen pb-20 md:pb-0">
+      {hideStaticLcpShell ? <HideHomeStaticLcp /> : null}
       {apiSectionFailed ? (
         <div className="section-black border-b border-amber-500/30 bg-amber-950/25 px-4 py-3 md:py-4">
           <div className="container max-w-7xl text-center text-sm text-amber-100/90 font-body md:text-left md:text-[0.9375rem]">

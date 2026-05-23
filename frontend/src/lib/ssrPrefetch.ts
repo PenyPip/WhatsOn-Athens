@@ -9,7 +9,7 @@ import {
   type MappedHomepage,
 } from "@/config/home";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
-import { slimListQueryCache } from "@/lib/slimDehydrate";
+import { slimListQueryCache, trimHomeShowtimesDehydrate } from "@/lib/slimDehydrate";
 
 const queryDefaults = {
   staleTime: 120_000,
@@ -63,6 +63,7 @@ async function prefetchHomeBundle(qc: QueryClient) {
 
   await Promise.all(tasks);
   slimListQueryCache(qc);
+  trimHomeShowtimesDehydrate(qc);
 }
 
 async function prefetchMoviesList(qc: QueryClient) {
