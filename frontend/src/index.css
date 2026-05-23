@@ -82,9 +82,10 @@
   }
 
   .font-brand {
-    font-family: var(--font-unbounded), system-ui, sans-serif;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
     font-optical-sizing: auto;
-    font-synthesis: none;
+    font-synthesis: weight;
+    letter-spacing: 0.02em;
   }
 
   .card-elevated {

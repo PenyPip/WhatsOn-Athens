@@ -115,9 +115,10 @@ const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
             {/* eslint-disable-next-line @next/next/no-img-element -- hero poster Strapi, static export */}
             <img
               src={(featured as StrapiMovie).posterUrl}
+              srcSet={(featured as StrapiMovie).posterSrcSet}
               alt={posterAltForMovie(featured as StrapiMovie)}
-              width={1200}
-              height={1800}
+              width={800}
+              height={1200}
               fetchPriority="high"
               decoding="async"
               sizes="100vw"

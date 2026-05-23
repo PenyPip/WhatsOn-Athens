@@ -26,7 +26,7 @@ export default {
       fontFamily: {
         display: ["var(--font-literata)", "Georgia", "serif"],
         body: ["var(--font-dm-sans)", "system-ui", "sans-serif"],
-        brand: ["var(--font-unbounded)", "system-ui", "sans-serif"],
+        brand: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
       },
       colors: {
         border: "hsl(var(--border))",

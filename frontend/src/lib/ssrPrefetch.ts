@@ -49,7 +49,6 @@ async function prefetchHomeBundle(qc: QueryClient) {
   const tasks: Promise<unknown>[] = [
     qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMovies, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
   ];
 
   if (homeNeedsVenues(sections)) {

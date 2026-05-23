@@ -166,20 +166,67 @@ function mapMovieGenre(raw: unknown): StrapiMovieGenre {
   };
 }
 
-/** Media field Strapi REST (flat ή `{ data: { attributes: { url } } }`) */
-function strapiMediaUrl(media: unknown): string | undefined {
-  if (!media || typeof media !== "object") return undefined;
+type StrapiMediaAttrs = Record<string, unknown>;
+
+function strapiMediaAttributes(media: unknown): StrapiMediaAttrs | null {
+  if (!media || typeof media !== "object") return null;
   const o = media as Record<string, unknown>;
-  if (typeof o.url === "string") return normalizeUploadedUrl(o.url);
+  if (typeof o.url === "string" || o.formats) return o;
   const d = o.data;
-  let urlCandidate: unknown;
-  if (d !== null && d !== undefined && typeof d === "object") {
-    const node = d as Record<string, unknown>;
-    const inner = typeof node.attributes === "object" && node.attributes !== null ? (node.attributes as Record<string, unknown>) : node;
-    urlCandidate = inner.url ?? node.url;
+  if (d === null || d === undefined || typeof d !== "object") return null;
+  const node = d as Record<string, unknown>;
+  const inner =
+    typeof node.attributes === "object" && node.attributes !== null
+      ? (node.attributes as StrapiMediaAttrs)
+      : node;
+  return inner;
+}
+
+const FORMAT_FALLBACK: Record<"small" | "medium" | "large", string[]> = {
+  small: ["small", "thumbnail", "medium", "large"],
+  medium: ["medium", "small", "large", "thumbnail"],
+  large: ["large", "medium", "small", "thumbnail"],
+};
+
+/** Media field Strapi REST — προτίμηση μικρότερων formats για LCP/PSI (κινητό). */
+function strapiMediaUrl(media: unknown, prefer: "small" | "medium" | "large" = "medium"): string | undefined {
+  const attrs = strapiMediaAttributes(media);
+  if (!attrs) return undefined;
+
+  const formats = attrs.formats as Record<string, { url?: string }> | undefined;
+  if (formats && typeof formats === "object") {
+    for (const key of FORMAT_FALLBACK[prefer]) {
+      const raw = formats[key]?.url;
+      if (typeof raw === "string" && raw.trim()) return normalizeUploadedUrl(raw);
+    }
   }
-  const u = typeof urlCandidate === "string" ? normalizeUploadedUrl(urlCandidate) : undefined;
-  return u || undefined;
+
+  const direct = attrs.url;
+  return typeof direct === "string" ? normalizeUploadedUrl(direct) : undefined;
+}
+
+/** srcset για hero/αφίσες όταν υπάρχουν Strapi formats. */
+export function strapiPosterSrcSet(media: unknown): { src: string; srcSet?: string } | null {
+  const attrs = strapiMediaAttributes(media);
+  if (!attrs) return null;
+
+  const parts: string[] = [];
+  const formats = attrs.formats as Record<string, { url?: string; width?: number }> | undefined;
+  if (formats && typeof formats === "object") {
+    for (const key of ["thumbnail", "small", "medium", "large"] as const) {
+      const entry = formats[key];
+      const url = typeof entry?.url === "string" ? normalizeUploadedUrl(entry.url) : undefined;
+      const w = typeof entry?.width === "number" && entry.width > 0 ? entry.width : undefined;
+      if (url && w) parts.push(`${url} ${w}w`);
+    }
+  }
+
+  const src =
+    strapiMediaUrl(media, "medium") ??
+    (typeof attrs.url === "string" ? normalizeUploadedUrl(attrs.url) : undefined);
+  if (!src) return null;
+
+  return parts.length > 1 ? { src, srcSet: parts.join(", ") } : { src };
 }
 
 /** Εγγραφές σχέσης Strapi: παλιό `movie_genre` ή νέο `movie_genres` (πολλά). */
@@ -547,6 +594,7 @@ function mapMovie(
     bySlug: Map<string, StrapiMovieGenre>;
   },
   linkIndex?: MovieGenreLinkIndex,
+  posterPrefer: "medium" | "large" = "medium",
 ): StrapiMovie {
   const m = unwrapStrapiEntry(raw);
   const gf = movieGenresFromMovieRaw(m as Record<string, unknown>, hydrate);
@@ -589,7 +637,14 @@ function mapMovie(
     criticScore: m.critic_score,
     releaseDate: m.release_date,
     trailerUrl: m.trailer_url,
-    posterUrl: strapiMediaUrl(m.poster) ?? null,
+    ...(() => {
+      const variants = strapiPosterSrcSet(m.poster);
+      const src = strapiMediaUrl(m.poster, posterPrefer) ?? variants?.src;
+      return {
+        posterUrl: src ?? null,
+        posterSrcSet: variants?.srcSet,
+      };
+    })(),
   };
 }
 
@@ -615,7 +670,7 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     venue,
     synopsis: s.synopsis,
     tags: s.tags || [],
-    posterUrl: strapiMediaUrl(s.poster) ?? undefined,
+    posterUrl: strapiMediaUrl(s.poster, "medium") ?? undefined,
     gradientFrom: s.gradient_from || "#2c3e50",
     gradientTo: s.gradient_to || "#8e44ad",
     isPremiere: s.is_premiere,
@@ -641,7 +696,7 @@ function mapRestaurant(raw: unknown): StrapiRestaurant {
     instagram: r.instagram,
     openingDate: r.opening_date,
     isNew: r.is_new,
-    posterUrl: strapiMediaUrl(r.poster) ?? undefined,
+    posterUrl: strapiMediaUrl(r.poster, "medium") ?? undefined,
     gradientFrom: r.gradient_from || "#1a1a2e",
     gradientTo: r.gradient_to || "#e8a020",
     editorialScore: r.editorial_score,
@@ -925,6 +980,7 @@ export interface StrapiMovie {
   releaseDate: string;
   trailerUrl?: string;
   posterUrl?: string;
+  posterSrcSet?: string;
 }
 
 export interface StrapiTheaterShow {
@@ -1098,7 +1154,7 @@ export const api = {
       }),
     ]).then(([catalog, d]) => {
       const row = strapiCollectionFirst(d);
-      return row ? mapMovie(row, catalog.hydrate, catalog.linkIndex) : undefined;
+      return row ? mapMovie(row, catalog.hydrate, catalog.linkIndex, "large") : undefined;
     }),
 
   getMovieGenres: () => fetchMovieGenreEntities(),

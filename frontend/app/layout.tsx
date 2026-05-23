@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { getMetadataBase, siteSeo } from "@/lib/siteMetadata";
-import { dmSans, literata, unbounded } from "@/lib/fonts";
+import { dmSans, literata } from "@/lib/fonts";
 import "@/index.css";
 
 export const viewport: Viewport = {
@@ -56,7 +56,7 @@ export default function RootLayout({
   return (
     <html lang="el" className="h-full">
       <body
-        className={`${dmSans.variable} ${literata.variable} ${unbounded.variable} min-h-full antialiased max-md:overscroll-y-none`}
+        className={`${dmSans.variable} ${literata.variable} min-h-full antialiased max-md:overscroll-y-none`}
       >
         {children}
       </body>

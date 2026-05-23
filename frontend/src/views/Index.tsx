@@ -6,7 +6,7 @@ import RestaurantCard from "@/components/RestaurantCard";
 import LoadingState from "@/components/LoadingState";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
-import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues, useMovieGenres } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues } from "@/hooks/useStrapi";
 import {
   homeNeedsDining,
   homeNeedsTheater,
@@ -14,7 +14,7 @@ import {
   layoutShowsHero,
   type HomeSectionId,
 } from "@/config/home";
-import type { StrapiMovie, StrapiMovieGenre } from "@/lib/api";
+import type { StrapiMovie } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import {
   moviesReleasedInLastDays,
@@ -93,13 +93,11 @@ function MovieRowScroll({
   subtitle,
   /** `/movies/today` κ.λπ. — ίδιο φίλτρο με την ενότητα της αρχικής */
   moviesMoreHref,
-  movieGenresList,
   layout = "scroll",
 }: {
   loading: boolean;
   loadingMessage: string;
   items: StrapiMovie[];
-  movieGenresList?: StrapiMovieGenre[];
   emptyMessage?: string;
   /** Όταν το query αποτύχει (δίκτυο/403) — όχι «κενό CMS». */
   fetchErrorMessage?: string;
@@ -274,8 +272,6 @@ const Index = () => {
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues);
   const { data: theaterShows, isLoading: theaterLoading, isError: theaterError } = useTheaterShows(needsTheater);
   const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(needsDining);
-  const { data: movieGenresList } = useMovieGenres();
-
   const apiSectionFailed = moviesError || showtimesError || venuesError || theaterError || restaurantsError;
 
   const stList = useMemo(() => showtimes ?? [], [showtimes]);
@@ -366,7 +362,6 @@ const Index = () => {
                 eyebrow="Σήμερα"
                 title="Ταινίες σήμερα"
                 moviesMoreHref={moviesSectionPath("today")}
-                movieGenresList={movieGenresList}
               />,
             );
           case "summer_cinema":
@@ -384,7 +379,6 @@ const Index = () => {
                 title="Θερινά σινεμά"
                 subtitle="Παίζουν τώρα"
                 moviesMoreHref={moviesSectionPath("summer")}
-                movieGenresList={movieGenresList}
               />,
             );
           case "summer_venues":
@@ -530,7 +524,6 @@ const Index = () => {
                 eyebrow="Τελευταίες κυκλοφορίες"
                 title="Νέες ταινίες"
                 moviesMoreHref={moviesSectionPath("new")}
-                movieGenresList={movieGenresList}
               />,
             );
           case "movies_week":
@@ -547,7 +540,6 @@ const Index = () => {
                 subtitle={upcomingWeekLabel}
                 layout="grid"
                 moviesMoreHref={moviesSectionPath("week")}
-                movieGenresList={movieGenresList}
               />,
             );
           case "coming_soon":
@@ -563,7 +555,6 @@ const Index = () => {
                 title="Προσεχώς"
                 emptyMessage="Δεν υπάρχουν ταινίες με κυκλοφορία μετά την επόμενη εβδομάδα κινηματογράφου."
                 moviesMoreHref={moviesSectionPath("soon")}
-                movieGenresList={movieGenresList}
               />,
             );
           case "dining":
@@ -628,58 +619,18 @@ const Index = () => {
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="flex items-center gap-3 mb-2">
+              <div className="mb-2 flex items-center gap-3">
                 <div className="flex items-baseline gap-0.5">
-                  <span
-                    style={{
-                      fontFamily: "Unbounded, sans-serif",
-                      fontWeight: 300,
-                      fontSize: "1.6rem",
-                      color: "#F0EDF8",
-                      letterSpacing: "-2px",
-                      lineHeight: 1,
-                    }}
-                  >
+                  <span className="font-brand text-[1.6rem] font-light leading-none tracking-[-2px] text-[#F0EDF8]">
                     37
                   </span>
-                  <sup
-                    style={{
-                      fontFamily: '"Literata", Georgia, serif',
-                      fontStyle: "italic",
-                      fontWeight: 400,
-                      fontSize: "0.8rem",
-                      color: "rgba(240,237,248,0.6)",
-                      verticalAlign: "super",
-                    }}
-                  >
-                    °N
-                  </sup>
+                  <sup className="font-display text-[0.8rem] font-normal not-italic text-[#F0EDF8]/60 align-super">°N</sup>
                 </div>
                 <div
-                  className="flex flex-col gap-0.5"
-                  style={{ borderLeft: "1px solid rgba(240,237,248,0.15)", paddingLeft: "10px" }}
+                  className="flex flex-col gap-0.5 border-l border-[#F0EDF8]/15 pl-2.5"
                 >
-                  <span
-                    style={{
-                      fontFamily: "Unbounded, sans-serif",
-                      fontWeight: 700,
-                      fontSize: "0.45rem",
-                      color: "#F0EDF8",
-                      letterSpacing: "2px",
-                    }}
-                  >
-                    ATHENS GUIDE
-                  </span>
-                  <span
-                    style={{
-                      fontFamily: "DM Sans, sans-serif",
-                      fontWeight: 300,
-                      fontSize: "0.42rem",
-                      color: "rgba(240,237,248,0.45)",
-                      letterSpacing: "1.5px",
-                      textTransform: "uppercase",
-                    }}
-                  >
+                  <span className="font-brand text-[0.45rem] font-bold tracking-[2px] text-[#F0EDF8]">ATHENS GUIDE</span>
+                  <span className="font-body text-[0.42rem] font-light uppercase tracking-[1.5px] text-[#F0EDF8]/45">
                     Cinema · Events · Culture
                   </span>
                 </div>

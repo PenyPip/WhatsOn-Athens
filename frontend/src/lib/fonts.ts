@@ -1,4 +1,4 @@
-import { DM_Sans, Literata, Unbounded } from "next/font/google";
+import { DM_Sans, Literata } from "next/font/google";
 
 export const dmSans = DM_Sans({
   subsets: ["latin", "latin-ext"],
@@ -10,21 +10,12 @@ export const dmSans = DM_Sans({
 });
 
 /** Headings — χωρίς preload (λιγότερα render-blocking). */
+/** Headings — μόνο 400 (μία woff2, λιγότερο blocking· bold via font-synthesis). */
 export const literata = Literata({
   subsets: ["latin", "latin-ext"],
   display: "swap",
   preload: false,
   adjustFontFallback: true,
   variable: "--font-literata",
-  weight: ["400", "700"],
-});
-
-/** Logo/nav — χωρίς preload (λιγότερο render-blocking στο κινητό). */
-export const unbounded = Unbounded({
-  subsets: ["latin", "latin-ext"],
-  display: "swap",
-  preload: false,
-  adjustFontFallback: true,
-  variable: "--font-unbounded",
-  weight: ["300", "700"],
+  weight: ["400"],
 });

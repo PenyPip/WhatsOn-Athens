@@ -40,6 +40,7 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         criticScore: m.criticScore,
         releaseDate: m.releaseDate,
         posterUrl: m.posterUrl,
+        posterSrcSet: m.posterSrcSet,
       })),
     );
   }

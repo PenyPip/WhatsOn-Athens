@@ -1,17 +1,12 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import { MapPin } from "lucide-react";
 import type { StrapiRestaurant } from "@/lib/api";
 
-const RestaurantCard = ({ restaurant, index = 0 }: { restaurant: StrapiRestaurant; index?: number }) => {
+const RestaurantCard = ({ restaurant }: { restaurant: StrapiRestaurant; index?: number }) => {
   const isNew = restaurant.isNew;
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.05 }}
-    >
+    <div>
       <Link
         to={`/dining/${restaurant.slug}`}
         className="group block card-elevated overflow-hidden"
@@ -45,7 +40,7 @@ const RestaurantCard = ({ restaurant, index = 0 }: { restaurant: StrapiRestauran
           </div>
         </div>
       </Link>
-    </motion.div>
+    </div>
   );
 };
 
