@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
 import { motion } from "framer-motion";
 import { ExternalLink, MapPin, SlidersHorizontal } from "lucide-react";
-import { Link, useSearchParams } from "react-router-dom";
+import { Link, Navigate, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
+import { truncateDescription } from "@/lib/siteMetadata";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
@@ -314,8 +316,11 @@ function SummerOutdoorToggle({
 }
 
 const Movies = () => {
+  const navigate = useNavigate();
+  const { venueSlug: routeVenueSlug } = useParams<{ venueSlug?: string }>();
   const [searchParams, setSearchParams] = useSearchParams();
-  const venueSlug = searchParams.get("venue")?.trim() || "";
+  const queryVenueSlug = searchParams.get("venue")?.trim() || "";
+  const venueSlug = (routeVenueSlug?.trim() || queryVenueSlug).trim();
   const rawArea = searchParams.get("area")?.trim().toLowerCase() ?? "";
   const areaFilter: AreaKey | null =
     rawArea === "athens" || rawArea === "thessaloniki" || rawArea === "other" ? rawArea : null;
@@ -328,16 +333,7 @@ const Movies = () => {
   const genreFilterSlug = rawGenre || null;
   const moviesSection = parseMoviesSectionParam(searchParams.get("section"));
 
-  const hasListFilters = Boolean(
-    venueSlug || areaFilter || districtFilter || genreFilterSlug || moviesSection,
-  );
-
-  usePageSeo({
-    ...staticPageSeo.movies,
-    canonicalPath: "/movies",
-    path: "/movies",
-    noIndex: hasListFilters,
-  });
+  const hasSecondaryFilters = Boolean(areaFilter || districtFilter || genreFilterSlug || moviesSection);
 
   const clearMoviesSectionParam = () => {
     const next = new URLSearchParams(searchParams);
@@ -411,12 +407,11 @@ const Movies = () => {
   };
 
   const setVenueParam = (slug: string | null) => {
-    const next = new URLSearchParams(searchParams);
-    next.delete("area");
-    next.delete("district");
-    if (slug) next.set("venue", slug);
-    else next.delete("venue");
-    setSearchParams(next);
+    if (slug) {
+      navigate(moviesVenueProgramPath(slug));
+      return;
+    }
+    navigate("/movies");
   };
 
   const setGenreParam = (slug: string | null) => {
@@ -640,6 +635,26 @@ const Movies = () => {
 
   function clearVenueFilter() {
     setVenueParam(null);
+  }
+
+  const venueProgramPath = venueFilter?.slug ? moviesVenueProgramPath(venueFilter.slug) : "/movies";
+
+  usePageSeo({
+    title: venueFilter ? `Πρόγραμμα — ${venueFilter.name}` : staticPageSeo.movies.title,
+    description: venueFilter
+      ? truncateDescription(
+          venueFilter.address?.trim()
+            ? `Πρόγραμμα ταινιών στο ${venueFilter.name} (${venueFilter.address.trim()}). Ώρες προβολών και αφίσες.`
+            : `Πρόγραμμα ταινιών στο ${venueFilter.name}. Ώρες προβολών, αφίσες και κράτηση.`,
+        )
+      : staticPageSeo.movies.description,
+    path: venueProgramPath,
+    canonicalPath: venueProgramPath,
+    noIndex: hasSecondaryFilters,
+  });
+
+  if (!routeVenueSlug && queryVenueSlug) {
+    return <Navigate to={moviesVenueProgramPath(queryVenueSlug)} replace />;
   }
 
   const needsVenueData = Boolean(venueSlug || areaFilter || districtFilter || summerOutdoorOnly || moviesSection === "summer");

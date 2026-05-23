@@ -24,6 +24,7 @@ import {
 import VenueCard from "@/components/VenueCard";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { siteSeo } from "@/lib/siteMetadata";
 
 /** Ορατό SEO κείμενο αρχικής — λέξεις-κλειδιά + περισσότερο κείμενο για crawlers. */
@@ -452,7 +453,7 @@ const Index = () => {
                                 variant="spotlight"
                                 layout="grid"
                                 compact
-                                moviesHref={`/movies?venue=${encodeURIComponent(venue.slug)}`}
+                                moviesHref={moviesVenueProgramPath(venue.slug)}
                               />
                             </motion.div>
                           </li>

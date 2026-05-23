@@ -25,6 +25,7 @@ function AppRoutes() {
     <Routes>
       <Route path="/" element={<Index />} />
       <Route path="/movies" element={<Movies />} />
+      <Route path="/movies/venue/:venueSlug" element={<Movies />} />
       <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
       <Route path="/theater" element={<TheaterPage />} />
       <Route path="/theater/:slug" element={<EventDetail type="theater" />} />

@@ -1,4 +1,5 @@
 import type { StrapiShowtime, StrapiVenue } from "@/lib/api";
+import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { isCinemaVenue } from "@/lib/venueType";
 
 /** Κανονικοποίηση ονόματος — ίδιο σινεμά αν υπάρχουν «Θερινό» / θερινό σινεμά κ.λπ. */
@@ -188,12 +189,12 @@ export function findVenueFromStableKey(
 export function moviesHrefForVenue(venue: StrapiVenue | undefined): string | undefined {
   if (!venue || !isCinemaVenue(venue)) return undefined;
   const slug = venue.slug?.trim();
-  return slug ? `/movies?venue=${encodeURIComponent(slug)}` : undefined;
+  return slug ? moviesVenueProgramPath(slug) : undefined;
 }
 
 function moviesHrefFromVenueSlug(slug: string | undefined): string | undefined {
   const s = slug?.trim();
-  return s ? `/movies?venue=${encodeURIComponent(s)}` : undefined;
+  return s ? moviesVenueProgramPath(s) : undefined;
 }
 
 /** Σύνδεσμος λίστας ταινιών για χώρο — δοκιμή από όλες τις προβολές της ομάδας. */

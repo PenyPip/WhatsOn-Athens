@@ -26,6 +26,11 @@ function matchReviewSlug(path: string): string | null {
   return m?.[1] ?? null;
 }
 
+function matchMoviesVenueSlug(path: string): string | null {
+  const m = path.match(/^\/movies\/venue\/([^/]+)$/);
+  return m?.[1] ?? null;
+}
+
 async function prefetchHomeBundle(qc: QueryClient) {
   await Promise.all([
     qc.prefetchQuery({ queryKey: ["homepage"], queryFn: api.getHomepage, ...queryDefaults }),
@@ -101,7 +106,7 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
 
     if (normalized === "/") {
       await prefetchHomeBundle(qc);
-    } else if (normalized === "/movies") {
+    } else if (normalized === "/movies" || matchMoviesVenueSlug(normalized)) {
       await prefetchMoviesList(qc);
     } else if (movieSlug) {
       await prefetchMovieDetail(qc, movieSlug);

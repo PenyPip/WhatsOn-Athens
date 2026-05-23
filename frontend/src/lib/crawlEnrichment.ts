@@ -76,7 +76,31 @@ export function crawlPosterForPath(path: string): string | undefined {
 }
 
 /** Τίτλος/περιγραφή από build enrichment (πιο ακριβή από slug → όνομα). */
+export function crawlVenueByProgramPath(path: string): CrawlVenue | null {
+  const slug = path.match(/^\/movies\/venue\/([^/]+)$/)?.[1];
+  if (!slug) return null;
+  try {
+    const decoded = decodeURIComponent(slug);
+    return crawlEnrichment.venues.find((v) => v.slug === decoded) ?? null;
+  } catch {
+    return crawlEnrichment.venues.find((v) => v.slug === slug) ?? null;
+  }
+}
+
 export function crawlSeoCopyForPath(path: string): { title: string; description: string } | null {
+  const venue = crawlVenueByProgramPath(path);
+  if (venue) {
+    const addr = venue.address?.trim();
+    return {
+      title: `Πρόγραμμα — ${venue.name}`,
+      description: truncateDescription(
+        addr
+          ? `Πρόγραμμα ταινιών στο ${venue.name} (${addr}). Ώρες προβολών, αφίσες και κράτηση.`
+          : `Πρόγραμμα ταινιών στο ${venue.name}. Ώρες προβολών, αφίσες και κράτηση.`,
+      ),
+    };
+  }
+
   const hit = crawlEntityByPath(path);
   if (!hit) return null;
 

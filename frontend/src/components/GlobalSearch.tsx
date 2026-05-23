@@ -105,7 +105,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     (slug: string) => {
       if (!slug?.trim()) return;
       onOpenChange(false);
-      navigate(`/movies?venue=${encodeURIComponent(slug.trim())}`);
+      navigate(`/movies/venue/${encodeURIComponent(slug.trim())}`);
     },
     [navigate, onOpenChange],
   );

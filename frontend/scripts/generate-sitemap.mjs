@@ -140,7 +140,7 @@ async function buildCrawlEnrichment() {
           name,
           address: pickString(a, "address") || undefined,
           googleMapsUrl: googleMapsUrl || undefined,
-          moviesHref: `/movies?venue=${encodeURIComponent(slug)}`,
+          moviesHref: `/movies/venue/${encodeURIComponent(slug)}`,
           venuesHref: "/venues",
         };
       })
@@ -308,12 +308,20 @@ async function main() {
     ...(await slugsFromApi("editorial-reviews", "/reviews")),
   ];
 
+  const crawlEnrichmentForSitemap = await buildCrawlEnrichment();
+  const venueProgramUrls = (crawlEnrichmentForSitemap.venues ?? []).map((v) => ({
+    path: `/movies/venue/${encodeURIComponent(v.slug)}`,
+    lastmod: new Date().toISOString().slice(0, 10),
+    priority: "0.85",
+    changefreq: "daily",
+  }));
+
   const staticWithDates = STATIC_ROUTES.map((r) => ({
     ...r,
     lastmod: new Date().toISOString().slice(0, 10),
   }));
 
-  const all = [...staticWithDates, ...dynamic];
+  const all = [...staticWithDates, ...dynamic, ...venueProgramUrls];
   const xml = buildXml(all);
   const robots = buildRobots();
 
@@ -330,7 +338,7 @@ async function main() {
     "utf8",
   );
 
-  const crawlEnrichment = await buildCrawlEnrichment();
+  const crawlEnrichment = crawlEnrichmentForSitemap;
   writeFileSync(
     join(generatedDir, "spa-crawl-enrichment.json"),
     `${JSON.stringify(crawlEnrichment, null, 2)}\n`,

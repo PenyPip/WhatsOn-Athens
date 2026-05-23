@@ -55,7 +55,7 @@ export function isTheaterVenue(venue: Pick<StrapiVenue, "type">): boolean {
 export function programHrefForVenue(venue: Pick<StrapiVenue, "slug" | "type">): string | undefined {
   const slug = venue.slug?.trim();
   if (!slug) return undefined;
-  if (venue.type === "cinema") return `/movies?venue=${encodeURIComponent(slug)}`;
+  if (venue.type === "cinema") return `/movies/venue/${encodeURIComponent(slug)}`;
   if (venue.type === "theater") return "/theater";
   return undefined;
 }

@@ -1,4 +1,4 @@
-import { crawlSeoCopyForPath } from "@/lib/crawlEnrichment";
+import { crawlSeoCopyForPath, crawlVenueByProgramPath } from "@/lib/crawlEnrichment";
 import { absolutePageUrl, resolvePublicAssetUrl, siteSeo, truncateDescription } from "@/lib/siteMetadata";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
@@ -119,6 +119,14 @@ function breadcrumbList(path: string, pageName: string): JsonLdNode {
       name: SECTION_LABELS[section] ?? slugToDisplayName(section),
       item: absolutePageUrl(`/${section}`),
     });
+  } else if (parts[0] === "movies" && parts[1] === "venue" && parts[2]) {
+    items.push({
+      "@type": "ListItem",
+      position: 2,
+      name: SECTION_LABELS.movies,
+      item: absolutePageUrl("/movies"),
+    });
+    items.push({ "@type": "ListItem", position: 3, name: pageName, item: pageUrl });
   } else {
     const section = parts[0];
     const sectionLabel = SECTION_LABELS[section] ?? slugToDisplayName(section);
@@ -140,7 +148,17 @@ function breadcrumbList(path: string, pageName: string): JsonLdNode {
 
 function entityNodeForPath(path: string, pageName: string, pageUrl: string): JsonLdNode | JsonLdNode[] | null {
   const parts = path.split("/").filter(Boolean);
-  if (parts[0] === "movies" && parts.length >= 2) {
+  if (parts[0] === "movies" && parts[1] === "venue" && parts[2]) {
+    const venue = crawlVenueByProgramPath(path);
+    return stripEmpty({
+      "@type": "MovieTheater",
+      "@id": `${pageUrl}#cinema`,
+      name: venue?.name ?? pageName.replace(/^Πρόγραμμα — /, ""),
+      url: pageUrl,
+      ...(venue?.address ? { address: { "@type": "PostalAddress", streetAddress: venue.address } } : {}),
+    });
+  }
+  if (parts[0] === "movies" && parts.length >= 2 && parts[1] !== "venue") {
     return [
       stripEmpty({
         "@type": "Movie",
