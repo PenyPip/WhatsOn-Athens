@@ -20,7 +20,7 @@ npm run lint
 
 Το `npm run build` τρέχει πρώτα `scripts/generate-sitemap.mjs` (δημιουργεί `public/sitemap.xml` και `public/robots.txt`). Για build σε Docker, βεβαιώσου ότι το Strapi είναι προσβάσιμο ή τρέξε `npm run sitemap` τοπικά πριν το build.
 
-**SEO / SSR στο build:** κάθε σελίδα από `app/[[...slug]]` κάνει prefetch Strapi + server-render του React Router app (`SpaRoot` με `MemoryRouter` → `BrowserRouter` μετά hydration). JSON-LD (`Organization`, `WebSite`, `WebPage`, …) και `generateMetadata` (canonical, Open Graph) μένουν server-side. Το `spa-crawl-enrichment.json` χρησιμοποιείται μόνο για sitemap· το `StaticCrawlShell` αφαιρέθηκε (διπλό περιεχόμενο).
+**SEO / SSR στο build:** κάθε σελίδα από `app/[[...slug]]` κάνει prefetch Strapi + server-render του React Router app (χωρίς lazy στις κύριες σελίδες — πλήρες HTML, όχι «Φόρτωση…»). `generateMetadata` + JSON-LD: canonical, Open Graph, **αφίσα entity** από `spa-crawl-enrichment.json` (τίτλοι/σύνοψη από Strapi στο `npm run build`). Απαιτείται προσβάσιμο Strapi κατά το build.
 
 **SEO client navigation:** το `usePageSeo` ενημερώνει title/description όταν αλλάζει route στο SPA (μετά το πρώτο load).
 

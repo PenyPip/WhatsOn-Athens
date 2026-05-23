@@ -1,3 +1,4 @@
+import { crawlSeoCopyForPath } from "@/lib/crawlEnrichment";
 import { absolutePageUrl, resolvePublicAssetUrl, siteSeo, truncateDescription } from "@/lib/siteMetadata";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
@@ -44,6 +45,9 @@ const SECTION_LABELS: Record<string, string> = {
 /** Τίτλος/περιγραφή για server metadata & WebPage name. */
 export function seoCopyForPath(path: string): { title: string; description: string } {
   const normalized = path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
+  const fromCrawl = crawlSeoCopyForPath(normalized);
+  if (fromCrawl) return fromCrawl;
+
   const staticByPath: Record<string, (typeof staticPageSeo)[keyof typeof staticPageSeo]> = {
     "/": staticPageSeo.home,
     "/movies": staticPageSeo.movies,

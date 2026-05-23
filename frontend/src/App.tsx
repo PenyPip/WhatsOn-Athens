@@ -1,43 +1,56 @@
 import { lazy, Suspense, useEffect, useState } from "react";
+import LoadingState from "@/components/LoadingState";
 import { BrowserRouter, MemoryRouter, Route, Routes } from "react-router-dom";
 import ScrollToTop from "@/components/ScrollToTop";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import Navbar from "@/components/Navbar";
 import CookieConsentBanner from "@/components/CookieConsentBanner";
-import LoadingState from "@/components/LoadingState";
 import Index from "./views/Index";
+import Movies from "./views/Movies";
+import TheaterPage from "./views/Theater";
+import EventDetail from "./views/EventDetail";
+import Venues from "./views/Venues";
+import Dining from "./views/Dining";
+import DiningDetail from "./views/DiningDetail";
+import Reviews from "./views/Reviews";
+import ReviewDetail from "./views/ReviewDetail";
+import Privacy from "./views/Privacy";
 
-const Movies = lazy(() => import("./views/Movies"));
-const TheaterPage = lazy(() => import("./views/Theater"));
-const EventDetail = lazy(() => import("./views/EventDetail"));
-const Venues = lazy(() => import("./views/Venues"));
-const Dining = lazy(() => import("./views/Dining"));
-const DiningDetail = lazy(() => import("./views/DiningDetail"));
-const Reviews = lazy(() => import("./views/Reviews"));
-const ReviewDetail = lazy(() => import("./views/ReviewDetail"));
+/** Χαμηλής SEO σημασίας — παραμένουν lazy. */
 const Profile = lazy(() => import("./views/Profile"));
 const NotFound = lazy(() => import("./views/NotFound"));
-const Privacy = lazy(() => import("./views/Privacy"));
 
 function AppRoutes() {
   return (
-    <Suspense fallback={<LoadingState message="Φόρτωση…" />}>
-      <Routes>
-        <Route path="/" element={<Index />} />
-        <Route path="/movies" element={<Movies />} />
-        <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
-        <Route path="/theater" element={<TheaterPage />} />
-        <Route path="/theater/:slug" element={<EventDetail type="theater" />} />
-        <Route path="/venues" element={<Venues />} />
-        <Route path="/dining" element={<Dining />} />
-        <Route path="/dining/:slug" element={<DiningDetail />} />
-        <Route path="/reviews" element={<Reviews />} />
-        <Route path="/reviews/:slug" element={<ReviewDetail />} />
-        <Route path="/profile" element={<Profile />} />
-        <Route path="/privacy" element={<Privacy />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
-    </Suspense>
+    <Routes>
+      <Route path="/" element={<Index />} />
+      <Route path="/movies" element={<Movies />} />
+      <Route path="/movies/:slug" element={<EventDetail type="movie" />} />
+      <Route path="/theater" element={<TheaterPage />} />
+      <Route path="/theater/:slug" element={<EventDetail type="theater" />} />
+      <Route path="/venues" element={<Venues />} />
+      <Route path="/dining" element={<Dining />} />
+      <Route path="/dining/:slug" element={<DiningDetail />} />
+      <Route path="/reviews" element={<Reviews />} />
+      <Route path="/reviews/:slug" element={<ReviewDetail />} />
+      <Route
+        path="/profile"
+        element={
+          <Suspense fallback={<LoadingState message="Φόρτωση…" />}>
+            <Profile />
+          </Suspense>
+        }
+      />
+      <Route path="/privacy" element={<Privacy />} />
+      <Route
+        path="*"
+        element={
+          <Suspense fallback={<LoadingState message="Φόρτωση…" />}>
+            <NotFound />
+          </Suspense>
+        }
+      />
+    </Routes>
   );
 }
 

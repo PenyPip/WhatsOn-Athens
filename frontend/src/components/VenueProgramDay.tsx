@@ -9,6 +9,9 @@ import {
 } from "@/lib/homeMovieFilters";
 import { movieTitleLines, posterAltForMovie } from "@/lib/movieTitles";
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
+import VenueBookingLink from "@/components/VenueBookingLink";
+import { isValidExternalUrl } from "@/lib/venueResolve";
+import type { StrapiVenue } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
 type ShowingSlot = { datetime: Date; hallName?: string; summerScreening?: boolean };
@@ -322,7 +325,13 @@ function VenueProgramCalendarWeek({ week, now }: { week: ProgramWeekGroup; now: 
 }
 
 /** Σελίδα προγράμματος χώρου: ταινίες πάνω, ημερολόγιο κάτω (Πέμπτη – Τετάρτη). */
-export default function VenueProgramLayout({ sections }: { sections: VenueProgramSection[] }) {
+export default function VenueProgramLayout({
+  sections,
+  venue,
+}: {
+  sections: VenueProgramSection[];
+  venue?: StrapiVenue;
+}) {
   const now = useMemo(() => new Date(), []);
 
   const { uniqueMovies, programWeeks } = useMemo(() => {
@@ -372,10 +381,15 @@ export default function VenueProgramLayout({ sections }: { sections: VenueProgra
       ) : null}
 
       {programWeeks.length > 0 ? (
-        <section className="space-y-5 md:space-y-6">
-          <div>
-            <h2 className="font-display text-lg font-semibold md:text-2xl">Πρόγραμμα</h2>
-            <p className="mt-1 text-sm text-muted-foreground">Εβδομαδιαίο ημερολόγιο προβολών</p>
+        <section id="venue-program" className="scroll-mt-28 space-y-5 md:space-y-6">
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div>
+              <h2 className="font-display text-lg font-semibold md:text-2xl">Πρόγραμμα</h2>
+              <p className="mt-1 text-sm text-muted-foreground">Εβδομαδιαίο ημερολόγιο προβολών</p>
+            </div>
+            {venue && isValidExternalUrl(venue.moreLink) ? (
+              <VenueBookingLink venue={venue} variant="button" className="shrink-0" />
+            ) : null}
           </div>
           {programWeeks.map((week) => (
             <VenueProgramCalendarWeek key={week.weekKey} week={week} now={now} />

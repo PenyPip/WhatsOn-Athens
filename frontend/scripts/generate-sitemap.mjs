@@ -70,12 +70,26 @@ function relationList(attrs, key) {
   return [];
 }
 
-/** Δεδομένα για StaticCrawlShell (crawlers χωρίς JS). */
+function strapiMediaUrl(media) {
+  if (!media) return undefined;
+  const data = media.data ?? media;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== "object") return undefined;
+  const attrs = row.attributes && typeof row.attributes === "object" ? row.attributes : row;
+  const url = typeof attrs.url === "string" ? attrs.url.trim() : "";
+  if (!url) return undefined;
+  if (url.startsWith("http://") || url.startsWith("https://")) return url;
+  return `${STRAPI_ORIGIN}${url.startsWith("/") ? url : `/${url}`}`;
+}
+
+const POSTER_POPULATE = "populate[poster][fields][0]=url";
+
+/** Δεδομένα build-time για metadata, JSON-LD και SSR SEO. */
 async function buildCrawlEnrichment() {
-  const empty = { genres: [], venues: [], movies: [] };
+  const empty = { genres: [], venues: [], movies: [], theaterShows: [], restaurants: [], reviews: [] };
 
   try {
-    const [genreRows, venueRows, movieRows] = await Promise.all([
+    const [genreRows, venueRows, movieRows, theaterRows, restaurantRows, reviewRows] = await Promise.all([
       fetchCollection("movie-genres", {
         extraFields: ["label", "sort_order"],
         sort: "sort_order:asc",
@@ -84,8 +98,20 @@ async function buildCrawlEnrichment() {
         extraFields: ["name", "address", "google_maps_url"],
       }),
       fetchCollection("movies", {
+        extraFields: ["title", "synopsis"],
+        populate: `${POSTER_POPULATE}&populate[movie_genres][fields][0]=slug&populate[movie_genres][fields][1]=label`,
+      }),
+      fetchCollection("theater-shows", {
+        extraFields: ["title", "synopsis"],
+        populate: POSTER_POPULATE,
+      }),
+      fetchCollection("restaurants", {
+        extraFields: ["name"],
+        populate: POSTER_POPULATE,
+      }),
+      fetchCollection("editorial-reviews", {
         extraFields: ["title"],
-        populate: "populate[movie_genres][fields][0]=slug&populate[movie_genres][fields][1]=label",
+        populate: POSTER_POPULATE,
       }),
     ]);
 
@@ -129,16 +155,63 @@ async function buildCrawlEnrichment() {
           .map((g) => pickSlug(g) || pickString(entryAttrs(g), "slug"))
           .filter(Boolean)
           .map((s) => s.toLowerCase());
+        const synopsis = pickString(a, "synopsis");
         return {
           path: `/movies/${encodeURIComponent(slug)}`,
           slug,
           title: pickString(a, "title") || slug,
           genreSlugs: [...new Set(genreSlugs)],
+          posterUrl: strapiMediaUrl(a.poster),
+          ...(synopsis ? { synopsis } : {}),
         };
       })
       .filter(Boolean);
 
-    return { genres, venues, movies };
+    const theaterShows = theaterRows
+      .map((row) => {
+        const a = entryAttrs(row);
+        const slug = pickSlug(row);
+        if (!slug) return null;
+        const synopsis = pickString(a, "synopsis");
+        return {
+          path: `/theater/${encodeURIComponent(slug)}`,
+          slug,
+          title: pickString(a, "title") || slug,
+          posterUrl: strapiMediaUrl(a.poster),
+          ...(synopsis ? { synopsis } : {}),
+        };
+      })
+      .filter(Boolean);
+
+    const restaurants = restaurantRows
+      .map((row) => {
+        const a = entryAttrs(row);
+        const slug = pickSlug(row);
+        if (!slug) return null;
+        return {
+          path: `/dining/${encodeURIComponent(slug)}`,
+          slug,
+          title: pickString(a, "name") || pickString(a, "title") || slug,
+          posterUrl: strapiMediaUrl(a.poster),
+        };
+      })
+      .filter(Boolean);
+
+    const reviews = reviewRows
+      .map((row) => {
+        const a = entryAttrs(row);
+        const slug = pickSlug(row);
+        if (!slug) return null;
+        return {
+          path: `/reviews/${encodeURIComponent(slug)}`,
+          slug,
+          title: pickString(a, "title") || slug,
+          posterUrl: strapiMediaUrl(a.poster),
+        };
+      })
+      .filter(Boolean);
+
+    return { genres, venues, movies, theaterShows, restaurants, reviews };
   } catch (err) {
     console.warn(`[sitemap] crawl enrichment: skip (${err.message})`);
     return empty;
@@ -267,7 +340,7 @@ async function main() {
   console.log(`[sitemap] Wrote ${all.length} URLs → public/sitemap.xml`);
   console.log(`[sitemap] ${spaSlugParams.length} SPA paths → src/generated/spa-static-paths.json`);
   console.log(
-    `[sitemap] crawl: ${crawlEnrichment.genres.length} genres, ${crawlEnrichment.venues.length} venues, ${crawlEnrichment.movies.length} movies → spa-crawl-enrichment.json`,
+    `[sitemap] crawl: ${crawlEnrichment.genres.length} genres, ${crawlEnrichment.venues.length} venues, ${crawlEnrichment.movies.length} movies, ${crawlEnrichment.theaterShows?.length ?? 0} theater, ${crawlEnrichment.restaurants?.length ?? 0} dining, ${crawlEnrichment.reviews?.length ?? 0} reviews → spa-crawl-enrichment.json`,
   );
   console.log(`[sitemap] robots.txt → Sitemap: ${SITE_URL}/sitemap.xml`);
 }

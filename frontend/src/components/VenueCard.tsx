@@ -1,8 +1,10 @@
-import { ChevronRight, ExternalLink, MapPin, Users } from "lucide-react";
+import { ExternalLink, MapPin, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import type { StrapiVenue } from "@/lib/api";
-import { programHrefForVenue, programLinkLabelForVenue, venueKindLabel } from "@/lib/venueType";
+import { programHrefForVenue, venueKindLabel } from "@/lib/venueType";
+import VenueBookingLink from "@/components/VenueBookingLink";
+import { isValidExternalUrl } from "@/lib/venueResolve";
 
 const cityLabels: Record<string, string> = {
   athens: "Αθήνα",
@@ -15,14 +17,14 @@ function cityLabel(v: StrapiVenue): string {
   return cityLabels[c] ?? v.city ?? "";
 }
 
+const actionBtnClass =
+  "inline-flex items-center gap-1.5 rounded-md border px-3 py-2 text-sm font-medium transition-colors";
+
 export interface VenueCardProps {
   venue: StrapiVenue;
-  /** Αν υπάρχει, κάθε χτύπημα στην κάρτα (εκτός από εξωτερικά links) οδηγεί στις ταινίες με φίλτρο χώρου. */
   moviesHref?: string;
   variant?: "page" | "spotlight";
-  /** Στη γραμμή carousel χρειάζεται σταθερό πλάτος· σε grid/grid-like γονέα χρησιμοποίησε `grid` για να γεμίζει το κελί. */
   layout?: "carousel" | "grid";
-  /** Πυκνότερη κάρτα (λιγότερο κενό, μικρότερα paddings)· χρήσιμο σε grid στην αρχική. */
   compact?: boolean;
   className?: string;
 }
@@ -36,7 +38,7 @@ const VenueCard = ({
   className,
 }: VenueCardProps) => {
   const programHref = moviesHref ?? programHrefForVenue(venue);
-  const programLabel = programLinkLabelForVenue(venue);
+  const programLabel = venue.type === "theater" ? "Παραστάσεις" : "Πρόγραμμα";
   const isSpotlight = variant === "spotlight";
   const headingClass = cn(
     "font-display font-semibold leading-snug",
@@ -50,106 +52,24 @@ const VenueCard = ({
   );
   const cityClass = cn(compact ? "text-[11px]" : "text-xs font-medium", isSpotlight ? "text-white/65" : "text-foreground");
 
-  const mainContent = (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div className={cn("flex items-start justify-between gap-2", compact ? "mb-2" : "mb-3")}>
-        <h3 className={headingClass}>{venue.name}</h3>
-        <div className="pointer-events-none flex flex-wrap justify-end gap-1.5 shrink-0">
-          {venueKindLabel(venue.type) ? (
-            <span
-              className={cn(
-                "px-2 py-0.5 text-[10px] uppercase tracking-wider rounded font-medium",
-                isSpotlight ? "border border-white/10 bg-black/35 text-white/90" : "bg-[#111111] text-white",
-              )}
-            >
-              {venueKindLabel(venue.type)}
-            </span>
-          ) : null}
-          {venue.summerOutdoor ? (
-            <span className="shrink-0 rounded bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#13143E]">
-              θερινό
-            </span>
-          ) : null}
-        </div>
-      </div>
-      <div className={cn(metaBodyClass, "pointer-events-none")}>
-        {venue.address ? (
-          <p className="flex items-start gap-2">
-            <MapPin className={cn("mt-0.5 h-3.5 w-3.5 flex-shrink-0", isSpotlight ? "text-white/40" : "text-muted-foreground")} />
-            <span>{venue.address}</span>
-          </p>
-        ) : null}
-        {venue.seatsTotal > 0 ? (
-          <p className="flex items-center gap-2">
-            <Users className="h-3.5 w-3.5 flex-shrink-0" />
-            {venue.seatsTotal} θέσεις
-          </p>
-        ) : null}
-        {cityLabel(venue) ? <p className={cityClass}>{cityLabel(venue)}</p> : null}
-      </div>
-      {programHref ? (
-        <p
-          className={cn(
-            "pointer-events-none mt-auto inline-flex items-center gap-0.5 font-medium leading-snug",
-            compact ? "pt-3 text-[11px]" : "pt-5 text-xs",
-            isSpotlight ? "text-amber-200/95" : "text-primary",
-          )}
-        >
-          {programLabel}
-          <ChevronRight className="h-3.5 w-3.5 shrink-0 opacity-90" aria-hidden />
-        </p>
-      ) : null}
-    </div>
+  const programBtnClass = cn(
+    actionBtnClass,
+    isSpotlight
+      ? "border-[#13143E]/35 bg-[#13143E]/90 font-semibold text-white hover:bg-[#13143E]"
+      : "border-[#13143E]/35 bg-[#13143E]/[0.06] font-semibold text-[#13143E] hover:bg-[#13143E]/10",
+    compact && "px-2.5 py-1.5 text-xs",
   );
 
-  const hasFooterLinks = Boolean(venue.moreLink || venue.googleMapsUrl);
+  const secondaryBtnClass = cn(
+    actionBtnClass,
+    isSpotlight
+      ? "border-white/15 text-white/80 hover:border-white/30 hover:bg-white/10"
+      : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground",
+    compact && "px-2.5 py-1.5 text-xs",
+  );
 
-  const footerOuter = hasFooterLinks ? (
-    <div
-      className={cn(
-        "relative z-[2] mt-auto flex shrink-0 flex-wrap border-t pointer-events-none",
-        compact ? "gap-1.5 pt-3" : "gap-2 pt-4",
-        isSpotlight ? "border-white/10" : "border-border",
-      )}
-    >
-      {venue.moreLink ? (
-        <a
-          href={venue.moreLink}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "pointer-events-auto inline-flex items-center gap-1.5 rounded-md border font-medium transition-colors",
-            compact ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm",
-            isSpotlight
-              ? "border-white/15 bg-white/5 text-white hover:border-white/30 hover:bg-white/10"
-              : "border-border bg-background text-foreground hover:border-foreground/40 hover:bg-secondary/80",
-          )}
-        >
-          Περισσότερα
-          <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
-        </a>
-      ) : null}
-      {venue.googleMapsUrl ? (
-        <a
-          href={venue.googleMapsUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "pointer-events-auto inline-flex items-center gap-1.5 rounded-md border transition-colors",
-            compact ? "px-2.5 py-1.5 text-xs" : "px-3 py-2 text-sm",
-            isSpotlight
-              ? "border-white/15 text-white/65 hover:border-white/30 hover:text-white"
-              : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground",
-          )}
-        >
-          Χάρτης
-          <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
-        </a>
-      ) : null}
-    </div>
-  ) : null;
+  const hasActions = Boolean(programHref || venue.moreLink || venue.googleMapsUrl);
 
-  /** Στο spotlight χωρίς `.card-elevated`. Στην προεπιλογή χρησιμοποιείται min ύψος carousel· σε compact/grid όχι. */
   const cardMinH = compact ? "" : "min-h-[296px]";
   const spotlightShell = cn(
     "relative flex h-full flex-col rounded-xl border text-left shadow-[0_4px_24px_rgba(0,0,0,0.2)] backdrop-blur-sm transition-[border-color,box-shadow]",
@@ -158,42 +78,7 @@ const VenueCard = ({
       : "border-white/12 bg-black/50 p-6 shadow-[0_8px_30px_rgba(0,0,0,0.25)]",
     !compact && cardMinH,
   );
-  const pageShell = cn(
-    "card-elevated relative flex h-full flex-col text-left transition-colors",
-    compact ? "p-4" : "p-6 min-h-[296px]",
-    programHref && "hover:border-primary/35",
-  );
-
-  const cardShell = (
-    <div
-      className={cn(
-        isSpotlight ? spotlightShell : pageShell,
-        className,
-      )}
-    >
-      {programHref ? (
-        <>
-          <Link
-            to={programHref}
-            className={cn(
-              "absolute inset-0 z-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-amber-400",
-              compact ? "rounded-xl" : "rounded-lg",
-            )}
-            aria-label={`${programLabel} — ${venue.name}`}
-          />
-          <div className="relative z-[1] flex min-h-0 flex-1 flex-col pointer-events-none">
-            {mainContent}
-          </div>
-          {footerOuter}
-        </>
-      ) : (
-        <>
-          <div className="flex min-h-0 flex-1 flex-col">{mainContent}</div>
-          {footerOuter}
-        </>
-      )}
-    </div>
-  );
+  const pageShell = cn("card-elevated relative flex h-full flex-col text-left transition-colors", compact ? "p-4" : "p-6 min-h-[296px]");
 
   return (
     <div
@@ -203,7 +88,83 @@ const VenueCard = ({
         programHref && layout === "grid" && "min-w-0 w-full",
       )}
     >
-      {cardShell}
+      <div className={cn(isSpotlight ? spotlightShell : pageShell, className)}>
+        <div className={cn("flex items-start justify-between gap-2", compact ? "mb-2" : "mb-3")}>
+          <h3 className={headingClass}>{venue.name}</h3>
+          <div className="flex flex-wrap justify-end gap-1.5 shrink-0">
+            {venueKindLabel(venue.type) ? (
+              <span
+                className={cn(
+                  "px-2 py-0.5 text-[10px] uppercase tracking-wider rounded font-medium",
+                  isSpotlight ? "border border-white/10 bg-black/35 text-white/90" : "bg-[#111111] text-white",
+                )}
+              >
+                {venueKindLabel(venue.type)}
+              </span>
+            ) : null}
+            {venue.summerOutdoor ? (
+              <span className="shrink-0 rounded bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#13143E]">
+                θερινό
+              </span>
+            ) : null}
+          </div>
+        </div>
+
+        <div className={cn(metaBodyClass, "flex min-h-0 flex-1 flex-col")}>
+          {venue.address ? (
+            <p className="flex items-start gap-2">
+              <MapPin className={cn("mt-0.5 h-3.5 w-3.5 flex-shrink-0", isSpotlight ? "text-white/40" : "text-muted-foreground")} />
+              <span>{venue.address}</span>
+            </p>
+          ) : null}
+          {venue.seatsTotal > 0 ? (
+            <p className="flex items-center gap-2">
+              <Users className="h-3.5 w-3.5 flex-shrink-0" />
+              {venue.seatsTotal} θέσεις
+            </p>
+          ) : null}
+          {cityLabel(venue) ? <p className={cityClass}>{cityLabel(venue)}</p> : null}
+        </div>
+
+        {hasActions ? (
+          <div
+            className={cn(
+              "mt-auto flex flex-wrap gap-2",
+              compact ? "pt-3" : "pt-4",
+              isSpotlight ? "border-t border-white/10 pt-4" : "border-t border-border pt-4",
+            )}
+          >
+            {programHref ? (
+              <Link to={programHref} className={programBtnClass}>
+                {programLabel}
+              </Link>
+            ) : null}
+            {isValidExternalUrl(venue.moreLink) ? (
+              <VenueBookingLink
+                venue={venue}
+                variant="button"
+                compact={compact}
+                className={cn(
+                  compact ? "px-2.5 py-1.5 text-xs" : undefined,
+                  isSpotlight && "border-white/20 bg-white/10 text-white hover:bg-white/20",
+                )}
+              />
+            ) : null}
+            {isValidExternalUrl(venue.googleMapsUrl) ? (
+              <a
+                href={venue.googleMapsUrl.trim()}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={secondaryBtnClass}
+              >
+                <MapPin className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                Χάρτης
+                <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
+              </a>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 };

@@ -681,6 +681,22 @@ const Movies = () => {
                     {venueCityLabel(venueFilter)}
                   </p>
                 ) : null}
+                {isValidExternalUrl(venueFilter.googleMapsUrl) ? (
+                  <div className="flex flex-wrap items-center gap-2 pt-2 pl-6 md:gap-3">
+                    {isValidExternalUrl(venueFilter.googleMapsUrl) ? (
+                      <a
+                        href={venueFilter.googleMapsUrl.trim()}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/25 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-white/40 hover:bg-white/10"
+                      >
+                        <MapPin className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
+                        Χάρτης
+                        <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
+                      </a>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             ) : null}
           </motion.div>
@@ -688,17 +704,6 @@ const Movies = () => {
       </div>
 
       <div className="container">
-        {venueFilter ? (
-          <div className="mb-5 md:mb-6">
-            <p className="text-sm font-medium text-muted-foreground md:text-base">Πρόγραμμα προβολών</p>
-            {isValidExternalUrl(venueFilter.moreLink) ? (
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <VenueBookingLink venue={venueFilter} variant="button" />
-              </div>
-            ) : null}
-          </div>
-        ) : null}
-
         {venueSlug && !venueFilter && !venuesLoading ? (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-950/[0.09] px-4 py-3.5 ring-1 ring-amber-600/18">
             <p className="text-sm text-amber-100/90">Ο σύνδεσμος χώρου δεν αντιστοιχεί σε καταχωρημένο venue.</p>
@@ -860,7 +865,7 @@ const Movies = () => {
         ) : (
           <div className="space-y-10">
             {venueFilter && groupedMovies.length > 0 ? (
-              <VenueProgramLayout sections={groupedMovies} />
+              <VenueProgramLayout sections={groupedMovies} venue={venueFilter} />
             ) : null}
             {!venueFilter
               ? groupedMovies.map((section) => (
