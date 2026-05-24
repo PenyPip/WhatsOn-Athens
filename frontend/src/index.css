@@ -128,6 +128,24 @@
     display: none;
   }
 
+  /**
+   * Radix dialog — κεντράρισμα viewport & z-index.
+   * Τα arbitrary Tailwind (top-[50%], z-[200], translate-y-[-50%]) δεν μπαίνουν στο purged bundle.
+   */
+  .ui-dialog-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+  }
+
+  .ui-dialog-content {
+    position: fixed;
+    left: 50%;
+    top: 50%;
+    z-index: 200;
+    transform: translate(-50%, -50%);
+  }
+
   /** Κάτω tab bar — σταθερό ύψος, χωρίς «μεγάλωμα» στο scroll (iOS viewport). */
   .mobile-bottom-nav {
     position: fixed;

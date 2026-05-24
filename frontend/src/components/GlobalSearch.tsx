@@ -1,14 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, Clapperboard, Loader2 } from "lucide-react";
-import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList, CommandShortcut } from "@/components/ui/command";
+import { Building2, Clapperboard, Loader2, Search } from "lucide-react";
 import { useMovies, useVenues, useShowtimes } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 import { venueKindLabel } from "@/lib/venueType";
 import { textMatchesSearch } from "@/lib/searchTokens";
+import { cn } from "@/lib/utils";
 
 function movieMatches(movie: StrapiMovie, q: string): boolean {
   return textMatchesSearch(movieTitlesSearchBlob(movie), q);
@@ -34,18 +43,31 @@ function cmpVenueNames(a: StrapiVenue, b: StrapiVenue): number {
 
 const CAP_EMPTY = 10;
 
-interface GlobalSearchProps {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-}
+export type NavSearchHandle = {
+  focus: () => void;
+};
 
-export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
+type NavSearchProps = {
+  className?: string;
+  inputClassName?: string;
+};
+
+export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function NavSearch(
+  { className = "", inputClassName = "" },
+  ref,
+) {
   const navigate = useNavigate();
+  const uid = useId();
+  const inputId = `nav-search-input${uid.replace(/:/g, "")}`;
+  const panelId = `nav-search-results${uid.replace(/:/g, "")}`;
+  const rootRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const [search, setSearch] = useState("");
+  const [panelOpen, setPanelOpen] = useState(false);
+
   const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies();
   const { data: showtimes } = useShowtimes();
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues();
-  const [search, setSearch] = useState("");
 
   const moviesEnriched = useMemo(
     () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
@@ -55,16 +77,28 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const loading = moviesLoading || venuesLoading;
   const listsError = moviesError || venuesError;
 
-  useEffect(() => {
-    if (!open) {
-      setSearch("");
-      return;
-    }
-    const id = window.requestAnimationFrame(() => {
+  const close = useCallback(() => {
+    setPanelOpen(false);
+    setSearch("");
+  }, []);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      setPanelOpen(true);
       inputRef.current?.focus({ preventScroll: true });
-    });
-    return () => window.cancelAnimationFrame(id);
-  }, [open]);
+    },
+  }));
+
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onPointerDown = (e: PointerEvent) => {
+      if (!rootRef.current?.contains(e.target as Node)) {
+        setPanelOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
+  }, [panelOpen]);
 
   const movieHits = useMemo(() => {
     const list = moviesEnriched ?? [];
@@ -86,131 +120,158 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
     return out.slice(0, 50);
   }, [venues, search]);
 
+  const hasHits = movieHits.length > 0 || venueHits.length > 0;
+  const showPanel = panelOpen;
+
   const runMovie = useCallback(
     (slug: string) => {
       if (!slug?.trim()) return;
-      onOpenChange(false);
+      close();
       navigate(`/movies/${slug.trim()}`);
     },
-    [navigate, onOpenChange],
+    [close, navigate],
   );
 
   const runVenue = useCallback(
     (slug: string) => {
       if (!slug?.trim()) return;
-      onOpenChange(false);
+      close();
       navigate(`/movies/venue/${encodeURIComponent(slug.trim())}`);
     },
-    [navigate, onOpenChange],
+    [close, navigate],
   );
 
+  const onInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      setPanelOpen(false);
+      inputRef.current?.blur();
+    }
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
-        className="overflow-hidden p-0 shadow-lg sm:max-w-lg"
-        onOpenAutoFocus={(e) => e.preventDefault()}
+    <div ref={rootRef} className={cn("relative min-w-0", className)}>
+      <label htmlFor={inputId} className="sr-only">
+        Αναζήτηση ταινίας ή χώρου
+      </label>
+      <div
+        className={cn(
+          "flex items-center gap-2 rounded-full border border-white/20 bg-black/25 text-white/70 transition",
+          "focus-within:border-white/35 focus-within:bg-black/35 focus-within:text-white",
+          inputClassName,
+        )}
       >
-        <DialogTitle className="sr-only">Αναζήτηση ταινιών και χώρων</DialogTitle>
-        <Command
-          shouldFilter={false}
-          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
+        <Search className="ml-3 h-4 w-4 shrink-0 opacity-70" aria-hidden />
+        <input
+          id={inputId}
+          ref={inputRef}
+          type="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onFocus={() => setPanelOpen(true)}
+          onKeyDown={onInputKeyDown}
+          placeholder="Ταινίες, χώροι…"
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          role="combobox"
+          aria-expanded={showPanel}
+          aria-controls={showPanel ? panelId : undefined}
+          aria-autocomplete="list"
+          className="min-w-0 flex-1 bg-transparent font-body text-white/90 outline-none placeholder:text-white/55"
+        />
+        <kbd className="mr-3 hidden shrink-0 rounded border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/45 lg:inline">
+          ⌘K
+        </kbd>
+      </div>
+
+      {showPanel ? (
+        <div
+          id={panelId}
+          role="listbox"
+          className="absolute left-0 right-0 top-[calc(100%+6px)] z-[70] max-h-[min(420px,60vh)] overflow-y-auto rounded-xl border border-white/15 bg-[#1a1b3a] py-2 text-[#F0EDF8] shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
         >
-          <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
-            <label htmlFor="global-search-input" className="sr-only">
-              Αναζήτηση ταινίας ή χώρου
-            </label>
-            <svg
-              className="mr-2 h-4 w-4 shrink-0 opacity-50"
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              aria-hidden
-            >
-              <circle cx="11" cy="11" r="8" />
-              <path d="m21 21-4.3-4.3" />
-            </svg>
-            <input
-              id="global-search-input"
-              ref={inputRef}
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Αναζήτηση ταινίας ή χώρου…"
-              autoComplete="off"
-              autoCorrect="off"
-              spellCheck={false}
-              className="flex h-12 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
           {loading ? (
-            <div className="flex items-center gap-2 border-b px-4 py-8 text-sm text-muted-foreground">
+            <div className="flex items-center gap-2 px-4 py-6 text-sm text-white/60">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Φόρτωση λιστών…
+              Φόρτωση…
             </div>
           ) : listsError ? (
-            <div className="border-b px-4 py-8 text-sm leading-relaxed text-destructive">
-              Δεν ήταν δυνατή η φόρτωση των λιστών για αναζήτηση (ταινίες / χώροι). Έλεγξε αν ο server Strapi ανταποκρίνεται και αν το όνομα διακομιστή επιτρέπει τις διαδρομές API.
-            </div>
+            <p className="px-4 py-6 text-sm leading-relaxed text-red-300">
+              Δεν ήταν δυνατή η φόρτωση των λιστών. Έλεγξε αν ο Strapi server ανταποκρίνεται.
+            </p>
+          ) : !hasHits ? (
+            <p className="px-4 py-6 text-sm text-white/55">Δεν βρέθηκαν αποτελέσματα.</p>
           ) : (
-            <CommandList className="max-h-[min(420px,60vh)]">
-              <CommandEmpty>Δεν βρέθηκαν αποτελέσματα.</CommandEmpty>
+            <>
               {movieHits.length > 0 ? (
-                <CommandGroup heading="Ταινίες">
-                  {movieHits.map((m) => {
-                    const tl = movieTitleLines(m);
-                    return (
-                    <CommandItem
-                      key={`movie-${m.id}`}
-                      value={`movie-${m.id}-${m.slug ?? ""}-${tl.primary}-${tl.secondary ?? ""}`}
-                      keywords={[movieTitlesSearchBlob(m), m.director ?? "", m.genre ?? "", m.slug ?? ""].filter(Boolean)}
-                      onSelect={() => runMovie(m.slug ?? "")}
-                      className="gap-3"
-                    >
-                      <Clapperboard className="shrink-0 text-muted-foreground" aria-hidden />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{tl.primary || "Τίτλος"}</span>
-                        {tl.secondary ? (
-                          <span className="block truncate text-xs text-muted-foreground">{tl.secondary}</span>
-                        ) : null}
-                        {(m.director || m.genre) && (
-                          <span className="block truncate text-xs text-muted-foreground mt-0.5">
-                            {[m.director, m.genre].filter(Boolean).join(" · ")}
-                          </span>
-                        )}
-                      </span>
-                      <CommandShortcut className="hidden sm:inline opacity-70">Ταινία</CommandShortcut>
-                    </CommandItem>
-                  );})}
-                </CommandGroup>
+                <section className="px-2 pb-1">
+                  <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">Ταινίες</p>
+                  <ul>
+                    {movieHits.map((m) => {
+                      const tl = movieTitleLines(m);
+                      return (
+                        <li key={`movie-${m.id}`}>
+                          <button
+                            type="button"
+                            role="option"
+                            className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => runMovie(m.slug ?? "")}
+                          >
+                            <Clapperboard className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
+                            <span className="min-w-0 flex-1">
+                              <span className="block truncate font-medium">{tl.primary || "Τίτλος"}</span>
+                              {tl.secondary ? (
+                                <span className="block truncate text-xs text-white/50">{tl.secondary}</span>
+                              ) : null}
+                              {(m.director || m.genre) && (
+                                <span className="mt-0.5 block truncate text-xs text-white/45">
+                                  {[m.director, m.genre].filter(Boolean).join(" · ")}
+                                </span>
+                              )}
+                            </span>
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </section>
               ) : null}
               {venueHits.length > 0 ? (
-                <CommandGroup heading="Χώροι προβολής">
-                  {venueHits.map((v) => (
-                    <CommandItem
-                      key={`venue-${v.id}`}
-                      value={`venue-${v.id}-${v.slug ?? ""}-${v.name ?? ""}`}
-                      keywords={[v.name ?? "", v.slug ?? "", v.address ?? "", venueKindLabel(v.type), v.city ?? ""].filter(Boolean)}
-                      onSelect={() => runVenue(v.slug ?? "")}
-                      className="gap-3"
-                    >
-                      <Building2 className="shrink-0 text-muted-foreground" aria-hidden />
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate font-medium">{v.name || "Χώρος"}</span>
-                        {v.city || v.address ? (
-                          <span className="block truncate text-xs text-muted-foreground">{[v.address, v.city].filter(Boolean).join(" · ")}</span>
-                        ) : null}
-                      </span>
-                      <CommandShortcut className="hidden sm:inline opacity-70">Ταινίες εδώ</CommandShortcut>
-                    </CommandItem>
-                  ))}
-                </CommandGroup>
+                <section className="px-2">
+                  <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">
+                    Χώροι προβολής
+                  </p>
+                  <ul>
+                    {venueHits.map((v) => (
+                      <li key={`venue-${v.id}`}>
+                        <button
+                          type="button"
+                          role="option"
+                          className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => runVenue(v.slug ?? "")}
+                        >
+                          <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium">{v.name || "Χώρος"}</span>
+                            {v.city || v.address ? (
+                              <span className="block truncate text-xs text-white/50">
+                                {[v.address, v.city].filter(Boolean).join(" · ")}
+                              </span>
+                            ) : null}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               ) : null}
-            </CommandList>
+            </>
           )}
-        </Command>
-      </DialogContent>
-    </Dialog>
+        </div>
+      ) : null}
+    </div>
   );
-}
+});

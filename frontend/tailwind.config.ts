@@ -14,6 +14,18 @@ export default {
     "./src/components/ui/select.tsx",
   ],
   prefix: "",
+  /** Dialog/alert: arbitrary top/z/translate δεν σκανάρονται πάντα — κρατάμε και τα standard. */
+  safelist: [
+    "top-1/2",
+    "left-1/2",
+    "-translate-x-1/2",
+    "-translate-y-1/2",
+    "top-[50%]",
+    "left-[50%]",
+    "translate-x-[-50%]",
+    "translate-y-[-50%]",
+    "z-[200]",
+  ],
   theme: {
     container: {
       center: true,

@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Film, Theater, UtensilsCrossed, Building2, User, Search } from "lucide-react";
+import { Film, Theater, UtensilsCrossed, Building2, User } from "lucide-react";
 import { useGlobalSearchShortcut } from "@/hooks/globalSearchShortcut";
-import { GlobalSearch } from "@/components/GlobalSearch";
+import { NavSearch, type NavSearchHandle } from "@/components/GlobalSearch";
 import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 
 const NAV_GRADIENT =
@@ -52,30 +52,17 @@ function BrandLogo({ compact = false }: { compact?: boolean }) {
   );
 }
 
-function NavSearchTrigger({
-  onClick,
-  className = "",
-}: {
-  onClick: () => void;
-  className?: string;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-label="Άνοιγμα αναζήτησης ταινιών και χώρων"
-      className={`flex cursor-pointer items-center gap-2 rounded-full border border-white/20 bg-black/25 text-left text-white/70 transition hover:border-white/35 hover:bg-black/35 hover:text-white ${className}`}
-    >
-      <Search className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-      <span className="min-w-0 flex-1 truncate font-body text-white/75">Ταινίες, χώροι…</span>
-    </button>
-  );
-}
-
 const Navbar = () => {
   const location = useLocation();
-  const [searchOpen, setSearchOpen] = useState(false);
-  useGlobalSearchShortcut(setSearchOpen);
+  const mobileSearchRef = useRef<NavSearchHandle>(null);
+  const desktopSearchRef = useRef<NavSearchHandle>(null);
+
+  const focusNavSearch = () => {
+    const desktop = window.matchMedia("(min-width: 768px)").matches;
+    (desktop ? desktopSearchRef : mobileSearchRef).current?.focus();
+  };
+
+  useGlobalSearchShortcut(focusNavSearch);
 
   const links = [
     { to: "/", label: "Αρχική" },
@@ -96,15 +83,17 @@ const Navbar = () => {
 
   return (
     <>
-      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-
       <nav
         className="fixed top-0 left-0 right-0 z-[60] border-b md:hidden"
         style={{ background: NAV_GRADIENT, borderColor: "rgba(141,47,143,0.35)" }}
       >
         <div className="container flex min-h-14 items-center gap-2.5 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <BrandLogo compact />
-          <NavSearchTrigger onClick={() => setSearchOpen(true)} className="h-9 min-w-0 flex-1 px-3 text-xs" />
+          <NavSearch
+            ref={mobileSearchRef}
+            className="min-w-0 flex-1"
+            inputClassName="h-9 text-xs"
+          />
         </div>
       </nav>
 
@@ -113,7 +102,11 @@ const Navbar = () => {
           <BrandLogo />
 
           <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex">
-            <NavSearchTrigger onClick={() => setSearchOpen(true)} className="h-11 w-full max-w-md px-4 text-sm" />
+            <NavSearch
+              ref={desktopSearchRef}
+              className="w-full max-w-md"
+              inputClassName="h-11 text-sm"
+            />
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-4 md:contents">
