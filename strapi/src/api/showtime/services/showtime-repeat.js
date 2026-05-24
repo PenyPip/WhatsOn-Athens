@@ -1,23 +1,58 @@
 'use strict';
 
-const MS_DAY = 24 * 60 * 60 * 1000;
+const ATHENS_TZ = 'Europe/Athens';
 
-function toUtcDateOnly(value) {
+/** YYYY-MM-DD στην τοπική ημερολογιακή ζώνη Αθήνας. */
+function athensDateKey(value) {
   if (!value) return null;
+  if (typeof value === 'string') {
+    const s = value.trim();
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+  }
   const d = value instanceof Date ? value : new Date(value);
   if (Number.isNaN(d.getTime())) return null;
-  return Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  return new Intl.DateTimeFormat('en-CA', { timeZone: ATHENS_TZ }).format(d);
 }
 
-function datetimeOnDay(dayUtc, template) {
-  const t = template instanceof Date ? template : new Date(template);
-  return new Date(
-    dayUtc +
-      (t.getUTCHours() * 3600000 +
-        t.getUTCMinutes() * 60000 +
-        t.getUTCSeconds() * 1000 +
-        t.getUTCMilliseconds()),
-  );
+function athensTimeParts(template) {
+  const d = template instanceof Date ? template : new Date(template);
+  if (Number.isNaN(d.getTime())) return { hour: 0, minute: 0, second: 0 };
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: ATHENS_TZ,
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  }).formatToParts(d);
+  const pick = (type) => Number(parts.find((p) => p.type === type)?.value ?? 0);
+  return { hour: pick('hour'), minute: pick('minute'), second: pick('second') };
+}
+
+/** UTC Date όταν στην Αθήνα είναι dateKey + ώρα από template. */
+function datetimeOnAthensDay(dateKey, template) {
+  const [y, m, d] = dateKey.split('-').map(Number);
+  const { hour, minute, second } = athensTimeParts(template);
+  const utcGuess = Date.UTC(y, m - 1, d, hour, minute, second);
+  const inv = new Date(utcGuess).toLocaleString('en-US', { timeZone: 'UTC' });
+  const loc = new Date(utcGuess).toLocaleString('en-US', { timeZone: ATHENS_TZ });
+  const offset = new Date(inv).getTime() - new Date(loc).getTime();
+  return new Date(utcGuess + offset);
+}
+
+function addDaysToDateKey(key, days) {
+  const [y, m, d] = key.split('-').map(Number);
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, '0')}-${String(dt.getUTCDate()).padStart(2, '0')}`;
+}
+
+function* eachDateKeyInclusive(startKey, endKey) {
+  if (!startKey || !endKey || startKey > endKey) return;
+  let cur = startKey;
+  for (;;) {
+    yield cur;
+    if (cur === endKey) break;
+    cur = addDaysToDateKey(cur, 1);
+  }
 }
 
 function relationId(rel) {
@@ -41,14 +76,14 @@ function relationId(rel) {
   return null;
 }
 
-/** Set με UTC-midnight timestamps από repeatable component. */
+/** Set με YYYY-MM-DD (Αθήνα) από repeatable component. */
 function parseSkipDays(raw) {
   const set = new Set();
   if (!Array.isArray(raw)) return set;
   for (const item of raw) {
     const d = item?.day ?? item?.attributes?.day;
-    const ms = toUtcDateOnly(d);
-    if (ms != null) set.add(ms);
+    const key = athensDateKey(d);
+    if (key != null) set.add(key);
   }
   return set;
 }
@@ -76,8 +111,8 @@ async function showtimeExistsAt(strapi, { movieId, venueId, datetime }) {
   return rows.length > 0;
 }
 
-async function deleteShowtimesOnDay(strapi, { movieId, venueId, dayUtc, templateDatetime, keepId }) {
-  const dt = datetimeOnDay(dayUtc, templateDatetime);
+async function deleteShowtimesOnDay(strapi, { movieId, venueId, dateKey, templateDatetime, keepId }) {
+  const dt = datetimeOnAthensDay(dateKey, templateDatetime);
   const t = dt.getTime();
   const rows = await strapi.entityService.findMany('api::showtime.showtime', {
     filters: {
@@ -100,16 +135,16 @@ async function deleteShowtimesOnDay(strapi, { movieId, venueId, dayUtc, template
   return removed;
 }
 
-async function applySkipDaysInRange(strapi, row, showtimeId, startMs, endMs, skipDays) {
+async function applySkipDaysInRange(strapi, row, showtimeId, startKey, endKey, skipDays) {
   let removed = 0;
-  for (const day of skipDays) {
-    if (day < startMs || day > endMs) continue;
+  for (const dayKey of skipDays) {
+    if (dayKey < startKey || dayKey > endKey) continue;
     removed += await deleteShowtimesOnDay(strapi, {
       movieId: relationId(row.movie),
       venueId: relationId(row.venue),
-      dayUtc: day,
+      dateKey: dayKey,
       templateDatetime: row.datetime,
-      keepId: day === startMs ? showtimeId : null,
+      keepId: dayKey === startKey ? showtimeId : null,
     });
   }
   return removed;
@@ -142,8 +177,8 @@ async function expandRepeatShowtimes(strapi, showtimeId, trigger = 'expand') {
     return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'nothing_to_do' };
   }
 
-  const startMs = toUtcDateOnly(row.datetime);
-  if (startMs == null) {
+  const startKey = athensDateKey(row.datetime);
+  if (startKey == null) {
     await clearRepeatHelpers(strapi, showtimeId);
     return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'invalid_start' };
   }
@@ -156,13 +191,13 @@ async function expandRepeatShowtimes(strapi, showtimeId, trigger = 'expand') {
     return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'missing_relations' };
   }
 
-  let endMs = hasUntil ? toUtcDateOnly(row.repeat_until) : startMs;
-  if (hasUntil && endMs == null) {
+  const endKey = hasUntil ? athensDateKey(row.repeat_until) : startKey;
+  if (hasUntil && endKey == null) {
     await clearRepeatHelpers(strapi, showtimeId);
     return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'invalid_end' };
   }
 
-  if (hasUntil && endMs < startMs) {
+  if (hasUntil && endKey < startKey) {
     strapi.log.warn(`[showtime repeat] ${trigger} id=${showtimeId}: repeat_until πριν την έναρξη.`);
     await clearRepeatHelpers(strapi, showtimeId);
     return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'end_before_start' };
@@ -170,13 +205,13 @@ async function expandRepeatShowtimes(strapi, showtimeId, trigger = 'expand') {
 
   if (!hasUntil && hasSkips) {
     let removed = 0;
-    for (const day of skipDays) {
+    for (const dayKey of skipDays) {
       removed += await deleteShowtimesOnDay(strapi, {
         movieId,
         venueId,
-        dayUtc: day,
+        dateKey: dayKey,
         templateDatetime: row.datetime,
-        keepId: day === startMs ? showtimeId : null,
+        keepId: dayKey === startKey ? showtimeId : null,
       });
     }
     await clearRepeatHelpers(strapi, showtimeId);
@@ -189,6 +224,7 @@ async function expandRepeatShowtimes(strapi, showtimeId, trigger = 'expand') {
   const baseData = {
     movie: movieId,
     venue: venueId,
+    schedule_kind: 'exact',
     available_seats: row.available_seats ?? null,
     price: row.price ?? null,
     summer_screening: Boolean(row.summer_screening),
@@ -201,23 +237,27 @@ async function expandRepeatShowtimes(strapi, showtimeId, trigger = 'expand') {
   let skipped = 0;
   let excluded = 0;
 
-  for (let day = startMs + MS_DAY; day <= endMs; day += MS_DAY) {
-    if (skipDays.has(day)) {
+  for (const dayKey of eachDateKeyInclusive(startKey, endKey)) {
+    if (dayKey === startKey) continue;
+
+    if (skipDays.has(dayKey)) {
       excluded += 1;
       await deleteShowtimesOnDay(strapi, {
         movieId,
         venueId,
-        dayUtc: day,
+        dateKey: dayKey,
         templateDatetime: row.datetime,
         keepId: null,
       });
       continue;
     }
-    const dt = datetimeOnDay(day, row.datetime);
+
+    const dt = datetimeOnAthensDay(dayKey, row.datetime);
     if (await showtimeExistsAt(strapi, { movieId, venueId, datetime: dt })) {
       skipped += 1;
       continue;
     }
+
     await strapi.entityService.create('api::showtime.showtime', {
       data: { ...baseData, datetime: dt.toISOString() },
     });
@@ -225,13 +265,13 @@ async function expandRepeatShowtimes(strapi, showtimeId, trigger = 'expand') {
   }
 
   if (hasSkips) {
-    removed += await applySkipDaysInRange(strapi, row, showtimeId, startMs, endMs, skipDays);
+    removed += await applySkipDaysInRange(strapi, row, showtimeId, startKey, endKey, skipDays);
   }
 
   await clearRepeatHelpers(strapi, showtimeId);
 
   strapi.log.info(
-    `[showtime repeat] ${trigger} id=${showtimeId}: +${created} προβολές, ${skipped} υπήρχαν, ${excluded} εξαιρέσεις, ${removed} διαγράφηκαν (${new Date(startMs).toISOString().slice(0, 10)} → ${new Date(endMs).toISOString().slice(0, 10)})`,
+    `[showtime repeat] ${trigger} id=${showtimeId}: +${created} προβολές, ${skipped} υπήρχαν, ${excluded} εξαιρέσεις, ${removed} διαγράφηκαν (${startKey} → ${endKey})`,
   );
 
   return { created, skipped, excluded, removed, reason: 'ok' };

@@ -11,10 +11,13 @@ function applyScheduleRules(data) {
   const kind = normalizeScheduleKind(data.schedule_kind);
   data.schedule_kind = kind;
   if (kind === 'week_block') {
+    if (data.repeat_until && !data.week_end) {
+      data.week_end = data.repeat_until;
+    }
     data.repeat_until = null;
     data.repeat_skip_days = [];
     if (!data.week_end) {
-      throw new Error('Για «Ολόκληρη εβδομάδα» συμπλήρωσε «Τέλος εβδομάδας» (week_end).');
+      throw new Error('Για «Ολόκληρη εβδομάδα» συμπλήρωσε «Τέλος εβδομάδας» (week_end) ή «Repeat until».');
     }
   }
 }

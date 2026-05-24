@@ -35,6 +35,7 @@ import { movieTitleLines } from "@/lib/movieTitles";
 import { cn } from "@/lib/utils";
 import { isCinemaVenue } from "@/lib/venueType";
 import {
+  eachDayInclusiveInRange,
   formatShowtimeWeekRangeLabel,
   showtimeIsWeekBlock,
   showtimeWeekRange,
@@ -237,6 +238,12 @@ function appendWeekBlockSlot(
   const existing = block.slots.find((s) => s.timesTba && s.weekRangeLabel === label);
   if (existing) {
     if (summerScreening) existing.summerScreening = true;
+    if (range.end.getTime() > (existing.weekRangeEnd?.getTime() ?? 0)) {
+      existing.weekRangeEnd = range.end;
+    }
+    if (range.start.getTime() < existing.datetime.getTime()) {
+      existing.datetime = range.start;
+    }
     return;
   }
   block.slots.push({
@@ -288,6 +295,21 @@ function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
   for (const b of showings) {
     const slots = [...b.slots].sort((x, y) => x.datetime.getTime() - y.datetime.getTime());
     for (const slot of slots) {
+      if (slot.timesTba && slot.weekRangeEnd) {
+        for (const day of eachDayInclusiveInRange(slot.datetime, slot.weekRangeEnd)) {
+          rows.push({
+            key: `${b.key}-tba-${day.getTime()}-${slot.hallName ?? ""}`,
+            venueKey: b.key,
+            venueLabel: b.venueLabel,
+            datetime: day,
+            hallName: slot.hallName,
+            summerScreening: slot.summerScreening,
+            timesTba: true,
+            weekRangeLabel: slot.weekRangeLabel,
+          });
+        }
+        continue;
+      }
       rows.push({
         key: `${b.key}-${slot.timesTba ? `tba-${slot.weekRangeLabel}` : slot.datetime.getTime()}-${slot.hallName ?? ""}`,
         venueKey: b.key,
