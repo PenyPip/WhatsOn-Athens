@@ -2,6 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useMemo, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Clock, Globe, Users, ArrowLeft, MapPin, Play } from "lucide-react";
+import SharePageButton from "@/components/SharePageButton";
 import { Button } from "@/components/ui/button";
 import {
   useMovies,
@@ -26,6 +27,7 @@ import {
 } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import { showtimeIsUpcoming, showtimeShowsOutdoorLabel, enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
+import { formatShowtimeWeekRangeLabel, showtimeIsWeekBlock } from "@/lib/showtimeSchedule";
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
@@ -48,6 +50,24 @@ import {
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
 function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; emphasized?: boolean }) {
+  if (showtimeIsWeekBlock(st)) {
+    const weekLabel = formatShowtimeWeekRangeLabel(st);
+    return (
+      <li
+        className={cn(
+          "flex flex-col gap-0.5 border-b border-border/80 last:border-0",
+          emphasized ? "py-3 text-sm sm:py-3.5" : "py-3.5 text-sm",
+        )}
+      >
+        <p className="font-medium text-foreground">
+          {weekLabel ?? "Εβδομάδα προβολών"}
+          <span className="text-muted-foreground"> · ώρες σύντομα</span>
+        </p>
+        {st.hallName ? <p className="text-muted-foreground">Αίθουσα · {st.hallName}</p> : null}
+      </li>
+    );
+  }
+
   const d = new Date(st.datetime);
   const priceLabel =
     st.price != null
@@ -551,6 +571,18 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   <Play className="h-4 w-4 shrink-0" aria-hidden />
                   Τρέιλερ
                 </a>
+              ) : null}
+              {isMovie && slug ? (
+                <SharePageButton
+                  variant="hero"
+                  path={`/movies/${slug}`}
+                  title={headline.primary}
+                  shareText={
+                    headline.secondary
+                      ? `«${headline.primary}» (${headline.secondary}) — προβολές στο 37Ν`
+                      : `«${headline.primary}» — προβολές στο 37Ν`
+                  }
+                />
               ) : null}
             </div>
           </motion.div>

@@ -654,7 +654,7 @@ export interface ApiRestaurantRestaurant extends Schema.CollectionType {
 export interface ApiShowtimeShowtime extends Schema.CollectionType {
   collectionName: 'showtimes';
   info: {
-    description: '\u039C\u03AF\u03B1 \u03C0\u03C1\u03BF\u03B2\u03BF\u03BB\u03AE = \u03AD\u03BD\u03B1 \u03C3\u03B9\u03BD\u03B5\u03BC\u03AC + \u03BC\u03AF\u03B1 \u03B7\u03BC\u03B5\u03C1\u03BF\u03BC\u03B7\u03BD\u03AF\u03B1/\u03CE\u03C1\u03B1. \u0395\u03C0\u03B1\u03BD\u03AC\u03BB\u03B7\u03C8\u03B7 \u03AD\u03C9\u03C2 + \u03C0\u03C1\u03BF\u03B1\u03B9\u03C1\u03B5\u03C4\u03B9\u03BA\u03AD\u03C2 \u00AB\u0397\u03BC\u03AD\u03C1\u03B5\u03C2 \u03B5\u03BE\u03B1\u03AF\u03C1\u03B5\u03C3\u03B7\u03C2\u00BB \u03B3\u03B9\u03B1 \u03BD\u03B1 \u03BA\u03CC\u03B2\u03B5\u03B9\u03C2 \u03B5\u03BD\u03B4\u03B9\u03AC\u03BC\u03B5\u03C3\u03B5\u03C2 \u03BC\u03AD\u03C1\u03B5\u03C2.';
+    description: '\u039C\u03AF\u03B1 \u03C0\u03C1\u03BF\u03B2\u03BF\u03BB\u03AE = \u03AD\u03BD\u03B1 \u03C3\u03B9\u03BD\u03B5\u03BC\u03AC + \u03C7\u03CE\u03C1\u03BF\u03C2. \u0395\u03AF\u03B4\u03BF\u03C2 \u00AB\u0391\u03BA\u03C1\u03B9\u03B2\u03B5\u03AF\u03C2 \u03CE\u03C1\u03B5\u03C2\u00BB \u03AE \u00AB\u039F\u03BB\u03CC\u03BA\u03BB\u03B7\u03C1\u03B7 \u03B5\u03B2\u03B4\u03BF\u03BC\u03AC\u03B4\u03B1 (\u03C7\u03C9\u03C1\u03AF\u03C2 \u03CE\u03C1\u03B5\u03C2)\u00BB.';
     displayName: '\u03A0\u03C1\u03BF\u03B2\u03BF\u03BB\u03AE \u03C4\u03B1\u03B9\u03BD\u03AF\u03B1\u03C2';
     pluralName: 'showtimes';
     singularName: 'showtime';
@@ -682,6 +682,9 @@ export interface ApiShowtimeShowtime extends Schema.CollectionType {
     price: Attribute.Decimal;
     repeat_skip_days: Attribute.Component<'scheduling.skip-day', true>;
     repeat_until: Attribute.Date;
+    schedule_kind: Attribute.Enumeration<['exact', 'week_block']> &
+      Attribute.Required &
+      Attribute.DefaultTo<'exact'>;
     summer_screening: Attribute.Boolean & Attribute.DefaultTo<false>;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
@@ -695,6 +698,7 @@ export interface ApiShowtimeShowtime extends Schema.CollectionType {
       'manyToOne',
       'api::venue.venue'
     >;
+    week_end: Attribute.Date;
   };
 }
 

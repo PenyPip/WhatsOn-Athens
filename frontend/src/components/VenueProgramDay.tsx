@@ -14,7 +14,13 @@ import { isValidExternalUrl } from "@/lib/venueResolve";
 import type { StrapiVenue } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
-type ShowingSlot = { datetime: Date; hallName?: string; summerScreening?: boolean };
+type ShowingSlot = {
+  datetime: Date;
+  hallName?: string;
+  summerScreening?: boolean;
+  timesTba?: boolean;
+  weekRangeLabel?: string;
+};
 
 type VenueShowingsBlock = {
   key: string;
@@ -38,6 +44,8 @@ type ShowingRow = {
   datetime: Date;
   hallName?: string;
   summerScreening?: boolean;
+  timesTba?: boolean;
+  weekRangeLabel?: string;
 };
 
 type ProgramLine = {
@@ -45,6 +53,8 @@ type ProgramLine = {
   datetime: Date;
   hallName?: string;
   summerScreening?: boolean;
+  timesTba?: boolean;
+  weekRangeLabel?: string;
   movie: StrapiMovie;
 };
 
@@ -73,10 +83,12 @@ function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
     const slots = [...b.slots].sort((x, y) => x.datetime.getTime() - y.datetime.getTime());
     for (const slot of slots) {
       rows.push({
-        key: `${b.key}-${slot.datetime.getTime()}-${slot.hallName ?? ""}`,
+        key: `${b.key}-${slot.timesTba ? `tba-${slot.weekRangeLabel}` : slot.datetime.getTime()}-${slot.hallName ?? ""}`,
         datetime: slot.datetime,
         hallName: slot.hallName,
         summerScreening: slot.summerScreening,
+        timesTba: slot.timesTba,
+        weekRangeLabel: slot.weekRangeLabel,
       });
     }
   }
@@ -145,8 +157,11 @@ function groupProgramByCinemaWeek(lines: ProgramLine[], now: Date): ProgramWeekG
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([weekKey, weekLines]) => {
       const sorted = [...weekLines]
-        .filter((line) => line.datetime.getTime() >= todayStart.getTime())
-        .sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+        .filter((line) => line.timesTba || line.datetime.getTime() >= todayStart.getTime())
+        .sort((a, b) => {
+          if (a.timesTba !== b.timesTba) return a.timesTba ? -1 : 1;
+          return a.datetime.getTime() - b.datetime.getTime();
+        });
       if (!sorted.length) return null;
 
       const weekStart = startOfCinemaWeek(sorted[0].datetime);
@@ -223,13 +238,20 @@ function VenueCalendarScreening({ line }: { line: ProgramLine }) {
   const tl = movieTitleLines(line.movie);
   return (
     <div className="rounded-md border-l-[3px] border-l-[#13143E] bg-background py-2 pl-2.5 pr-2 shadow-sm ring-1 ring-border/20 transition-shadow hover:ring-[#13143E]/25">
-      <div className="flex items-center gap-1">
-        <time
-          dateTime={line.datetime.toISOString()}
-          className="text-sm font-bold tabular-nums leading-none text-[#13143E]"
-        >
-          {formatClock(line.datetime)}
-        </time>
+      <div className="flex flex-wrap items-center gap-1">
+        {line.timesTba ? (
+          <span className="text-[11px] font-bold leading-snug text-[#13143E] sm:text-xs">
+            {line.weekRangeLabel ?? "Εβδομάδα"}
+            <span className="font-medium text-muted-foreground"> · ώρες σύντομα</span>
+          </span>
+        ) : (
+          <time
+            dateTime={line.datetime.toISOString()}
+            className="text-sm font-bold tabular-nums leading-none text-[#13143E]"
+          >
+            {formatClock(line.datetime)}
+          </time>
+        )}
         {line.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
       </div>
       <Link
@@ -344,6 +366,8 @@ export default function VenueProgramLayout({
           datetime: row.datetime,
           hallName: row.hallName,
           summerScreening: row.summerScreening,
+          timesTba: row.timesTba,
+          weekRangeLabel: row.weekRangeLabel,
           movie,
         })),
       )

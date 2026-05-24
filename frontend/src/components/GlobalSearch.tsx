@@ -108,6 +108,7 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
             placeholder="Αναζήτηση ταινίας ή χώρου…"
             value={search}
             onValueChange={setSearch}
+            autoFocus
           />
           {loading ? (
             <div className="flex items-center gap-2 border-b px-4 py-8 text-sm text-muted-foreground">

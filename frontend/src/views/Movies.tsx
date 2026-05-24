@@ -35,6 +35,11 @@ import { movieTitleLines } from "@/lib/movieTitles";
 import { cn } from "@/lib/utils";
 import { isCinemaVenue } from "@/lib/venueType";
 import {
+  formatShowtimeWeekRangeLabel,
+  showtimeIsWeekBlock,
+  showtimeWeekRange,
+} from "@/lib/showtimeSchedule";
+import {
   showtimeIsSummerOutdoor,
   showtimeShowsOutdoorLabel,
   showtimeMatchesHomeToday,
@@ -178,9 +183,18 @@ function MovieListShowtimeRow({
 
   return (
     <li className="font-body flex flex-wrap items-center gap-1 tabular-nums leading-relaxed">
-      <span className="inline-flex items-center gap-1 font-semibold tabular-nums text-foreground">
-        {formatShowtimeClock(row.datetime)}
-        {row.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
+      <span className="inline-flex flex-wrap items-center gap-1 font-semibold text-foreground">
+        {row.timesTba ? (
+          <>
+            <span>{row.weekRangeLabel ?? "Εβδομάδα"}</span>
+            <span className="font-normal text-muted-foreground">· ώρες σύντομα</span>
+          </>
+        ) : (
+          <span className="inline-flex items-center gap-1 tabular-nums">
+            {formatShowtimeClock(row.datetime)}
+            {row.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
+          </span>
+        )}
       </span>
       {singleVenueFilter ? (
         row.hallName ? <span className="text-muted-foreground">{` · ${row.hallName}`}</span> : null
@@ -205,7 +219,33 @@ type ShowingSlot = {
   hallName?: string;
   /** CMS `summer_screening` — θερινή προβολή. */
   summerScreening?: boolean;
+  /** Ολόκληρη εβδομάδα χωρίς ώρες. */
+  timesTba?: boolean;
+  weekRangeLabel?: string;
 };
+
+function appendWeekBlockSlot(
+  block: VenueShowingsBlock,
+  st: StrapiShowtime,
+  hallRaw: string,
+  summerScreening: boolean,
+) {
+  const range = showtimeWeekRange(st);
+  const label = formatShowtimeWeekRangeLabel(st);
+  if (!range || !label) return;
+  const existing = block.slots.find((s) => s.timesTba && s.weekRangeLabel === label);
+  if (existing) {
+    if (summerScreening) existing.summerScreening = true;
+    return;
+  }
+  block.slots.push({
+    datetime: range.start,
+    hallName: hallRaw || undefined,
+    summerScreening,
+    timesTba: true,
+    weekRangeLabel: label,
+  });
+}
 
 function appendShowingSlot(block: VenueShowingsBlock, stDate: Date, hallRaw: string, summerScreening: boolean) {
   const slotDedupeKey = `${Math.floor(stDate.getTime() / 60000)}-${hallRaw}`;
@@ -237,6 +277,8 @@ type ShowingRow = {
   datetime: Date;
   hallName?: string;
   summerScreening?: boolean;
+  timesTba?: boolean;
+  weekRangeLabel?: string;
 };
 
 function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
@@ -245,12 +287,14 @@ function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
     const slots = [...b.slots].sort((x, y) => x.datetime.getTime() - y.datetime.getTime());
     for (const slot of slots) {
       rows.push({
-        key: `${b.key}-${slot.datetime.getTime()}-${slot.hallName ?? ""}`,
+        key: `${b.key}-${slot.timesTba ? `tba-${slot.weekRangeLabel}` : slot.datetime.getTime()}-${slot.hallName ?? ""}`,
         venueKey: b.key,
         venueLabel: b.venueLabel,
         datetime: slot.datetime,
         hallName: slot.hallName,
         summerScreening: slot.summerScreening,
+        timesTba: slot.timesTba,
+        weekRangeLabel: slot.weekRangeLabel,
       });
     }
   }
@@ -519,8 +563,6 @@ const Movies = () => {
       });
 
       for (const st of stSubset) {
-        const stDate = new Date(st.datetime);
-        if (Number.isNaN(stDate.getTime())) continue;
         const movie = movieMap.get(Number(st.movieId));
         if (!movie) continue;
 
@@ -535,6 +577,12 @@ const Movies = () => {
           byVenue.set(venueKey, { key: venueKey, venueLabel: venueName, slots: [] });
         }
         const block = byVenue.get(venueKey)!;
+        if (showtimeIsWeekBlock(st)) {
+          appendWeekBlockSlot(block, st, hallRaw, showtimeShowsOutdoorLabel(st));
+          continue;
+        }
+        const stDate = new Date(st.datetime);
+        if (Number.isNaN(stDate.getTime())) continue;
         appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
       }
 
@@ -574,8 +622,15 @@ const Movies = () => {
     const sectionMeta = new Map<string, { label: string; date: Date }>();
 
     for (const st of programSt) {
-      const stDate = new Date(st.datetime);
-      if (Number.isNaN(stDate.getTime())) continue;
+      let stDate: Date;
+      if (showtimeIsWeekBlock(st)) {
+        const wr = showtimeWeekRange(st);
+        if (!wr) continue;
+        stDate = wr.start;
+      } else {
+        stDate = new Date(st.datetime);
+        if (Number.isNaN(stDate.getTime())) continue;
+      }
 
       let sectionKey: string;
       let sectionLabel: string;
@@ -621,7 +676,11 @@ const Movies = () => {
         byVenue.set(venueKey, { key: venueKey, venueLabel: venueName, slots: [] });
       }
       const block = byVenue.get(venueKey)!;
-      appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
+      if (showtimeIsWeekBlock(st)) {
+        appendWeekBlockSlot(block, st, hallRaw, showtimeShowsOutdoorLabel(st));
+      } else {
+        appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
+      }
     }
 
     const sections: DaySection[] = [...sectionMovieShowings.keys()].map((key) => {

@@ -99,7 +99,7 @@ const Navbar = () => {
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
       <nav
-        className="fixed top-0 left-0 right-0 z-50 border-b md:hidden"
+        className="fixed top-0 left-0 right-0 z-[60] border-b md:hidden"
         style={{ background: NAV_GRADIENT, borderColor: "rgba(141,47,143,0.35)" }}
       >
         <div className="container flex min-h-14 items-center gap-2.5 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
@@ -108,7 +108,7 @@ const Navbar = () => {
         </div>
       </nav>
 
-      <nav className="fixed top-0 left-0 right-0 z-50 hidden md:block" style={{ background: NAV_GRADIENT }}>
+      <nav className="fixed top-0 left-0 right-0 z-[60] hidden md:block" style={{ background: NAV_GRADIENT }}>
         <div className="container flex h-28 items-center gap-4">
           <BrandLogo />
 

@@ -1,5 +1,5 @@
 import type { StrapiShowtime, StrapiVenue } from "@/lib/api";
-import { showtimeIsUpcoming } from "@/lib/homeMovieFilters";
+import { showtimeIsUpcoming, showtimeWeekRange } from "@/lib/showtimeSchedule";
 import { findVenueForShowtime, normalizeCinemaGroupName } from "@/lib/venueResolve";
 
 export type VenueShowtimeRange = {
@@ -36,16 +36,26 @@ export function venueUpcomingShowtimeRange(
   const slots = showtimesForVenue(venue, showtimes, venues);
   if (!slots.length) return null;
 
-  const times = slots
-    .map((st) => new Date(st.datetime))
-    .filter((d) => !Number.isNaN(d.getTime()))
-    .map((d) => d.getTime());
+  let fromMs = Infinity;
+  let toMs = -Infinity;
+  for (const st of slots) {
+    const wr = showtimeWeekRange(st);
+    if (wr) {
+      fromMs = Math.min(fromMs, wr.start.getTime());
+      toMs = Math.max(toMs, wr.end.getTime());
+      continue;
+    }
+    const dt = new Date(st.datetime);
+    if (Number.isNaN(dt.getTime())) continue;
+    fromMs = Math.min(fromMs, dt.getTime());
+    toMs = Math.max(toMs, dt.getTime());
+  }
 
-  if (!times.length) return null;
+  if (!Number.isFinite(fromMs) || !Number.isFinite(toMs)) return null;
 
   return {
-    from: new Date(Math.min(...times)),
-    to: new Date(Math.max(...times)),
+    from: new Date(fromMs),
+    to: new Date(toMs),
     count: slots.length,
   };
 }

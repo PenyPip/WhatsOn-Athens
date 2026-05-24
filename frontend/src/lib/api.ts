@@ -880,10 +880,20 @@ function mapShowtime(
         : Number(seatsRaw)
       : NaN;
 
+  const scheduleKindRaw = s.schedule_kind;
+  const scheduleKind =
+    scheduleKindRaw === "week_block" ? ("week_block" as const) : ("exact" as const);
+  const weekEnd =
+    typeof s.week_end === "string" && s.week_end.trim()
+      ? s.week_end.trim().slice(0, 10)
+      : undefined;
+
   const toRow = (datetime: string, index: number) => ({
     id: `${baseId}-${index}`,
     documentId: s.documentId,
     datetime,
+    scheduleKind,
+    weekEnd,
     venue,
     venueId,
     venueSlug,
@@ -1063,6 +1073,10 @@ export interface StrapiShowtime {
   id: string;
   documentId: string;
   datetime: string;
+  /** CMS `schedule_kind`: `week_block` = ολόκληρη εβδομάδα χωρίς ώρες. */
+  scheduleKind?: "exact" | "week_block";
+  /** Τέλος εβδομάδας (YYYY-MM-DD) όταν scheduleKind = week_block. */
+  weekEnd?: string;
   venue: string;
   /** όταν η σχέση venue υπάρχει αλλά δεν ήρθαν attributes στο REST */
   venueId?: number;

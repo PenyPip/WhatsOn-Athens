@@ -129,6 +129,11 @@ async function expandRepeatShowtimes(strapi, showtimeId, trigger = 'expand') {
   const row = await loadShowtimeRow(strapi, showtimeId);
   if (!row) return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'not_found' };
 
+  if (row.schedule_kind === 'week_block') {
+    await clearRepeatHelpers(strapi, showtimeId);
+    return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'week_block' };
+  }
+
   const skipDays = parseSkipDays(row.repeat_skip_days);
   const hasUntil = Boolean(row.repeat_until);
   const hasSkips = skipDays.size > 0;

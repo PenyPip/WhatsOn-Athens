@@ -1,4 +1,5 @@
 import { movieGenreSlugsToDisplayLine, type StrapiMovie, type StrapiShowtime, type StrapiVenue } from "@/lib/api";
+import { showtimeIsUpcoming as showtimeIsUpcomingCore, showtimeOverlapsRange } from "@/lib/showtimeSchedule";
 import { isCinemaVenue } from "@/lib/venueType";
 
 /**
@@ -14,11 +15,9 @@ export function showtimeShowsOutdoorLabel(showtime: StrapiShowtime): boolean {
   return Boolean(showtime.summerScreening);
 }
 
-/** Έναρξη προβολής ακόμα δεν έχει περάσει (τελευταίες στιγμές `now`, τοπική ζώνη). */
+/** Έναρξη προβολής ακόμα δεν έχει περάσει (ή εβδομάδα week_block δεν έχει λήξει). */
 export function showtimeIsUpcoming(st: StrapiShowtime, now = new Date()): boolean {
-  const dt = new Date(st.datetime);
-  const t = dt.getTime();
-  return !Number.isNaN(t) && t >= now.getTime();
+  return showtimeIsUpcomingCore(st, now);
 }
 
 /**
@@ -384,12 +383,8 @@ function releaseDateInBounds(movie: StrapiMovie, start: Date, end: Date): boolea
 
 /** Προβολή μέσα στην άμεσα επόμενη εβδομάδα κινηματογράφου (μόνο μελλοντικές ώρες). */
 export function showtimeMatchesHomeUpcomingCinemaWeek(st: StrapiShowtime, now = new Date()): boolean {
-  const dt = new Date(st.datetime);
-  if (Number.isNaN(dt.getTime())) return false;
-  if (dt.getTime() < now.getTime()) return false;
   const { start, end } = getUpcomingCinemaWeekBounds(now);
-  const t = dt.getTime();
-  return t >= start.getTime() && t <= end.getTime();
+  return showtimeOverlapsRange(st, start, end, now);
 }
 
 /**
@@ -404,13 +399,9 @@ export function moviesForUpcomingCinemaWeek(
   const { start, end } = getUpcomingCinemaWeekBounds(now);
   const fromRelease = movies.filter((m) => releaseDateInBounds(m, start, end));
   const releaseIds = new Set(fromRelease.map((m) => m.id));
-  const fromShowtimes = moviesFromShowtimesOrdered(movies, showtimes, (st) => {
-    const dt = new Date(st.datetime);
-    if (Number.isNaN(dt.getTime())) return false;
-    if (dt.getTime() < now.getTime()) return false;
-    const t = dt.getTime();
-    return t >= start.getTime() && t <= end.getTime();
-  });
+  const fromShowtimes = moviesFromShowtimesOrdered(movies, showtimes, (st) =>
+    showtimeOverlapsRange(st, start, end, now),
+  );
   const seen = new Set<number>();
   const out: StrapiMovie[] = [];
   for (const m of fromRelease) {
