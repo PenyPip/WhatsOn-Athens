@@ -74,9 +74,16 @@ function HomeSeoIntro() {
   );
 }
 
-/** Καθυστερεί paint/εικόνες κάτω από το fold χωρίς να αφαιρεί nodes (SEO). */
-const BELOW_FOLD_PAINT =
-  "[content-visibility:auto] [contain-intrinsic-size:auto_300px]";
+/** Ελάχιστο ύψος ενότητας — ίδιο σε loading και content (μειώνει CLS). */
+const MOVIE_ROW_MIN_H = "min-h-[20rem] md:min-h-[22rem]";
+const MOVIE_ROW_SPOTLIGHT_MIN_H = "min-h-[26rem] md:min-h-[28rem]";
+const MOVIE_ROW_GRID_MIN_H = "min-h-[14rem] md:min-h-[16rem]";
+
+function movieRowShell(layout: "scroll" | "grid", spotlight: boolean | undefined, children: ReactNode) {
+  const minH =
+    layout === "grid" ? MOVIE_ROW_GRID_MIN_H : spotlight ? MOVIE_ROW_SPOTLIGHT_MIN_H : MOVIE_ROW_MIN_H;
+  return <div className={minH}>{children}</div>;
+}
 
 const summerStrip = [
   "Θερινό σινεμά",
@@ -115,11 +122,11 @@ function MovieRowScroll({
   layout?: "scroll" | "grid";
 }) {
   if (loading) {
-    return <LoadingState message={loadingMessage} />;
+    return movieRowShell(layout, spotlight, <LoadingState message={loadingMessage} />);
   }
   if (fetchErrorMessage) {
     return (
-      <section className={`relative section-black py-12 md:py-16 border-y border-white/[0.07] ${BELOW_FOLD_PAINT}`}>
+      <section className="relative section-black border-y border-white/[0.07] py-12 md:py-16">
         <div className="container max-w-7xl">
           <div className="max-w-xl rounded-xl border border-amber-500/25 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
             <p className="font-display text-lg tracking-tight text-amber-100">{title}</p>
@@ -131,7 +138,7 @@ function MovieRowScroll({
   }
   if (items.length === 0) {
     return (
-      <section className={`relative section-black py-12 md:py-16 border-y border-white/[0.07] ${BELOW_FOLD_PAINT}`}>
+      <section className="relative section-black border-y border-white/[0.07] py-12 md:py-16">
         <div className="container max-w-7xl">
           <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
             <p className="font-display text-lg tracking-tight text-white">{title}</p>
@@ -145,7 +152,7 @@ function MovieRowScroll({
   }
 
   if (layout === "grid") {
-    return (
+    return movieRowShell(layout, spotlight, (
       <>
         <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
           <div className="container max-w-7xl">
@@ -201,10 +208,10 @@ function MovieRowScroll({
           </div>
         ) : null}
       </>
-    );
+    ));
   }
 
-  return (
+  return movieRowShell(layout, spotlight, (
     <>
       <HorizontalScroll spotlight={spotlight} muted={muted} eyebrow={eyebrow} title={title} subtitle={subtitle}>
         {items.map((movie, i) => {
@@ -258,7 +265,7 @@ function MovieRowScroll({
         </div>
       ) : null}
     </>
-  );
+  ));
 };
 
 const Index = () => {
@@ -307,11 +314,7 @@ const Index = () => {
   const newMoviesList = useMemo(() => moviesReleasedInLastDays(movieList, 10), [movieList]);
   const comingSoonMovies = useMemo(() => moviesComingAfterUpcomingCinemaWeek(movieList), [movieList]);
 
-  const sectionEl = (id: HomeSectionId, node: ReactNode, belowFold = false) => (
-    <Fragment key={id}>
-      {belowFold ? <div className={BELOW_FOLD_PAINT}>{node}</div> : node}
-    </Fragment>
-  );
+  const sectionEl = (id: HomeSectionId, node: ReactNode) => <Fragment key={id}>{node}</Fragment>;
 
   const markLcpDone = !layoutShowsHero(layout);
 
@@ -373,7 +376,6 @@ const Index = () => {
                 title="Ταινίες σήμερα"
                 moviesMoreHref={moviesSectionPath("today")}
               />,
-              true,
             );
           case "summer_cinema":
             return sectionEl(
@@ -393,7 +395,6 @@ const Index = () => {
                 subtitle="Παίζουν τώρα"
                 moviesMoreHref={moviesSectionPath("summer")}
               />,
-              true,
             );
           case "summer_venues":
             return sectionEl(
@@ -473,7 +474,6 @@ const Index = () => {
                   </section>
                 )}
               </>,
-              true,
             );
           case "tours":
             return sectionEl(
@@ -526,7 +526,6 @@ const Index = () => {
                   )}
                 </div>
               </div>,
-              true,
             );
           case "new_movies":
             return sectionEl(
@@ -541,7 +540,6 @@ const Index = () => {
                 title="Νέες ταινίες"
                 moviesMoreHref={moviesSectionPath("new")}
               />,
-              true,
             );
           case "movies_week":
             return sectionEl(
@@ -560,7 +558,6 @@ const Index = () => {
                 layout="grid"
                 moviesMoreHref={moviesSectionPath("week")}
               />,
-              true,
             );
           case "coming_soon":
             return sectionEl(
@@ -576,7 +573,6 @@ const Index = () => {
                 emptyMessage="Δεν υπάρχουν ταινίες με κυκλοφορία μετά την επόμενη εβδομάδα κινηματογράφου."
                 moviesMoreHref={moviesSectionPath("soon")}
               />,
-              true,
             );
           case "dining":
             return sectionEl(
@@ -605,7 +601,6 @@ const Index = () => {
                   ))}
                 </HorizontalScroll>
               ),
-              true,
             );
           case "newsletter":
             return sectionEl(
@@ -631,18 +626,17 @@ const Index = () => {
                   </div>
                 </div>
               </div>,
-              true,
             );
           default:
             return null;
         }
       })}
 
-      <div className={`${BELOW_FOLD_PAINT} [content-visibility:auto] [contain-intrinsic-size:auto_0px]`}>
+      <div>
         <HomeSeoIntro />
       </div>
 
-      <footer className={`section-black py-12 border-t border-white/10 ${BELOW_FOLD_PAINT}`}>
+      <footer className="section-black border-t border-white/10 py-12">
         <div className="container">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <div>

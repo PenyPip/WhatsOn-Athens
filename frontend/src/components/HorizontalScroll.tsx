@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -16,26 +16,11 @@ interface HorizontalScrollProps {
 const SCROLL_BTN_SLOT_CLASS = "relative z-20 flex w-[4.75rem] shrink-0 items-center justify-end gap-1";
 
 const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children }: HorizontalScrollProps) => {
-  const sectionRef = useRef<HTMLElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const [visible, setVisible] = useState(false);
   const [overflowing, setOverflowing] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(false);
   const rafRef = useRef(0);
-
-  useEffect(() => {
-    const root = sectionRef.current;
-    if (!root) return undefined;
-    const io = new IntersectionObserver(
-      ([entry]) => {
-        if (entry?.isIntersecting) setVisible(true);
-      },
-      { rootMargin: "120px 0px" },
-    );
-    io.observe(root);
-    return () => io.disconnect();
-  }, []);
 
   const syncScrollEdges = useCallback(() => {
     const el = scrollRef.current;
@@ -59,10 +44,12 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
     rafRef.current = requestAnimationFrame(syncScrollEdges);
   }, [syncScrollEdges]);
 
-  useEffect(() => {
-    if (!visible) return undefined;
-    const el = scrollRef.current;
+  useLayoutEffect(() => {
     scheduleSync();
+  }, [scheduleSync]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
     if (!el) return undefined;
 
     const ro = new ResizeObserver(() => scheduleSync());
@@ -76,7 +63,7 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
       el.removeEventListener("scroll", scheduleSync);
       window.removeEventListener("resize", scheduleSync);
     };
-  }, [scheduleSync, visible]);
+  }, [scheduleSync]);
 
   const scroll = (dir: "left" | "right") => {
     const el = scrollRef.current;
@@ -120,11 +107,12 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
             </p>
           )}
         </div>
-        {/* Σταθερό πλάτος — τα κουμπιά δεν εμφανίζονται ξαφνικά (CLS). */}
+        {/* Σταθερό πλάτος — opacity αντί invisible (ίδιο box, λιγότερο CLS). */}
         <div
           className={cn(
             SCROLL_BTN_SLOT_CLASS,
-            !overflowing && "invisible pointer-events-none",
+            !overflowing && "pointer-events-none opacity-0",
+            overflowing && "opacity-100",
             muted && overflowing && "opacity-60",
           )}
           aria-hidden={!overflowing}
@@ -173,7 +161,6 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
 
   return (
     <section
-      ref={sectionRef}
       className={cn(
         "relative",
         muted && "border-y border-border/40 bg-muted/20 py-8",
