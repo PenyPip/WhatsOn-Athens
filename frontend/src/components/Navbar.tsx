@@ -1,11 +1,8 @@
-import { lazy, Suspense, useState } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Film, Theater, UtensilsCrossed, Building2, User, Search } from "lucide-react";
 import { useGlobalSearchShortcut } from "@/hooks/globalSearchShortcut";
-
-const GlobalSearch = lazy(() =>
-  import("@/components/GlobalSearch").then((m) => ({ default: m.GlobalSearch })),
-);
+import { GlobalSearch } from "@/components/GlobalSearch";
 import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 
 const NAV_GRADIENT =
@@ -99,11 +96,7 @@ const Navbar = () => {
 
   return (
     <>
-      {searchOpen ? (
-        <Suspense fallback={null}>
-          <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-        </Suspense>
-      ) : null}
+      <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
 
       <nav
         className="fixed top-0 left-0 right-0 z-50 border-b md:hidden"

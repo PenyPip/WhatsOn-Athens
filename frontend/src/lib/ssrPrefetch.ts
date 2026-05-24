@@ -133,7 +133,10 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
     } else if (theaterSlug) {
       await prefetchTheaterDetail(qc, theaterSlug);
     } else if (normalized === "/venues") {
-      await qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults });
+      await Promise.all([
+        qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
+        qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }),
+      ]);
     } else if (normalized === "/dining") {
       await qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants });
     } else if (diningSlug) {

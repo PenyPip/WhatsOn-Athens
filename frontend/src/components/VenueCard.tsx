@@ -1,4 +1,4 @@
-import { MapPin, Users } from "lucide-react";
+import { Calendar, MapPin, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import type { StrapiVenue } from "@/lib/api";
@@ -26,6 +26,10 @@ export interface VenueCardProps {
   variant?: "page" | "spotlight";
   layout?: "carousel" | "grid";
   compact?: boolean;
+  /** Εμφάνιση εύρους επερχόμενων προβολών (π.χ. σελίδα /venues). */
+  showProgramDates?: boolean;
+  programDatesLabel?: string | null;
+  programDatesLoading?: boolean;
   className?: string;
 }
 
@@ -35,6 +39,9 @@ const VenueCard = ({
   variant = "page",
   layout = "carousel",
   compact = false,
+  showProgramDates = false,
+  programDatesLabel,
+  programDatesLoading = false,
   className,
 }: VenueCardProps) => {
   const programHref = moviesHref ?? programHrefForVenue(venue);
@@ -132,6 +139,27 @@ const VenueCard = ({
             </p>
           ) : null}
           {cityLabel(venue) ? <p className={cityClass}>{cityLabel(venue)}</p> : null}
+          {showProgramDates ? (
+            programDatesLoading ? (
+              <p className={cn("text-xs", isSpotlight ? "text-white/50" : "text-muted-foreground")}>
+                Φόρτωση προγράμματος…
+              </p>
+            ) : programDatesLabel ? (
+              <p className={cn("flex items-start gap-2", isSpotlight ? "text-amber-200/90" : "text-[#13143E]")}>
+                <Calendar
+                  className={cn("mt-0.5 h-3.5 w-3.5 shrink-0", isSpotlight ? "text-amber-300/80" : "opacity-70")}
+                  aria-hidden
+                />
+                <span className={cn("font-medium leading-snug", compact ? "text-xs" : "text-sm")}>
+                  {programDatesLabel}
+                </span>
+              </p>
+            ) : (
+              <p className={cn("text-xs leading-relaxed", isSpotlight ? "text-white/45" : "text-muted-foreground")}>
+                Δεν υπάρχουν επερχόμενες προβολές
+              </p>
+            )
+          ) : null}
         </div>
 
         {hasActions ? (

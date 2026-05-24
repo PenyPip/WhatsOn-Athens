@@ -4,7 +4,9 @@ import { useSearchParams } from "react-router-dom";
 import VenueCard from "@/components/VenueCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
-import { useVenues } from "@/hooks/useStrapi";
+import { useShowtimes, useVenues } from "@/hooks/useStrapi";
+import { buildVenueShowtimeRangeMap, formatVenueShowtimeRangeLabel } from "@/lib/venueShowtimeRange";
+import { isCinemaVenue } from "@/lib/venueType";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { cn } from "@/lib/utils";
@@ -26,6 +28,12 @@ const Venues = () => {
   });
 
   const { data: venues, isLoading } = useVenues();
+  const { data: showtimes, isLoading: showtimesLoading } = useShowtimes();
+
+  const showtimeRanges = useMemo(
+    () => buildVenueShowtimeRangeMap(venues ?? [], showtimes ?? []),
+    [venues, showtimes],
+  );
 
   const setKindFilter = (next: VenueKindFilter) => {
     const params = new URLSearchParams(searchParams);
@@ -96,7 +104,18 @@ const Venues = () => {
                 transition={{ duration: 0.4, delay: Math.min(i * 0.08, 0.4) }}
                 className="h-full [&>div]:max-w-none"
               >
-                <VenueCard venue={venue} layout="grid" variant="page" />
+                <VenueCard
+                  venue={venue}
+                  layout="grid"
+                  variant="page"
+                  showProgramDates={isCinemaVenue(venue)}
+                  programDatesLoading={showtimesLoading}
+                  programDatesLabel={
+                    isCinemaVenue(venue)
+                      ? formatVenueShowtimeRangeLabel(showtimeRanges.get(venue.id) ?? null)
+                      : undefined
+                  }
+                />
               </motion.div>
             ))}
           </div>
