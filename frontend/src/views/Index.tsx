@@ -32,7 +32,7 @@ import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { siteSeo } from "@/lib/siteMetadata";
-import HideHomeStaticLcp from "@/components/HideHomeStaticLcp";
+import MarkLcpDone from "@/components/MarkLcpDone";
 
 /** Ορατό SEO κείμενο αρχικής — λέξεις-κλειδιά + περισσότερο κείμενο για crawlers. */
 function HomeSeoIntro() {
@@ -313,11 +313,11 @@ const Index = () => {
     </Fragment>
   );
 
-  const hideStaticLcpShell = !layoutShowsHero(layout);
+  const markLcpDone = !layoutShowsHero(layout);
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      {hideStaticLcpShell ? <HideHomeStaticLcp /> : null}
+      {markLcpDone ? <MarkLcpDone /> : null}
       {apiSectionFailed ? (
         <div className="section-black border-b border-amber-500/30 bg-amber-950/25 px-4 py-3 md:py-4">
           <div className="container max-w-7xl text-center text-sm text-amber-100/90 font-body md:text-left md:text-[0.9375rem]">

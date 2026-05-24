@@ -2,6 +2,7 @@ import type { DehydratedState } from "@tanstack/react-query";
 import { layoutShowsHero, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
 import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
 import { posterLcpSrc } from "@/lib/posterDelivery";
+import { lcpImageSrc } from "@/lib/lcpImageSrc";
 import { resolvePublicAssetUrl } from "@/lib/siteMetadata";
 
 function clampIndex(n: number, length: number): number {
@@ -84,7 +85,8 @@ export function homeLcpDisplay(path: string, dehydratedState?: DehydratedState):
 
   if (!posterPath) return null;
 
-  const posterHref = resolvePublicAssetUrl(posterPath) ?? posterPath;
+  const absolute = resolvePublicAssetUrl(posterPath) ?? posterPath;
+  const posterHref = lcpImageSrc(absolute);
   return { posterHref, title, hasHeroSection };
 }
 

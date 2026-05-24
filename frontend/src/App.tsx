@@ -5,7 +5,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 import Navbar from "@/components/Navbar";
 import DeferredCookieConsent from "@/components/DeferredCookieConsent";
 import RouteFallback from "@/components/RouteFallback";
-import Index from "./views/Index";
+const Index = lazy(() => import(/* webpackChunkName: "home" */ "./views/Index"));
 
 const GoogleAnalytics = lazy(() => import("@/components/GoogleAnalytics"));
 const Movies = lazy(() => import(/* webpackChunkName: "movies" */ "./views/Movies"));
@@ -28,7 +28,14 @@ function LazyPage({ children }: { children: ReactNode }) {
 function AppRoutes() {
   return (
     <Routes>
-      <Route path="/" element={<Index />} />
+      <Route
+        path="/"
+        element={
+          <Suspense fallback={null}>
+            <Index />
+          </Suspense>
+        }
+      />
       <Route path="/movies" element={<LazyPage><Movies /></LazyPage>} />
       <Route path="/movies/today" element={<LazyPage><Movies /></LazyPage>} />
       <Route path="/movies/week" element={<LazyPage><Movies /></LazyPage>} />
