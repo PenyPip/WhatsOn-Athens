@@ -2,6 +2,7 @@ import type { MappedHomepage, HomeSectionId } from "@/config/home";
 import { FALLBACK_SECTIONS, normalizeHomeSectionId } from "@/config/home";
 import { apiRequestBaseUrl } from "@/lib/apiRequestBase";
 import { normalizeVenueKind, type VenueKind } from "@/lib/venueType";
+import { mapVenueDayPrices, resolveShowtimePricing, type VenueDayPrice } from "@/lib/venuePricing";
 
 const API_PREFIX = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
 
@@ -888,7 +889,12 @@ function mapShowtime(
       ? s.week_end.trim().slice(0, 10)
       : undefined;
 
-  const toRow = (datetime: string, index: number) => ({
+  const venueDayPrices = mapVenueDayPrices(vAttrs?.day_prices);
+  const legacyShowtimePrice = parseShowtimePrice(s.price);
+
+  const toRow = (datetime: string, index: number) => {
+    const pricing = resolveShowtimePricing(datetime, venueDayPrices, legacyShowtimePrice);
+    return {
     id: `${baseId}-${index}`,
     documentId: s.documentId,
     datetime,
@@ -902,13 +908,15 @@ function mapShowtime(
     summerScreening,
     venueSummerOutdoor,
     availableSeats: Number.isFinite(seatsNum) ? seatsNum : 0,
-    price: parseShowtimePrice(s.price),
+    price: pricing.regular,
+    priceStudent: pricing.student,
     movieId,
     movieSlug,
     movieTitle,
     movieGenre: movieGenreFromShowtime || undefined,
     movieGenreSlugs: movieGenreSlugsFromShowtime.length ? movieGenreSlugsFromShowtime : undefined,
-  });
+  };
+  };
 
   if (slots.length > 0) {
     return slots.filter((slot: any) => !!slot?.datetime).map((slot: any, index: number) => toRow(slot.datetime, index));
@@ -953,6 +961,7 @@ function mapVenue(raw: unknown): StrapiVenue {
     seatsTotal: v.seats_total,
     type: normalizeVenueKind(v.type) ?? "cinema",
     summerOutdoor,
+    dayPrices: mapVenueDayPrices(v.day_prices),
   };
 }
 
@@ -1051,6 +1060,8 @@ export interface StrapiVenue {
   seatsTotal: number;
   type: VenueKind;
   summerOutdoor: boolean;
+  /** Τιμές ανά ημέρα εβδομάδας (από CMS). */
+  dayPrices?: VenueDayPrice[];
 }
 
 export interface StrapiEditorialReview {
@@ -1088,6 +1099,7 @@ export interface StrapiShowtime {
   venueSummerOutdoor: boolean;
   availableSeats: number;
   price?: number;
+  priceStudent?: number;
   movieId?: number;
   movieSlug?: string;
   movieTitle?: string;
@@ -1128,6 +1140,7 @@ const MOVIE_PUBLIC_POPULATE: Record<string, string> = {
 const SHOWTIME_POPULATE: Record<string, string> = {
   "populate[movie][populate][movie_genres]": "*",
   "populate[movie][populate][poster]": "*",
+  "populate[venue][populate][day_prices]": "*",
   "populate[venue]": "*",
   "populate[hall]": "*",
 };

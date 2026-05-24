@@ -825,6 +825,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    day_prices: Attribute.Component<'cinema.day-price', true>;
     district: Attribute.Enumeration<
       ['center', 'north', 'south', 'west', 'east', 'piraeus', 'greater_other']
     >;

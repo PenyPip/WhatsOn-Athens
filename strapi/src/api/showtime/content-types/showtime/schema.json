@@ -38,7 +38,8 @@
       "type": "integer"
     },
     "price": {
-      "type": "decimal"
+      "type": "decimal",
+      "description": "Παλιό πεδίο — προτιμήστε τιμές στον Χώρο (ανά ημέρα). Χρησιμοποιείται μόνο αν δεν υπάρχει τιμή για την ημέρα στον χώρο."
     },
     "summer_screening": {
       "type": "boolean",

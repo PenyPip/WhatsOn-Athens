@@ -1,0 +1,31 @@
+{
+  "collectionName": "components_cinema_day_prices",
+  "info": {
+    "displayName": "Τιμή ημέρας",
+    "description": "Κανονική και μειωμένη/φοιτητική τιμή για συγκεκριμένη ημέρα εβδομάδας."
+  },
+  "attributes": {
+    "weekday": {
+      "type": "enumeration",
+      "enum": [
+        "monday",
+        "tuesday",
+        "wednesday",
+        "thursday",
+        "friday",
+        "saturday",
+        "sunday"
+      ],
+      "required": true
+    },
+    "price": {
+      "type": "decimal",
+      "required": true,
+      "description": "Κανονικό εισιτήριο (€)."
+    },
+    "price_student": {
+      "type": "decimal",
+      "description": "Μειωμένο / φοιτητικό (€)."
+    }
+  }
+}

@@ -2,6 +2,7 @@ import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { absolutePageUrl, resolvePublicAssetUrl } from "@/lib/siteMetadata";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { findVenueForShowtime, isValidExternalUrl } from "@/lib/venueResolve";
+import { resolvePricingForShowtime } from "@/lib/venuePricing";
 
 type JsonLdObject = Record<string, unknown>;
 
@@ -86,10 +87,11 @@ function screeningEvent(
     };
   }
 
-  if (st.price != null && Number.isFinite(st.price)) {
+  const pricing = resolvePricingForShowtime(st, venueRecord);
+  if (pricing.regular != null && Number.isFinite(pricing.regular)) {
     event.offers = {
       "@type": "Offer",
-      price: Number.isInteger(st.price) ? String(st.price) : st.price.toFixed(2),
+      price: Number.isInteger(pricing.regular) ? String(pricing.regular) : pricing.regular.toFixed(2),
       priceCurrency: "EUR",
       availability: "https://schema.org/InStock",
       url: `${movieUrl}#showtimes`,

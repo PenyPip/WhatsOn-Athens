@@ -24,7 +24,11 @@ import {
   type StrapiMovie,
   type StrapiShowtime,
   type StrapiTheaterShow,
+  type StrapiVenue,
 } from "@/lib/api";
+import { ShowtimePriceLabels } from "@/components/ShowtimePriceLabels";
+import { VenueDayPricesTable } from "@/components/VenueDayPricesTable";
+import { resolvePricingForShowtime } from "@/lib/venuePricing";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import {
   getUpcomingCinemaWeekBounds,
@@ -54,7 +58,15 @@ import {
 } from "@/lib/venueResolve";
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
-function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; emphasized?: boolean }) {
+function ShowtimeCompactRow({
+  st,
+  venue,
+  emphasized = false,
+}: {
+  st: StrapiShowtime;
+  venue?: StrapiVenue | null;
+  emphasized?: boolean;
+}) {
   if (showtimeIsWeekBlock(st)) {
     const weekLabel = formatShowtimeWeekRangeLabel(st);
     return (
@@ -74,10 +86,7 @@ function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; em
   }
 
   const d = new Date(st.datetime);
-  const priceLabel =
-    st.price != null
-      ? `${Number.isInteger(st.price) ? st.price : st.price.toFixed(2)} €`
-      : null;
+  const pricing = resolvePricingForShowtime(st, venue);
   const showSummer = showtimeShowsOutdoorLabel(st);
 
   return (
@@ -107,11 +116,7 @@ function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; em
             {showSummer ? <SummerScreeningIndicator className="text-amber-600" iconClassName="h-3.5 w-3.5" /> : null}
           </span>
         </div>
-        {priceLabel ? (
-          <span className="shrink-0 text-right text-base font-semibold tabular-nums text-foreground">
-            {priceLabel}
-          </span>
-        ) : null}
+        <ShowtimePriceLabels regular={pricing.regular} student={pricing.student} />
       </div>
       {st.hallName ? (
         <p className="text-muted-foreground">Αίθουσα · {st.hallName}</p>
@@ -460,10 +465,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                         showProgramButton
                         compact
                       />
+                      {slots.some(showtimeIsWeekBlock) && venue ? (
+                        <VenueDayPricesTable venue={venue} className="mt-2" />
+                      ) : null}
                     </div>
                     <ShowtimesExpandable listClassName="min-h-0 flex-1">
                       {slots.map((st) => (
-                        <ShowtimeCompactRow key={st.id} st={st} emphasized />
+                        <ShowtimeCompactRow key={st.id} st={st} venue={venue} emphasized />
                       ))}
                     </ShowtimesExpandable>
                     {isValidExternalUrl(venue?.moreLink) ? (
@@ -501,10 +509,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                           showProgramButton
                           compact
                         />
+                        {slots.some(showtimeIsWeekBlock) && venue ? (
+                          <VenueDayPricesTable venue={venue} className="mt-2" />
+                        ) : null}
                       </div>
                       <ShowtimesExpandable listClassName="min-h-0 flex-1">
                         {slots.map((st) => (
-                          <ShowtimeCompactRow key={st.id} st={st} emphasized />
+                          <ShowtimeCompactRow key={st.id} st={st} venue={venue} emphasized />
                         ))}
                       </ShowtimesExpandable>
                       {isValidExternalUrl(venue?.moreLink) ? (

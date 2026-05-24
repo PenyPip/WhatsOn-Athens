@@ -1,5 +1,29 @@
 import type { Attribute, Schema } from '@strapi/strapi';
 
+export interface CinemaDayPrice extends Schema.Component {
+  collectionName: 'components_cinema_day_prices';
+  info: {
+    description: '\u039A\u03B1\u03BD\u03BF\u03BD\u03B9\u03BA\u03AE \u03BA\u03B1\u03B9 \u03BC\u03B5\u03B9\u03C9\u03BC\u03AD\u03BD\u03B7/\u03C6\u03BF\u03B9\u03C4\u03B7\u03C4\u03B9\u03BA\u03AE \u03C4\u03B9\u03BC\u03AE \u03B3\u03B9\u03B1 \u03C3\u03C5\u03B3\u03BA\u03B5\u03BA\u03C1\u03B9\u03BC\u03AD\u03BD\u03B7 \u03B7\u03BC\u03AD\u03C1\u03B1 \u03B5\u03B2\u03B4\u03BF\u03BC\u03AC\u03B4\u03B1\u03C2.';
+    displayName: '\u03A4\u03B9\u03BC\u03AE \u03B7\u03BC\u03AD\u03C1\u03B1\u03C2';
+  };
+  attributes: {
+    price: Attribute.Decimal & Attribute.Required;
+    price_student: Attribute.Decimal;
+    weekday: Attribute.Enumeration<
+      [
+        'monday',
+        'tuesday',
+        'wednesday',
+        'thursday',
+        'friday',
+        'saturday',
+        'sunday'
+      ]
+    > &
+      Attribute.Required;
+  };
+}
+
 export interface HomeLayoutSection extends Schema.Component {
   collectionName: 'components_home_layout_sections';
   info: {
@@ -52,6 +76,7 @@ export interface SharedCastName extends Schema.Component {
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
+      'cinema.day-price': CinemaDayPrice;
       'home.layout-section': HomeLayoutSection;
       'scheduling.skip-day': SchedulingSkipDay;
       'shared.cast-name': SharedCastName;
