@@ -40,23 +40,25 @@ export default function SharePageButton({ path, title, variant = "default", clas
   }, [path, title]);
 
   const heroClass =
-    "inline-flex items-center gap-1.5 rounded border border-white/35 bg-white/10 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-white/20 disabled:opacity-60";
+    "inline-flex size-12 shrink-0 items-center justify-center rounded border border-white/35 bg-white/10 text-white transition-colors hover:bg-white/20 disabled:opacity-60";
   const defaultClass =
-    "inline-flex items-center gap-1.5 rounded-md border border-border bg-card px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-muted disabled:opacity-60";
+    "inline-flex size-10 shrink-0 items-center justify-center rounded-md border border-border bg-card text-foreground transition-colors hover:bg-muted disabled:opacity-60";
+
+  const label = copied ? "Ο σύνδεσμος αντιγράφηκε" : "Αντιγραφή συνδέσμου";
 
   return (
     <button
       type="button"
       onClick={() => void onCopyLink()}
       className={cn(variant === "hero" ? heroClass : defaultClass, className)}
-      aria-label={copied ? "Ο σύνδεσμος αντιγράφηκε στο πρόχειρο" : "Αντιγραφή συνδέσμου σελίδας"}
+      aria-label={label}
+      title={label}
     >
       {copied ? (
-        <Check className="h-4 w-4 shrink-0" aria-hidden />
+        <Check className="h-5 w-5 shrink-0" aria-hidden />
       ) : (
-        <Link2 className="h-4 w-4 shrink-0" aria-hidden />
+        <Link2 className="h-5 w-5 shrink-0" aria-hidden />
       )}
-      {copied ? "Αντιγράφηκε" : "Αντιγραφή συνδέσμου"}
     </button>
   );
 }
