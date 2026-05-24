@@ -2,6 +2,9 @@
 
 const ATHENS_TZ = 'Europe/Athens';
 
+/** Αποφυγή επαναλήψης όταν τα child create / clearRepeatHelpers ενεργοποιούν lifecycle. */
+const expandingIds = new Set();
+
 /** YYYY-MM-DD στην τοπική ημερολογιακή ζώνη Αθήνας. */
 function athensDateKey(value) {
   if (!value) return null;
@@ -89,10 +92,19 @@ function parseSkipDays(raw) {
 }
 
 async function loadShowtimeRow(strapi, id) {
-  return strapi.db.query('api::showtime.showtime').findOne({
-    where: { id },
-    populate: { movie: true, venue: true, hall: true, repeat_skip_days: true },
-  });
+  try {
+    return await strapi.entityService.findOne('api::showtime.showtime', id, {
+      populate: { movie: true, venue: true, hall: true, repeat_skip_days: true },
+    });
+  } catch (e) {
+    strapi.log.warn(`[showtime repeat] loadShowtimeRow id=${id}: ${e?.message ?? e}`);
+    return null;
+  }
+}
+
+function resolveRepeatUntil(row, overrideUntil) {
+  if (overrideUntil != null && overrideUntil !== '') return overrideUntil;
+  return row?.repeat_until ?? null;
 }
 
 async function showtimeExistsAt(strapi, { movieId, venueId, datetime }) {
@@ -158,123 +170,151 @@ async function clearRepeatHelpers(strapi, showtimeId) {
 }
 
 /**
- * Επανάληψη ημερών + εξαιρέσεις. Μόνο εξαιρέσεις (χωρίς repeat_until): διαγραφή στις listed μέρες.
+ * @param {object} [opts]
+ * @param {string|Date|null} [opts.overrideUntil] — repeat_until από το request (πριν/μετά το clear στο DB).
  */
-async function expandRepeatShowtimes(strapi, showtimeId, trigger = 'expand') {
-  const row = await loadShowtimeRow(strapi, showtimeId);
-  if (!row) return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'not_found' };
-
-  if (row.schedule_kind === 'week_block') {
-    await clearRepeatHelpers(strapi, showtimeId);
-    return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'week_block' };
+async function expandRepeatShowtimes(strapi, showtimeId, trigger = 'expand', opts = {}) {
+  const id = Number(showtimeId);
+  if (!Number.isFinite(id)) {
+    return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'invalid_id' };
   }
 
-  const skipDays = parseSkipDays(row.repeat_skip_days);
-  const hasUntil = Boolean(row.repeat_until);
-  const hasSkips = skipDays.size > 0;
-
-  if (!hasUntil && !hasSkips) {
-    return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'nothing_to_do' };
+  if (expandingIds.has(id)) {
+    return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'reentrant' };
   }
+  expandingIds.add(id);
 
-  const startKey = athensDateKey(row.datetime);
-  if (startKey == null) {
-    await clearRepeatHelpers(strapi, showtimeId);
-    return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'invalid_start' };
-  }
+  try {
+    const row = await loadShowtimeRow(strapi, id);
+    if (!row) return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'not_found' };
 
-  const movieId = relationId(row.movie);
-  const venueId = relationId(row.venue);
-  const hallId = relationId(row.hall);
-  if (!movieId || !venueId) {
-    strapi.log.warn(`[showtime repeat] ${trigger} id=${showtimeId}: λείπει ταινία ή χώρος.`);
-    return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'missing_relations' };
-  }
+    const overrideUntil = opts.overrideUntil;
+    const repeatUntil = resolveRepeatUntil(row, overrideUntil);
 
-  const endKey = hasUntil ? athensDateKey(row.repeat_until) : startKey;
-  if (hasUntil && endKey == null) {
-    await clearRepeatHelpers(strapi, showtimeId);
-    return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'invalid_end' };
-  }
+    if (row.schedule_kind === 'week_block') {
+      const untilKey = athensDateKey(repeatUntil);
+      if (untilKey && !row.week_end) {
+        await strapi.db.query('api::showtime.showtime').update({
+          where: { id },
+          data: { week_end: untilKey },
+        });
+      }
+      await clearRepeatHelpers(strapi, id);
+      strapi.log.info(`[showtime repeat] ${trigger} id=${id}: week_block (week_end στο CMS, όχι ξεχωριστές προβολές/μέρα)`);
+      return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'week_block' };
+    }
 
-  if (hasUntil && endKey < startKey) {
-    strapi.log.warn(`[showtime repeat] ${trigger} id=${showtimeId}: repeat_until πριν την έναρξη.`);
-    await clearRepeatHelpers(strapi, showtimeId);
-    return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'end_before_start' };
-  }
+    const skipDays = parseSkipDays(row.repeat_skip_days);
+    const hasUntil = Boolean(repeatUntil);
+    const hasSkips = skipDays.size > 0;
 
-  if (!hasUntil && hasSkips) {
+    if (!hasUntil && !hasSkips) {
+      return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'nothing_to_do' };
+    }
+
+    const startKey = athensDateKey(row.datetime);
+    if (startKey == null) {
+      await clearRepeatHelpers(strapi, id);
+      return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'invalid_start' };
+    }
+
+    const movieId = relationId(row.movie);
+    const venueId = relationId(row.venue);
+    const hallId = relationId(row.hall);
+    if (!movieId || !venueId) {
+      strapi.log.warn(
+        `[showtime repeat] ${trigger} id=${id}: λείπει ταινία (${movieId}) ή χώρος (${venueId}). Σύνδεσε relations στο CMS.`,
+      );
+      return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'missing_relations' };
+    }
+
+    const endKey = hasUntil ? athensDateKey(repeatUntil) : startKey;
+    if (hasUntil && endKey == null) {
+      await clearRepeatHelpers(strapi, id);
+      return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'invalid_end' };
+    }
+
+    if (hasUntil && endKey < startKey) {
+      strapi.log.warn(`[showtime repeat] ${trigger} id=${id}: repeat_until (${endKey}) πριν την έναρξη (${startKey}).`);
+      await clearRepeatHelpers(strapi, id);
+      return { created: 0, skipped: 0, excluded: 0, removed: 0, reason: 'end_before_start' };
+    }
+
+    if (!hasUntil && hasSkips) {
+      let removed = 0;
+      for (const dayKey of skipDays) {
+        removed += await deleteShowtimesOnDay(strapi, {
+          movieId,
+          venueId,
+          dateKey: dayKey,
+          templateDatetime: row.datetime,
+          keepId: dayKey === startKey ? id : null,
+        });
+      }
+      await clearRepeatHelpers(strapi, id);
+      strapi.log.info(`[showtime repeat] ${trigger} id=${id}: αφαιρέθηκαν ${removed} προβολές (εξαιρέσεις).`);
+      return { created: 0, skipped: 0, excluded: skipDays.size, removed, reason: 'skip_only' };
+    }
+
     let removed = 0;
-    for (const dayKey of skipDays) {
-      removed += await deleteShowtimesOnDay(strapi, {
-        movieId,
-        venueId,
-        dateKey: dayKey,
-        templateDatetime: row.datetime,
-        keepId: dayKey === startKey ? showtimeId : null,
+
+    const baseData = {
+      movie: movieId,
+      venue: venueId,
+      schedule_kind: 'exact',
+      available_seats: row.available_seats ?? null,
+      price: row.price ?? null,
+      summer_screening: Boolean(row.summer_screening),
+      repeat_until: null,
+      repeat_skip_days: [],
+    };
+    if (hallId != null) baseData.hall = hallId;
+
+    let created = 0;
+    let skipped = 0;
+    let excluded = 0;
+
+    for (const dayKey of eachDateKeyInclusive(startKey, endKey)) {
+      if (dayKey === startKey) continue;
+
+      if (skipDays.has(dayKey)) {
+        excluded += 1;
+        await deleteShowtimesOnDay(strapi, {
+          movieId,
+          venueId,
+          dateKey: dayKey,
+          templateDatetime: row.datetime,
+          keepId: null,
+        });
+        continue;
+      }
+
+      const dt = datetimeOnAthensDay(dayKey, row.datetime);
+      if (await showtimeExistsAt(strapi, { movieId, venueId, datetime: dt })) {
+        skipped += 1;
+        continue;
+      }
+
+      await strapi.entityService.create('api::showtime.showtime', {
+        data: { ...baseData, datetime: dt.toISOString() },
       });
-    }
-    await clearRepeatHelpers(strapi, showtimeId);
-    strapi.log.info(`[showtime repeat] ${trigger} id=${showtimeId}: αφαιρέθηκαν ${removed} προβολές (εξαιρέσεις).`);
-    return { created: 0, skipped: 0, excluded: skipDays.size, removed, reason: 'skip_only' };
-  }
-
-  let removed = 0;
-
-  const baseData = {
-    movie: movieId,
-    venue: venueId,
-    schedule_kind: 'exact',
-    available_seats: row.available_seats ?? null,
-    price: row.price ?? null,
-    summer_screening: Boolean(row.summer_screening),
-    repeat_until: null,
-    repeat_skip_days: [],
-  };
-  if (hallId != null) baseData.hall = hallId;
-
-  let created = 0;
-  let skipped = 0;
-  let excluded = 0;
-
-  for (const dayKey of eachDateKeyInclusive(startKey, endKey)) {
-    if (dayKey === startKey) continue;
-
-    if (skipDays.has(dayKey)) {
-      excluded += 1;
-      await deleteShowtimesOnDay(strapi, {
-        movieId,
-        venueId,
-        dateKey: dayKey,
-        templateDatetime: row.datetime,
-        keepId: null,
-      });
-      continue;
+      created += 1;
     }
 
-    const dt = datetimeOnAthensDay(dayKey, row.datetime);
-    if (await showtimeExistsAt(strapi, { movieId, venueId, datetime: dt })) {
-      skipped += 1;
-      continue;
+    if (hasSkips) {
+      removed += await applySkipDaysInRange(strapi, row, id, startKey, endKey, skipDays);
     }
 
-    await strapi.entityService.create('api::showtime.showtime', {
-      data: { ...baseData, datetime: dt.toISOString() },
-    });
-    created += 1;
+    await clearRepeatHelpers(strapi, id);
+
+    strapi.log.info(
+      `[showtime repeat] ${trigger} id=${id}: +${created} προβολές, ${skipped} υπήρχαν, ${excluded} εξαιρέσεις, ${removed} διαγράφηκαν (${startKey} → ${endKey})`,
+    );
+
+    return { created, skipped, excluded, removed, reason: 'ok' };
+  } finally {
+    expandingIds.delete(id);
   }
-
-  if (hasSkips) {
-    removed += await applySkipDaysInRange(strapi, row, showtimeId, startKey, endKey, skipDays);
-  }
-
-  await clearRepeatHelpers(strapi, showtimeId);
-
-  strapi.log.info(
-    `[showtime repeat] ${trigger} id=${showtimeId}: +${created} προβολές, ${skipped} υπήρχαν, ${excluded} εξαιρέσεις, ${removed} διαγράφηκαν (${startKey} → ${endKey})`,
-  );
-
-  return { created, skipped, excluded, removed, reason: 'ok' };
 }
 
 /** Εκκρεμείς εγγραφές με repeat_until. */

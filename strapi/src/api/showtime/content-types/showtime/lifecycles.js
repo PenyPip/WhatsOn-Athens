@@ -14,12 +14,21 @@ function applyScheduleRules(data) {
     if (data.repeat_until && !data.week_end) {
       data.week_end = data.repeat_until;
     }
-    data.repeat_until = null;
     data.repeat_skip_days = [];
     if (!data.week_end) {
       throw new Error('Για «Ολόκληρη εβδομάδα» συμπλήρωσε «Τέλος εβδομάδας» (week_end) ή «Repeat until».');
     }
+    /* repeat_until αδειάζει μετά την επέκταση — μην το σβήνουμε πριν το δει το afterUpdate */
   }
+}
+
+function lifecycleShowtimeId(event) {
+  return event?.result?.id ?? event?.params?.where?.id ?? null;
+}
+
+function lifecycleRepeatUntil(event) {
+  const v = event?.params?.data?.repeat_until;
+  return v === undefined ? null : v;
 }
 
 module.exports = {
@@ -41,10 +50,18 @@ module.exports = {
   },
 
   async afterCreate(event) {
-    await expandRepeatShowtimes(strapi, event.result.id, 'afterCreate');
+    const id = lifecycleShowtimeId(event);
+    if (!id) return;
+    await expandRepeatShowtimes(strapi, id, 'afterCreate', {
+      overrideUntil: lifecycleRepeatUntil(event),
+    });
   },
 
   async afterUpdate(event) {
-    await expandRepeatShowtimes(strapi, event.result.id, 'afterUpdate');
+    const id = lifecycleShowtimeId(event);
+    if (!id) return;
+    await expandRepeatShowtimes(strapi, id, 'afterUpdate', {
+      overrideUntil: lifecycleRepeatUntil(event),
+    });
   },
 };
