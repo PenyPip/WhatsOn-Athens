@@ -49,35 +49,48 @@ import {
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
 function ShowtimeCompactRow({ st, emphasized = false }: { st: StrapiShowtime; emphasized?: boolean }) {
   const d = new Date(st.datetime);
+  const priceLabel =
+    st.price != null
+      ? `${Number.isInteger(st.price) ? st.price : st.price.toFixed(2)} €`
+      : null;
+  const showSummer = showtimeShowsOutdoorLabel(st);
+
   return (
     <li
       className={cn(
-        "flex flex-col gap-1.5 border-b border-border/80 last:border-0 sm:flex-row sm:items-center sm:justify-between",
+        "flex flex-col gap-0.5 border-b border-border/80 last:border-0",
         emphasized ? "py-3 text-sm sm:py-3.5" : "py-3.5 text-sm",
       )}
     >
-      <div className="flex flex-wrap items-baseline gap-x-2.5 gap-y-0.5">
-        <span className={cn("capitalize text-foreground", emphasized ? "text-sm text-muted-foreground" : "font-medium")}>
-          {d.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" })}
-        </span>
-        <span
-          className={cn(
-            "font-semibold tabular-nums text-[#13143E]",
-            emphasized ? "text-base" : "text-lg",
-          )}
-        >
-          {d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false })}
-        </span>
-      </div>
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-muted-foreground">
-        {st.hallName ? <span>Αίθουσα · {st.hallName}</span> : null}
-        {showtimeShowsOutdoorLabel(st) ? <SummerScreeningIndicator className="text-amber-600" /> : null}
-        {st.price != null ? (
-          <span className="font-semibold text-foreground">
-            {Number.isInteger(st.price) ? `${st.price}` : st.price.toFixed(2)} €
+      <div className="flex items-center justify-between gap-3">
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-x-2 gap-y-0.5">
+          <span
+            className={cn(
+              "capitalize text-foreground",
+              emphasized ? "text-sm text-muted-foreground" : "font-medium",
+            )}
+          >
+            {d.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" })}
+          </span>
+          <span
+            className={cn(
+              "inline-flex shrink-0 items-center gap-1.5 font-semibold tabular-nums text-[#13143E]",
+              emphasized ? "text-base" : "text-lg",
+            )}
+          >
+            {d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false })}
+            {showSummer ? <SummerScreeningIndicator className="text-amber-600" iconClassName="h-3.5 w-3.5" /> : null}
+          </span>
+        </div>
+        {priceLabel ? (
+          <span className="shrink-0 text-right text-base font-semibold tabular-nums text-foreground">
+            {priceLabel}
           </span>
         ) : null}
       </div>
+      {st.hallName ? (
+        <p className="text-muted-foreground">Αίθουσα · {st.hallName}</p>
+      ) : null}
     </li>
   );
 }
@@ -300,16 +313,22 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const trailerEmbedUrl = isMovie && movie ? youtubeEmbedUrl(movie.trailerUrl) : null;
 
   const infoField = (label: string, value: ReactNode) => (
-    <div className="min-w-0">
-      <span className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
-      <div className="mt-1 text-base font-medium leading-snug text-foreground">{value}</div>
+    <div className="flex min-h-[5.5rem] min-w-0 flex-col justify-center rounded-lg border border-border/60 bg-muted/35 p-3 md:min-h-0 md:rounded-none md:border-0 md:bg-transparent md:p-0">
+      <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:text-xs">{label}</span>
+      <div className="mt-1.5 text-sm font-medium leading-snug text-foreground md:mt-1 md:text-base">{value}</div>
     </div>
   );
 
   const movieInfoAside = hasInfoBlock ? (
-    <aside className="card-elevated mx-auto h-fit w-full max-w-[300px] rounded-2xl p-5 md:mx-0 md:max-w-[280px] md:sticky md:top-28 lg:top-32">
-      <h2 className="font-display mb-4 text-center text-base font-semibold md:text-left md:text-lg">Πληροφορίες</h2>
-      <div className="grid grid-cols-2 gap-x-3 gap-y-4">
+    <aside
+      className={cn(
+        "card-elevated h-fit w-full",
+        "relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 rounded-none border-x-0 px-4 py-5",
+        "md:static md:left-auto md:w-full md:max-w-[280px] md:translate-x-0 md:rounded-2xl md:border-x md:p-5 md:sticky md:top-28 lg:top-32",
+      )}
+    >
+      <h2 className="font-display mb-3 text-left text-base font-semibold md:mb-4 md:text-lg">Πληροφορίες</h2>
+      <div className="grid grid-cols-2 gap-2 sm:gap-2.5 md:gap-x-3 md:gap-y-4">
         {hasDirector ? infoField("Σκηνοθεσία", directorLabel) : null}
         {isMovie ? (
           infoField(
@@ -340,12 +359,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           : null}
       </div>
       {hasCast ? (
-        <div className="mt-4 border-t border-border pt-4">
-          <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Ηθοποιοί</p>
-          <ul className="mt-2 flex flex-wrap gap-1.5" role="list">
+        <div className="mt-3 border-t border-border/80 pt-3 md:mt-4 md:pt-4">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground md:text-xs">Ηθοποιοί</p>
+          <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3 md:flex md:flex-wrap" role="list">
             {castList.slice(0, 6).map((name, i) => (
-              <li key={`${name}-${i}`}>
-                <span className="inline-flex max-w-full items-center rounded-md border border-border/80 bg-muted/40 px-2.5 py-1 text-xs font-medium leading-snug text-foreground md:text-sm">
+              <li key={`${name}-${i}`} className="min-w-0">
+                <span className="flex min-h-[2.5rem] w-full items-center justify-center rounded-lg border border-border/60 bg-muted/35 px-2 py-1.5 text-center text-xs font-medium leading-snug text-foreground md:inline-flex md:min-h-0 md:w-auto md:rounded-md md:px-2.5 md:text-sm">
                   {name}
                 </span>
               </li>
@@ -549,15 +568,17 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             >
               <div
                 className={cn(
-                  "grid gap-6 md:gap-8",
-                  hasInfoBlock && "md:grid-cols-[minmax(0,1fr)_auto] md:items-start",
+                  "flex flex-col gap-5 md:gap-8",
+                  hasInfoBlock && "md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start",
                 )}
               >
-                <div className="min-w-0">
+                {hasInfoBlock ? (
+                  <div className="order-1 md:order-2 md:col-start-2">{movieInfoAside}</div>
+                ) : null}
+                <div className="order-2 min-w-0 md:order-1 md:col-start-1">
                   <h2 className="font-display mb-3 text-xl font-semibold">Υπόθεση</h2>
                   <p className="text-base leading-relaxed text-muted-foreground">{event.synopsis}</p>
                 </div>
-                {movieInfoAside}
               </div>
             </motion.section>
 

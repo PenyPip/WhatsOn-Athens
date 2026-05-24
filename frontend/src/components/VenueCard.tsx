@@ -1,4 +1,4 @@
-import { ExternalLink, MapPin, Users } from "lucide-react";
+import { MapPin, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import type { StrapiVenue } from "@/lib/api";
@@ -60,15 +60,8 @@ const VenueCard = ({
     compact && "px-2.5 py-1.5 text-xs",
   );
 
-  const secondaryBtnClass = cn(
-    actionBtnClass,
-    isSpotlight
-      ? "border-white/15 text-white/80 hover:border-white/30 hover:bg-white/10"
-      : "border-border text-muted-foreground hover:border-foreground/30 hover:text-foreground",
-    compact && "px-2.5 py-1.5 text-xs",
-  );
-
-  const hasActions = Boolean(programHref || venue.moreLink || venue.googleMapsUrl);
+  const mapsUrl = isValidExternalUrl(venue.googleMapsUrl) ? venue.googleMapsUrl.trim() : null;
+  const hasActions = Boolean(programHref || venue.moreLink);
 
   const cardMinH = compact ? "" : "min-h-[296px]";
   const spotlightShell = cn(
@@ -114,7 +107,22 @@ const VenueCard = ({
           {venue.address ? (
             <p className="flex items-start gap-2">
               <MapPin className={cn("mt-0.5 h-3.5 w-3.5 flex-shrink-0", isSpotlight ? "text-white/40" : "text-muted-foreground")} />
-              <span>{venue.address}</span>
+              {mapsUrl ? (
+                <a
+                  href={mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={cn(
+                    "underline decoration-current/30 underline-offset-2 transition-colors",
+                    isSpotlight ? "text-white/80 hover:text-white" : "text-foreground/90 hover:text-foreground",
+                  )}
+                >
+                  {venue.address}
+                  <span className="sr-only"> (χάρτης)</span>
+                </a>
+              ) : (
+                <span>{venue.address}</span>
+              )}
             </p>
           ) : null}
           {venue.seatsTotal > 0 ? (
@@ -129,7 +137,7 @@ const VenueCard = ({
         {hasActions ? (
           <div
             className={cn(
-              "mt-auto flex flex-wrap gap-2",
+              "mt-auto flex flex-wrap gap-3",
               compact ? "pt-3" : "pt-4",
               isSpotlight ? "border-t border-white/10 pt-4" : "border-t border-border pt-4",
             )}
@@ -149,18 +157,6 @@ const VenueCard = ({
                   isSpotlight && "border-white/20 bg-white/10 text-white hover:bg-white/20",
                 )}
               />
-            ) : null}
-            {isValidExternalUrl(venue.googleMapsUrl) ? (
-              <a
-                href={venue.googleMapsUrl.trim()}
-                target="_blank"
-                rel="noopener noreferrer"
-                className={secondaryBtnClass}
-              >
-                <MapPin className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
-                Χάρτης
-                <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
-              </a>
             ) : null}
           </div>
         ) : null}

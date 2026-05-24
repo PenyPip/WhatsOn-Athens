@@ -763,22 +763,6 @@ const Movies = () => {
                     {venueCityLabel(venueFilter)}
                   </p>
                 ) : null}
-                {isValidExternalUrl(venueFilter.googleMapsUrl) ? (
-                  <div className="flex flex-wrap items-center gap-2 pt-2 pl-6 md:gap-3">
-                    {isValidExternalUrl(venueFilter.googleMapsUrl) ? (
-                      <a
-                        href={venueFilter.googleMapsUrl.trim()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-lg border border-white/25 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:border-white/40 hover:bg-white/10"
-                      >
-                        <MapPin className="h-4 w-4 shrink-0 opacity-80" aria-hidden />
-                        Χάρτης
-                        <ExternalLink className="h-3.5 w-3.5 opacity-70" aria-hidden />
-                      </a>
-                    ) : null}
-                  </div>
-                ) : null}
               </div>
             ) : null}
           </div>

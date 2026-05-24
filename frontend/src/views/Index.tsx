@@ -360,7 +360,9 @@ const Index = () => {
             return sectionEl(
               "movies_today",
               <MovieRowScroll
-                loading={moviesLoading || showtimesLoading}
+                loading={
+                  (movies == null && moviesLoading) || (showtimes == null && showtimesLoading)
+                }
                 loadingMessage="Φόρτωση προβολών της ημέρας..."
                 fetchErrorMessage={
                   moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
@@ -377,7 +379,9 @@ const Index = () => {
             return sectionEl(
               "summer_cinema",
               <MovieRowScroll
-                loading={moviesLoading || showtimesLoading || venuesLoading}
+                loading={
+                  (movies == null && moviesLoading) || (showtimes == null && showtimesLoading)
+                }
                 loadingMessage="Φόρτωση θερινών προβολών..."
                 fetchErrorMessage={
                   moviesError || showtimesError || venuesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
@@ -528,7 +532,7 @@ const Index = () => {
             return sectionEl(
               "new_movies",
               <MovieRowScroll
-                loading={moviesLoading}
+                loading={movies == null && moviesLoading}
                 loadingMessage="Φόρτωση ταινιών..."
                 fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={newMoviesList}
@@ -543,7 +547,9 @@ const Index = () => {
             return sectionEl(
               "movies_week",
               <MovieRowScroll
-                loading={moviesLoading || showtimesLoading}
+                loading={
+                  (movies == null && moviesLoading) || (showtimes == null && showtimesLoading)
+                }
                 loadingMessage="Φόρτωση ταινιών εβδομάδας..."
                 fetchErrorMessage={moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={weekMovies}
@@ -560,7 +566,7 @@ const Index = () => {
             return sectionEl(
               "coming_soon",
               <MovieRowScroll
-                loading={moviesLoading}
+                loading={movies == null && moviesLoading}
                 loadingMessage="Φόρτωση ταινιών..."
                 fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={comingSoonMovies}

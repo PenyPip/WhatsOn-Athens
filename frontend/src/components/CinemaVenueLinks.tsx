@@ -28,7 +28,6 @@ export default function CinemaVenueLinks({
   const moviesHref = programHref ?? moviesHrefForVenue(venue);
   const mapsUrl = isValidExternalUrl(venue?.googleMapsUrl) ? venue!.googleMapsUrl.trim() : null;
   const address = venue?.address?.trim();
-  const showActions = Boolean(moviesHref || mapsUrl);
 
   const nameEl = (
     <span className={cn("font-display font-semibold text-[#13143E]", compact ? "text-sm" : "text-sm md:text-base")}>
@@ -47,32 +46,35 @@ export default function CinemaVenueLinks({
     showProgramButton && "border-[#13143E]/35 bg-[#13143E]/[0.06] font-semibold text-[#13143E] hover:bg-[#13143E]/10",
   );
 
+  const addressLinkClass = cn(
+    "mt-1.5 inline-flex items-start gap-1 text-muted-foreground underline decoration-muted-foreground/35 underline-offset-2 transition-colors hover:text-[#13143E] hover:decoration-[#13143E]/50",
+    compact ? "text-[10px]" : "text-xs",
+  );
+
   return (
     <div className={cn("min-w-0", className)}>
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">{nameEl}</div>
-        {showActions ? (
-          <div className="flex shrink-0 flex-col items-end gap-1.5">
-            {moviesHref ? (
-              <Link to={moviesHref} className={showProgramButton ? programClass : actionClass}>
-                Πρόγραμμα
-              </Link>
-            ) : null}
-            {mapsUrl ? (
-              <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className={actionClass}>
-                <MapPin className={cn("shrink-0 opacity-80", compact ? "h-3 w-3" : "h-3.5 w-3.5")} aria-hidden />
-                Χάρτης
-                <ExternalLink className="h-3 w-3 opacity-60" aria-hidden />
-              </a>
-            ) : null}
-          </div>
+        {moviesHref ? (
+          <Link to={moviesHref} className={cn("shrink-0", showProgramButton ? programClass : actionClass)}>
+            Πρόγραμμα
+          </Link>
         ) : null}
       </div>
       {address ? (
-        <p className={cn("mt-1 flex items-start gap-1 text-muted-foreground", compact ? "text-[10px]" : "text-xs")}>
-          <MapPin className="mt-0.5 h-3 w-3 shrink-0 opacity-60" aria-hidden />
-          <span>{address}</span>
-        </p>
+        mapsUrl ? (
+          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className={addressLinkClass}>
+            <MapPin className="mt-0.5 h-3 w-3 shrink-0 opacity-60" aria-hidden />
+            <span>{address}</span>
+            <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 opacity-50" aria-hidden />
+            <span className="sr-only"> (χάρτης)</span>
+          </a>
+        ) : (
+          <p className={cn("mt-1.5 flex items-start gap-1 text-muted-foreground", compact ? "text-[10px]" : "text-xs")}>
+            <MapPin className="mt-0.5 h-3 w-3 shrink-0 opacity-60" aria-hidden />
+            <span>{address}</span>
+          </p>
+        )
       ) : null}
     </div>
   );
