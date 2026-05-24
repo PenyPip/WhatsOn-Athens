@@ -324,11 +324,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       className={cn(
         "card-elevated h-fit w-full",
         "relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 rounded-none border-x-0 px-4 py-5",
-        "md:static md:left-auto md:w-full md:max-w-[280px] md:translate-x-0 md:rounded-2xl md:border-x md:p-5 md:sticky md:top-28 lg:top-32",
+        "md:static md:left-auto md:w-full md:max-w-none md:translate-x-0 md:rounded-2xl md:border-x md:p-5 md:sticky md:top-28 lg:top-32",
       )}
     >
       <h2 className="font-display mb-3 text-left text-base font-semibold md:mb-4 md:text-lg">Πληροφορίες</h2>
-      <div className="grid grid-cols-2 gap-2 sm:gap-2.5 md:gap-x-3 md:gap-y-4">
+      <div className="grid grid-cols-2 gap-2 sm:gap-2.5 md:grid-cols-2 md:gap-x-4 md:gap-y-3 lg:grid-cols-3">
         {hasDirector ? infoField("Σκηνοθεσία", directorLabel) : null}
         {isMovie ? (
           infoField(
@@ -561,45 +561,47 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         {isMovie ? (
           <>
             <motion.section
-              className="max-w-5xl"
+              className="max-w-5xl md:max-w-6xl"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
               <div
                 className={cn(
-                  "flex flex-col gap-5 md:gap-8",
-                  hasInfoBlock && "md:grid md:grid-cols-[minmax(0,1fr)_auto] md:items-start",
+                  "flex flex-col gap-5",
+                  hasInfoBlock &&
+                    "md:grid md:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] md:grid-rows-[auto_auto] md:items-start md:gap-x-8 md:gap-y-5",
                 )}
               >
                 {hasInfoBlock ? (
-                  <div className="order-1 md:order-2 md:col-start-2">{movieInfoAside}</div>
+                  <div className="order-1 md:col-start-2 md:row-span-2 md:row-start-1 md:self-start">
+                    {movieInfoAside}
+                  </div>
                 ) : null}
-                <div className="order-2 min-w-0 md:order-1 md:col-start-1">
+                <div className="order-2 min-w-0 md:col-start-1 md:row-start-1">
                   <h2 className="font-display mb-3 text-xl font-semibold">Υπόθεση</h2>
                   <p className="text-base leading-relaxed text-muted-foreground">{event.synopsis}</p>
                 </div>
+                <section id="trailer" className="order-3 scroll-mt-24 md:col-start-1 md:row-start-2 md:max-w-2xl">
+                  <h2 className="font-display mb-4 text-xl font-semibold">Τρέιλερ</h2>
+                  {trailerEmbedUrl ? (
+                    <div className="aspect-video max-w-xl overflow-hidden rounded-xl border border-border/80 bg-black shadow-sm md:max-w-none">
+                      <iframe
+                        title={`Τρέιλερ — ${headline.primary}`}
+                        src={trailerEmbedUrl}
+                        className="h-full w-full"
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                        allowFullScreen
+                        loading="lazy"
+                        referrerPolicy="strict-origin-when-cross-origin"
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground">Δεν υπάρχει διαθέσιμο τρέιλερ για αυτή την ταινία.</p>
+                  )}
+                </section>
               </div>
             </motion.section>
-
-            <section id="trailer" className="max-w-3xl scroll-mt-24">
-              <h2 className="font-display mb-4 text-xl font-semibold">Τρέιλερ</h2>
-              {trailerEmbedUrl ? (
-                <div className="aspect-video max-w-xl overflow-hidden rounded-xl border border-border/80 bg-black shadow-sm">
-                  <iframe
-                    title={`Τρέιλερ — ${headline.primary}`}
-                    src={trailerEmbedUrl}
-                    className="h-full w-full"
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                    allowFullScreen
-                    loading="lazy"
-                    referrerPolicy="strict-origin-when-cross-origin"
-                  />
-                </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Δεν υπάρχει διαθέσιμο τρέιλερ για αυτή την ταινία.</p>
-              )}
-            </section>
           </>
         ) : (
           <>
