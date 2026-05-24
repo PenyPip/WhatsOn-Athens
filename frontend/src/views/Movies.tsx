@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { ExternalLink, MapPin, SlidersHorizontal } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
@@ -73,6 +73,9 @@ function parseMoviesSectionParam(raw: string | null): MoviesUrlSectionKey | null
   const v = raw?.trim().toLowerCase() ?? "";
   return (MOVIES_SECTION_SEGMENTS as readonly string[]).includes(v) ? (v as MoviesUrlSectionKey) : null;
 }
+
+/** Στη σελίδα /movies/week: πρώτες N ταινίες, μετά «Περισσότερες». */
+const WEEK_MOVIES_PREVIEW_COUNT = 3;
 
 const MOVIES_SECTION_BANNER: Record<MoviesUrlSectionKey, string> = {
   today: "Φιλτράρισμα: Ταινίες σήμερα",
@@ -426,6 +429,11 @@ const Movies = () => {
   const { data: movieGenresList } = useMovieGenres();
   const [summerOutdoorOnly, setSummerOutdoorOnly] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [weekMoviesExpanded, setWeekMoviesExpanded] = useState(false);
+
+  useEffect(() => {
+    setWeekMoviesExpanded(false);
+  }, [moviesSection, venueSlug, areaFilter, districtFilter, genreFilterSlug, summerOutdoorOnly]);
 
   const hasExtraQueryFilters = Boolean(
     (queryVenueSlug && !routeVenueSlug) ||
@@ -1017,19 +1025,33 @@ const Movies = () => {
               <VenueProgramLayout sections={groupedMovies} venue={venueFilter} />
             ) : null}
             {!venueFilter
-              ? groupedMovies.map((section) => (
-                <section
-                  key={section.label}
-                  className="rounded-xl border border-border/15 bg-muted/20 p-4 ring-1 ring-border/[0.06] md:p-5"
-                >
+              ? groupedMovies.map((section) => {
+                  const isWeekPage = moviesSection === "week";
+                  const totalEntries = section.entries.length;
+                  const visibleEntries =
+                    isWeekPage && !weekMoviesExpanded
+                      ? section.entries.slice(0, WEEK_MOVIES_PREVIEW_COUNT)
+                      : section.entries;
+                  const weekHasMore =
+                    isWeekPage && !weekMoviesExpanded && totalEntries > WEEK_MOVIES_PREVIEW_COUNT;
+
+                  return (
+                    <section
+                      key={section.label}
+                      className="rounded-xl border border-border/15 bg-muted/20 p-4 ring-1 ring-border/[0.06] md:p-5"
+                    >
                   <h2 className="font-display mb-1 text-lg font-semibold capitalize text-[#13143E] md:mb-2 md:text-2xl">
                     {section.label}
                   </h2>
                   <p className="mb-4 text-xs text-muted-foreground md:mb-5">
-                    Όλες οι προβολές παρακάτω ανήκουν σε αυτή την ημέρα
+                    {isWeekPage
+                      ? weekHasMore
+                        ? `Εμφανίζονται ${WEEK_MOVIES_PREVIEW_COUNT} από ${totalEntries} ταινίες της εβδομάδας`
+                        : "Προβολές της ερχόμενης εβδομάδας κινηματογράφου"
+                      : "Όλες οι προβολές παρακάτω ανήκουν σε αυτή την ημέρα"}
                   </p>
                   <div className="grid grid-cols-2 items-start gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-                    {section.entries.map(({ movie, showings }, i) => {
+                    {visibleEntries.map(({ movie, showings }, i) => {
                       const tl = movieTitleLines(movie);
                       const rows = flattenShowingsToRows(showings);
                       const dayGroups = groupShowtimeRowsByDay(rows);
@@ -1089,8 +1111,23 @@ const Movies = () => {
                       );
                     })}
                   </div>
-                </section>
-              ))
+                  {weekHasMore ? (
+                    <div className="mt-6 flex justify-center border-t border-border/15 pt-5">
+                      <button
+                        type="button"
+                        onClick={() => setWeekMoviesExpanded(true)}
+                        className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/80"
+                      >
+                        Περισσότερες
+                        <span className="font-normal text-muted-foreground">
+                          ({totalEntries - WEEK_MOVIES_PREVIEW_COUNT} ακόμη)
+                        </span>
+                      </button>
+                    </div>
+                  ) : null}
+                    </section>
+                  );
+                })
               : null}
           </div>
         )}
