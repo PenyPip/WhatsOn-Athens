@@ -222,6 +222,7 @@ type ShowingSlot = {
   /** Ολόκληρη εβδομάδα χωρίς ώρες. */
   timesTba?: boolean;
   weekRangeLabel?: string;
+  weekRangeEnd?: Date;
 };
 
 function appendWeekBlockSlot(
@@ -240,6 +241,7 @@ function appendWeekBlockSlot(
   }
   block.slots.push({
     datetime: range.start,
+    weekRangeEnd: range.end,
     hallName: hallRaw || undefined,
     summerScreening,
     timesTba: true,

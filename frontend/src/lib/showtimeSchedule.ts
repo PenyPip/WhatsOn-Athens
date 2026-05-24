@@ -79,6 +79,20 @@ function formatRangeDay(d: Date, withYear: boolean): string {
 }
 
 /** «22 Μαΐ – 28 Μαΐ 2026» ή «22 Μαΐ 2026» αν μία μέρα. */
+/** Κάθε ημερολογιακή μέρα από start έως end (συμπεριλαμβάνεται). */
+export function eachDayInclusiveInRange(start: Date, end: Date): Date[] {
+  const from = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+  const to = new Date(end.getFullYear(), end.getMonth(), end.getDate());
+  if (to.getTime() < from.getTime()) return [];
+  const out: Date[] = [];
+  const cur = new Date(from);
+  while (cur.getTime() <= to.getTime()) {
+    out.push(new Date(cur));
+    cur.setDate(cur.getDate() + 1);
+  }
+  return out;
+}
+
 export function formatShowtimeWeekRangeLabel(st: StrapiShowtime): string | null {
   const range = showtimeWeekRange(st);
   if (!range) return null;

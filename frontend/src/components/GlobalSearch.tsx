@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Building2, Clapperboard, Loader2 } from "lucide-react";
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandShortcut } from "@/components/ui/command";
+import { Command, CommandEmpty, CommandGroup, CommandItem, CommandList, CommandShortcut } from "@/components/ui/command";
 import { useMovies, useVenues, useShowtimes } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
@@ -41,6 +41,7 @@ interface GlobalSearchProps {
 
 export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const navigate = useNavigate();
+  const inputRef = useRef<HTMLInputElement>(null);
   const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies();
   const { data: showtimes } = useShowtimes();
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues();
@@ -55,7 +56,14 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
   const listsError = moviesError || venuesError;
 
   useEffect(() => {
-    if (!open) setSearch("");
+    if (!open) {
+      setSearch("");
+      return;
+    }
+    const id = window.requestAnimationFrame(() => {
+      inputRef.current?.focus({ preventScroll: true });
+    });
+    return () => window.cancelAnimationFrame(id);
   }, [open]);
 
   const movieHits = useMemo(() => {
@@ -98,18 +106,44 @@ export function GlobalSearch({ open, onOpenChange }: GlobalSearchProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="overflow-hidden p-0 shadow-lg sm:max-w-lg">
+      <DialogContent
+        className="overflow-hidden p-0 shadow-lg sm:max-w-lg"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
         <DialogTitle className="sr-only">Αναζήτηση ταινιών και χώρων</DialogTitle>
         <Command
           shouldFilter={false}
-          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-input-wrapper]_svg]:h-5 [&_[cmdk-input-wrapper]_svg]:w-5 [&_[cmdk-input]]:h-12 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
+          className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:text-muted-foreground [&_[cmdk-group]:not([hidden])_~[cmdk-group]]:pt-0 [&_[cmdk-group]]:px-2 [&_[cmdk-item]]:px-2 [&_[cmdk-item]]:py-3 [&_[cmdk-item]_svg]:h-5 [&_[cmdk-item]_svg]:w-5"
         >
-          <CommandInput
-            placeholder="Αναζήτηση ταινίας ή χώρου…"
-            value={search}
-            onValueChange={setSearch}
-            autoFocus
-          />
+          <div className="flex items-center border-b px-3" cmdk-input-wrapper="">
+            <label htmlFor="global-search-input" className="sr-only">
+              Αναζήτηση ταινίας ή χώρου
+            </label>
+            <svg
+              className="mr-2 h-4 w-4 shrink-0 opacity-50"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              aria-hidden
+            >
+              <circle cx="11" cy="11" r="8" />
+              <path d="m21 21-4.3-4.3" />
+            </svg>
+            <input
+              id="global-search-input"
+              ref={inputRef}
+              type="search"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Αναζήτηση ταινίας ή χώρου…"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              className="flex h-12 w-full bg-transparent py-3 text-sm outline-none placeholder:text-muted-foreground"
+            />
+          </div>
           {loading ? (
             <div className="flex items-center gap-2 border-b px-4 py-8 text-sm text-muted-foreground">
               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
