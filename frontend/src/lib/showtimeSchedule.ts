@@ -6,19 +6,25 @@ export function showtimeIsWeekBlock(st: Pick<StrapiShowtime, "scheduleKind">): b
   return st.scheduleKind === "week_block";
 }
 
-/** Τοπική ημέρα 00:00 από ISO datetime ή YYYY-MM-DD. */
+/**
+ * Τοπική ημερολογιακή μέρα 00:00.
+ * - `YYYY-MM-DD` (π.χ. week_end): ως ημερολογική ημερομηνία, χωρίς UTC offset.
+ * - ISO datetime (π.χ. datetime από Strapi): ημέρα στο timezone του browser (Ελλάδα),
+ *   όχι slice του UTC prefix — αλλιώς 28/5 00:00 → 27/5 στο site.
+ */
 export function parseShowtimeLocalDay(raw: string | undefined): Date | null {
   const s = typeof raw === "string" ? raw.trim() : "";
   if (!s) return null;
-  const datePart = s.length >= 10 ? s.slice(0, 10) : s;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
-    const d = new Date(s);
-    if (Number.isNaN(d.getTime())) return null;
-    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    const [y, m, day] = s.split("-").map(Number);
+    if (!y || !m || !day) return null;
+    return new Date(y, m - 1, day);
   }
-  const [y, m, day] = datePart.split("-").map(Number);
-  if (!y || !m || !day) return null;
-  return new Date(y, m - 1, day);
+
+  const d = new Date(s);
+  if (Number.isNaN(d.getTime())) return null;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
 export function endOfLocalDay(d: Date): Date {
