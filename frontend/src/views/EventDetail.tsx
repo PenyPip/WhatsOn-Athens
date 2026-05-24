@@ -573,16 +573,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </a>
               ) : null}
               {isMovie && slug ? (
-                <SharePageButton
-                  variant="hero"
-                  path={`/movies/${slug}`}
-                  title={headline.primary}
-                  shareText={
-                    headline.secondary
-                      ? `«${headline.primary}» (${headline.secondary}) — προβολές στο 37Ν`
-                      : `«${headline.primary}» — προβολές στο 37Ν`
-                  }
-                />
+                <SharePageButton variant="hero" path={`/movies/${slug}`} title={headline.primary} />
               ) : null}
             </div>
           </motion.div>
