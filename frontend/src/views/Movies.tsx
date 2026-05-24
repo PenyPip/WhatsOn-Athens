@@ -49,7 +49,8 @@ import {
   showtimeIsUpcoming,
   moviesReleasedInLastDays,
   moviesComingAfterUpcomingCinemaWeek,
-  moviesForUpcomingCinemaWeek,
+  getUpcomingCinemaWeekBounds,
+  moviesWithShowtimesInUpcomingCinemaWeek,
   enrichMoviesWithShowtimeGenre,
   formatUpcomingCinemaWeekRange,
 } from "@/lib/homeMovieFilters";
@@ -293,13 +294,42 @@ type ShowingRow = {
   weekRangeLabel?: string;
 };
 
-function flattenShowingsToRows(showings: VenueShowingsBlock[]): ShowingRow[] {
+type CinemaWeekClip = { start: Date; end: Date };
+
+function clipShowingsToCinemaWeek(showings: VenueShowingsBlock[], clip: CinemaWeekClip): VenueShowingsBlock[] {
+  const startMs = clip.start.getTime();
+  const endMs = clip.end.getTime();
+  return showings
+    .map((b) => ({
+      ...b,
+      slots: b.slots.flatMap((slot) => {
+        if (slot.timesTba && slot.weekRangeEnd) {
+          const from = new Date(Math.max(slot.datetime.getTime(), startMs));
+          const to = new Date(Math.min(slot.weekRangeEnd.getTime(), endMs));
+          if (to.getTime() < from.getTime()) return [];
+          return [{ ...slot, datetime: from, weekRangeEnd: to }];
+        }
+        const t = slot.datetime.getTime();
+        return t >= startMs && t <= endMs ? [slot] : [];
+      }),
+    }))
+    .filter((b) => b.slots.length > 0);
+}
+
+function flattenShowingsToRows(showings: VenueShowingsBlock[], cinemaWeekClip?: CinemaWeekClip): ShowingRow[] {
   const rows: ShowingRow[] = [];
   for (const b of showings) {
     const slots = [...b.slots].sort((x, y) => x.datetime.getTime() - y.datetime.getTime());
     for (const slot of slots) {
       if (slot.timesTba && slot.weekRangeEnd) {
-        for (const day of eachDayInclusiveInRange(slot.datetime, slot.weekRangeEnd)) {
+        let rangeStart = slot.datetime;
+        let rangeEnd = slot.weekRangeEnd;
+        if (cinemaWeekClip) {
+          rangeStart = new Date(Math.max(rangeStart.getTime(), cinemaWeekClip.start.getTime()));
+          rangeEnd = new Date(Math.min(rangeEnd.getTime(), cinemaWeekClip.end.getTime()));
+          if (rangeEnd.getTime() < rangeStart.getTime()) continue;
+        }
+        for (const day of eachDayInclusiveInRange(rangeStart, rangeEnd)) {
           rows.push({
             key: `${b.key}-tba-${day.getTime()}-${slot.hallName ?? ""}`,
             venueKey: b.key,
@@ -582,7 +612,7 @@ const Movies = () => {
           ? moviesReleasedInLastDays(moviesEnriched ?? [], 10, now)
           : moviesSection === "soon"
             ? moviesComingAfterUpcomingCinemaWeek(moviesEnriched ?? [], now)
-            : moviesForUpcomingCinemaWeek(moviesEnriched ?? [], showtimes, now);
+            : moviesWithShowtimesInUpcomingCinemaWeek(moviesEnriched ?? [], showtimes ?? [], now);
       if (subset.length === 0) return [];
 
       const ids = new Set(subset.map((m) => m.id));
@@ -1034,6 +1064,7 @@ const Movies = () => {
                       : section.entries;
                   const weekHasMore =
                     isWeekPage && !weekMoviesExpanded && totalEntries > WEEK_MOVIES_PREVIEW_COUNT;
+                  const cinemaWeekClip = isWeekPage ? getUpcomingCinemaWeekBounds() : undefined;
 
                   return (
                     <section
@@ -1053,7 +1084,10 @@ const Movies = () => {
                   <div className="grid grid-cols-2 items-start gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                     {visibleEntries.map(({ movie, showings }, i) => {
                       const tl = movieTitleLines(movie);
-                      const rows = flattenShowingsToRows(showings);
+                      const cardShowings = cinemaWeekClip
+                        ? clipShowingsToCinemaWeek(showings, cinemaWeekClip)
+                        : showings;
+                      const rows = flattenShowingsToRows(cardShowings, cinemaWeekClip);
                       const dayGroups = groupShowtimeRowsByDay(rows);
                       const hasShowRows = rows.length > 0;
                       return (
@@ -1119,9 +1153,6 @@ const Movies = () => {
                         className="inline-flex items-center gap-1.5 text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/80"
                       >
                         Περισσότερες
-                        <span className="font-normal text-muted-foreground">
-                          ({totalEntries - WEEK_MOVIES_PREVIEW_COUNT} ακόμη)
-                        </span>
                       </button>
                     </div>
                   ) : null}

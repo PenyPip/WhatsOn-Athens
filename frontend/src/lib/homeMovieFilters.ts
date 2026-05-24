@@ -419,6 +419,20 @@ export function moviesForUpcomingCinemaWeek(
   return out;
 }
 
+/**
+ * /movies/week — μόνο ταινίες με καταχωρημένες προβολές στην επόμενη εβδομάδα κινηματογράφου.
+ * (Όχι ταινίες που εμφανίζονται μόνο λόγω ημερομηνίας κυκλοφορίας· «Προσεχώς» μέσα στη σελίδα ταινίας.)
+ */
+export function moviesWithShowtimesInUpcomingCinemaWeek(
+  movies: StrapiMovie[],
+  showtimes: StrapiShowtime[],
+  now = new Date(),
+): StrapiMovie[] {
+  return moviesFromShowtimesOrdered(movies, showtimes, (st) =>
+    showtimeMatchesHomeUpcomingCinemaWeek(st, now),
+  );
+}
+
 /** Προσεχώς: κυκλοφορία μετά το τέλος της επόμενης εβδομάδας κινηματογράφου (όχι μέσα σε αυτή). */
 export function moviesComingAfterUpcomingCinemaWeek(movies: StrapiMovie[], now = new Date()): StrapiMovie[] {
   const { end } = getUpcomingCinemaWeekBounds(now);

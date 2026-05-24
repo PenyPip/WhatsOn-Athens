@@ -1,5 +1,5 @@
 import { useParams, Link } from "react-router-dom";
-import { useMemo, type ReactNode } from "react";
+import { useCallback, useMemo, type ReactNode } from "react";
 import { motion } from "framer-motion";
 import { Clock, Globe, Users, ArrowLeft, MapPin, Play } from "lucide-react";
 import SharePageButton from "@/components/SharePageButton";
@@ -26,8 +26,13 @@ import {
   type StrapiTheaterShow,
 } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
-import { showtimeIsUpcoming, showtimeShowsOutdoorLabel, enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
-import { formatShowtimeWeekRangeLabel, showtimeIsWeekBlock } from "@/lib/showtimeSchedule";
+import {
+  getUpcomingCinemaWeekBounds,
+  showtimeIsUpcoming,
+  showtimeShowsOutdoorLabel,
+  enrichMoviesWithShowtimeGenre,
+} from "@/lib/homeMovieFilters";
+import { formatShowtimeWeekRangeLabel, showtimeIsWeekBlock, showtimeOverlapsRange } from "@/lib/showtimeSchedule";
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
@@ -192,23 +197,48 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     return [...filtered].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
   }, [showtimes, slug, type]);
 
-  const showtimesByVenue = useMemo(() => {
-    const m = new Map<string, StrapiShowtime[]>();
+  const { cinemaWeekShowtimes, soonShowtimes } = useMemo(() => {
+    const now = new Date();
+    const { start, end } = getUpcomingCinemaWeekBounds(now);
+    const cinema: StrapiShowtime[] = [];
+    const soon: StrapiShowtime[] = [];
     for (const st of eventShowtimes) {
-      const key = cinemaGroupKey(st, venues);
-      if (!m.has(key)) m.set(key, []);
-      m.get(key)!.push(st);
+      if (showtimeOverlapsRange(st, start, end, now)) cinema.push(st);
+      else soon.push(st);
     }
-    return [...m.entries()]
-      .map(([key, slots]) => {
-        const sorted = [...slots].sort(
-          (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime(),
-        );
-        const { venueName, venue } = resolveCinemaGroupFromShowtimes(sorted, venues);
-        return { key, venueName, slots: sorted, venue };
-      })
-      .sort((a, b) => a.venueName.localeCompare(b.venueName, "el"));
-  }, [eventShowtimes, venues]);
+    return { cinemaWeekShowtimes: cinema, soonShowtimes: soon };
+  }, [eventShowtimes]);
+
+  const groupShowtimesByVenue = useCallback(
+    (list: StrapiShowtime[]) => {
+      const m = new Map<string, StrapiShowtime[]>();
+      for (const st of list) {
+        const key = cinemaGroupKey(st, venues);
+        if (!m.has(key)) m.set(key, []);
+        m.get(key)!.push(st);
+      }
+      return [...m.entries()]
+        .map(([key, slots]) => {
+          const sorted = [...slots].sort(
+            (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime(),
+          );
+          const { venueName, venue } = resolveCinemaGroupFromShowtimes(sorted, venues ?? []);
+          return { key, venueName, slots: sorted, venue };
+        })
+        .sort((a, b) => a.venueName.localeCompare(b.venueName, "el"));
+    },
+    [venues],
+  );
+
+  const showtimesByVenue = useMemo(
+    () => groupShowtimesByVenue(cinemaWeekShowtimes),
+    [cinemaWeekShowtimes, groupShowtimesByVenue],
+  );
+
+  const soonShowtimesByVenue = useMemo(
+    () => groupShowtimesByVenue(soonShowtimes),
+    [soonShowtimes, groupShowtimesByVenue],
+  );
 
   const genreLabel = useMemo(() => {
     if (!event) return "";
@@ -409,40 +439,86 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           <h2 className="font-display text-lg font-semibold text-foreground md:text-xl">Πού & πότε παίζεται</h2>
         </div>
       </div>
-      {eventShowtimes.length === 0 ? (
+      {cinemaWeekShowtimes.length === 0 && soonShowtimes.length === 0 ? (
         <p className="text-sm text-muted-foreground">Δεν υπάρχουν επερχόμενες προβολές.</p>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
-          {showtimesByVenue.map(({ key, venueName, slots, venue }) => {
-            if (!slots.length) return null;
-            return (
-              <div
-                key={key}
-                className="flex min-h-0 flex-col rounded-lg border border-border/80 bg-card/50 p-3 sm:p-4"
-              >
-                <div className="mb-2 border-b border-border/60 pb-2">
-                  <CinemaVenueLinks
-                    venueName={venueName}
-                    venue={venue}
-                    programHref={moviesHrefForShowtimes(slots, venues, key)}
-                    showProgramButton
-                    compact
-                  />
-                </div>
-                <ShowtimesExpandable listClassName="min-h-0 flex-1">
-                  {slots.map((st) => (
-                    <ShowtimeCompactRow key={st.id} st={st} emphasized />
-                  ))}
-                </ShowtimesExpandable>
-                {isValidExternalUrl(venue?.moreLink) ? (
-                  <div className="mt-2 border-t border-border/50 pt-2">
-                    <VenueBookingLink venue={venue} compact />
+        <>
+          {cinemaWeekShowtimes.length > 0 ? (
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
+              {showtimesByVenue.map(({ key, venueName, slots, venue }) => {
+                if (!slots.length) return null;
+                return (
+                  <div
+                    key={key}
+                    className="flex min-h-0 flex-col rounded-lg border border-border/80 bg-card/50 p-3 sm:p-4"
+                  >
+                    <div className="mb-2 border-b border-border/60 pb-2">
+                      <CinemaVenueLinks
+                        venueName={venueName}
+                        venue={venue}
+                        programHref={moviesHrefForShowtimes(slots, venues, key)}
+                        showProgramButton
+                        compact
+                      />
+                    </div>
+                    <ShowtimesExpandable listClassName="min-h-0 flex-1">
+                      {slots.map((st) => (
+                        <ShowtimeCompactRow key={st.id} st={st} emphasized />
+                      ))}
+                    </ShowtimesExpandable>
+                    {isValidExternalUrl(venue?.moreLink) ? (
+                      <div className="mt-2 border-t border-border/50 pt-2">
+                        <VenueBookingLink venue={venue} compact />
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
+                );
+              })}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Δεν υπάρχουν προβολές για την επόμενη εβδομάδα κινηματογράφου.
+            </p>
+          )}
+
+          {soonShowtimes.length > 0 ? (
+            <div className="mt-8 border-t border-border/60 pt-6 md:mt-10">
+              <h3 className="font-display text-base font-semibold text-foreground md:text-lg">Προσεχώς</h3>
+              <p className="mt-1 text-sm text-muted-foreground">Προβολές μετά την επόμενη εβδομάδα κινηματογράφου</p>
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
+                {soonShowtimesByVenue.map(({ key, venueName, slots, venue }) => {
+                  if (!slots.length) return null;
+                  return (
+                    <div
+                      key={`soon-${key}`}
+                      className="flex min-h-0 flex-col rounded-lg border border-border/80 bg-card/50 p-3 sm:p-4"
+                    >
+                      <div className="mb-2 border-b border-border/60 pb-2">
+                        <CinemaVenueLinks
+                          venueName={venueName}
+                          venue={venue}
+                          programHref={moviesHrefForShowtimes(slots, venues, key)}
+                          showProgramButton
+                          compact
+                        />
+                      </div>
+                      <ShowtimesExpandable listClassName="min-h-0 flex-1">
+                        {slots.map((st) => (
+                          <ShowtimeCompactRow key={st.id} st={st} emphasized />
+                        ))}
+                      </ShowtimesExpandable>
+                      {isValidExternalUrl(venue?.moreLink) ? (
+                        <div className="mt-2 border-t border-border/50 pt-2">
+                          <VenueBookingLink venue={venue} compact />
+                        </div>
+                      ) : null}
+                    </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          ) : null}
+        </>
       )}
     </section>
   ) : null;
