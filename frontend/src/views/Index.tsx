@@ -74,7 +74,7 @@ function HomeSeoIntro() {
   );
 }
 
-/** Ελάχιστο ύψος ενότητας — ίδιο σε loading και content (μειώνει CLS). */
+/** Ελάχιστο ύψος ενότητας — μόνο για spinner loading (όχι βαριά placeholder). */
 const MOVIE_ROW_MIN_H = "min-h-[20rem] md:min-h-[22rem]";
 const MOVIE_ROW_SPOTLIGHT_MIN_H = "min-h-[26rem] md:min-h-[28rem]";
 const MOVIE_ROW_GRID_MIN_H = "min-h-[14rem] md:min-h-[16rem]";
@@ -277,8 +277,11 @@ const Index = () => {
   const needsTheater = homeNeedsTheater(sections);
   const needsDining = homeNeedsDining(sections);
 
-  const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies();
-  const { data: showtimes, isLoading: showtimesLoading, isError: showtimesError } = useShowtimes();
+  const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies();
+  const { data: showtimes, isPending: showtimesPending, isError: showtimesError } = useShowtimes();
+  /** Μόνο πριν το πρώτο δεδομένο (όχι σε refetch με cache / SSR bootstrap). */
+  const awaitingMovies = movies === undefined && moviesPending;
+  const awaitingShowtimes = showtimes === undefined && showtimesPending;
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues);
   const { data: theaterShows, isLoading: theaterLoading, isError: theaterError } = useTheaterShows(needsTheater);
   const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(needsDining);
@@ -363,9 +366,7 @@ const Index = () => {
             return sectionEl(
               "movies_today",
               <MovieRowScroll
-                loading={
-                  (movies == null && moviesLoading) || (showtimes == null && showtimesLoading)
-                }
+                loading={awaitingMovies || awaitingShowtimes}
                 loadingMessage="Φόρτωση προβολών της ημέρας..."
                 fetchErrorMessage={
                   moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
@@ -381,9 +382,7 @@ const Index = () => {
             return sectionEl(
               "summer_cinema",
               <MovieRowScroll
-                loading={
-                  (movies == null && moviesLoading) || (showtimes == null && showtimesLoading)
-                }
+                loading={awaitingMovies || awaitingShowtimes}
                 loadingMessage="Φόρτωση θερινών προβολών..."
                 fetchErrorMessage={
                   moviesError || showtimesError || venuesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
@@ -531,7 +530,7 @@ const Index = () => {
             return sectionEl(
               "new_movies",
               <MovieRowScroll
-                loading={movies == null && moviesLoading}
+                loading={awaitingMovies}
                 loadingMessage="Φόρτωση ταινιών..."
                 fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={newMoviesList}
@@ -545,9 +544,7 @@ const Index = () => {
             return sectionEl(
               "movies_week",
               <MovieRowScroll
-                loading={
-                  (movies == null && moviesLoading) || (showtimes == null && showtimesLoading)
-                }
+                loading={awaitingMovies || awaitingShowtimes}
                 loadingMessage="Φόρτωση ταινιών εβδομάδας..."
                 fetchErrorMessage={moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={weekMovies}
@@ -563,7 +560,7 @@ const Index = () => {
             return sectionEl(
               "coming_soon",
               <MovieRowScroll
-                loading={movies == null && moviesLoading}
+                loading={awaitingMovies}
                 loadingMessage="Φόρτωση ταινιών..."
                 fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={comingSoonMovies}
