@@ -70,6 +70,17 @@
       "component": "cinema.day-price",
       "description": "Τιμές ανά ημέρα εβδομάδας (Δευτέρα–Κυριακή). Μία εγγραφή ανά ημέρα που διαφέρει. Εμφανίζονται στο site ανά προβολή (ώρα) ή ως πίνακας για «Ολόκληρη εβδομάδα»."
     },
+    "updated": {
+      "type": "boolean",
+      "default": true,
+      "private": true,
+      "description": "Μόνο admin — δεν εμφανίζεται στο site. True όταν ενημερώνεις πρόγραμμα· false αυτόματα κάθε Σάββατο 14:00 (Αθήνα)."
+    },
+    "info": {
+      "type": "text",
+      "private": true,
+      "description": "Μόνο admin — ελεύθερο κείμενο (σημείωση, οδηγίες). Δεν εμφανίζεται στο site."
+    },
     "theater_shows": {
       "type": "relation",
       "relation": "oneToMany",

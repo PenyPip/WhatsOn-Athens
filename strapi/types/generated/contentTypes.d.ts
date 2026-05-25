@@ -836,6 +836,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
       'api::hall.hall'
     >;
     image: Attribute.Media<'images'>;
+    info: Attribute.Text & Attribute.Private;
     more_link: Attribute.String;
     name: Attribute.String & Attribute.Required;
     publishedAt: Attribute.DateTime;
@@ -855,6 +856,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     type: Attribute.Enumeration<['cinema', 'theater']> &
       Attribute.Required &
       Attribute.DefaultTo<'cinema'>;
+    updated: Attribute.Boolean & Attribute.Private & Attribute.DefaultTo<true>;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::venue.venue',
