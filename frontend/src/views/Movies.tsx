@@ -34,12 +34,7 @@ import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { cn } from "@/lib/utils";
 import { isCinemaVenue } from "@/lib/venueType";
-import {
-  eachDayInclusiveInRange,
-  formatShowtimeWeekRangeLabel,
-  showtimeIsWeekBlock,
-  showtimeWeekRange,
-} from "@/lib/showtimeSchedule";
+import { formatShowtimeWeekRangeLabel, showtimeIsWeekBlock, showtimeWeekRange } from "@/lib/showtimeSchedule";
 import {
   showtimeIsSummerOutdoor,
   showtimeShowsOutdoorLabel,
@@ -230,36 +225,6 @@ type ShowingSlot = {
   weekRangeEnd?: Date;
 };
 
-function appendWeekBlockSlot(
-  block: VenueShowingsBlock,
-  st: StrapiShowtime,
-  hallRaw: string,
-  summerScreening: boolean,
-) {
-  const range = showtimeWeekRange(st);
-  const label = formatShowtimeWeekRangeLabel(st);
-  if (!range || !label) return;
-  const existing = block.slots.find((s) => s.timesTba && s.weekRangeLabel === label);
-  if (existing) {
-    if (summerScreening) existing.summerScreening = true;
-    if (range.end.getTime() > (existing.weekRangeEnd?.getTime() ?? 0)) {
-      existing.weekRangeEnd = range.end;
-    }
-    if (range.start.getTime() < existing.datetime.getTime()) {
-      existing.datetime = range.start;
-    }
-    return;
-  }
-  block.slots.push({
-    datetime: range.start,
-    weekRangeEnd: range.end,
-    hallName: hallRaw || undefined,
-    summerScreening,
-    timesTba: true,
-    weekRangeLabel: label,
-  });
-}
-
 function appendShowingSlot(block: VenueShowingsBlock, stDate: Date, hallRaw: string, summerScreening: boolean) {
   const slotDedupeKey = `${Math.floor(stDate.getTime() / 60000)}-${hallRaw}`;
   const existing = block.slots.find(
@@ -319,30 +284,11 @@ function clipShowingsToCinemaWeek(showings: VenueShowingsBlock[], clip: CinemaWe
 function flattenShowingsToRows(showings: VenueShowingsBlock[], cinemaWeekClip?: CinemaWeekClip): ShowingRow[] {
   const rows: ShowingRow[] = [];
   for (const b of showings) {
-    const slots = [...b.slots].sort((x, y) => x.datetime.getTime() - y.datetime.getTime());
+    const slots = [...b.slots]
+      .filter((s) => !s.timesTba)
+      .sort((x, y) => x.datetime.getTime() - y.datetime.getTime());
     for (const slot of slots) {
-      if (slot.timesTba && slot.weekRangeEnd) {
-        let rangeStart = slot.datetime;
-        let rangeEnd = slot.weekRangeEnd;
-        if (cinemaWeekClip) {
-          rangeStart = new Date(Math.max(rangeStart.getTime(), cinemaWeekClip.start.getTime()));
-          rangeEnd = new Date(Math.min(rangeEnd.getTime(), cinemaWeekClip.end.getTime()));
-          if (rangeEnd.getTime() < rangeStart.getTime()) continue;
-        }
-        for (const day of eachDayInclusiveInRange(rangeStart, rangeEnd)) {
-          rows.push({
-            key: `${b.key}-tba-${day.getTime()}-${slot.hallName ?? ""}`,
-            venueKey: b.key,
-            venueLabel: b.venueLabel,
-            datetime: day,
-            hallName: slot.hallName,
-            summerScreening: slot.summerScreening,
-            timesTba: true,
-            weekRangeLabel: slot.weekRangeLabel,
-          });
-        }
-        continue;
-      }
+      if (slot.timesTba) continue;
       rows.push({
         key: `${b.key}-${slot.timesTba ? `tba-${slot.weekRangeLabel}` : slot.datetime.getTime()}-${slot.hallName ?? ""}`,
         venueKey: b.key,
@@ -639,10 +585,7 @@ const Movies = () => {
           byVenue.set(venueKey, { key: venueKey, venueLabel: venueName, slots: [] });
         }
         const block = byVenue.get(venueKey)!;
-        if (showtimeIsWeekBlock(st)) {
-          appendWeekBlockSlot(block, st, hallRaw, showtimeShowsOutdoorLabel(st));
-          continue;
-        }
+        if (showtimeIsWeekBlock(st)) continue;
         const stDate = new Date(st.datetime);
         if (Number.isNaN(stDate.getTime())) continue;
         appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
@@ -655,8 +598,11 @@ const Movies = () => {
             ? [...venueMap.values()]
                 .map((b) => ({
                   ...b,
-                  slots: [...b.slots].sort((x, y) => x.datetime.getTime() - y.datetime.getTime()),
+                  slots: [...b.slots]
+                    .filter((s) => !s.timesTba)
+                    .sort((x, y) => x.datetime.getTime() - y.datetime.getTime()),
                 }))
+                .filter((b) => b.slots.length > 0)
                 .sort((a, b) => {
                   const ta = a.slots[0]?.datetime.getTime() ?? 0;
                   const tb = b.slots[0]?.datetime.getTime() ?? 0;
@@ -738,11 +684,8 @@ const Movies = () => {
         byVenue.set(venueKey, { key: venueKey, venueLabel: venueName, slots: [] });
       }
       const block = byVenue.get(venueKey)!;
-      if (showtimeIsWeekBlock(st)) {
-        appendWeekBlockSlot(block, st, hallRaw, showtimeShowsOutdoorLabel(st));
-      } else {
-        appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
-      }
+      if (showtimeIsWeekBlock(st)) continue;
+      appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
     }
 
     const sections: DaySection[] = [...sectionMovieShowings.keys()].map((key) => {
@@ -750,10 +693,14 @@ const Movies = () => {
       const byMovie = sectionMovieShowings.get(key)!;
       const entries: MovieDayEntry[] = [...byMovie.entries()].map(([mid, venueMap]) => {
         const mv = movieMap.get(mid)!;
-        const showings = [...venueMap.values()].map((b) => ({
-          ...b,
-          slots: [...b.slots].sort((x, y) => x.datetime.getTime() - y.datetime.getTime()),
-        }));
+        const showings = [...venueMap.values()]
+          .map((b) => ({
+            ...b,
+            slots: [...b.slots]
+              .filter((s) => !s.timesTba)
+              .sort((x, y) => x.datetime.getTime() - y.datetime.getTime()),
+          }))
+          .filter((b) => b.slots.length > 0);
         showings.sort((a, b) => {
           const ta = a.slots[0]?.datetime.getTime() ?? 0;
           const tb = b.slots[0]?.datetime.getTime() ?? 0;
