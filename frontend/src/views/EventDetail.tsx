@@ -31,12 +31,19 @@ import { VenueDayPricesTable } from "@/components/VenueDayPricesTable";
 import { resolvePricingForShowtime } from "@/lib/venuePricing";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import {
+  endOfCinemaWeek,
   getUpcomingCinemaWeekBounds,
   showtimeIsUpcoming,
   showtimeShowsOutdoorLabel,
   enrichMoviesWithShowtimeGenre,
+  startOfCinemaWeek,
 } from "@/lib/homeMovieFilters";
-import { formatShowtimeWeekRangeLabel, showtimeIsWeekBlock, showtimeOverlapsRange } from "@/lib/showtimeSchedule";
+import {
+  formatShowtimeWeekRangeLabel,
+  showtimeIsWeekBlock,
+  showtimeOverlapsRange,
+  showtimeStartsAfterRange,
+} from "@/lib/showtimeSchedule";
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
@@ -204,12 +211,19 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const { cinemaWeekShowtimes, soonShowtimes } = useMemo(() => {
     const now = new Date();
-    const { start, end } = getUpcomingCinemaWeekBounds(now);
+    const currentStart = startOfCinemaWeek(now);
+    const currentEnd = endOfCinemaWeek(now);
+    const { start: upcomingStart, end: upcomingEnd } = getUpcomingCinemaWeekBounds(now);
     const cinema: StrapiShowtime[] = [];
     const soon: StrapiShowtime[] = [];
     for (const st of eventShowtimes) {
-      if (showtimeOverlapsRange(st, start, end, now)) cinema.push(st);
-      else soon.push(st);
+      const inCurrentWeek = showtimeOverlapsRange(st, currentStart, currentEnd, now);
+      const inUpcomingWeek = showtimeOverlapsRange(st, upcomingStart, upcomingEnd, now);
+      if (inCurrentWeek) {
+        cinema.push(st);
+      } else if (inUpcomingWeek || showtimeStartsAfterRange(st, upcomingEnd, now)) {
+        soon.push(st);
+      }
     }
     return { cinemaWeekShowtimes: cinema, soonShowtimes: soon };
   }, [eventShowtimes]);
@@ -442,6 +456,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <MapPin className="h-4 w-4 shrink-0 text-[#13143E]/70" aria-hidden />
         <div>
           <h2 className="font-display text-lg font-semibold text-foreground md:text-xl">Πού & πότε παίζεται</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">Τρέχουσα εβδομάδα κινηματογράφου</p>
         </div>
       </div>
       {cinemaWeekShowtimes.length === 0 && soonShowtimes.length === 0 ? (
@@ -485,14 +500,16 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </div>
           ) : (
             <p className="text-sm text-muted-foreground">
-              Δεν υπάρχουν προβολές για την επόμενη εβδομάδα κινηματογράφου.
+              Δεν υπάρχουν προβολές για την τρέχουσα εβδομάδα κινηματογράφου.
             </p>
           )}
 
           {soonShowtimes.length > 0 ? (
             <div className="mt-8 border-t border-border/60 pt-6 md:mt-10">
               <h3 className="font-display text-base font-semibold text-foreground md:text-lg">Προσεχώς</h3>
-              <p className="mt-1 text-sm text-muted-foreground">Προβολές μετά την επόμενη εβδομάδα κινηματογράφου</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Επόμενη εβδομάδα κινηματογράφου και αργότερα
+              </p>
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
                 {soonShowtimesByVenue.map(({ key, venueName, slots, venue }) => {
                   if (!slots.length) return null;

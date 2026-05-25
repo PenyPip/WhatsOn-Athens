@@ -71,6 +71,23 @@ export function showtimeOverlapsRange(
   return t >= rangeStart.getTime() && t <= rangeEnd.getTime();
 }
 
+/** Προβολή ξεκινά αυστηρά μετά το τέλος του range (για «Προσεχώς» στη σελίδα ταινίας). */
+export function showtimeStartsAfterRange(
+  st: StrapiShowtime,
+  rangeEnd: Date,
+  now = new Date(),
+): boolean {
+  const range = showtimeWeekRange(st);
+  if (range) {
+    if (range.end.getTime() < now.getTime()) return false;
+    return range.start.getTime() > rangeEnd.getTime();
+  }
+  const dt = new Date(st.datetime);
+  if (Number.isNaN(dt.getTime())) return false;
+  if (dt.getTime() < now.getTime()) return false;
+  return dt.getTime() > rangeEnd.getTime();
+}
+
 const RANGE_DATE_OPTS: Intl.DateTimeFormatOptions = { day: "numeric", month: "short" };
 const RANGE_DATE_YEAR_OPTS: Intl.DateTimeFormatOptions = { day: "numeric", month: "short", year: "numeric" };
 
