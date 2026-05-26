@@ -124,10 +124,15 @@ export function crawlSeoCopyForPath(path: string): { title: string; description:
 
   if (hit.kind === "movie") {
     const m = hit.entity;
+    const when =
+      "Δες πότε παίζεται, σε ποιον κινηματογράφο και τι ώρα — πρόγραμμα προβολών στο 37Ν (the37n.gr).";
     const desc = m.synopsis?.trim()
-      ? truncateDescription(`${m.title}. ${m.synopsis.trim()} — 37Ν.`)
-      : truncateDescription(`Προβολές, ώρες και σινεμά για «${m.title}» στο 37Ν (the37n.gr).`);
-    return { title: `${m.title} — πρόγραμμα σινεμά`, description: desc };
+      ? truncateDescription(`Ταινία «${m.title}»: τι παίζεται — ${m.synopsis.trim()} ${when}`)
+      : truncateDescription(`Ταινία «${m.title}»: ${when}`);
+    return {
+      title: `${m.title} — πότε παίζεται · κινηματογράφοι`,
+      description: desc,
+    };
   }
   if (hit.kind === "theater") {
     const s = hit.entity;

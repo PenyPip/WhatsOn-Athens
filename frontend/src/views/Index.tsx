@@ -1,32 +1,23 @@
-import { lazy, Suspense, useMemo } from "react";
 import Hero from "@/components/Hero";
-import HomeSectionsPlaceholder from "@/components/HomeSectionsPlaceholder";
+import HomeBody from "@/views/HomeBody";
 import MarkLcpDone from "@/components/MarkLcpDone";
-import { layoutShowsHero, type HomeSectionId } from "@/config/home";
-import { useDeferClientReady } from "@/hooks/useDeferClientReady";
+import { layoutShowsHero } from "@/config/home";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useMovies, useShowtimes, useTheaterShows, useHomeLayout } from "@/hooks/useStrapi";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
-
-const HomeBody = lazy(() => import("@/views/HomeBody"));
 
 const Index = () => {
   usePageSeo(staticPageSeo.home);
 
   const layout = useHomeLayout();
-  const clientReady = useDeferClientReady();
-  const belowHeroSections = useMemo(
-    () => layout.sections.filter((id): id is HomeSectionId => id !== "hero"),
-    [layout.sections],
-  );
 
   const { data: movies } = useMovies();
   const movieList = movies ?? [];
 
   const needsHeroTheater = layoutShowsHero(layout) && Boolean(layout.heroTheaterSlug);
   const needsHeroShowtimes = layoutShowsHero(layout) && !needsHeroTheater;
-  const { data: showtimes } = useShowtimes(needsHeroShowtimes && clientReady);
-  const { data: theaterShows } = useTheaterShows(needsHeroTheater && clientReady);
+  const { data: showtimes } = useShowtimes(needsHeroShowtimes);
+  const { data: theaterShows } = useTheaterShows(needsHeroTheater);
 
   const markLcpDone = !layoutShowsHero(layout);
 
@@ -41,13 +32,7 @@ const Index = () => {
           theaterShows={theaterShows ?? []}
         />
       ) : null}
-      {clientReady ? (
-        <Suspense fallback={<HomeSectionsPlaceholder sections={belowHeroSections} />}>
-          <HomeBody layout={layout} />
-        </Suspense>
-      ) : (
-        <HomeSectionsPlaceholder sections={belowHeroSections} />
-      )}
+      <HomeBody layout={layout} />
 
       <footer className="section-black border-t border-white/10 py-12">
         <div className="container">

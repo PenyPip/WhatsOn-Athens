@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import dynamic from "next/dynamic";
+import SpaRoot from "../SpaShell";
 import RqBootstrapScript from "@/components/RqBootstrapScript";
 import ServerJsonLd from "@/components/ServerJsonLd";
 import { pathFromSlugParam } from "@/lib/jsonLdPage";
@@ -10,8 +10,6 @@ import { slimHomeBootstrapState } from "@/lib/rqBootstrap";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
 import { serializeDehydratedState } from "@/lib/serializeDehydratedState";
 import spaPaths from "@/generated/spa-static-paths.json";
-
-const SpaRoot = dynamic(() => import("../SpaShell"), { ssr: true });
 
 type SpaPathParams = { slug?: string[] };
 

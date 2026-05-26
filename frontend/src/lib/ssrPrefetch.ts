@@ -1,8 +1,12 @@
 import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import { resolveHomepageLayout, type MappedHomepage } from "@/config/home";
+import {
+  homeNeedsShowtimes,
+  resolveHomepageLayout,
+  type MappedHomepage,
+} from "@/config/home";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
-import { slimListQueryCache } from "@/lib/slimDehydrate";
+import { slimListQueryCache, trimHomeShowtimesDehydrate } from "@/lib/slimDehydrate";
 
 const queryDefaults = {
   staleTime: 120_000,
@@ -35,12 +39,17 @@ function matchMoviesVenueSlug(path: string): string | null {
 }
 
 async function prefetchHomeBundle(qc: QueryClient) {
-  await Promise.all([
-    qc.prefetchQuery({ queryKey: ["homepage"], queryFn: api.getHomepage, ...queryDefaults }),
+  await qc.prefetchQuery({ queryKey: ["homepage"], queryFn: api.getHomepage, ...queryDefaults });
+  const layout = resolveHomepageLayout(qc.getQueryData<MappedHomepage>(["homepage"]) ?? null);
+  const tasks: Promise<unknown>[] = [
     qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMovies, ...queryDefaults }),
-  ]);
-  resolveHomepageLayout(qc.getQueryData<MappedHomepage>(["homepage"]) ?? null);
+  ];
+  if (homeNeedsShowtimes(layout.sections)) {
+    tasks.push(qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }));
+  }
+  await Promise.all(tasks);
   slimListQueryCache(qc);
+  trimHomeShowtimesDehydrate(qc);
 }
 
 async function prefetchMoviesList(qc: QueryClient) {
