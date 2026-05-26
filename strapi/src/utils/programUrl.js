@@ -10,10 +10,10 @@ function normalizeUrl(raw) {
   return match[0].replace(/[.,;]+$/g, '');
 }
 
-/** URL προγράμματος από το info (διαβάζεται μόνο — το πεδίο δεν αλλάζει). Όχι more_link. */
+/** URL προγράμματος από more_link (πάνω στην σελίδα οι μέρες που καλύπτει). */
 function resolveProgramUrl(venue) {
   if (!venue || typeof venue !== 'object') return null;
-  return normalizeUrl(venue.info);
+  return normalizeUrl(venue.more_link);
 }
 
 function isSafeProgramUrl(urlString) {

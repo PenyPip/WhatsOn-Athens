@@ -1,8 +1,22 @@
 'use strict';
 
-/** Εβδομάδα κινηματογράφου: Πέμπτη 00:00 → Τετάρτη 23:59 (τοπική ώρα server = Athens στο Docker). */
+/** Ημερομηνία (τοπική) στο Europe/Athens. */
+function athensLocalDate(now = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Athens',
+    year: 'numeric',
+    month: 'numeric',
+    day: 'numeric',
+  }).formatToParts(now);
+  const y = Number(parts.find((p) => p.type === 'year')?.value);
+  const m = Number(parts.find((p) => p.type === 'month')?.value);
+  const d = Number(parts.find((p) => p.type === 'day')?.value);
+  return new Date(y, m - 1, d);
+}
+
+/** Εβδομάδα κινηματογράφου: Πέμπτη 00:00 → Τετάρτη 23:59 (Europe/Athens). */
 function startOfCinemaWeek(d) {
-  const x = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+  const x = d instanceof Date ? new Date(d.getFullYear(), d.getMonth(), d.getDate()) : athensLocalDate(d);
   const dow = x.getDay();
   const daysSinceThursday = (dow - 4 + 7) % 7;
   x.setDate(x.getDate() - daysSinceThursday);
@@ -12,8 +26,9 @@ function startOfCinemaWeek(d) {
 
 /** Άμεση επόμενη εβδομάδα κινηματογράφου (ίδια λογική με frontend). */
 function getUpcomingCinemaWeekBounds(now = new Date()) {
-  let start = startOfCinemaWeek(now);
-  if (now.getTime() >= start.getTime()) {
+  const athensNow = athensLocalDate(now);
+  let start = startOfCinemaWeek(athensNow);
+  if (athensNow.getTime() >= start.getTime()) {
     start = new Date(start);
     start.setDate(start.getDate() + 7);
   }

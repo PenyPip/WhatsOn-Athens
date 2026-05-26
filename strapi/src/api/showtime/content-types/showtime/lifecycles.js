@@ -1,9 +1,10 @@
 'use strict';
 
 const { expandRepeatShowtimes } = require('../../services/showtime-repeat');
+const { isRepeatChildCreate } = require('../../services/repeat-context');
 const {
-  syncVenueForShowtime,
-  syncVenueProgramStatus,
+  scheduleVenueProgramSync,
+  scheduleVenueProgramSyncFromShowtime,
 } = require('../../../venue/services/program-status');
 
 function normalizeScheduleKind(raw) {
@@ -22,7 +23,6 @@ function applyScheduleRules(data) {
     if (!data.week_end) {
       throw new Error('Για «Ολόκληρη εβδομάδα» συμπλήρωσε «Τέλος εβδομάδας» (week_end) ή «Repeat until».');
     }
-    /* repeat_until αδειάζει μετά την επέκταση — μην το σβήνουμε πριν το δει το afterUpdate */
   }
 }
 
@@ -35,6 +35,17 @@ function lifecycleRepeatUntil(event) {
   return v === undefined ? null : v;
 }
 
+/** Επέκταση repeat + needs_update στο background — το Save επιστρέφει αμέσως. */
+function deferShowtimeSideEffects(strapi, showtimeId, trigger, overrideUntil) {
+  setImmediate(() => {
+    expandRepeatShowtimes(strapi, showtimeId, trigger, { overrideUntil })
+      .then(() => scheduleVenueProgramSyncFromShowtime(strapi, showtimeId))
+      .catch((err) => {
+        strapi.log.warn(`[showtime] deferred ${trigger} id=${showtimeId}:`, err?.message || err);
+      });
+  });
+}
+
 module.exports = {
   beforeCreate(event) {
     applyScheduleRules(event.params.data);
@@ -45,6 +56,7 @@ module.exports = {
     if (!data) return;
     const existing = await strapi.db.query('api::showtime.showtime').findOne({
       where: event.params.where,
+      select: ['schedule_kind', 'week_end'],
     });
     if (existing) {
       if (data.schedule_kind === undefined) data.schedule_kind = existing.schedule_kind;
@@ -65,38 +77,22 @@ module.exports = {
   },
 
   async afterCreate(event) {
+    if (isRepeatChildCreate()) return;
     const id = lifecycleShowtimeId(event);
     if (!id) return;
-    await expandRepeatShowtimes(strapi, id, 'afterCreate', {
-      overrideUntil: lifecycleRepeatUntil(event),
-    });
-    try {
-      await syncVenueForShowtime(strapi, id);
-    } catch (err) {
-      strapi.log.warn('[showtime] syncVenueForShowtime afterCreate', err);
-    }
+    deferShowtimeSideEffects(strapi, id, 'afterCreate', lifecycleRepeatUntil(event));
   },
 
   async afterUpdate(event) {
+    if (isRepeatChildCreate()) return;
     const id = lifecycleShowtimeId(event);
     if (!id) return;
-    await expandRepeatShowtimes(strapi, id, 'afterUpdate', {
-      overrideUntil: lifecycleRepeatUntil(event),
-    });
-    try {
-      await syncVenueForShowtime(strapi, id);
-    } catch (err) {
-      strapi.log.warn('[showtime] syncVenueForShowtime afterUpdate', err);
-    }
+    deferShowtimeSideEffects(strapi, id, 'afterUpdate', lifecycleRepeatUntil(event));
   },
 
   async afterDelete(event) {
     const venueId = event.state?.venueIdForProgram;
     if (!venueId) return;
-    try {
-      await syncVenueProgramStatus(strapi, venueId, { logChange: true, onlyIfNotUpdated: true });
-    } catch (err) {
-      strapi.log.warn('[showtime] syncVenueProgramStatus afterDelete', err);
-    }
+    scheduleVenueProgramSync(strapi, venueId);
   },
 };

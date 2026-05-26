@@ -10,6 +10,10 @@ const { resolveProgramUrl, isSafeProgramUrl } = require('../../../utils/programU
 const { isCinemaVenue, cinemaVenueTypeFilter } = require('../../../utils/cinemaVenueType');
 
 const EXTERNAL_FETCH_GAP_MS = 800;
+/** Μετά από αποθήκευση προβολής — ένας έλεγχος ανά χώρο (όχι μπλοκάρισμα admin). */
+const VENUE_SYNC_DEBOUNCE_MS = 5_000;
+
+const pendingVenueSyncTimers = new Map();
 
 const AUTO_LINE_RE = /^[✓⚠]/;
 
@@ -82,7 +86,7 @@ function computeNeedsUpdate({ linkHasDates, cmsCount }) {
   return Boolean(linkHasDates && cmsCount === 0);
 }
 
-/** Έλεγχος link στο info + σύγκριση με CMS. */
+/** Έλεγχος more_link (κορυφή σελίδας: μέρες κάλυψης, Πέμ–Τετ) + σύγκριση με CMS. */
 async function evaluateVenueProgram(strapi, venue, now = new Date()) {
   const programUrl = resolveProgramUrl(venue);
   const strapiCounts = await countUpcomingWeekShowtimes(strapi, venue.id, now);
@@ -104,8 +108,8 @@ async function evaluateVenueProgram(strapi, venue, now = new Date()) {
       ...base,
       source: 'no_link',
       autoLine: cmsCount
-        ? `✓ CMS (${weekLabel}): ${cmsCount} προβολές — λείπει link στο info — έλεγχος ${checked}`
-        : `— (${weekLabel}): χωρίς link στο info · έλεγχος με «ολοκλήρωσα» (updated) — ${checked}`,
+        ? `✓ CMS (${weekLabel}): ${cmsCount} προβολές — λείπει more_link — έλεγχος ${checked}`
+        : `— (${weekLabel}): χωρίς more_link · έλεγχος με «ολοκλήρωσα» (updated) — ${checked}`,
     };
   }
 
@@ -172,12 +176,12 @@ async function evaluateVenueProgram(strapi, venue, now = new Date()) {
 }
 
 /**
- * Ενημέρωση needs_update (αυτόματο) + γραμμή στο info_update. Το info δεν αγγίζεται. Το updated χειροκίνητο.
+ * Ενημέρωση μόνο needs_update + info_update. Το updated δεν αλλάζει ποτέ από αυτό το script.
  */
 async function syncVenueProgramStatus(strapi, venueId, options = {}) {
   const { logChange = false, onlyIfNotUpdated = false, forceAll = false } = options;
   const venue = await strapi.entityService.findOne('api::venue.venue', venueId, {
-    fields: ['name', 'type', 'needs_update', 'updated', 'info', 'info_update'],
+    fields: ['name', 'type', 'needs_update', 'updated', 'more_link', 'info_update'],
     publicationState: 'preview',
   });
   if (!venue || !isCinemaVenue(venue)) {
@@ -198,13 +202,8 @@ async function syncVenueProgramStatus(strapi, venueId, options = {}) {
   const { manual } = splitVenueInfo(venue.info_update);
   const info_update = mergeVenueInfo(autoLine, manual);
 
-  const data = { needs_update: needsUpdate, info_update };
-  if (neverSynced || venue.updated == null) {
-    data.updated = false;
-  }
-
   await strapi.entityService.update('api::venue.venue', venueId, {
-    data,
+    data: { needs_update: needsUpdate, info_update },
   });
 
   if (logChange && hadNeedsUpdate && !needsUpdate) {
@@ -310,20 +309,42 @@ async function syncAllCinemaVenues(strapi, options = {}) {
   return summary;
 }
 
-async function syncVenueForShowtime(strapi, showtimeId) {
+/** Ασύγχρονος + debounced έλεγχος (cron / κουμπί παραμένουν άμεσα). */
+function scheduleVenueProgramSync(strapi, venueId, options = {}) {
+  const id = Number(venueId);
+  if (!Number.isFinite(id)) return;
+
+  const prev = pendingVenueSyncTimers.get(id);
+  if (prev) clearTimeout(prev);
+
+  const timer = setTimeout(() => {
+    pendingVenueSyncTimers.delete(id);
+    syncVenueProgramStatus(strapi, id, {
+      logChange: true,
+      onlyIfNotUpdated: true,
+      ...options,
+    }).catch((err) => {
+      strapi.log.warn(`[program] deferred sync venue=${id}:`, err?.message || err);
+    });
+  }, VENUE_SYNC_DEBOUNCE_MS);
+
+  pendingVenueSyncTimers.set(id, timer);
+}
+
+async function scheduleVenueProgramSyncFromShowtime(strapi, showtimeId) {
   const st = await strapi.entityService.findOne('api::showtime.showtime', showtimeId, {
-    populate: { venue: { fields: ['id', 'type'] } },
+    populate: { venue: { fields: ['id'] } },
     publicationState: 'preview',
   });
   const venueId = st?.venue?.id;
-  if (!venueId) return;
-  await syncVenueProgramStatus(strapi, venueId, { logChange: true, onlyIfNotUpdated: true });
+  if (venueId) scheduleVenueProgramSync(strapi, venueId);
 }
 
 module.exports = {
   syncVenueProgramStatus,
   syncAllCinemaVenues,
-  syncVenueForShowtime,
+  scheduleVenueProgramSync,
+  scheduleVenueProgramSyncFromShowtime,
   resetCinemaManualCompleted,
   runInitialProgramBootstrap,
   isInitialProgramSyncDone,
