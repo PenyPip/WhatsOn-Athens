@@ -1,8 +1,8 @@
-import { useCallback } from "react";
 import Hero from "@/components/Hero";
 import HomeBody from "@/views/HomeBody";
 import MarkLcpDone from "@/components/MarkLcpDone";
 import { layoutShowsHero } from "@/config/home";
+import { useHomeLcpDone } from "@/hooks/useHomeLcpDone";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useMovies, useShowtimes, useTheaterShows, useHomeLayout } from "@/hooks/useStrapi";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
@@ -20,9 +20,7 @@ const Index = () => {
   const { data: showtimes } = useShowtimes(needsHeroShowtimes);
   const { data: theaterShows } = useTheaterShows(needsHeroTheater);
 
-  const markHeroLcpDone = useCallback(() => {
-    document.documentElement.classList.add("spa-lcp-done");
-  }, []);
+  const markHeroLcpDone = useHomeLcpDone();
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">

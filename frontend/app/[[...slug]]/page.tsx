@@ -48,7 +48,12 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
 
   return (
     <>
-      {preloadPoster ? <link rel="preload" as="image" href={preloadPoster} fetchPriority="high" /> : null}
+      {preloadPoster ? (
+        <>
+          <link rel="preload" as="image" href={preloadPoster} media="(max-width: 767px)" fetchPriority="high" />
+          <link rel="preload" as="image" href={preloadPoster} media="(min-width: 768px)" />
+        </>
+      ) : null}
       {showStaticLcp && lcp ? <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} /> : null}
       <ServerJsonLd path={path} />
       <RqBootstrapScript state={dehydratedState} />
