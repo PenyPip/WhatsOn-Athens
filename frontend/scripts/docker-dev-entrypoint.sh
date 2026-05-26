@@ -1,8 +1,14 @@
 #!/bin/sh
 set -e
 
-# Stale chunks στο named volume → MODULE_NOT_FOUND (./611.js) / missing routes-manifest.
-echo "[whatson] Fresh .next for dev..."
-rm -rf /front/.next
+# Το .next είναι named volume — δεν διαγράφεται ο mount point (Resource busy), μόνο τα περιεχόμενα.
+echo "[whatson] Clearing .next dev volume contents..."
+if [ -d /front/.next ]; then
+  find /front/.next -mindepth 1 -delete 2>/dev/null || true
+fi
 
-exec npm run dev -- --hostname 0.0.0.0 -p 3000 --turbo
+# Turbopack δεν γράφει .next/server/app-paths-manifest.json — requests (/admin proxy) πέφτουν με ENOENT.
+echo "[whatson] Starting Next.js (webpack dev, όχι --turbo στο Docker)..."
+echo "[whatson] Περίμενε «Ready» πριν ανοίξεις http://localhost:3000"
+
+exec npm run dev:docker

@@ -19,7 +19,9 @@ services:
       - whatson-uploads:/cms/public/uploads
     environment:
       NODE_ENV: development
+      # Admin + Content Manager API από browser — ίδιο origin με Next proxy (:3000).
       PUBLIC_URL: http://localhost:3000
+      STRAPI_ADMIN_BACKEND_URL: http://localhost:3000
       # Σε dev ο admin ανοιχτός μέσω http://localhost:3000/admin (Next proxy)· παράκατω DATABASE_* επικαλύπτουν το strapi/.env.
       DATABASE_CLIENT: mysql2
       DATABASE_HOST: mysql
@@ -85,6 +87,18 @@ services:
       NEXT_TELEMETRY_DISABLED: "1"
       # Proxy από Next προς Strapi για /admin · /api · /uploads (ίδια λογική με nginx)
       STRAPI_INTERNAL_URL: http://strapi:1337
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://127.0.0.1:3000/',(r)=>{r.resume();process.exit(r.statusCode!=null&&r.statusCode<500?0:1)}).on('error',()=>process.exit(1))",
+        ]
+      interval: 5s
+      timeout: 10s
+      retries: 30
+      start_period: 120s
 
 volumes:
   whatson-data:

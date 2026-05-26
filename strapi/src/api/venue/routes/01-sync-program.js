@@ -5,7 +5,7 @@ module.exports = {
     {
       method: 'POST',
       path: '/venues/sync-program-status',
-      handler: 'venue.syncProgramStatus',
+      handler: 'api::venue.venue.syncProgramStatus',
       config: {
         auth: false,
         policies: ['global::is-admin'],

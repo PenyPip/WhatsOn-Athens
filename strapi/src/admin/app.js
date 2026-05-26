@@ -1,11 +1,17 @@
-const config = {
-  locales: ['el'],
-};
+import { Refresh } from '@strapi/icons';
+
+const config = {};
 
 const bootstrap = (app) => {
-  app.injectContentManagerComponent('listView', 'actions', {
-    name: 'sync-program-status',
-    Component: async () => import('./extensions/components/SyncProgramStatusButton'),
+  // ΜΗΝ injectContentManagerComponent — σπάει το Content Manager (λευκή οθόνη).
+  app.addMenuLink({
+    to: '/plugins/sync-program',
+    icon: Refresh,
+    intlLabel: {
+      id: 'whatson.sync-program.menu',
+      defaultMessage: 'Έλεγχος προγράμματος',
+    },
+    Component: () => import('./pages/SyncProgramPage'),
   });
 };
 
