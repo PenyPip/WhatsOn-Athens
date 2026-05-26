@@ -34,7 +34,7 @@ const SyncProgramPage = () => {
     <Layout>
       <HeaderLayout
         title="Έλεγχος προγράμματος σινεμά"
-        subtitle="Ενημέρωση needs_update και αυτόματης γραμμής στο info (όλα τα σινεμά)."
+        subtitle="Διαβάζει το URL στο info (κάτω από ---) ή στο more_link και ελέγχει ημερομηνίες επόμενης εβδομάδας κινηματογράφου."
         primaryAction={
           <Button onClick={runSync} loading={loading} startIcon={<Refresh />}>
             Τρέξιμο τώρα
@@ -44,8 +44,8 @@ const SyncProgramPage = () => {
       <ContentLayout>
         <Box padding={6} background="neutral0" shadow="filterShadow" hasRadius>
           <Typography variant="omega" textColor="neutral600">
-            Ίδια λογική με το cron: ελέγχει προβολές επόμενης εβδομάδας κινηματογράφου. Δεν αλλάζει το χειροκίνητο
-            «ολοκλήρωσα» (updated).
+            Σε κάθε σινεμά ανοίγει το link προγράμματος και ψάχνει αν εμφανίζονται ημερομηνίες της επόμενης εβδομάδας
+            (Πέμ–Τετ). Βάλε το URL στο info κάτω από «---» ή στο πεδίο more_link. Δεν αλλάζει το «ολοκλήρωσα» (updated).
           </Typography>
           {summary ? (
             <Box paddingTop={4}>

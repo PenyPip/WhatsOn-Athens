@@ -5,6 +5,10 @@ const {
   showtimeOverlapsRange,
   formatWeekLabel,
 } = require('../../../utils/cinemaWeek');
+const { checkExternalProgramForWeek } = require('../../../utils/externalProgramCheck');
+const { extractProgramUrl, isSafeProgramUrl } = require('../../../utils/programUrl');
+
+const EXTERNAL_FETCH_GAP_MS = 800;
 
 const AUTO_LINE_RE = /^[✓⚠]/;
 
@@ -50,6 +54,10 @@ function formatAthensNow() {
   });
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 async function countUpcomingWeekShowtimes(strapi, venueId, now = new Date()) {
   const { start, end } = getUpcomingCinemaWeekBounds(now);
   const showtimes = await strapi.entityService.findMany('api::showtime.showtime', {
@@ -65,13 +73,85 @@ async function countUpcomingWeekShowtimes(strapi, venueId, now = new Date()) {
   return { count, start, end };
 }
 
+/** Έλεγχος link στο info / more_link — ημερομηνίες επόμενης εβδομάδας κινηματογράφου στη σελίδα. */
+async function evaluateVenueProgram(strapi, venue, now = new Date()) {
+  const { manual } = splitVenueInfo(venue.info);
+  const programUrl = extractProgramUrl(manual, venue.more_link);
+  const strapiCounts = await countUpcomingWeekShowtimes(strapi, venue.id, now);
+  const weekLabel = strapiCounts.start ? formatWeekLabel(strapiCounts.start, strapiCounts.end) : '';
+
+  if (!programUrl) {
+    const hasProgram = strapiCounts.count > 0;
+    return {
+      source: 'no_link',
+      weekLabel,
+      hasProgram,
+      count: strapiCounts.count,
+      matchedDays: 0,
+      programUrl: null,
+      autoLine: hasProgram
+        ? `✓ Πρόγραμμα (${weekLabel}): ${strapiCounts.count} προβολές στο CMS — χωρίς link στο info — έλεγχος ${formatAthensNow()}`
+        : `⚠ Βάλε URL προγράμματος στο info (κάτω από ---) ή στο more_link — έλεγχος ${formatAthensNow()}`,
+    };
+  }
+
+  if (!isSafeProgramUrl(programUrl)) {
+    return {
+      source: 'unsafe_url',
+      weekLabel,
+      hasProgram: false,
+      count: strapiCounts.count,
+      matchedDays: 0,
+      programUrl,
+      autoLine: `⚠ Μη έγκυρο URL προγράμματος — έλεγχος ${formatAthensNow()}`,
+    };
+  }
+
+  const external = await checkExternalProgramForWeek(programUrl, now);
+  const label = external.weekLabel || weekLabel;
+
+  if (external.error) {
+    return {
+      source: 'link_error',
+      weekLabel: label,
+      hasProgram: false,
+      count: strapiCounts.count,
+      matchedDays: 0,
+      programUrl,
+      autoLine: `⚠ Δεν διαβάστηκε το link (${label}): ${external.error} — έλεγχος ${formatAthensNow()}`,
+    };
+  }
+
+  if (external.hasProgram) {
+    return {
+      source: 'link',
+      weekLabel: label,
+      hasProgram: true,
+      count: strapiCounts.count,
+      matchedDays: external.matchedDays,
+      programUrl,
+      autoLine: `✓ Πρόγραμμα στο link (${label}): ${external.matchedDays} ημέρες με ημερομηνίες — έλεγχος ${formatAthensNow()}`,
+    };
+  }
+
+  return {
+    source: 'link',
+    weekLabel: label,
+    hasProgram: false,
+    count: strapiCounts.count,
+    matchedDays: 0,
+    programUrl,
+    autoLine: `⚠ Χρειάζεται πρόγραμμα (${label}) — στο link δεν φαίνονται ημερομηνίες επόμενης εβδομάδας — έλεγχος ${formatAthensNow()}`,
+  };
+}
+
 /**
  * Ενημέρωση needs_update (αυτόματο) + γραμμή στο info. Το updated μένει χειροκίνητο.
  */
 async function syncVenueProgramStatus(strapi, venueId, options = {}) {
   const { logChange = false, onlyIfNotUpdated = false, forceAll = false } = options;
   const venue = await strapi.entityService.findOne('api::venue.venue', venueId, {
-    fields: ['name', 'type', 'needs_update', 'updated', 'info'],
+    fields: ['name', 'type', 'needs_update', 'updated', 'info', 'more_link'],
     publicationState: 'preview',
   });
   if (!venue || venue.type !== 'cinema') {
@@ -84,15 +164,10 @@ async function syncVenueProgramStatus(strapi, venueId, options = {}) {
   }
 
   const now = new Date();
-  const { count, start, end } = await countUpcomingWeekShowtimes(strapi, venueId, now);
-  const weekLabel = formatWeekLabel(start, end);
-  const hasProgram = count > 0;
+  const evaluation = await evaluateVenueProgram(strapi, venue, now);
+  const { hasProgram, weekLabel, count, autoLine } = evaluation;
   const needsUpdate = !hasProgram;
   const hadNeedsUpdate = venue.needs_update !== false;
-
-  const autoLine = hasProgram
-    ? `✓ Πρόγραμμα επόμενης εβδομάδας (${weekLabel}): ${count} προβολές — έλεγχος ${formatAthensNow()}`
-    : `⚠ Χρειάζεται πρόγραμμα επόμενης εβδομάδας (${weekLabel}) — έλεγχος ${formatAthensNow()}`;
 
   const { manual } = splitVenueInfo(venue.info);
   const info = mergeVenueInfo(autoLine, manual);
@@ -107,10 +182,10 @@ async function syncVenueProgramStatus(strapi, venueId, options = {}) {
   });
 
   if (logChange && hadNeedsUpdate && !needsUpdate) {
-    strapi.log.info(`[program] ${venue.name}: προστέθηκαν προβολές για ${weekLabel} (${count})`);
+    strapi.log.info(`[program] ${venue.name}: OK για ${weekLabel} (${evaluation.source})`);
   }
   if (logChange && !hadNeedsUpdate && needsUpdate) {
-    strapi.log.info(`[program] ${venue.name}: λείπει πρόγραμμα για ${weekLabel}`);
+    strapi.log.info(`[program] ${venue.name}: λείπει πρόγραμμα για ${weekLabel} (${evaluation.source})`);
   }
 
   return {
@@ -119,6 +194,8 @@ async function syncVenueProgramStatus(strapi, venueId, options = {}) {
     weekLabel,
     needsUpdate,
     completed: Boolean(venue.updated),
+    source: evaluation.source,
+    programUrl: evaluation.programUrl,
   };
 }
 
@@ -192,9 +269,12 @@ async function syncAllCinemaVenues(strapi, options = {}) {
     publicationState: 'preview',
   });
   const summary = { total: venues.length, complete: 0, missing: 0, pendingManual: 0 };
+  let fetchedLink = false;
   for (const v of venues) {
+    if (fetchedLink) await sleep(EXTERNAL_FETCH_GAP_MS);
     const r = await syncVenueProgramStatus(strapi, v.id, { logChange, onlyIfNotUpdated, forceAll });
     if (r.skipped) continue;
+    if (r.programUrl) fetchedLink = true;
     if (r.hasProgram) summary.complete += 1;
     else summary.missing += 1;
     if (!r.completed) summary.pendingManual += 1;
