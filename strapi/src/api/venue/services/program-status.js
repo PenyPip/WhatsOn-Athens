@@ -7,6 +7,7 @@ const {
 } = require('../../../utils/cinemaWeek');
 const { checkExternalProgramForWeek } = require('../../../utils/externalProgramCheck');
 const { resolveProgramUrl, isSafeProgramUrl } = require('../../../utils/programUrl');
+const { isCinemaVenue, cinemaVenueTypeFilter } = require('../../../utils/cinemaVenueType');
 
 const EXTERNAL_FETCH_GAP_MS = 800;
 
@@ -153,7 +154,7 @@ async function syncVenueProgramStatus(strapi, venueId, options = {}) {
     fields: ['name', 'type', 'needs_update', 'updated', 'info', 'info_update'],
     publicationState: 'preview',
   });
-  if (!venue || venue.type !== 'cinema') {
+  if (!venue || !isCinemaVenue(venue)) {
     return { skipped: true };
   }
 
@@ -201,7 +202,7 @@ async function syncVenueProgramStatus(strapi, venueId, options = {}) {
 /** Κάθε Σάββατο: updated → false (νέα εβδομάδα, ξανά «ολοκλήρωσα»). */
 async function resetCinemaManualCompleted(strapi) {
   const venues = await strapi.entityService.findMany('api::venue.venue', {
-    filters: { type: 'cinema' },
+    filters: cinemaVenueTypeFilter(),
     fields: ['id'],
     publicationState: 'preview',
   });
@@ -253,7 +254,7 @@ async function syncAllCinemaVenues(strapi, options = {}) {
   if (resetManualCompleted) {
     await resetCinemaManualCompleted(strapi);
   }
-  const filters = { type: 'cinema' };
+  const filters = cinemaVenueTypeFilter();
   if (onlyIfNotUpdated && !resetManualCompleted && !forceAll) {
     filters.$or = [
       { updated: false },

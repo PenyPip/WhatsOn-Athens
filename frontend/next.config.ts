@@ -48,6 +48,7 @@ const nextConfig: NextConfig = {
         { source: `/${seg}`, destination: `${origin}/${seg}` },
         { source: `/${seg}/:path*`, destination: `${origin}/${seg}/:path*` },
       ]),
+      { source: "/sync-program-status", destination: `${origin}/sync-program-status` },
       { source: "/uploads/:path*", destination: `${origin}/uploads/:path*` },
     ];
   },

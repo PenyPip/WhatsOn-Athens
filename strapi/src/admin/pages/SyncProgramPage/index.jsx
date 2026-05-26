@@ -13,16 +13,19 @@ const SyncProgramPage = () => {
   const runSync = async () => {
     setLoading(true);
     try {
-      const { data } = await post('/venues/sync-program-status');
+      const { data } = await post('/sync-program-status');
       setSummary(data?.summary ?? null);
       toggleNotification({
         type: 'success',
         message: data?.message || 'Ολοκληρώθηκε ο έλεγχος.',
       });
     } catch (err) {
+      const status = err?.response?.status;
       const msg =
         err?.response?.data?.error?.message ||
         err?.response?.data?.message ||
+        (status ? `Σφάλμα ${status}` : null) ||
+        err?.message ||
         'Αποτυχία ελέγχου προγράμματος.';
       toggleNotification({ type: 'warning', message: msg });
     } finally {

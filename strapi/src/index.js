@@ -84,5 +84,49 @@ module.exports = {
     } catch (e) {
       strapi.log.warn('[whatson bootstrap showtime repeat]', e);
     }
+
+    try {
+      const { migrateLegacyVenueTypes } = require('./utils/cinemaVenueType');
+      await migrateLegacyVenueTypes(strapi);
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap venue types]', e);
+    }
+
+    try {
+      const { runSyncProgramStatus } = require('./api/venue/services/sync-program-handler');
+      strapi.server.routes({
+        type: 'admin',
+        routes: [
+          {
+            method: 'POST',
+            path: '/sync-program-status',
+            handler: async (ctx) => {
+              try {
+                ctx.body = await runSyncProgramStatus(strapi);
+              } catch (err) {
+                const detail = err?.message || String(err);
+                strapi.log.error('[whatson] sync-program-status απέτυχε:', detail, err);
+                ctx.status = 500;
+                ctx.body = {
+                  data: null,
+                  error: {
+                    status: 500,
+                    message:
+                      process.env.NODE_ENV === 'development'
+                        ? `Αποτυχία ελέγχου προγράμματος: ${detail}`
+                        : 'Αποτυχία ελέγχου προγράμματος.',
+                  },
+                };
+              }
+            },
+            config: {
+              policies: ['admin::isAuthenticatedAdmin'],
+            },
+          },
+        ],
+      });
+    } catch (e) {
+      strapi.log.warn('[whatson] admin sync-program route', e);
+    }
   },
 };

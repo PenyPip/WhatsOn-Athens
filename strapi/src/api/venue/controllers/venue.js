@@ -1,25 +1,20 @@
 'use strict';
 
 const { createCoreController } = require('@strapi/strapi').factories;
-const { syncAllCinemaVenues } = require('../services/program-status');
+const { runSyncProgramStatus } = require('../services/sync-program-handler');
 
 module.exports = createCoreController('api::venue.venue', ({ strapi }) => ({
-  /** Χειροκίνητος έλεγχος needs_update + info (όλα τα σινεμά). */
   async syncProgramStatus(ctx) {
     try {
-      const summary = await syncAllCinemaVenues(strapi, {
-        logChange: true,
-        onlyIfNotUpdated: false,
-      });
-
-      const message =
-        `Ελέγχθηκαν ${summary.total} σινεμά · ${summary.complete} με προβολές επόμενης εβδομάδας · ` +
-        `${summary.missing} χρειάζονται ενημέρωση · ${summary.pendingManual} χωρίς «ολοκλήρωσα».`;
-
-      ctx.body = { ok: true, message, summary };
+      ctx.body = await runSyncProgramStatus(strapi);
     } catch (err) {
-      strapi.log.error('[venue] syncProgramStatus απέτυχε', err);
-      return ctx.internalServerError('Αποτυχία ελέγχου προγράμματος.');
+      const detail = err?.message || String(err);
+      strapi.log.error('[venue] syncProgramStatus απέτυχε:', detail, err);
+      return ctx.internalServerError(
+        process.env.NODE_ENV === 'development'
+          ? `Αποτυχία ελέγχου προγράμματος: ${detail}`
+          : 'Αποτυχία ελέγχου προγράμματος.',
+      );
     }
   },
 }));
