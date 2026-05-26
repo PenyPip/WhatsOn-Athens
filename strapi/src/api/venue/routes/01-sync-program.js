@@ -8,7 +8,6 @@ module.exports = {
       handler: 'api::venue.venue.syncProgramStatus',
       config: {
         auth: false,
-        policies: ['global::is-admin'],
       },
     },
   ],

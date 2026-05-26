@@ -13,7 +13,7 @@ const SyncProgramPage = () => {
   const runSync = async () => {
     setLoading(true);
     try {
-      const { data } = await post('/sync-program-status');
+      const { data } = await post('/api/venues/sync-program-status');
       setSummary(data?.summary ?? null);
       toggleNotification({
         type: 'success',
