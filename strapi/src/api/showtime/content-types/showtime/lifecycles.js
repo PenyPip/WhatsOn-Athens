@@ -94,7 +94,7 @@ module.exports = {
     const venueId = event.state?.venueIdForProgram;
     if (!venueId) return;
     try {
-      await syncVenueProgramStatus(strapi, venueId, { logChange: true });
+      await syncVenueProgramStatus(strapi, venueId, { logChange: true, onlyIfNotUpdated: true });
     } catch (err) {
       strapi.log.warn('[showtime] syncVenueProgramStatus afterDelete', err);
     }
