@@ -10,8 +10,9 @@ async function runSyncProgramStatus(strapi, options = {}) {
   });
 
   const message =
-    `Ελέγχθηκαν ${summary.total} σινεμά · ${summary.complete} με προβολές επόμενης εβδομάδας · ` +
-    `${summary.missing} χρειάζονται ενημέρωση · ${summary.pendingManual} χωρίς «ολοκλήρωσα».`;
+    `Ελέγχθηκαν ${summary.total} σινεμά · ${summary.ok} OK · ` +
+    `${summary.needsImport} needs_update (πρόγραμμα στο link, όχι στο CMS) · ` +
+    `${summary.pendingManual} χωρίς «ολοκλήρωσα».`;
 
   return { ok: true, message, summary };
 }

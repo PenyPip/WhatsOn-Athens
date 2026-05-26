@@ -74,74 +74,100 @@ async function countUpcomingWeekShowtimes(strapi, venueId, now = new Date()) {
   return { count, start, end };
 }
 
-/** Έλεγχος link στο info — ημερομηνίες επόμενης εβδομάδας κινηματογράφου στη σελίδα. */
+/**
+ * needs_update: true μόνο αν στο link φαίνονται ημερομηνίες επόμενης εβδομάδας
+ * και δεν έχουν μπει ακόμα στο CMS. Όχι επειδή «λείπουν» από το link — αυτό το updated.
+ */
+function computeNeedsUpdate({ linkHasDates, cmsCount }) {
+  return Boolean(linkHasDates && cmsCount === 0);
+}
+
+/** Έλεγχος link στο info + σύγκριση με CMS. */
 async function evaluateVenueProgram(strapi, venue, now = new Date()) {
   const programUrl = resolveProgramUrl(venue);
   const strapiCounts = await countUpcomingWeekShowtimes(strapi, venue.id, now);
   const weekLabel = strapiCounts.start ? formatWeekLabel(strapiCounts.start, strapiCounts.end) : '';
+  const cmsCount = strapiCounts.count;
+  const checked = formatAthensNow();
+
+  const base = {
+    weekLabel,
+    cmsCount,
+    linkHasDates: false,
+    matchedDays: 0,
+    programUrl: programUrl || null,
+    needsUpdate: false,
+  };
 
   if (!programUrl) {
-    const hasProgram = strapiCounts.count > 0;
     return {
+      ...base,
       source: 'no_link',
-      weekLabel,
-      hasProgram,
-      count: strapiCounts.count,
-      matchedDays: 0,
-      programUrl: null,
-      autoLine: hasProgram
-        ? `✓ Πρόγραμμα (${weekLabel}): ${strapiCounts.count} προβολές στο CMS — λείπει link στο info — έλεγχος ${formatAthensNow()}`
-        : `⚠ Βάλε link προγράμματος στο info — έλεγχος ${formatAthensNow()}`,
+      autoLine: cmsCount
+        ? `✓ CMS (${weekLabel}): ${cmsCount} προβολές — λείπει link στο info — έλεγχος ${checked}`
+        : `— (${weekLabel}): χωρίς link στο info · έλεγχος με «ολοκλήρωσα» (updated) — ${checked}`,
     };
   }
 
   if (!isSafeProgramUrl(programUrl)) {
     return {
+      ...base,
       source: 'unsafe_url',
-      weekLabel,
-      hasProgram: false,
-      count: strapiCounts.count,
-      matchedDays: 0,
-      programUrl,
-      autoLine: `⚠ Μη έγκυρο URL προγράμματος — έλεγχος ${formatAthensNow()}`,
+      autoLine: `— Μη έγκυρο URL προγράμματος · needs_update αμετάβλητο — έλεγχος ${checked}`,
     };
   }
 
   const external = await checkExternalProgramForWeek(programUrl, now);
   const label = external.weekLabel || weekLabel;
+  const linkHasDates = Boolean(external.hasProgram && external.matchedDays > 0);
 
   if (external.error) {
     return {
+      ...base,
       source: 'link_error',
       weekLabel: label,
-      hasProgram: false,
-      count: strapiCounts.count,
-      matchedDays: 0,
-      programUrl,
-      autoLine: `⚠ Δεν διαβάστηκε το link (${label}): ${external.error} — έλεγχος ${formatAthensNow()}`,
+      autoLine: `— Δεν διαβάστηκε το link (${label}): ${external.error} · έλεγχος με updated — ${checked}`,
     };
   }
 
-  if (external.hasProgram) {
+  if (linkHasDates && cmsCount === 0) {
     return {
+      ...base,
       source: 'link',
       weekLabel: label,
-      hasProgram: true,
-      count: strapiCounts.count,
+      linkHasDates: true,
       matchedDays: external.matchedDays,
-      programUrl,
-      autoLine: `✓ Πρόγραμμα στο link (${label}): ${external.matchedDays} ημέρες με ημερομηνίες — έλεγχος ${formatAthensNow()}`,
+      needsUpdate: true,
+      autoLine: `⚠ Πρόγραμμα στο link (${label}): ${external.matchedDays} ημέρες με ημερομηνίες — λείπουν από CMS — έλεγχος ${checked}`,
+    };
+  }
+
+  if (linkHasDates && cmsCount > 0) {
+    return {
+      ...base,
+      source: 'link',
+      weekLabel: label,
+      linkHasDates: true,
+      matchedDays: external.matchedDays,
+      needsUpdate: false,
+      autoLine: `✓ Link + CMS (${label}): ${external.matchedDays} ημέρες στο site, ${cmsCount} προβολές στο CMS — έλεγχος ${checked}`,
+    };
+  }
+
+  if (!linkHasDates && cmsCount > 0) {
+    return {
+      ...base,
+      source: 'link',
+      weekLabel: label,
+      autoLine: `✓ CMS (${weekLabel}): ${cmsCount} προβολές — στο link δεν εντοπίστηκαν ημερομηνίες (χειροκίνητος έλεγχος) — ${checked}`,
     };
   }
 
   return {
+    ...base,
     source: 'link',
     weekLabel: label,
-    hasProgram: false,
-    count: strapiCounts.count,
-    matchedDays: 0,
-    programUrl,
-    autoLine: `⚠ Χρειάζεται πρόγραμμα (${label}) — στο link δεν φαίνονται ημερομηνίες επόμενης εβδομάδας — έλεγχος ${formatAthensNow()}`,
+    autoLine: `— (${label}): στο link δεν εντοπίστηκαν ημερομηνίες · needs_update=false · έλεγχος με updated — ${checked}`,
   };
 }
 
@@ -165,8 +191,8 @@ async function syncVenueProgramStatus(strapi, venueId, options = {}) {
 
   const now = new Date();
   const evaluation = await evaluateVenueProgram(strapi, venue, now);
-  const { hasProgram, weekLabel, count, autoLine } = evaluation;
-  const needsUpdate = !hasProgram;
+  const { weekLabel, cmsCount, autoLine } = evaluation;
+  const needsUpdate = evaluation.needsUpdate ?? computeNeedsUpdate(evaluation);
   const hadNeedsUpdate = venue.needs_update !== false;
 
   const { manual } = splitVenueInfo(venue.info_update);
@@ -185,17 +211,19 @@ async function syncVenueProgramStatus(strapi, venueId, options = {}) {
     strapi.log.info(`[program] ${venue.name}: OK για ${weekLabel} (${evaluation.source})`);
   }
   if (logChange && !hadNeedsUpdate && needsUpdate) {
-    strapi.log.info(`[program] ${venue.name}: λείπει πρόγραμμα για ${weekLabel} (${evaluation.source})`);
+    strapi.log.info(
+      `[program] ${venue.name}: πρόγραμμα στο link, λείπει από CMS (${weekLabel}, ${evaluation.matchedDays} ημέρες)`,
+    );
   }
 
   return {
-    hasProgram,
-    count,
-    weekLabel,
     needsUpdate,
+    cmsCount,
+    weekLabel,
     completed: Boolean(venue.updated),
     source: evaluation.source,
     programUrl: evaluation.programUrl,
+    linkHasDates: evaluation.linkHasDates,
   };
 }
 
@@ -232,7 +260,7 @@ async function runInitialProgramBootstrap(strapi, options = {}) {
   });
   await store.set({ key: INITIAL_SYNC_KEY, value: true });
   strapi.log.info(
-    `[program] αρχικός sync: ${summary.total} σινεμά, ${summary.complete} με προβολές, ${summary.missing} needs_update`,
+    `[program] αρχικός sync: ${summary.total} σινεμά, ${summary.ok} OK, ${summary.needsImport} needs_update`,
   );
   return summary;
 }
@@ -268,15 +296,15 @@ async function syncAllCinemaVenues(strapi, options = {}) {
     fields: ['id'],
     publicationState: 'preview',
   });
-  const summary = { total: venues.length, complete: 0, missing: 0, pendingManual: 0 };
+  const summary = { total: venues.length, ok: 0, needsImport: 0, pendingManual: 0 };
   let fetchedLink = false;
   for (const v of venues) {
     if (fetchedLink) await sleep(EXTERNAL_FETCH_GAP_MS);
     const r = await syncVenueProgramStatus(strapi, v.id, { logChange, onlyIfNotUpdated, forceAll });
     if (r.skipped) continue;
     if (r.programUrl) fetchedLink = true;
-    if (r.hasProgram) summary.complete += 1;
-    else summary.missing += 1;
+    if (r.needsUpdate) summary.needsImport += 1;
+    else summary.ok += 1;
     if (!r.completed) summary.pendingManual += 1;
   }
   return summary;
@@ -301,4 +329,5 @@ module.exports = {
   isInitialProgramSyncDone,
   countUpcomingWeekShowtimes,
   hasAutoProgramLine,
+  computeNeedsUpdate,
 };

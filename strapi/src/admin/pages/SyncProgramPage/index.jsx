@@ -54,7 +54,7 @@ const SyncProgramPage = () => {
           {summary ? (
             <Box paddingTop={4}>
               <Typography>
-                Ελέγχθηκαν {summary.total} σινεμά · {summary.complete} με προβολές · {summary.missing} needs_update ·{' '}
+                Ελέγχθηκαν {summary.total} σινεμά · {summary.ok} OK · {summary.needsImport} needs_update ·{' '}
                 {summary.pendingManual} χωρίς «ολοκλήρωσα».
               </Typography>
             </Box>

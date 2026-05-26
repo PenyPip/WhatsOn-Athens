@@ -40,7 +40,7 @@ function isHourlyProgramWindow(now = new Date()) {
 async function resetCinemaProgramUpdated(strapi) {
   const summary = await syncAllCinemaVenues(strapi, { resetManualCompleted: true, logChange: false });
   strapi.log.info(
-    `[cron] Σάββατο 14:00 ${ATHENS_TZ}: ${summary.missing} needs_update, ${summary.complete} με προβολές, ${summary.pendingManual} χωρίς «ολοκλήρωσα»`,
+    `[cron] Σάββατο 14:00 ${ATHENS_TZ}: ${summary.needsImport} needs_update, ${summary.ok} OK, ${summary.pendingManual} χωρίς «ολοκλήρωσα»`,
   );
 }
 
@@ -56,7 +56,7 @@ async function dailyProgramStatusSync(strapi) {
     return;
   }
   strapi.log.info(
-    `[cron] daily 09:00 ${ATHENS_TZ}: ${summary.total} ελεγμένα (updated=false), ${summary.complete} με προβολές, ${summary.missing} needs_update`,
+    `[cron] daily 09:00 ${ATHENS_TZ}: ${summary.total} ελεγμένα (updated=false), ${summary.ok} OK, ${summary.needsImport} needs_update`,
   );
 }
 
@@ -76,7 +76,7 @@ async function hourlyProgramStatusSync(strapi) {
     return;
   }
   strapi.log.info(
-    `[cron] hourly (dow=${dow} h=${hour} ${ATHENS_TZ}): ${summary.total} ελεγμένα, ${summary.complete} OK, ${summary.missing} needs_update`,
+    `[cron] hourly (dow=${dow} h=${hour} ${ATHENS_TZ}): ${summary.total} ελεγμένα, ${summary.ok} OK, ${summary.needsImport} needs_update`,
   );
 }
 
