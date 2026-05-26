@@ -10,8 +10,11 @@ function devStrapiOrigin(): string {
   return raw.replace(/\/$/, "");
 }
 
+const isProdBuild = process.env.NODE_ENV === "production";
+
 const nextConfig: NextConfig = {
-  output: "export",
+  /* Μόνο στο `next build` — στο `next dev` σπάει chunks (ENOENT layout.js). */
+  ...(isProdBuild ? { output: "export" as const } : {}),
   compiler: {
     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
   },

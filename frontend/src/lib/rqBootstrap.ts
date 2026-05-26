@@ -12,7 +12,7 @@ export function readRqBootstrapState(): DehydratedState | undefined {
   }
 }
 
-const HOME_BOOTSTRAP_QUERY_KEYS = new Set(["homepage", "movies", "showtimes"]);
+const HOME_BOOTSTRAP_QUERY_KEYS = new Set(["homepage", "movies"]);
 
 /** Μικρότερο bootstrap στην αρχική — venues/theater φορτώνονται μετά το πρώτο paint. */
 export function slimHomeBootstrapState(state: DehydratedState): DehydratedState {

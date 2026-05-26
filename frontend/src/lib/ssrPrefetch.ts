@@ -1,16 +1,8 @@
 import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-import {
-  homeNeedsDining,
-  homeNeedsShowtimes,
-  homeNeedsTheater,
-  homeNeedsVenues,
-  layoutShowsHero,
-  resolveHomepageLayout,
-  type MappedHomepage,
-} from "@/config/home";
+import { resolveHomepageLayout, type MappedHomepage } from "@/config/home";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
-import { slimListQueryCache, trimHomeShowtimesDehydrate } from "@/lib/slimDehydrate";
+import { slimListQueryCache } from "@/lib/slimDehydrate";
 
 const queryDefaults = {
   staleTime: 120_000,
@@ -43,30 +35,12 @@ function matchMoviesVenueSlug(path: string): string | null {
 }
 
 async function prefetchHomeBundle(qc: QueryClient) {
-  await qc.prefetchQuery({ queryKey: ["homepage"], queryFn: api.getHomepage, ...queryDefaults });
-  const layout = resolveHomepageLayout(qc.getQueryData<MappedHomepage>(["homepage"]) ?? null);
-  const sections = layout.sections;
-
-  const tasks: Promise<unknown>[] = [
+  await Promise.all([
+    qc.prefetchQuery({ queryKey: ["homepage"], queryFn: api.getHomepage, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMovies, ...queryDefaults }),
-  ];
-  if (homeNeedsShowtimes(sections)) {
-    tasks.push(qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }));
-  }
-
-  if (homeNeedsVenues(sections)) {
-    tasks.push(qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }));
-  }
-  if (homeNeedsTheater(sections)) {
-    tasks.push(qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }));
-  }
-  if (homeNeedsDining(sections)) {
-    tasks.push(qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants, ...queryDefaults }));
-  }
-
-  await Promise.all(tasks);
+  ]);
+  resolveHomepageLayout(qc.getQueryData<MappedHomepage>(["homepage"]) ?? null);
   slimListQueryCache(qc);
-  trimHomeShowtimesDehydrate(qc);
 }
 
 async function prefetchMoviesList(qc: QueryClient) {

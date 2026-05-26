@@ -1,12 +1,17 @@
 import type { Metadata } from "next";
-import SpaRoot from "@/components/SpaRoot";
+import dynamic from "next/dynamic";
+import RqBootstrapScript from "@/components/RqBootstrapScript";
 import ServerJsonLd from "@/components/ServerJsonLd";
 import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
 import HomeStaticLcp from "@/components/HomeStaticLcp";
 import { homeHeroPosterHref, homeLcpDisplay } from "@/lib/homeHeroLcp";
+import { slimHomeBootstrapState } from "@/lib/rqBootstrap";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
+import { serializeDehydratedState } from "@/lib/serializeDehydratedState";
 import spaPaths from "@/generated/spa-static-paths.json";
+
+const SpaRoot = dynamic(() => import("../SpaShell"), { ssr: true });
 
 type SpaPathParams = { slug?: string[] };
 
@@ -34,7 +39,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function SpaCatchAllPage({ params }: PageProps) {
   const { slug } = await params;
   const path = pathFromSlugParam(slug);
-  const dehydratedState = await prefetchRouteData(path);
+  let dehydratedState = await prefetchRouteData(path);
+  if (path === "/") {
+    dehydratedState = slimHomeBootstrapState(dehydratedState);
+  }
   const lcp = homeLcpDisplay(path, dehydratedState);
   const heroPoster = homeHeroPosterHref(path, dehydratedState);
   const preloadPoster = heroPoster ?? (!lcp?.hasHeroSection ? lcp?.posterHref : null);
@@ -46,7 +54,12 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
       {preloadPoster ? <link rel="preload" as="image" href={preloadPoster} fetchPriority="high" /> : null}
       {showStaticLcp ? <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} /> : null}
       <ServerJsonLd path={path} />
-      <SpaRoot ssrPath={path} dehydratedState={dehydratedState} suppressHydrationWarning={showStaticLcp} />
+      <RqBootstrapScript state={dehydratedState} />
+      <SpaRoot
+        ssrPath={path}
+        bootstrapJson={serializeDehydratedState(dehydratedState)}
+        suppressHydrationWarning={showStaticLcp}
+      />
     </>
   );
 }

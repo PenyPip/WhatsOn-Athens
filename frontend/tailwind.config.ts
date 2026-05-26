@@ -12,6 +12,7 @@ export default {
     "./src/components/ui/command.tsx",
     "./src/components/ui/collapsible.tsx",
     "./src/components/ui/select.tsx",
+    "./src/components/ui/popover.tsx",
   ],
   prefix: "",
   /** Dialog/alert: arbitrary top/z/translate δεν σκανάρονται πάντα — κρατάμε και τα standard. */

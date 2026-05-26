@@ -141,18 +141,45 @@ export default function SharePageButton({ path, title, variant = "default", clas
           <Share2 className="h-5 w-5 shrink-0" aria-hidden />
         </button>
       </PopoverTrigger>
-      <PopoverContent align="end" side="bottom" className="w-56 p-2">
-        <p className="px-2 py-1.5 text-xs font-semibold text-muted-foreground">Κοινοποίηση</p>
+      <PopoverContent
+        align="end"
+        side="bottom"
+        className={cn(
+          "z-[200] w-56 border p-2 shadow-xl",
+          variant === "hero"
+            ? "border-white/25 bg-[#1a1b4a] text-[#F0EDF8]"
+            : "border-border bg-white text-foreground",
+        )}
+      >
+        <p
+          className={cn(
+            "px-2 py-1.5 text-xs font-semibold",
+            variant === "hero" ? "text-white/65" : "text-muted-foreground",
+          )}
+        >
+          Κοινοποίηση
+        </p>
         <ul className="flex flex-col gap-0.5" role="menu">
           {actions.map(({ id, label, icon: Icon, run }) => (
             <li key={id} role="none">
               <button
                 type="button"
                 role="menuitem"
-                className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                className={cn(
+                  "flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-sm transition-colors",
+                  variant === "hero"
+                    ? "text-[#F0EDF8] hover:bg-white/12"
+                    : "text-foreground hover:bg-muted",
+                )}
                 onClick={() => void run()}
               >
-                <Icon className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                <Icon
+                  className={cn(
+                    "h-4 w-4 shrink-0",
+                    variant === "hero" ? "text-white/70" : "text-muted-foreground",
+                  )}
+                  aria-hidden
+                />
                 <span>{label}</span>
               </button>
             </li>

@@ -79,6 +79,7 @@ services:
     volumes:
       - ./frontend:/front:delegated
       - /front/node_modules
+      - frontend-next-dev:/front/.next
     environment:
       NODE_ENV: development
       NEXT_TELEMETRY_DISABLED: "1"
@@ -88,3 +89,4 @@ services:
 volumes:
   whatson-data:
   whatson-uploads:
+  frontend-next-dev:
