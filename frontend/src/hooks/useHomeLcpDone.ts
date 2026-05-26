@@ -1,17 +1,8 @@
-import { useCallback, useEffect } from "react";
+import { useCallback } from "react";
 
-/** Κινητό: μετά τη φόρτωση αφίσας Hero. Desktop: αμέσως (χωρίς static overlay). */
+/** Κρύβει το mobile static LCP overlay (χωρίς layout shift). */
 export function useHomeLcpDone(): () => void {
-  const markDone = useCallback(() => {
+  return useCallback(() => {
     document.documentElement.classList.add("spa-lcp-done");
   }, []);
-
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.matchMedia("(min-width: 768px)").matches) {
-      markDone();
-    }
-  }, [markDone]);
-
-  return markDone;
 }

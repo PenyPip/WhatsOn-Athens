@@ -5,6 +5,7 @@ import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 import { posterLcpSrc } from "@/lib/posterDelivery";
+import { cn } from "@/lib/utils";
 
 const HERO_SECTION_CLASS =
   "relative h-[75vh] min-h-[500px] overflow-hidden bg-[#111111] max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28";
@@ -39,9 +40,11 @@ type HeroProps = {
   showtimes: StrapiShowtime[];
   theaterShows: StrapiTheaterShow[];
   onPosterReady?: () => void;
+  /** Όταν false — μόνο αφίσα (κείμενο/σύνοψη μετά, μαζί με τις ενότητες). */
+  showDetails?: boolean;
 };
 
-const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady }: HeroProps) => {
+const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady, showDetails = true }: HeroProps) => {
   const moviesEnriched = useMemo(
     () => enrichMoviesWithShowtimeGenre(movies, showtimes),
     [movies, showtimes],
@@ -79,6 +82,10 @@ const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady }: HeroPr
   useEffect(() => {
     if (featured && !hasPosterImage) onPosterReady?.();
   }, [featured, hasPosterImage, onPosterReady]);
+
+  useEffect(() => {
+    if (layoutShowsHero(layout) && !featured) onPosterReady?.();
+  }, [featured, layout, onPosterReady]);
 
   if (!layoutShowsHero(layout)) return null;
   if (!featured) {
@@ -168,7 +175,12 @@ const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady }: HeroPr
       <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-[#111111]/40 to-transparent" />
 
       <div className="relative z-10 container flex h-full items-end pb-16 md:pb-20">
-        <div className="max-w-2xl">
+        <div
+          className={cn(
+            "max-w-2xl transition-opacity duration-200",
+            showDetails ? "opacity-100" : "pointer-events-none opacity-0",
+          )}
+        >
           <span className="mb-3 block font-body text-[10px] uppercase tracking-[0.28em] text-amber-200/90 md:text-[11px]">{eyebrow}</span>
           {(heroGenreLabel ?? "").trim() ? (
             <span className="mb-2 inline-flex rounded border border-white/15 bg-white/[0.08] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-200/95">

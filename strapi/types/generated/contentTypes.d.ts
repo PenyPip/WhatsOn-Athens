@@ -839,6 +839,9 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     info: Attribute.Text & Attribute.Private;
     more_link: Attribute.String;
     name: Attribute.String & Attribute.Required;
+    needs_update: Attribute.Boolean &
+      Attribute.Private &
+      Attribute.DefaultTo<true>;
     publishedAt: Attribute.DateTime;
     seats_total: Attribute.Integer;
     showtimes: Attribute.Relation<
@@ -856,7 +859,8 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     type: Attribute.Enumeration<['cinema', 'theater']> &
       Attribute.Required &
       Attribute.DefaultTo<'cinema'>;
-    updated: Attribute.Boolean & Attribute.Private & Attribute.DefaultTo<true>;
+    needs_update: Attribute.Boolean & Attribute.Private & Attribute.DefaultTo<true>;
+    updated: Attribute.Boolean & Attribute.Private & Attribute.DefaultTo<false>;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::venue.venue',

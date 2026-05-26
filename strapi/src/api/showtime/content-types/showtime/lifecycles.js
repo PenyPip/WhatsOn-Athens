@@ -1,6 +1,10 @@
 'use strict';
 
 const { expandRepeatShowtimes } = require('../../services/showtime-repeat');
+const {
+  syncVenueForShowtime,
+  syncVenueProgramStatus,
+} = require('../../../venue/services/program-status');
 
 function normalizeScheduleKind(raw) {
   return raw === 'week_block' ? 'week_block' : 'exact';
@@ -49,12 +53,28 @@ module.exports = {
     applyScheduleRules(data);
   },
 
+  async beforeDelete(event) {
+    const id = lifecycleShowtimeId(event);
+    if (!id) return;
+    const existing = await strapi.entityService.findOne('api::showtime.showtime', id, {
+      populate: { venue: { fields: ['id'] } },
+      publicationState: 'preview',
+    });
+    event.state = event.state || {};
+    event.state.venueIdForProgram = existing?.venue?.id ?? null;
+  },
+
   async afterCreate(event) {
     const id = lifecycleShowtimeId(event);
     if (!id) return;
     await expandRepeatShowtimes(strapi, id, 'afterCreate', {
       overrideUntil: lifecycleRepeatUntil(event),
     });
+    try {
+      await syncVenueForShowtime(strapi, id);
+    } catch (err) {
+      strapi.log.warn('[showtime] syncVenueForShowtime afterCreate', err);
+    }
   },
 
   async afterUpdate(event) {
@@ -63,5 +83,20 @@ module.exports = {
     await expandRepeatShowtimes(strapi, id, 'afterUpdate', {
       overrideUntil: lifecycleRepeatUntil(event),
     });
+    try {
+      await syncVenueForShowtime(strapi, id);
+    } catch (err) {
+      strapi.log.warn('[showtime] syncVenueForShowtime afterUpdate', err);
+    }
+  },
+
+  async afterDelete(event) {
+    const venueId = event.state?.venueIdForProgram;
+    if (!venueId) return;
+    try {
+      await syncVenueProgramStatus(strapi, venueId, { logChange: true });
+    } catch (err) {
+      strapi.log.warn('[showtime] syncVenueProgramStatus afterDelete', err);
+    }
   },
 };

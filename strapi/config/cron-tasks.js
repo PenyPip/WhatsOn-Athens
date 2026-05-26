@@ -1,29 +1,40 @@
 'use strict';
 
 const ATHENS_TZ = 'Europe/Athens';
+const { syncAllCinemaVenues } = require('../src/api/venue/services/program-status');
 
 /**
- * Κάθε Σάββατο 14:00 (Europe/Athens): updated → false για όλα τα σινεμά.
+ * Κάθε Σάββατο 14:00: updated → false (ολοκλήρωσα), needs_update από προβολές επόμενης εβδομάδας.
  */
 async function resetCinemaProgramUpdated(strapi) {
-  const venues = await strapi.entityService.findMany('api::venue.venue', {
-    filters: { type: 'cinema' },
-    fields: ['id'],
-    publicationState: 'preview',
-  });
+  const summary = await syncAllCinemaVenues(strapi, { resetManualCompleted: true, logChange: false });
+  strapi.log.info(
+    `[cron] Σάββατο 14:00 ${ATHENS_TZ}: ${summary.missing} needs_update, ${summary.complete} με προβολές, ${summary.pendingManual} χωρίς «ολοκλήρωσα»`,
+  );
+}
 
-  let count = 0;
-  for (const venue of venues) {
-    await strapi.entityService.update('api::venue.venue', venue.id, {
-      data: { updated: false },
-    });
-    count += 1;
-  }
-
-  strapi.log.info(`[cron] venue.updated=false για ${count} σινεμά (Σάββατο 14:00 ${ATHENS_TZ})`);
+/** Καθημερινά 09:00 — needs_update + info (το updated μένει χειροκίνητο). */
+async function dailyProgramStatusSync(strapi) {
+  const summary = await syncAllCinemaVenues(strapi, { logChange: true });
+  strapi.log.info(
+    `[cron] daily program: ${summary.complete} OK, ${summary.missing} χρειάζονται ενημέρωση`,
+  );
 }
 
 module.exports = {
+  dailyProgramStatusSync: {
+    task: async ({ strapi }) => {
+      try {
+        await dailyProgramStatusSync(strapi);
+      } catch (err) {
+        strapi.log.error('[cron] dailyProgramStatusSync απέτυχε', err);
+      }
+    },
+    options: {
+      rule: '0 9 * * *',
+      tz: ATHENS_TZ,
+    },
+  },
   resetCinemaProgramUpdated: {
     task: async ({ strapi }) => {
       try {

@@ -1,7 +1,13 @@
+import { useEffect, useMemo, useState } from "react";
 import Hero from "@/components/Hero";
 import HomeBody from "@/views/HomeBody";
 import MarkLcpDone from "@/components/MarkLcpDone";
-import { layoutShowsHero } from "@/config/home";
+import {
+  homeNeedsShowtimes,
+  homeNeedsTheater,
+  layoutShowsHero,
+  type HomeSectionId,
+} from "@/config/home";
 import { useHomeLcpDone } from "@/hooks/useHomeLcpDone";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useMovies, useShowtimes, useTheaterShows, useHomeLayout } from "@/hooks/useStrapi";
@@ -11,6 +17,10 @@ const Index = () => {
   usePageSeo(staticPageSeo.home);
 
   const layout = useHomeLayout();
+  const belowHeroSections = useMemo(
+    () => layout.sections.filter((id): id is HomeSectionId => id !== "hero"),
+    [layout.sections],
+  );
 
   const { data: movies } = useMovies();
   const movieList = movies ?? [];
@@ -20,18 +30,39 @@ const Index = () => {
   const { data: showtimes } = useShowtimes(needsHeroShowtimes);
   const { data: theaterShows } = useTheaterShows(needsHeroTheater);
 
-  const markHeroLcpDone = useHomeLcpDone();
+  const needsShowtimesForHome = homeNeedsShowtimes(belowHeroSections);
+  const needsTheaterForHome = homeNeedsTheater(belowHeroSections);
+
+  const homeDataReady =
+    movies !== undefined &&
+    (!needsShowtimesForHome || showtimes !== undefined) &&
+    (!needsTheaterForHome || theaterShows !== undefined);
+
+  const [posterReady, setPosterReady] = useState(false);
+  const markLcpDone = useHomeLcpDone();
+  const revealHome = homeDataReady && posterReady;
+
+  useEffect(() => {
+    if (!revealHome) return;
+    const id = requestAnimationFrame(() => {
+      requestAnimationFrame(() => markLcpDone());
+    });
+    return () => cancelAnimationFrame(id);
+  }, [revealHome, markLcpDone]);
+
+  const hasHero = layout.sections.includes("hero");
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      {!layoutShowsHero(layout) ? <MarkLcpDone /> : null}
-      {layout.sections.includes("hero") ? (
+      {!hasHero && homeDataReady ? <MarkLcpDone /> : null}
+      {hasHero ? (
         <Hero
           layout={layout}
           movies={movieList}
           showtimes={showtimes ?? []}
           theaterShows={theaterShows ?? []}
-          onPosterReady={markHeroLcpDone}
+          showDetails={revealHome}
+          onPosterReady={() => setPosterReady(true)}
         />
       ) : null}
       <HomeBody layout={layout} />
