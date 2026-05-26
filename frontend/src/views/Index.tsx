@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import Hero from "@/components/Hero";
+import { useEffect, useMemo } from "react";
+import Hero, { HeroShell } from "@/components/Hero";
 import HomeBody from "@/views/HomeBody";
 import MarkLcpDone from "@/components/MarkLcpDone";
 import {
@@ -38,9 +38,9 @@ const Index = () => {
     (!needsShowtimesForHome || showtimes !== undefined) &&
     (!needsTheaterForHome || theaterShows !== undefined);
 
-  const [posterReady, setPosterReady] = useState(false);
   const markLcpDone = useHomeLcpDone();
-  const revealHome = homeDataReady && posterReady;
+  const hasHero = layout.sections.includes("hero");
+  const revealHome = homeDataReady;
 
   useEffect(() => {
     if (!revealHome) return;
@@ -50,22 +50,21 @@ const Index = () => {
     return () => cancelAnimationFrame(id);
   }, [revealHome, markLcpDone]);
 
-  const hasHero = layout.sections.includes("hero");
+  const showMain = !hasHero || revealHome;
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      {!hasHero && homeDataReady ? <MarkLcpDone /> : null}
-      {hasHero ? (
+      {!hasHero && revealHome ? <MarkLcpDone /> : null}
+      {hasHero && !revealHome ? <HeroShell /> : null}
+      {hasHero && revealHome ? (
         <Hero
           layout={layout}
           movies={movieList}
           showtimes={showtimes ?? []}
           theaterShows={theaterShows ?? []}
-          showDetails={revealHome}
-          onPosterReady={() => setPosterReady(true)}
         />
       ) : null}
-      <HomeBody layout={layout} />
+      {showMain ? <HomeBody layout={layout} /> : null}
 
       <footer className="section-black border-t border-white/10 py-12">
         <div className="container">
