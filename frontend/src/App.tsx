@@ -1,5 +1,6 @@
 import { lazy, Suspense, type ReactNode } from "react";
-import { Route, Routes } from "react-router-dom";
+import { Route, Routes, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import UrlBackedMemoryRouter from "@/components/UrlBackedMemoryRouter";
 import ScrollToTop from "@/components/ScrollToTop";
 import Navbar from "@/components/Navbar";
@@ -53,7 +54,14 @@ function AppRoutes() {
   );
 }
 
-function AppShell() {
+type AppShellProps = {
+  homeMainOverlap?: boolean;
+};
+
+function AppShell({ homeMainOverlap }: AppShellProps) {
+  const { pathname } = useLocation();
+  const overlapHome = homeMainOverlap ?? pathname === "/";
+
   return (
     <>
       <ScrollToTop />
@@ -61,7 +69,12 @@ function AppShell() {
         <GoogleAnalytics />
       </Suspense>
       <Navbar />
-      <main className="min-h-screen max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))] max-md:pt-16 md:pt-28">
+      <main
+        className={cn(
+          "min-h-screen max-md:pb-[calc(3.5rem+env(safe-area-inset-bottom,0px))]",
+          overlapHome ? "home-main-overlap" : "max-md:pt-16 md:pt-28",
+        )}
+      >
         <DeferredCookieConsent />
         <AppRoutes />
       </main>
@@ -71,11 +84,12 @@ function AppShell() {
 
 type AppProps = {
   ssrPath?: string;
+  homeMainOverlap?: boolean;
 };
 
-const App = ({ ssrPath = "/" }: AppProps) => (
+const App = ({ ssrPath = "/", homeMainOverlap }: AppProps) => (
   <UrlBackedMemoryRouter ssrPath={ssrPath}>
-    <AppShell />
+    <AppShell homeMainOverlap={homeMainOverlap} />
   </UrlBackedMemoryRouter>
 );
 

@@ -2,12 +2,12 @@ import { Link } from "react-router-dom";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 
-/** Στατικό SEO intro — χωρίς API, για γρήγορο Speed Index. */
+/** Στατικό SEO intro — σταθερό min-height για λιγότερο CLS. */
 export default function HomeSeoIntro() {
   const home = staticPageSeo.home;
   return (
     <section
-      className="border-b border-border/50 bg-muted/15 py-8 md:py-10"
+      className="min-h-[11.5rem] border-b border-border/50 bg-muted/15 py-8 md:min-h-[12.5rem] md:py-10"
       aria-labelledby="home-page-title"
     >
       <div className="container max-w-7xl">

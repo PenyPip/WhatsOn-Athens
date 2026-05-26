@@ -5,9 +5,9 @@ import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
 import { posterLcpSrc } from "@/lib/posterDelivery";
+import { HOME_HERO_SECTION_CLASS } from "@/lib/homeHeroLayout";
 
-export const HERO_SECTION_CLASS =
-  "relative h-[75vh] min-h-[500px] overflow-hidden bg-[#111111] max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28";
+export const HERO_SECTION_CLASS = HOME_HERO_SECTION_CLASS;
 
 /** Κράτα ύψος hero χωρίς αφίσα — μέχρι να έρθουν δεδομένα (mobile: static LCP overlay). */
 export function HeroShell() {

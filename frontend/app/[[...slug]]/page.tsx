@@ -4,7 +4,6 @@ import RqBootstrapScript from "@/components/RqBootstrapScript";
 import ServerJsonLd from "@/components/ServerJsonLd";
 import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
-import HomeEarlyPaint from "@/components/HomeEarlyPaint";
 import HomeStaticLcp from "@/components/HomeStaticLcp";
 import { homeLcpDisplay } from "@/lib/homeHeroLcp";
 import { homeNeedsTheater, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
@@ -61,12 +60,12 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
         <link rel="preload" as="image" href={preloadPoster} fetchPriority="high" />
       ) : null}
       {showStaticLcp && lcp ? <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} /> : null}
-      {path === "/" ? <HomeEarlyPaint /> : null}
       <ServerJsonLd path={path} />
       <RqBootstrapScript state={dehydratedState} />
       <SpaRoot
         ssrPath={path}
         bootstrapJson={serializeDehydratedState(dehydratedState)}
+        homeMainOverlap={showStaticLcp}
         suppressHydrationWarning={showStaticLcp}
       />
     </>
