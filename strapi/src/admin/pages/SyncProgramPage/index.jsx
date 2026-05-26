@@ -34,7 +34,7 @@ const SyncProgramPage = () => {
     <Layout>
       <HeaderLayout
         title="Έλεγχος προγράμματος σινεμά"
-        subtitle="Διαβάζει το URL στο info (κάτω από ---) ή στο more_link και ελέγχει ημερομηνίες επόμενης εβδομάδας κινηματογράφου."
+        subtitle="Διαβάζει το link από το info κάθε σινεμά· γράφει αποτέλεσμα στο info_update (το info δεν αλλάζει)."
         primaryAction={
           <Button onClick={runSync} loading={loading} startIcon={<Refresh />}>
             Τρέξιμο τώρα
@@ -44,8 +44,9 @@ const SyncProgramPage = () => {
       <ContentLayout>
         <Box padding={6} background="neutral0" shadow="filterShadow" hasRadius>
           <Typography variant="omega" textColor="neutral600">
-            Σε κάθε σινεμά ανοίγει το link προγράμματος και ψάχνει αν εμφανίζονται ημερομηνίες της επόμενης εβδομάδας
-            (Πέμ–Τετ). Βάλε το URL στο info κάτω από «---» ή στο πεδίο more_link. Δεν αλλάζει το «ολοκλήρωσα» (updated).
+            Σε κάθε σινεμά ανοίγει το URL από το info (όχι το more_link) και ψάχνει ημερομηνίες επόμενης
+            εβδομάδας κινηματογράφου (Πέμ–Τετ). Η αυτόματη γραμμή πηγαίνει στο info_update· το info μένει ως έχει.
+            Δεν αλλάζει το «ολοκλήρωσα» (updated).
           </Typography>
           {summary ? (
             <Box paddingTop={4}>

@@ -837,6 +837,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     >;
     image: Attribute.Media<'images'>;
     info: Attribute.Text & Attribute.Private;
+    info_update: Attribute.Text & Attribute.Private;
     more_link: Attribute.String;
     name: Attribute.String & Attribute.Required;
     needs_update: Attribute.Boolean &

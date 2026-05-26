@@ -2,15 +2,18 @@
 
 const URL_RE = /https?:\/\/[^\s<>"')\]]+/i;
 
-/** URL προγράμματος: πρώτα στο χειροκίνητο κείμενο info (κάτω από ---), αλλιώς more_link. */
-function extractProgramUrl(manualText, moreLink) {
-  const manual = typeof manualText === 'string' ? manualText.trim() : '';
-  const fromManual = manual.match(URL_RE);
-  if (fromManual?.[0]) {
-    return fromManual[0].replace(/[.,;]+$/g, '');
-  }
-  const link = typeof moreLink === 'string' ? moreLink.trim() : '';
-  return link || null;
+function normalizeUrl(raw) {
+  const s = typeof raw === 'string' ? raw.trim() : '';
+  if (!s) return null;
+  const match = s.match(URL_RE);
+  if (!match?.[0]) return null;
+  return match[0].replace(/[.,;]+$/g, '');
+}
+
+/** URL προγράμματος από το info (διαβάζεται μόνο — το πεδίο δεν αλλάζει). Όχι more_link. */
+function resolveProgramUrl(venue) {
+  if (!venue || typeof venue !== 'object') return null;
+  return normalizeUrl(venue.info);
 }
 
 function isSafeProgramUrl(urlString) {
@@ -31,6 +34,6 @@ function isSafeProgramUrl(urlString) {
 }
 
 module.exports = {
-  extractProgramUrl,
+  resolveProgramUrl,
   isSafeProgramUrl,
 };

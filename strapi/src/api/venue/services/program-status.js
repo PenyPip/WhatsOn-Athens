@@ -6,7 +6,7 @@ const {
   formatWeekLabel,
 } = require('../../../utils/cinemaWeek');
 const { checkExternalProgramForWeek } = require('../../../utils/externalProgramCheck');
-const { extractProgramUrl, isSafeProgramUrl } = require('../../../utils/programUrl');
+const { resolveProgramUrl, isSafeProgramUrl } = require('../../../utils/programUrl');
 
 const EXTERNAL_FETCH_GAP_MS = 800;
 
@@ -35,7 +35,7 @@ function mergeVenueInfo(autoLine, manual) {
   return `${autoLine}\n---\n${manual}`;
 }
 
-/** Έχει ήδη τρέξει sync (αυτόματη γραμμή ✓/⚠ στο info). */
+/** Έχει ήδη τρέξει sync (αυτόματη γραμμή ✓/⚠ στο info_update). */
 function hasAutoProgramLine(info) {
   const { autoLine } = splitVenueInfo(info);
   return AUTO_LINE_RE.test((autoLine || '').trim());
@@ -73,10 +73,9 @@ async function countUpcomingWeekShowtimes(strapi, venueId, now = new Date()) {
   return { count, start, end };
 }
 
-/** Έλεγχος link στο info / more_link — ημερομηνίες επόμενης εβδομάδας κινηματογράφου στη σελίδα. */
+/** Έλεγχος link στο info — ημερομηνίες επόμενης εβδομάδας κινηματογράφου στη σελίδα. */
 async function evaluateVenueProgram(strapi, venue, now = new Date()) {
-  const { manual } = splitVenueInfo(venue.info);
-  const programUrl = extractProgramUrl(manual, venue.more_link);
+  const programUrl = resolveProgramUrl(venue);
   const strapiCounts = await countUpcomingWeekShowtimes(strapi, venue.id, now);
   const weekLabel = strapiCounts.start ? formatWeekLabel(strapiCounts.start, strapiCounts.end) : '';
 
@@ -90,8 +89,8 @@ async function evaluateVenueProgram(strapi, venue, now = new Date()) {
       matchedDays: 0,
       programUrl: null,
       autoLine: hasProgram
-        ? `✓ Πρόγραμμα (${weekLabel}): ${strapiCounts.count} προβολές στο CMS — χωρίς link στο info — έλεγχος ${formatAthensNow()}`
-        : `⚠ Βάλε URL προγράμματος στο info (κάτω από ---) ή στο more_link — έλεγχος ${formatAthensNow()}`,
+        ? `✓ Πρόγραμμα (${weekLabel}): ${strapiCounts.count} προβολές στο CMS — λείπει link στο info — έλεγχος ${formatAthensNow()}`
+        : `⚠ Βάλε link προγράμματος στο info — έλεγχος ${formatAthensNow()}`,
     };
   }
 
@@ -146,19 +145,19 @@ async function evaluateVenueProgram(strapi, venue, now = new Date()) {
 }
 
 /**
- * Ενημέρωση needs_update (αυτόματο) + γραμμή στο info. Το updated μένει χειροκίνητο.
+ * Ενημέρωση needs_update (αυτόματο) + γραμμή στο info_update. Το info δεν αγγίζεται. Το updated χειροκίνητο.
  */
 async function syncVenueProgramStatus(strapi, venueId, options = {}) {
   const { logChange = false, onlyIfNotUpdated = false, forceAll = false } = options;
   const venue = await strapi.entityService.findOne('api::venue.venue', venueId, {
-    fields: ['name', 'type', 'needs_update', 'updated', 'info', 'more_link'],
+    fields: ['name', 'type', 'needs_update', 'updated', 'info', 'info_update'],
     publicationState: 'preview',
   });
   if (!venue || venue.type !== 'cinema') {
     return { skipped: true };
   }
 
-  const neverSynced = !hasAutoProgramLine(venue.info);
+  const neverSynced = !hasAutoProgramLine(venue.info_update);
   if (onlyIfNotUpdated && !forceAll && venue.updated && !neverSynced) {
     return { skipped: true, reason: 'already_completed' };
   }
@@ -169,10 +168,10 @@ async function syncVenueProgramStatus(strapi, venueId, options = {}) {
   const needsUpdate = !hasProgram;
   const hadNeedsUpdate = venue.needs_update !== false;
 
-  const { manual } = splitVenueInfo(venue.info);
-  const info = mergeVenueInfo(autoLine, manual);
+  const { manual } = splitVenueInfo(venue.info_update);
+  const info_update = mergeVenueInfo(autoLine, manual);
 
-  const data = { needs_update: needsUpdate, info };
+  const data = { needs_update: needsUpdate, info_update };
   if (neverSynced || venue.updated == null) {
     data.updated = false;
   }
@@ -259,8 +258,8 @@ async function syncAllCinemaVenues(strapi, options = {}) {
     filters.$or = [
       { updated: false },
       { updated: { $null: true } },
-      { info: { $null: true } },
-      { info: '' },
+      { info_update: { $null: true } },
+      { info_update: '' },
     ];
   }
   const venues = await strapi.entityService.findMany('api::venue.venue', {
