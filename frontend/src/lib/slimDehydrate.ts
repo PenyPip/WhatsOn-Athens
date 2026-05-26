@@ -1,5 +1,12 @@
 import type { QueryClient } from "@tanstack/react-query";
-import type { StrapiMovie, StrapiMovieGenre, StrapiRestaurant, StrapiShowtime, StrapiVenue } from "@/lib/api";
+import type {
+  StrapiMovie,
+  StrapiMovieGenre,
+  StrapiRestaurant,
+  StrapiShowtime,
+  StrapiTheaterShow,
+  StrapiVenue,
+} from "@/lib/api";
 import { showtimeIsUpcoming } from "@/lib/homeMovieFilters";
 
 function slimMoviesShowtimes(qc: QueryClient): void {
@@ -41,6 +48,28 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         criticScore: m.criticScore,
         releaseDate: m.releaseDate,
         posterUrl: m.posterUrl,
+        posterSrcSet: m.posterSrcSet,
+      })),
+    );
+  }
+
+  const theaterShows = qc.getQueryData<StrapiTheaterShow[]>(["theaterShows"]);
+  if (theaterShows?.length) {
+    qc.setQueryData(
+      ["theaterShows"],
+      theaterShows.map((s) => ({
+        id: s.id,
+        slug: s.slug,
+        title: s.title,
+        genre: s.genre,
+        synopsis: s.synopsis,
+        duration: s.duration,
+        director: s.director,
+        cast: s.cast,
+        venue: s.venue,
+        posterUrl: s.posterUrl,
+        gradientFrom: s.gradientFrom,
+        gradientTo: s.gradientTo,
       })),
     );
   }

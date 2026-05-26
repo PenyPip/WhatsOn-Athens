@@ -14,11 +14,15 @@ export function readRqBootstrapState(): DehydratedState | undefined {
 
 const HOME_BOOTSTRAP_QUERY_KEYS = new Set(["homepage", "movies", "showtimes"]);
 
-/** Μικρότερο bootstrap στην αρχική — venues/theater φορτώνονται μετά το πρώτο paint. */
-export function slimHomeBootstrapState(state: DehydratedState): DehydratedState {
+/** Μικρότερο bootstrap στην αρχική — venues/extra φορτώνονται μετά το πρώτο paint. */
+export function slimHomeBootstrapState(
+  state: DehydratedState,
+  extraKeys: readonly string[] = [],
+): DehydratedState {
+  const allowed = new Set([...HOME_BOOTSTRAP_QUERY_KEYS, ...extraKeys]);
   return {
     ...state,
-    queries: state.queries.filter((q) => HOME_BOOTSTRAP_QUERY_KEYS.has(String(q.queryKey[0]))),
+    queries: state.queries.filter((q) => allowed.has(String(q.queryKey[0]))),
   };
 }
 

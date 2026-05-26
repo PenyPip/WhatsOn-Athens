@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { layoutShowsHero, type ResolvedHomepageLayout } from "@/config/home";
 import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
@@ -48,9 +48,11 @@ type HeroProps = {
   movies: StrapiMovie[];
   showtimes: StrapiShowtime[];
   theaterShows: StrapiTheaterShow[];
+  /** Κρύβει το static LCP overlay αφού φορτώσει η αφίσα (αποφυγή LCP regression). */
+  onPosterReady?: () => void;
 };
 
-const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
+const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady }: HeroProps) => {
   const moviesEnriched = useMemo(
     () => enrichMoviesWithShowtimeGenre(movies, showtimes),
     [movies, showtimes],
@@ -81,12 +83,24 @@ const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
 
   const featured = picks.theater ?? picks.movie;
   const isTheater = Boolean(picks.theater);
+  const showsHero = layoutShowsHero(layout);
+  const hasPosterImg = featured
+    ? isTheater
+      ? Boolean(picks.theater?.posterUrl)
+      : Boolean(picks.movie?.posterUrl)
+    : false;
 
-  if (!layoutShowsHero(layout)) return null;
+  useEffect(() => {
+    if (!showsHero || !featured || hasPosterImg) return;
+    onPosterReady?.();
+  }, [showsHero, featured, hasPosterImg, onPosterReady]);
+
+  if (!showsHero) return null;
   if (!featured) {
     return <HeroSkeleton />;
   }
 
+  const notifyPosterReady = () => onPosterReady?.();
   const movieTitles = !isTheater ? movieTitleLines(featured) : null;
 
   let heroGenreLabel = "";
@@ -137,6 +151,7 @@ const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
               decoding="async"
               sizes="(max-width: 768px) 100vw, 800px"
               className="h-full w-full object-cover opacity-55"
+              onLoad={notifyPosterReady}
             />
           </>
         ) : isTheater && picks.theater?.posterUrl ? (
@@ -152,6 +167,7 @@ const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
               decoding="async"
               sizes="100vw"
               className="h-full w-full object-cover opacity-55"
+              onLoad={notifyPosterReady}
             />
           </>
         ) : isTheater ? (

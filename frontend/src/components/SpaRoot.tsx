@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import SpaProviders from "@/components/SpaProviders";
 import App from "@/App";
 import { readRqBootstrapState } from "@/lib/rqBootstrap";
@@ -20,6 +20,10 @@ export default function SpaRoot({ ssrPath, bootstrapJson, suppressHydrationWarni
     () => parseDehydratedState(bootstrapJson) ?? readRqBootstrapState(),
     [bootstrapJson],
   );
+
+  useEffect(() => {
+    document.documentElement.classList.add("spa-mounted");
+  }, []);
 
   return (
     <div suppressHydrationWarning={suppressHydrationWarning}>

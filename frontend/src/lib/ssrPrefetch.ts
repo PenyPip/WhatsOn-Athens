@@ -2,6 +2,7 @@ import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-qu
 import { api } from "@/lib/api";
 import {
   homeNeedsShowtimes,
+  homeNeedsTheater,
   resolveHomepageLayout,
   type MappedHomepage,
 } from "@/config/home";
@@ -46,6 +47,9 @@ async function prefetchHomeBundle(qc: QueryClient) {
   ];
   if (homeNeedsShowtimes(layout.sections)) {
     tasks.push(qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }));
+  }
+  if (homeNeedsTheater(layout.sections)) {
+    tasks.push(qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }));
   }
   await Promise.all(tasks);
   slimListQueryCache(qc);

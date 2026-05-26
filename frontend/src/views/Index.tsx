@@ -1,6 +1,7 @@
-import { useEffect, useMemo } from "react";
+import { lazy, Suspense, useMemo } from "react";
 import Hero, { HeroShell } from "@/components/Hero";
-import HomeBody from "@/views/HomeBody";
+import HomeSeoIntro from "@/components/HomeSeoIntro";
+import HomeSectionsSkeleton from "@/components/HomeSectionsSkeleton";
 import MarkLcpDone from "@/components/MarkLcpDone";
 import {
   homeNeedsShowtimes,
@@ -12,6 +13,8 @@ import { useHomeLcpDone } from "@/hooks/useHomeLcpDone";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useMovies, useShowtimes, useTheaterShows, useHomeLayout } from "@/hooks/useStrapi";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+
+const HomeBody = lazy(() => import(/* webpackChunkName: "home-body" */ "@/views/HomeBody"));
 
 const Index = () => {
   usePageSeo(staticPageSeo.home);
@@ -28,10 +31,14 @@ const Index = () => {
   const needsHeroTheater = layoutShowsHero(layout) && Boolean(layout.heroTheaterSlug);
   const needsHeroShowtimes = layoutShowsHero(layout) && !needsHeroTheater;
   const { data: showtimes } = useShowtimes(needsHeroShowtimes);
-  const { data: theaterShows } = useTheaterShows(needsHeroTheater);
+  const { data: theaterShows } = useTheaterShows(needsHeroTheater || homeNeedsTheater(belowHeroSections));
 
   const needsShowtimesForHome = homeNeedsShowtimes(belowHeroSections);
   const needsTheaterForHome = homeNeedsTheater(belowHeroSections);
+
+  const heroReady =
+    movies !== undefined &&
+    (!needsHeroTheater || theaterShows !== undefined);
 
   const homeDataReady =
     movies !== undefined &&
@@ -40,31 +47,29 @@ const Index = () => {
 
   const markLcpDone = useHomeLcpDone();
   const hasHero = layout.sections.includes("hero");
-  const revealHome = homeDataReady;
-
-  useEffect(() => {
-    if (!revealHome) return;
-    const id = requestAnimationFrame(() => {
-      requestAnimationFrame(() => markLcpDone());
-    });
-    return () => cancelAnimationFrame(id);
-  }, [revealHome, markLcpDone]);
-
-  const showMain = !hasHero || revealHome;
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      {!hasHero && revealHome ? <MarkLcpDone /> : null}
-      {hasHero && !revealHome ? <HeroShell /> : null}
-      {hasHero && revealHome ? (
+      {!hasHero && homeDataReady ? <MarkLcpDone /> : null}
+      {hasHero && !heroReady ? <HeroShell /> : null}
+      {hasHero && heroReady ? (
         <Hero
           layout={layout}
           movies={movieList}
           showtimes={showtimes ?? []}
           theaterShows={theaterShows ?? []}
+          onPosterReady={markLcpDone}
         />
       ) : null}
-      {showMain ? <HomeBody layout={layout} /> : null}
+
+      <HomeSeoIntro />
+      {homeDataReady ? (
+        <Suspense fallback={<HomeSectionsSkeleton />}>
+          <HomeBody layout={layout} />
+        </Suspense>
+      ) : (
+        <HomeSectionsSkeleton />
+      )}
 
       <footer className="section-black border-t border-white/10 py-12">
         <div className="container">

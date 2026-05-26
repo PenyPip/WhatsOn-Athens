@@ -4,8 +4,10 @@ import RqBootstrapScript from "@/components/RqBootstrapScript";
 import ServerJsonLd from "@/components/ServerJsonLd";
 import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
+import HomeEarlyPaint from "@/components/HomeEarlyPaint";
 import HomeStaticLcp from "@/components/HomeStaticLcp";
 import { homeLcpDisplay } from "@/lib/homeHeroLcp";
+import { homeNeedsTheater, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
 import { slimHomeBootstrapState } from "@/lib/rqBootstrap";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
 import { serializeDehydratedState } from "@/lib/serializeDehydratedState";
@@ -39,7 +41,14 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
   const path = pathFromSlugParam(slug);
   let dehydratedState = await prefetchRouteData(path);
   if (path === "/") {
-    dehydratedState = slimHomeBootstrapState(dehydratedState);
+    const homepageEntry = dehydratedState.queries.find((q) => q.queryKey[0] === "homepage");
+    const homepageData =
+      homepageEntry?.state.status === "success"
+        ? (homepageEntry.state.data as MappedHomepage | undefined)
+        : undefined;
+    const layout = resolveHomepageLayout(homepageData ?? null);
+    const extraBootstrapKeys = homeNeedsTheater(layout.sections) ? (["theaterShows"] as const) : [];
+    dehydratedState = slimHomeBootstrapState(dehydratedState, extraBootstrapKeys);
   }
   const lcp = homeLcpDisplay(path, dehydratedState);
   const preloadPoster = path === "/" ? lcp?.posterHref ?? null : null;
@@ -49,12 +58,10 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
   return (
     <>
       {preloadPoster ? (
-        <>
-          <link rel="preload" as="image" href={preloadPoster} media="(max-width: 767px)" fetchPriority="high" />
-          <link rel="preload" as="image" href={preloadPoster} media="(min-width: 768px)" />
-        </>
+        <link rel="preload" as="image" href={preloadPoster} fetchPriority="high" />
       ) : null}
       {showStaticLcp && lcp ? <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} /> : null}
+      {path === "/" ? <HomeEarlyPaint /> : null}
       <ServerJsonLd path={path} />
       <RqBootstrapScript state={dehydratedState} />
       <SpaRoot
