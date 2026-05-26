@@ -1,5 +1,6 @@
 import type { QueryClient } from "@tanstack/react-query";
 import type { StrapiMovie, StrapiMovieGenre, StrapiRestaurant, StrapiShowtime, StrapiVenue } from "@/lib/api";
+import { showtimeIsUpcoming } from "@/lib/homeMovieFilters";
 
 function slimMoviesShowtimes(qc: QueryClient): void {
   const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
@@ -103,18 +104,20 @@ export function slimListQueryCache(qc: QueryClient): void {
   slimMoviesShowtimes(qc);
 }
 
-const HOME_SHOWTIME_HORIZON_MS = 21 * 24 * 60 * 60 * 1000;
+const HOME_SHOWTIME_HORIZON_MS = 14 * 24 * 60 * 60 * 1000;
 
 /** Λιγότερες εγγραφές showtimes στο bootstrap αρχικής (ταχύτερο JSON.parse). */
 export function trimHomeShowtimesDehydrate(qc: QueryClient): void {
   const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
   if (!showtimes?.length) return;
-  const until = Date.now() + HOME_SHOWTIME_HORIZON_MS;
+  const now = Date.now();
+  const until = now + HOME_SHOWTIME_HORIZON_MS;
   qc.setQueryData(
     ["showtimes"],
     showtimes.filter((st) => {
+      if (!showtimeIsUpcoming(st, new Date(now))) return false;
       const t = Date.parse(st.datetime);
-      return Number.isFinite(t) && t <= until;
+      return !Number.isFinite(t) || t <= until;
     }),
   );
 }

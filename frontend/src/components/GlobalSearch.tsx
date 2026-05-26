@@ -65,14 +65,16 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   const [search, setSearch] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
 
-  const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies();
-  const { data: showtimes } = useShowtimes();
-  const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues();
+  const searchActive = panelOpen;
+  const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies(searchActive);
+  const { data: showtimes } = useShowtimes(searchActive);
+  const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(searchActive);
 
-  const moviesEnriched = useMemo(
-    () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
-    [movies, showtimes],
-  );
+  const moviesEnriched = useMemo(() => {
+    const list = movies ?? [];
+    if (!searchActive || !showtimes?.length) return list;
+    return enrichMoviesWithShowtimeGenre(list, showtimes);
+  }, [movies, showtimes, searchActive]);
 
   const loading = moviesLoading || venuesLoading;
   const listsError = moviesError || venuesError;

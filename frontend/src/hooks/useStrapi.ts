@@ -17,13 +17,14 @@ export function useHomeLayout() {
   return useMemo(() => resolveHomepageLayout(homepage.data ?? null), [homepage.data]);
 }
 
-export const useMovies = () =>
+export const useMovies = (enabled = true) =>
   useQuery({
     queryKey: ["movies"],
     queryFn: api.getMovies,
     staleTime: 120_000,
     throwOnError: false,
     retry: 1,
+    enabled,
   });
 
 export const useMovieGenres = () =>
@@ -69,13 +70,14 @@ export const useEditorialReviews = () =>
 export const useEditorialReviewBySlug = (slug: string) =>
   useQuery({ queryKey: ["editorialReview", slug], queryFn: () => api.getEditorialReviewBySlug(slug), enabled: !!slug });
 
-export const useShowtimes = () =>
+export const useShowtimes = (enabled = true) =>
   useQuery({
     queryKey: ["showtimes"],
     queryFn: api.getShowtimes,
     staleTime: 120_000,
     throwOnError: false,
     retry: 1,
+    enabled,
   });
 
 export const useUserReviews = () =>

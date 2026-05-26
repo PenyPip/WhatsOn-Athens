@@ -100,3 +100,10 @@ export function homeNeedsTheater(sections: readonly HomeSectionId[]): boolean {
 export function homeNeedsDining(sections: readonly HomeSectionId[]): boolean {
   return sections.includes("dining");
 }
+
+/** Προβολές για Hero / ταινίες σήμερα / θερινά / εβδομάδα / χώρους θερινών. */
+export function homeNeedsShowtimes(sections: readonly HomeSectionId[]): boolean {
+  return sections.some((id) =>
+    ["hero", "movies_today", "summer_cinema", "summer_venues", "movies_week"].includes(id),
+  );
+}

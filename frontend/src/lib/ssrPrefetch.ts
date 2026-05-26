@@ -2,6 +2,7 @@ import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-qu
 import { api } from "@/lib/api";
 import {
   homeNeedsDining,
+  homeNeedsShowtimes,
   homeNeedsTheater,
   homeNeedsVenues,
   layoutShowsHero,
@@ -48,8 +49,10 @@ async function prefetchHomeBundle(qc: QueryClient) {
 
   const tasks: Promise<unknown>[] = [
     qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMovies, ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }),
   ];
+  if (homeNeedsShowtimes(sections)) {
+    tasks.push(qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }));
+  }
 
   if (homeNeedsVenues(sections)) {
     tasks.push(qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }));

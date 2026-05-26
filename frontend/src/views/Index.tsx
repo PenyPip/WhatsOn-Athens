@@ -9,6 +9,7 @@ import { Fragment, useMemo } from "react";
 import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useHomeLayout, useVenues } from "@/hooks/useStrapi";
 import {
   homeNeedsDining,
+  homeNeedsShowtimes,
   homeNeedsTheater,
   homeNeedsVenues,
   layoutShowsHero,
@@ -234,6 +235,7 @@ function MovieRowScroll({
               isDubbed={movie.isDubbed}
               uniformMovieSizing
               compactMovieMeta
+              posterPriority={i === 0}
               index={i}
               className="h-full w-full min-h-0 flex-1"
             />
@@ -278,7 +280,9 @@ const Index = () => {
   const needsDining = homeNeedsDining(sections);
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies();
-  const { data: showtimes, isPending: showtimesPending, isError: showtimesError } = useShowtimes();
+  const needsShowtimes =
+    homeNeedsShowtimes(sections) || layoutShowsHero(layout);
+  const { data: showtimes, isPending: showtimesPending, isError: showtimesError } = useShowtimes(needsShowtimes);
   /** Μόνο πριν το πρώτο δεδομένο (όχι σε refetch με cache / SSR bootstrap). */
   const awaitingMovies = movies === undefined && moviesPending;
   const awaitingShowtimes = showtimes === undefined && showtimesPending;
