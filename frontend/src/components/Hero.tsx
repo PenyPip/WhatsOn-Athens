@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { useMemo } from "react";
+import { useEffect, useMemo } from "react";
 import { layoutShowsHero, type ResolvedHomepageLayout } from "@/config/home";
 import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
@@ -38,9 +38,10 @@ type HeroProps = {
   movies: StrapiMovie[];
   showtimes: StrapiShowtime[];
   theaterShows: StrapiTheaterShow[];
+  onPosterReady?: () => void;
 };
 
-const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
+const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady }: HeroProps) => {
   const moviesEnriched = useMemo(
     () => enrichMoviesWithShowtimeGenre(movies, showtimes),
     [movies, showtimes],
@@ -48,37 +49,47 @@ const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
 
   const moviesForPick = moviesEnriched.length ? moviesEnriched : movies;
 
+  const picks = useMemo(() => {
+    if (!layoutShowsHero(layout)) {
+      return { theater: null as StrapiTheaterShow | null, movie: null as StrapiMovie | null };
+    }
+    const theaterSlug = layout.heroTheaterSlug ?? undefined;
+    const movieSlug = layout.heroMovieSlug ?? undefined;
+    let theater: StrapiTheaterShow | null = null;
+    let movie: StrapiMovie | null = null;
+    if (theaterSlug) {
+      theater = theaterShows.find((s) => s.slug === theaterSlug) ?? null;
+    }
+    if (!theater && movieSlug) {
+      movie = moviesForPick.find((m) => m.slug === movieSlug) ?? null;
+    }
+    if (!theater && !movie && moviesForPick.length) {
+      const idx = clampIndex(layout.featuredMovieIndex, moviesForPick.length);
+      movie = moviesForPick[idx] ?? moviesForPick[0] ?? null;
+    }
+    return { theater, movie };
+  }, [layout, moviesForPick, theaterShows]);
+
+  const featured = picks.theater ?? picks.movie;
+  const isTheater = Boolean(picks.theater);
+  const hasPosterImage = Boolean(
+    (picks.movie?.posterUrl ?? "").trim() || (picks.theater?.posterUrl ?? "").trim(),
+  );
+
+  useEffect(() => {
+    if (featured && !hasPosterImage) onPosterReady?.();
+  }, [featured, hasPosterImage, onPosterReady]);
+
   if (!layoutShowsHero(layout)) return null;
-
-  const theaterSlug = layout.heroTheaterSlug ?? undefined;
-  const movieSlug = layout.heroMovieSlug ?? undefined;
-
-  let theater: StrapiTheaterShow | null = null;
-  let movie: StrapiMovie | null = null;
-
-  if (theaterSlug) {
-    theater = theaterShows.find((s) => s.slug === theaterSlug) ?? null;
-  }
-  if (!theater && movieSlug) {
-    movie = moviesForPick.find((m) => m.slug === movieSlug) ?? null;
-  }
-  if (!theater && !movie && moviesForPick.length) {
-    const idx = clampIndex(layout.featuredMovieIndex, moviesForPick.length);
-    movie = moviesForPick[idx] ?? moviesForPick[0] ?? null;
-  }
-
-  const featured = theater ?? movie;
   if (!featured) {
-    if (movies.length === 0 && theaterShows.length === 0) return <HeroSkeleton />;
-    return null;
+    return <HeroSkeleton />;
   }
 
-  const isTheater = Boolean(theater);
-  const movieTitles = !isTheater ? movieTitleLines(featured as StrapiMovie) : null;
+  const movieTitles = !isTheater ? movieTitleLines(featured) : null;
 
   let heroGenreLabel = "";
   if (isTheater) {
-    const t = featured as StrapiTheaterShow;
+    const t = featured;
     heroGenreLabel = (t.genre ?? "").trim();
     if (
       !heroGenreLabel &&
@@ -89,7 +100,7 @@ const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
       heroGenreLabel = layout.priorityTheaterGenre!.trim();
     }
   } else {
-    const m = featured as StrapiMovie;
+    const m = featured;
     heroGenreLabel = (m.genre ?? "").trim();
     if (
       !heroGenreLabel &&
@@ -101,50 +112,53 @@ const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
     }
   }
 
-  const to = isTheater ? `/theater/${(featured as StrapiTheaterShow).slug}` : `/movies/${(featured as StrapiMovie).slug}`;
+  const to = isTheater ? `/theater/${featured.slug}` : `/movies/${featured.slug}`;
   const eyebrow = isTheater ? "Καλοκαίρι · παραστάσεις που ταξιδεύουν" : "Καλοκαίρι · θερινά σινεμά & θέατρο που ταξιδεύει";
   const kicker = isTheater ? "Προτεινόμενη παράσταση" : "Προτεινόμενη ταινία";
 
   return (
     <section className={HERO_SECTION_CLASS}>
       <div className="absolute inset-0">
-        {!isTheater && (featured as StrapiMovie).posterUrl ? (
+        {!isTheater && picks.movie?.posterUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element -- hero poster Strapi, static export */}
             <img
               src={
-                posterLcpSrc((featured as StrapiMovie).posterUrl, (featured as StrapiMovie).posterSrcSet) ??
-                (featured as StrapiMovie).posterUrl
+                posterLcpSrc(picks.movie.posterUrl, picks.movie.posterSrcSet) ?? picks.movie.posterUrl
               }
-              srcSet={(featured as StrapiMovie).posterSrcSet}
-              alt={posterAltForMovie(featured as StrapiMovie)}
+              srcSet={picks.movie.posterSrcSet}
+              alt={posterAltForMovie(picks.movie)}
               width={640}
               height={960}
               fetchPriority="high"
+              loading="eager"
               decoding="async"
               sizes="(max-width: 768px) 100vw, 800px"
               className="h-full w-full object-cover opacity-55"
+              onLoad={onPosterReady}
             />
           </>
-        ) : isTheater && (featured as StrapiTheaterShow).posterUrl ? (
+        ) : isTheater && picks.theater?.posterUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={(featured as StrapiTheaterShow).posterUrl}
-              alt={posterAltForTheater((featured as StrapiTheaterShow).title)}
+              src={picks.theater.posterUrl}
+              alt={posterAltForTheater(picks.theater.title)}
               width={1200}
               height={1800}
               fetchPriority="high"
+              loading="eager"
               decoding="async"
               sizes="100vw"
               className="h-full w-full object-cover opacity-55"
+              onLoad={onPosterReady}
             />
           </>
         ) : isTheater ? (
           <div
             className="h-full w-full opacity-40"
             style={{
-              background: `linear-gradient(135deg, ${(featured as StrapiTheaterShow).gradientFrom}, ${(featured as StrapiTheaterShow).gradientTo})`,
+              background: `linear-gradient(135deg, ${picks.theater!.gradientFrom}, ${picks.theater!.gradientTo})`,
             }}
           />
         ) : (
@@ -181,7 +195,7 @@ const Hero = ({ layout, movies, showtimes, theaterShows }: HeroProps) => {
           </div>
           <p className="mt-6 font-body text-xs text-white/55">
             Σκηνοθεσία: {featured.director} · {featured.cast?.slice(0, 3).join(", ")}
-            {isTheater ? ` · ${(featured as StrapiTheaterShow).venue}` : ""}
+            {isTheater ? ` · ${picks.theater!.venue}` : ""}
           </p>
         </div>
       </div>

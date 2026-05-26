@@ -1,3 +1,4 @@
+import { useCallback } from "react";
 import Hero from "@/components/Hero";
 import HomeBody from "@/views/HomeBody";
 import MarkLcpDone from "@/components/MarkLcpDone";
@@ -19,17 +20,20 @@ const Index = () => {
   const { data: showtimes } = useShowtimes(needsHeroShowtimes);
   const { data: theaterShows } = useTheaterShows(needsHeroTheater);
 
-  const markLcpDone = !layoutShowsHero(layout);
+  const markHeroLcpDone = useCallback(() => {
+    document.documentElement.classList.add("spa-lcp-done");
+  }, []);
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      {markLcpDone ? <MarkLcpDone /> : null}
+      {!layoutShowsHero(layout) ? <MarkLcpDone /> : null}
       {layout.sections.includes("hero") ? (
         <Hero
           layout={layout}
           movies={movieList}
           showtimes={showtimes ?? []}
           theaterShows={theaterShows ?? []}
+          onPosterReady={markHeroLcpDone}
         />
       ) : null}
       <HomeBody layout={layout} />

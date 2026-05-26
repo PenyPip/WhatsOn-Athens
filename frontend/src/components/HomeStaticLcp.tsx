@@ -8,7 +8,7 @@ type HomeStaticLcpProps = {
 
 const CRITICAL_CSS =
   "html,body{margin:0;min-height:100%}body{font-family:system-ui,-apple-system,sans-serif;background:#111;color:#f0edf8}" +
-  "#home-static-lcp{position:fixed;inset:0 auto auto 0;z-index:1;width:100%;overflow:hidden;background:#111;height:min(75vh,520px);contain:layout style paint;pointer-events:none}" +
+  "#home-static-lcp{position:fixed;inset:0 auto auto 0;z-index:1;width:100%;overflow:hidden;background:#111;height:75vh;min-height:500px;max-height:75vh;contain:layout style paint;pointer-events:none}" +
   "#home-static-lcp img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:1}" +
   "#home-static-lcp .home-static-lcp__shade{position:absolute;inset:0;background:linear-gradient(to top,#111 0%,rgba(17,17,17,.45) 45%,rgba(17,17,17,.15) 100%);pointer-events:none}" +
   "html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden;pointer-events:none}" +

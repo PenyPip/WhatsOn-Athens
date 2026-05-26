@@ -5,7 +5,7 @@ import ServerJsonLd from "@/components/ServerJsonLd";
 import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
 import HomeStaticLcp from "@/components/HomeStaticLcp";
-import { homeHeroPosterHref, homeLcpDisplay } from "@/lib/homeHeroLcp";
+import { homeLcpDisplay } from "@/lib/homeHeroLcp";
 import { slimHomeBootstrapState } from "@/lib/rqBootstrap";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
 import { serializeDehydratedState } from "@/lib/serializeDehydratedState";
@@ -42,15 +42,14 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
     dehydratedState = slimHomeBootstrapState(dehydratedState);
   }
   const lcp = homeLcpDisplay(path, dehydratedState);
-  const heroPoster = homeHeroPosterHref(path, dehydratedState);
-  const preloadPoster = heroPoster ?? (!lcp?.hasHeroSection ? lcp?.posterHref : null);
-
-  const showStaticLcp = path === "/" && lcp && !lcp.hasHeroSection;
+  const preloadPoster = path === "/" ? lcp?.posterHref ?? null : null;
+  /** Πάντα όταν υπάρχει αφίσα — γρήγορο LCP πριν το client Hero (Slow 4G). */
+  const showStaticLcp = path === "/" && Boolean(lcp?.posterHref);
 
   return (
     <>
       {preloadPoster ? <link rel="preload" as="image" href={preloadPoster} fetchPriority="high" /> : null}
-      {showStaticLcp ? <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} /> : null}
+      {showStaticLcp && lcp ? <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} /> : null}
       <ServerJsonLd path={path} />
       <RqBootstrapScript state={dehydratedState} />
       <SpaRoot

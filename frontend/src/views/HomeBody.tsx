@@ -117,7 +117,13 @@ function MovieRowScroll({
   layout?: "scroll" | "grid";
 }) {
   if (loading) {
-    return movieRowShell(layout, spotlight, <LoadingState message={loadingMessage} />);
+    return movieRowShell(
+      layout,
+      spotlight,
+      <div className="sr-only" role="status" aria-live="polite">
+        {loadingMessage}
+      </div>,
+    );
   }
   if (fetchErrorMessage) {
     return (
@@ -229,7 +235,6 @@ function MovieRowScroll({
                 isDubbed={movie.isDubbed}
                 uniformMovieSizing
                 compactMovieMeta
-                posterPriority={i === 0}
                 index={i}
                 className="h-full w-full min-h-0 flex-1"
               />
