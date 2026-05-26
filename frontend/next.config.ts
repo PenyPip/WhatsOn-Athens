@@ -34,7 +34,7 @@ const nextConfig: NextConfig = {
       { source: "/admin", destination: `${origin}/admin` },
       { source: "/admin/:path*", destination: `${origin}/admin/:path*` },
       { source: "/api/:path*", destination: `${origin}/api/:path*` },
-      // Ίδιο λεξικό διαδρομών με nginx.conf (~ ^/(…)(/.*)?$) — όταν το admin ανοίγει από :3000.
+      // Ίδιο λεξικό διαδρομών με nginx.conf (συμπ. sync-program-status) — dev admin από :3000.
       ...(
         [
           "content-manager",
