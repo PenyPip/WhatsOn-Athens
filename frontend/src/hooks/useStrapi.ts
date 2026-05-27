@@ -70,10 +70,10 @@ export const useEditorialReviews = () =>
 export const useEditorialReviewBySlug = (slug: string) =>
   useQuery({ queryKey: ["editorialReview", slug], queryFn: () => api.getEditorialReviewBySlug(slug), enabled: !!slug });
 
-export const useShowtimes = (enabled = true) =>
+export const useShowtimes = (enabled = true, venueSlug?: string) =>
   useQuery({
-    queryKey: ["showtimes"],
-    queryFn: api.getShowtimes,
+    queryKey: ["showtimes", venueSlug ?? ""],
+    queryFn: () => api.getShowtimes({ venueSlug }),
     staleTime: 120_000,
     throwOnError: false,
     retry: 1,

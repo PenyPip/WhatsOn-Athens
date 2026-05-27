@@ -8,6 +8,7 @@ const PUBLIC_COLLECTION_READ_ACTIONS = [
   'api::movie-genre.movie-genre.findOne',
   'api::showtime.showtime.find',
   'api::showtime.showtime.findOne',
+  'api::showtime.showtime.venueCalendar',
   'api::venue.venue.find',
   'api::venue.venue.findOne',
   'api::hall.hall.find',

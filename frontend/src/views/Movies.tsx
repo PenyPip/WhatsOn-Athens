@@ -400,7 +400,7 @@ const Movies = () => {
   };
 
   const { data: movies, isLoading } = useMovies();
-  const { data: showtimes, isLoading: showtimesLoading } = useShowtimes();
+  const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(true, venueSlug || undefined);
   const { data: venues, isLoading: venuesLoading } = useVenues();
   const { data: movieGenresList } = useMovieGenres();
   const [summerOutdoorOnly, setSummerOutdoorOnly] = useState(false);

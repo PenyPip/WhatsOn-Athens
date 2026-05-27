@@ -1145,6 +1145,18 @@ const SHOWTIME_POPULATE: Record<string, string> = {
   "populate[hall]": "*",
 };
 
+function upcomingShowtimeFilters(now = new Date()): Record<string, string> {
+  const nowIso = now.toISOString();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const todayKey = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  return {
+    "filters[$or][0][datetime][$gte]": nowIso,
+    "filters[$or][1][schedule_kind][$eq]": "week_block",
+    "filters[$or][1][week_end][$gte]": todayKey,
+    "sort[0]": "datetime:asc",
+  };
+}
+
 async function fetchHomepage(): Promise<MappedHomepage | null> {
   const { hydrate: h } = await fetchMovieGenreCatalog();
   const url = new URL(`${API_PREFIX}/homepage`, apiRequestBaseUrl());
@@ -1213,10 +1225,21 @@ export const api = {
       return row ? mapEditorialReview(row) : undefined;
     }),
 
-  getShowtimes: () =>
-    Promise.all([fetchMovieGenreCatalog(), fetchAPIPagedEntries("/showtimes", { ...SHOWTIME_POPULATE })]).then(
-      ([catalog, rows]) => rows.flatMap((x) => mapShowtime(x, catalog.hydrate, catalog.linkIndex)),
-    ),
+  getShowtimes: (options?: { venueSlug?: string }) => {
+    const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";
+    if (venueSlug) {
+      return fetchAPI<any[]>("/showtimes/venue-calendar", { venue: venueSlug, weeks: "3" }).then((rows) =>
+        (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x)),
+      );
+    }
+    return Promise.all([
+      fetchMovieGenreCatalog(),
+      fetchAPIPagedEntries("/showtimes", {
+        ...SHOWTIME_POPULATE,
+        ...upcomingShowtimeFilters(),
+      }),
+    ]).then(([catalog, rows]) => rows.flatMap((x) => mapShowtime(x, catalog.hydrate, catalog.linkIndex)));
+  },
 
   getUserReviews: () =>
     fetchAPI<any[]>("/user-reviews").then((d) => (Array.isArray(d) ? d : []).map((x) => mapUserReview(x))),

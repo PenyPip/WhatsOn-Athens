@@ -434,6 +434,7 @@ export default function VenueProgramLayout({
 }) {
   const now = useMemo(() => new Date(), []);
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
+  const [showAllWeeks, setShowAllWeeks] = useState(false);
 
   const { uniqueMovies, programWeeks, totalLines } = useMemo(() => {
     const allEntries = sections.flatMap((s) => s.entries);
@@ -479,8 +480,14 @@ export default function VenueProgramLayout({
     }
   }, [selectedMovieId, uniqueMovies]);
 
+  useEffect(() => {
+    setShowAllWeeks(false);
+  }, [selectedMovieId]);
+
   const hasActiveFilters = selectedMovieId != null;
   const selectedMovie = selectedMovieId != null ? uniqueMovies.find((m) => m.id === selectedMovieId) ?? null : null;
+  const visibleWeeks = showAllWeeks ? programWeeks : programWeeks.slice(0, 2);
+  const hiddenWeeks = Math.max(0, programWeeks.length - visibleWeeks.length);
 
   if (!uniqueMovies.length && !programWeeks.length) return null;
 
@@ -556,7 +563,22 @@ export default function VenueProgramLayout({
             ) : null}
           </div>
           {programWeeks.length > 0 ? (
-            programWeeks.map((week) => <VenueProgramCalendarWeek key={week.weekKey} week={week} now={now} />)
+            <>
+              {visibleWeeks.map((week) => (
+                <VenueProgramCalendarWeek key={week.weekKey} week={week} now={now} />
+              ))}
+              {hiddenWeeks > 0 ? (
+                <div className="flex justify-center pt-1">
+                  <button
+                    type="button"
+                    onClick={() => setShowAllWeeks(true)}
+                    className="rounded-md border border-border/60 bg-background px-4 py-2 text-sm text-foreground transition-colors hover:border-[#13143E]/40"
+                  >
+                    Φόρτωσε άλλες {hiddenWeeks} εβδομάδες
+                  </button>
+                </div>
+              ) : null}
+            </>
           ) : (
             <div className="rounded-lg border border-dashed border-border/40 bg-muted/15 px-4 py-6 text-sm text-muted-foreground">
               Δεν υπάρχουν προβολές για τα τρέχοντα φίλτρα.
