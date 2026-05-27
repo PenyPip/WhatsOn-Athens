@@ -256,13 +256,13 @@ function VenueCalendarScreening({
   return (
     <div className="rounded-md border-l-[3px] border-l-[#13143E] bg-background py-2 pl-2.5 pr-2 shadow-sm ring-1 ring-border/20 transition-shadow hover:ring-[#13143E]/25">
       {inlineTime ? (
-        <div className="mb-1 text-[11px] font-bold leading-none text-[#13143E]">
+        <div className="mb-1 text-xs font-bold leading-none text-[#13143E] sm:text-sm">
           {line.timesTba ? (line.weekRangeLabel ? `${line.weekRangeLabel} · ώρες σύντομα` : "Ώρες σύντομα") : formatClock(line.datetime)}
         </div>
       ) : null}
       <Link
         to={`/movies/${line.movie.slug}`}
-        className="block text-[11px] font-medium leading-snug text-foreground hover:text-primary hover:underline sm:text-xs"
+        className="block text-xs font-medium leading-snug text-foreground hover:text-primary hover:underline sm:text-sm"
       >
         {tl.primary}
       </Link>
@@ -272,7 +272,7 @@ function VenueCalendarScreening({
         </div>
       ) : null}
       {line.hallName ? (
-        <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{line.hallName}</p>
+        <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-xs">{line.hallName}</p>
       ) : null}
     </div>
   );
@@ -416,7 +416,7 @@ function VenueProgramCalendarWeek({ week, now }: { week: ProgramWeekGroup; now: 
             className="grid border-b border-border/20 bg-muted/25"
             style={{ gridTemplateColumns: `5.5rem repeat(${week.days.length}, minmax(6.25rem, 1fr))` }}
           >
-            <div className="border-r border-border/20 px-2 py-2 text-[10px] font-semibold uppercase text-muted-foreground">
+            <div className="border-r border-border/20 px-2 py-2 text-xs font-semibold uppercase text-muted-foreground">
               Ώρα
             </div>
             {week.days.map((day) => (
@@ -432,7 +432,7 @@ function VenueProgramCalendarWeek({ week, now }: { week: ProgramWeekGroup; now: 
               className="grid border-b border-border/20 last:border-b-0"
               style={{ gridTemplateColumns: `5.5rem repeat(${week.days.length}, minmax(6.25rem, 1fr))` }}
             >
-              <div className="border-r border-border/20 px-2 py-3 text-xs font-semibold text-[#13143E]">
+              <div className="border-r border-border/20 px-2 py-3 text-sm font-semibold text-[#13143E]">
                 {timeSlotLabel(slotKey)}
               </div>
               {week.days.map((day) => {
@@ -464,9 +464,10 @@ export default function VenueProgramLayout({
 }) {
   const now = useMemo(() => new Date(), []);
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
+  const [movieQuery, setMovieQuery] = useState("");
   const [showAllWeeks, setShowAllWeeks] = useState(false);
 
-  const { uniqueMovies, programWeeks, totalLines } = useMemo(() => {
+  const { availableMovies, programWeeks, totalLines } = useMemo(() => {
     const allEntries = sections.flatMap((s) => s.entries);
 
     const programLines: ProgramLine[] = allEntries
@@ -483,58 +484,66 @@ export default function VenueProgramLayout({
       )
       .sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
 
-    const firstShowByMovie = new Map<number, number>();
-    for (const line of programLines) {
-      const t = line.datetime.getTime();
-      const prev = firstShowByMovie.get(line.movie.id);
-      if (prev === undefined || t < prev) firstShowByMovie.set(line.movie.id, t);
+    const unfilteredWeeks = groupProgramByCinemaWeek(programLines, now);
+    const movieIdsInProgram = new Set<number>();
+    for (const week of unfilteredWeeks) {
+      for (const day of week.days) {
+        for (const line of day.lines) movieIdsInProgram.add(line.movie.id);
+      }
     }
-
-    const movies = [...new Map(allEntries.map((e) => [e.movie.id, e.movie])).values()];
-    movies.sort((a, b) => (firstShowByMovie.get(a.id) ?? 0) - (firstShowByMovie.get(b.id) ?? 0));
+    const movies = [...new Map(allEntries.map((e) => [e.movie.id, e.movie])).values()]
+      .filter((m) => movieIdsInProgram.has(m.id))
+      .sort((a, b) => movieTitleLines(a).primary.localeCompare(movieTitleLines(b).primary, "el"));
 
     const filteredLines = programLines.filter((line) =>
       selectedMovieId != null ? line.movie.id === selectedMovieId : true,
     );
 
     return {
-      uniqueMovies: movies,
+      availableMovies: movies,
       programWeeks: groupProgramByCinemaWeek(filteredLines, now),
       totalLines: filteredLines.length,
     };
   }, [sections, now, selectedMovieId]);
 
   useEffect(() => {
-    if (selectedMovieId != null && !uniqueMovies.some((m) => m.id === selectedMovieId)) {
+    if (selectedMovieId != null && !availableMovies.some((m) => m.id === selectedMovieId)) {
       setSelectedMovieId(null);
     }
-  }, [selectedMovieId, uniqueMovies]);
+  }, [selectedMovieId, availableMovies]);
 
   useEffect(() => {
     setShowAllWeeks(false);
   }, [selectedMovieId]);
 
   const hasActiveFilters = selectedMovieId != null;
-  const selectedMovie = selectedMovieId != null ? uniqueMovies.find((m) => m.id === selectedMovieId) ?? null : null;
+  const selectedMovie = selectedMovieId != null ? availableMovies.find((m) => m.id === selectedMovieId) ?? null : null;
+  const filteredMovies = useMemo(() => {
+    const q = movieQuery.trim().toLocaleLowerCase("el");
+    if (!q) return availableMovies;
+    return availableMovies.filter((movie) =>
+      movieTitleLines(movie).primary.toLocaleLowerCase("el").includes(q),
+    );
+  }, [availableMovies, movieQuery]);
   const visibleWeeks = showAllWeeks ? programWeeks : programWeeks.slice(0, 2);
   const hiddenWeeks = Math.max(0, programWeeks.length - visibleWeeks.length);
 
-  if (!uniqueMovies.length && !programWeeks.length) return null;
+  if (!availableMovies.length && !programWeeks.length) return null;
 
   return (
     <div className="space-y-10 md:space-y-12">
-      {uniqueMovies.length > 0 ? (
+      {availableMovies.length > 0 ? (
         <section>
           <h2 className="font-display mb-3 text-lg font-semibold md:mb-4 md:text-2xl">Ταινίες</h2>
           <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8">
-            {uniqueMovies.map((movie, i) => (
+            {availableMovies.map((movie, i) => (
               <VenueMoviePoster key={movie.id} movie={movie} index={i} />
             ))}
           </div>
         </section>
       ) : null}
 
-      {uniqueMovies.length > 0 ? (
+      {availableMovies.length > 0 ? (
         <section id="venue-program" className="scroll-mt-28 space-y-5 md:space-y-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
@@ -554,36 +563,25 @@ export default function VenueProgramLayout({
           >
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-muted-foreground">Ταινία:</span>
-              <button
-                type="button"
-                onClick={() => setSelectedMovieId(null)}
-                className={cn(
-                  "rounded-full border px-3 py-1 text-xs transition-colors",
-                  selectedMovieId == null
-                    ? "border-[#13143E]/35 bg-[#13143E]/10 text-[#13143E]"
-                    : "border-border/60 bg-background text-muted-foreground hover:text-foreground",
-                )}
+              <input
+                type="search"
+                value={movieQuery}
+                onChange={(e) => setMovieQuery(e.target.value)}
+                placeholder="Αναζήτηση ταινίας..."
+                className="h-9 min-w-[13rem] rounded-md border border-border bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#13143E]/40 focus:outline-none focus:ring-2 focus:ring-[#13143E]/20"
+              />
+              <select
+                value={selectedMovieId == null ? "" : String(selectedMovieId)}
+                onChange={(e) => setSelectedMovieId(e.target.value ? Number(e.target.value) : null)}
+                className="h-9 min-w-[15rem] rounded-md border border-border bg-background px-2 text-sm text-foreground focus:border-[#13143E]/40 focus:outline-none focus:ring-2 focus:ring-[#13143E]/20"
               >
-                Όλες
-              </button>
-              {uniqueMovies.map((movie) => {
-                const tl = movieTitleLines(movie);
-                return (
-                  <button
-                    key={`movie-filter-${movie.id}`}
-                    type="button"
-                    onClick={() => setSelectedMovieId(movie.id)}
-                    className={cn(
-                      "rounded-full border px-3 py-1 text-xs transition-colors",
-                      selectedMovieId === movie.id
-                        ? "border-[#13143E]/35 bg-[#13143E]/10 text-[#13143E]"
-                        : "border-border/60 bg-background text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {tl.primary}
-                  </button>
-                );
-              })}
+                <option value="">Επίλεξε ταινία (όλες)</option>
+                {filteredMovies.map((movie) => (
+                  <option key={`movie-filter-${movie.id}`} value={String(movie.id)}>
+                    {movieTitleLines(movie).primary}
+                  </option>
+                ))}
+              </select>
             </div>
             {hasActiveFilters ? (
               <div className="rounded-md border border-[#13143E]/25 bg-white/70 px-3 py-2 text-xs text-[#13143E]">
