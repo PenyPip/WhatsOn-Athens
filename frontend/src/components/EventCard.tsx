@@ -175,6 +175,7 @@ const EventCard = ({
               className={cn(
                 "font-display font-semibold leading-tight text-foreground transition-colors group-hover:text-primary",
                 isMovie ? "line-clamp-2 text-base" : "line-clamp-2 text-base",
+                isMovie && "min-h-[2.5rem]",
                 uniformScrollCard && "min-h-[2.5rem]",
               )}
             >

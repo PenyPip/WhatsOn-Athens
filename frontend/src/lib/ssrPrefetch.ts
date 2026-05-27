@@ -46,7 +46,7 @@ async function prefetchHomeBundle(qc: QueryClient) {
     qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMovies, ...queryDefaults }),
   ];
   if (homeNeedsShowtimes(layout.sections)) {
-    tasks.push(qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }));
+    tasks.push(qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }));
   }
   if (homeNeedsTheater(layout.sections)) {
     tasks.push(qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }));
@@ -59,7 +59,7 @@ async function prefetchHomeBundle(qc: QueryClient) {
 async function prefetchMoviesList(qc: QueryClient) {
   await Promise.all([
     qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMovies, ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }),
+    qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
   ]);
@@ -70,7 +70,7 @@ async function prefetchMovieDetail(qc: QueryClient, slug: string) {
   await Promise.all([
     qc.prefetchQuery({ queryKey: ["movie", slug], queryFn: () => api.getMovieBySlug(slug) }),
     qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMovies, ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }),
+    qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
     qc.prefetchQuery({
@@ -88,7 +88,7 @@ async function prefetchTheaterDetail(qc: QueryClient, slug: string) {
   await Promise.all([
     qc.prefetchQuery({ queryKey: ["theaterShow", slug], queryFn: () => api.getTheaterShowBySlug(slug) }),
     qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }),
+    qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews }),
     qc.prefetchQuery({ queryKey: ["userReviews"], queryFn: api.getUserReviews }),
   ]);
@@ -125,7 +125,7 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
     } else if (normalized === "/venues") {
       await Promise.all([
         qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
-        qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: api.getShowtimes, ...queryDefaults }),
+        qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
       ]);
     } else if (normalized === "/dining") {
       await qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants });

@@ -168,7 +168,7 @@ function formatShowtimeClock(d: Date): string {
   return d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false });
 }
 
-/** Γραμμή προβολής στη λίστα: ώρα · σύνδεσμος κινηματογράφου (χωρίς θερινό / κράτηση). */
+/** Γραμμή προβολής στη λίστα: ώρα · σύνδεσμος κινηματογράφου (θερινό δίπλα στο σινεμά). */
 function MovieListShowtimeRow({
   row,
   venues,
@@ -192,7 +192,6 @@ function MovieListShowtimeRow({
         ) : (
           <span className="inline-flex items-center gap-1 tabular-nums">
             {formatShowtimeClock(row.datetime)}
-            {row.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
           </span>
         )}
       </span>
@@ -202,11 +201,15 @@ function MovieListShowtimeRow({
         <>
           <span className="text-muted-foreground"> · </span>
           {programHref ? (
-            <Link to={programHref} className="font-medium text-primary hover:underline">
+            <Link to={programHref} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
               {row.venueLabel}
+              {row.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
             </Link>
           ) : (
-            <span className="text-muted-foreground">{row.venueLabel}</span>
+            <span className="inline-flex items-center gap-1 text-muted-foreground">
+              {row.venueLabel}
+              {row.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
+            </span>
           )}
         </>
       )}
