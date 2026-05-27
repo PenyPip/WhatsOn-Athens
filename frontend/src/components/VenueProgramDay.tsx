@@ -249,34 +249,17 @@ function VenueCalendarScreening({ line }: { line: ProgramLine }) {
   const tl = movieTitleLines(line.movie);
   return (
     <div className="rounded-md border-l-[3px] border-l-[#13143E] bg-background py-2 pl-2.5 pr-2 shadow-sm ring-1 ring-border/20 transition-shadow hover:ring-[#13143E]/25">
-      <div className="flex flex-wrap items-center gap-1">
-        {line.timesTba ? (
-          <span className="text-[11px] font-bold leading-snug text-[#13143E] sm:text-xs">
-            {line.weekRangeLabel ? (
-              <>
-                {line.weekRangeLabel}
-                <span className="font-medium text-muted-foreground"> · ώρες σύντομα</span>
-              </>
-            ) : (
-              <span className="font-medium text-muted-foreground">Ώρες σύντομα</span>
-            )}
-          </span>
-        ) : (
-          <time
-            dateTime={line.datetime.toISOString()}
-            className="text-sm font-bold tabular-nums leading-none text-[#13143E]"
-          >
-            {formatClock(line.datetime)}
-          </time>
-        )}
-        {line.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
-      </div>
       <Link
         to={`/movies/${line.movie.slug}`}
-        className="mt-1 block text-[11px] font-medium leading-snug text-foreground hover:text-primary hover:underline sm:text-xs"
+        className="block text-[11px] font-medium leading-snug text-foreground hover:text-primary hover:underline sm:text-xs"
       >
         {tl.primary}
       </Link>
+      {line.summerScreening ? (
+        <div className="mt-1">
+          <SummerScreeningIndicator iconClassName="h-3 w-3" />
+        </div>
+      ) : null}
       {line.hallName ? (
         <p className="mt-0.5 truncate text-[10px] text-muted-foreground">{line.hallName}</p>
       ) : null}
