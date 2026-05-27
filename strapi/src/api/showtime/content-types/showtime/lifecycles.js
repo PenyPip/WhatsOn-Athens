@@ -2,10 +2,6 @@
 
 const { expandRepeatShowtimes } = require('../../services/showtime-repeat');
 const { isRepeatChildCreate } = require('../../services/repeat-context');
-const {
-  scheduleVenueProgramSync,
-  scheduleVenueProgramSyncFromShowtime,
-} = require('../../../venue/services/program-status');
 
 function normalizeScheduleKind(raw) {
   return raw === 'week_block' ? 'week_block' : 'exact';
@@ -35,11 +31,10 @@ function lifecycleRepeatUntil(event) {
   return v === undefined ? null : v;
 }
 
-/** Επέκταση repeat + needs_update στο background — το Save επιστρέφει αμέσως. */
+/** Επέκταση repeat στο background — το Save επιστρέφει αμέσως. */
 function deferShowtimeSideEffects(strapi, showtimeId, trigger, overrideUntil) {
   setImmediate(() => {
     expandRepeatShowtimes(strapi, showtimeId, trigger, { overrideUntil })
-      .then(() => scheduleVenueProgramSyncFromShowtime(strapi, showtimeId))
       .catch((err) => {
         strapi.log.warn(`[showtime] deferred ${trigger} id=${showtimeId}:`, err?.message || err);
       });
@@ -65,16 +60,7 @@ module.exports = {
     applyScheduleRules(data);
   },
 
-  async beforeDelete(event) {
-    const id = lifecycleShowtimeId(event);
-    if (!id) return;
-    const existing = await strapi.entityService.findOne('api::showtime.showtime', id, {
-      populate: { venue: { fields: ['id'] } },
-      publicationState: 'preview',
-    });
-    event.state = event.state || {};
-    event.state.venueIdForProgram = existing?.venue?.id ?? null;
-  },
+  async beforeDelete() {},
 
   async afterCreate(event) {
     if (isRepeatChildCreate()) return;
@@ -90,9 +76,5 @@ module.exports = {
     deferShowtimeSideEffects(strapi, id, 'afterUpdate', lifecycleRepeatUntil(event));
   },
 
-  async afterDelete(event) {
-    const venueId = event.state?.venueIdForProgram;
-    if (!venueId) return;
-    scheduleVenueProgramSync(strapi, venueId);
-  },
+  async afterDelete() {},
 };

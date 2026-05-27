@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import type { StrapiMovie } from "@/lib/api";
@@ -284,6 +284,21 @@ function VenueCalendarScreening({ line }: { line: ProgramLine }) {
   );
 }
 
+function timeSlotKey(line: ProgramLine): string {
+  if (line.timesTba) return "tba";
+  return formatClock(line.datetime);
+}
+
+function timeSlotLabel(slotKey: string): string {
+  if (slotKey === "tba") return "Ώρες σύντομα";
+  return slotKey;
+}
+
+function sortTimeSlotKeys(keys: string[]): string[] {
+  const regular = keys.filter((k) => k !== "tba").sort((a, b) => a.localeCompare(b, "el"));
+  return keys.includes("tba") ? [...regular, "tba"] : regular;
+}
+
 /** Επικεφαλίδα ημέρας — στοίχιση αριστερά μέσα στη στήλη του οριζόντιου ημερολογίου. */
 function VenueDayHeader({ day, isToday }: { day: ProgramDayGroup; isToday: boolean }) {
   return (
@@ -311,30 +326,50 @@ function VenueDayHeader({ day, isToday }: { day: ProgramDayGroup; isToday: boole
   );
 }
 
-/** Στήλη μίας ημέρας στο οριζόντιο ημερολόγιο. */
-function VenueCalendarDayColumn({ day, isToday }: { day: ProgramDayGroup; isToday: boolean }) {
+function VenueCalendarCell({
+  lines,
+  isToday,
+}: {
+  lines: ProgramLine[];
+  isToday: boolean;
+}) {
   return (
     <div
       className={cn(
-        "flex min-h-[8rem] min-w-[6.25rem] flex-col sm:min-h-[8.5rem] sm:min-w-[6.75rem] lg:min-h-[9rem] lg:min-w-0",
+        "min-h-[5.25rem] p-2",
         isToday && "bg-[#13143E]/[0.03]",
       )}
-      aria-label={`${day.weekdayShort} ${day.dayNumber} ${day.monthShort}`}
     >
-      <VenueDayHeader day={day} isToday={isToday} />
-      <div className="flex flex-1 flex-col items-stretch gap-2 p-2 text-left">
-        {day.lines.length > 0 ? (
-          day.lines.map((line) => <VenueCalendarScreening key={line.key} line={line} />)
-        ) : (
-          <p className="py-4 text-left text-[10px] text-muted-foreground/50">—</p>
-        )}
-      </div>
+      {lines.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {lines.map((line) => (
+            <VenueCalendarScreening key={line.key} line={line} />
+          ))}
+        </div>
+      ) : (
+        <p className="py-3 text-left text-[10px] text-muted-foreground/45"> </p>
+      )}
     </div>
   );
 }
 
 function VenueProgramCalendarWeek({ week, now }: { week: ProgramWeekGroup; now: Date }) {
-  const colCount = week.days.length;
+  const slotKeys = useMemo(() => {
+    const all = week.days.flatMap((day) => day.lines.map((line) => timeSlotKey(line)));
+    return sortTimeSlotKeys([...new Set(all)]);
+  }, [week.days]);
+
+  const linesByDayAndSlot = useMemo(() => {
+    const m = new Map<string, ProgramLine[]>();
+    for (const day of week.days) {
+      for (const line of day.lines) {
+        const k = `${day.dayKey}|${timeSlotKey(line)}`;
+        if (!m.has(k)) m.set(k, []);
+        m.get(k)!.push(line);
+      }
+    }
+    return m;
+  }, [week.days]);
 
   return (
     <article className="overflow-hidden rounded-xl border border-border/20 bg-card/40 shadow-sm">
@@ -346,16 +381,42 @@ function VenueProgramCalendarWeek({ week, now }: { week: ProgramWeekGroup; now: 
       </header>
 
       <div className="overflow-x-auto overscroll-x-contain">
-        <div
-          className="grid min-w-max divide-x divide-border/20 lg:min-w-0 lg:w-full"
-          style={{ gridTemplateColumns: `repeat(${colCount}, minmax(6.25rem, 1fr))` }}
-        >
-          {week.days.map((day) => (
-            <VenueCalendarDayColumn
-              key={day.dayKey}
-              day={day}
-              isToday={isTodayCalendarDay(day.date, now)}
-            />
+        <div className="min-w-max lg:min-w-0 lg:w-full">
+          <div
+            className="grid border-b border-border/20 bg-muted/25"
+            style={{ gridTemplateColumns: `5.5rem repeat(${week.days.length}, minmax(6.25rem, 1fr))` }}
+          >
+            <div className="border-r border-border/20 px-2 py-2 text-[10px] font-semibold uppercase text-muted-foreground">
+              Ώρα
+            </div>
+            {week.days.map((day) => (
+              <div key={`head-${day.dayKey}`} className="border-r border-border/20 last:border-r-0">
+                <VenueDayHeader day={day} isToday={isTodayCalendarDay(day.date, now)} />
+              </div>
+            ))}
+          </div>
+
+          {slotKeys.map((slotKey) => (
+            <div
+              key={`slot-${week.weekKey}-${slotKey}`}
+              className="grid border-b border-border/20 last:border-b-0"
+              style={{ gridTemplateColumns: `5.5rem repeat(${week.days.length}, minmax(6.25rem, 1fr))` }}
+            >
+              <div className="border-r border-border/20 px-2 py-3 text-xs font-semibold text-[#13143E]">
+                {timeSlotLabel(slotKey)}
+              </div>
+              {week.days.map((day) => {
+                const key = `${day.dayKey}|${slotKey}`;
+                return (
+                  <div key={`cell-${day.dayKey}-${slotKey}`} className="border-r border-border/20 last:border-r-0">
+                    <VenueCalendarCell
+                      lines={linesByDayAndSlot.get(key) ?? []}
+                      isToday={isTodayCalendarDay(day.date, now)}
+                    />
+                  </div>
+                );
+              })}
+            </div>
           ))}
         </div>
       </div>
@@ -372,8 +433,9 @@ export default function VenueProgramLayout({
   venue?: StrapiVenue;
 }) {
   const now = useMemo(() => new Date(), []);
+  const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
 
-  const { uniqueMovies, programWeeks } = useMemo(() => {
+  const { uniqueMovies, programWeeks, totalLines } = useMemo(() => {
     const allEntries = sections.flatMap((s) => s.entries);
 
     const programLines: ProgramLine[] = allEntries
@@ -400,11 +462,25 @@ export default function VenueProgramLayout({
     const movies = [...new Map(allEntries.map((e) => [e.movie.id, e.movie])).values()];
     movies.sort((a, b) => (firstShowByMovie.get(a.id) ?? 0) - (firstShowByMovie.get(b.id) ?? 0));
 
+    const filteredLines = programLines.filter((line) =>
+      selectedMovieId != null ? line.movie.id === selectedMovieId : true,
+    );
+
     return {
       uniqueMovies: movies,
-      programWeeks: groupProgramByCinemaWeek(programLines, now),
+      programWeeks: groupProgramByCinemaWeek(filteredLines, now),
+      totalLines: filteredLines.length,
     };
-  }, [sections, now]);
+  }, [sections, now, selectedMovieId]);
+
+  useEffect(() => {
+    if (selectedMovieId != null && !uniqueMovies.some((m) => m.id === selectedMovieId)) {
+      setSelectedMovieId(null);
+    }
+  }, [selectedMovieId, uniqueMovies]);
+
+  const hasActiveFilters = selectedMovieId != null;
+  const selectedMovie = selectedMovieId != null ? uniqueMovies.find((m) => m.id === selectedMovieId) ?? null : null;
 
   if (!uniqueMovies.length && !programWeeks.length) return null;
 
@@ -421,20 +497,71 @@ export default function VenueProgramLayout({
         </section>
       ) : null}
 
-      {programWeeks.length > 0 ? (
+      {uniqueMovies.length > 0 ? (
         <section id="venue-program" className="scroll-mt-28 space-y-5 md:space-y-6">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div>
               <h2 className="font-display text-lg font-semibold md:text-2xl">Πρόγραμμα</h2>
               <p className="mt-1 text-sm text-muted-foreground">Εβδομαδιαίο ημερολόγιο προβολών</p>
+              <p className="mt-1 text-xs text-muted-foreground">Εμφανίζονται {totalLines} προβολές</p>
             </div>
             {venue && isValidExternalUrl(venue.moreLink) ? (
               <VenueBookingLink venue={venue} variant="button" className="shrink-0" />
             ) : null}
           </div>
-          {programWeeks.map((week) => (
-            <VenueProgramCalendarWeek key={week.weekKey} week={week} now={now} />
-          ))}
+          <div
+            className={cn(
+              "space-y-3 rounded-lg border p-3",
+              hasActiveFilters ? "border-[#13143E]/30 bg-[#13143E]/[0.06]" : "border-border/30 bg-muted/20",
+            )}
+          >
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-xs font-semibold text-muted-foreground">Ταινία:</span>
+              <button
+                type="button"
+                onClick={() => setSelectedMovieId(null)}
+                className={cn(
+                  "rounded-full border px-3 py-1 text-xs transition-colors",
+                  selectedMovieId == null
+                    ? "border-[#13143E]/35 bg-[#13143E]/10 text-[#13143E]"
+                    : "border-border/60 bg-background text-muted-foreground hover:text-foreground",
+                )}
+              >
+                Όλες
+              </button>
+              {uniqueMovies.map((movie) => {
+                const tl = movieTitleLines(movie);
+                return (
+                  <button
+                    key={`movie-filter-${movie.id}`}
+                    type="button"
+                    onClick={() => setSelectedMovieId(movie.id)}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs transition-colors",
+                      selectedMovieId === movie.id
+                        ? "border-[#13143E]/35 bg-[#13143E]/10 text-[#13143E]"
+                        : "border-border/60 bg-background text-muted-foreground hover:text-foreground",
+                    )}
+                  >
+                    {tl.primary}
+                  </button>
+                );
+              })}
+            </div>
+            {hasActiveFilters ? (
+              <div className="rounded-md border border-[#13143E]/25 bg-white/70 px-3 py-2 text-xs text-[#13143E]">
+                Φιλτραρισμένο αποτέλεσμα
+                {selectedMovie ? ` · Ταινία: ${movieTitleLines(selectedMovie).primary}` : ""}
+              </div>
+            ) : null}
+          </div>
+          {programWeeks.length > 0 ? (
+            programWeeks.map((week) => <VenueProgramCalendarWeek key={week.weekKey} week={week} now={now} />)
+          ) : (
+            <div className="rounded-lg border border-dashed border-border/40 bg-muted/15 px-4 py-6 text-sm text-muted-foreground">
+              Δεν υπάρχουν προβολές για τα τρέχοντα φίλτρα.
+            </div>
+          )}
         </section>
       ) : null}
     </div>
