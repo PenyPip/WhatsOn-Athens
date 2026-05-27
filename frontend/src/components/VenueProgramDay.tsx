@@ -245,10 +245,21 @@ function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number 
   );
 }
 
-function VenueCalendarScreening({ line }: { line: ProgramLine }) {
+function VenueCalendarScreening({
+  line,
+  inlineTime = false,
+}: {
+  line: ProgramLine;
+  inlineTime?: boolean;
+}) {
   const tl = movieTitleLines(line.movie);
   return (
     <div className="rounded-md border-l-[3px] border-l-[#13143E] bg-background py-2 pl-2.5 pr-2 shadow-sm ring-1 ring-border/20 transition-shadow hover:ring-[#13143E]/25">
+      {inlineTime ? (
+        <div className="mb-1 text-[11px] font-bold leading-none text-[#13143E]">
+          {line.timesTba ? (line.weekRangeLabel ? `${line.weekRangeLabel} · ώρες σύντομα` : "Ώρες σύντομα") : formatClock(line.datetime)}
+        </div>
+      ) : null}
       <Link
         to={`/movies/${line.movie.slug}`}
         className="block text-[11px] font-medium leading-snug text-foreground hover:text-primary hover:underline sm:text-xs"
@@ -312,9 +323,11 @@ function VenueDayHeader({ day, isToday }: { day: ProgramDayGroup; isToday: boole
 function VenueCalendarCell({
   lines,
   isToday,
+  inlineTime = false,
 }: {
   lines: ProgramLine[];
   isToday: boolean;
+  inlineTime?: boolean;
 }) {
   return (
     <div
@@ -326,7 +339,7 @@ function VenueCalendarCell({
       {lines.length > 0 ? (
         <div className="flex flex-col gap-2">
           {lines.map((line) => (
-            <VenueCalendarScreening key={line.key} line={line} />
+            <VenueCalendarScreening key={line.key} line={line} inlineTime={inlineTime} />
           ))}
         </div>
       ) : (
@@ -364,7 +377,41 @@ function VenueProgramCalendarWeek({ week, now }: { week: ProgramWeekGroup; now: 
       </header>
 
       <div className="overflow-x-auto overscroll-x-contain">
-        <div className="min-w-max lg:min-w-0 lg:w-full">
+        <div className="min-w-max lg:min-w-0 lg:w-full lg:hidden">
+          <div
+            className="grid border-b border-border/20 bg-muted/25"
+            style={{ gridTemplateColumns: `repeat(${week.days.length}, minmax(6.25rem, 1fr))` }}
+          >
+            {week.days.map((day) => (
+              <div key={`m-head-${day.dayKey}`} className="border-r border-border/20 last:border-r-0">
+                <VenueDayHeader day={day} isToday={isTodayCalendarDay(day.date, now)} />
+              </div>
+            ))}
+          </div>
+
+          {slotKeys.map((slotKey) => (
+            <div
+              key={`m-slot-${week.weekKey}-${slotKey}`}
+              className="grid border-b border-border/20 last:border-b-0"
+              style={{ gridTemplateColumns: `repeat(${week.days.length}, minmax(6.25rem, 1fr))` }}
+            >
+              {week.days.map((day) => {
+                const key = `${day.dayKey}|${slotKey}`;
+                return (
+                  <div key={`m-cell-${day.dayKey}-${slotKey}`} className="border-r border-border/20 last:border-r-0">
+                    <VenueCalendarCell
+                      lines={linesByDayAndSlot.get(key) ?? []}
+                      isToday={isTodayCalendarDay(day.date, now)}
+                      inlineTime
+                    />
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+
+        <div className="hidden min-w-max lg:w-full lg:block">
           <div
             className="grid border-b border-border/20 bg-muted/25"
             style={{ gridTemplateColumns: `5.5rem repeat(${week.days.length}, minmax(6.25rem, 1fr))` }}
