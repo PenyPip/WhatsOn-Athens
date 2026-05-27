@@ -904,7 +904,7 @@ const Movies = () => {
                         <SelectTrigger aria-labelledby="movies-filter-city-label" className={MOVIES_FILTER_TRIGGER}>
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent position="popper">
+                        <SelectContent position="popper" className="bg-background text-foreground border-border shadow-xl backdrop-blur-none">
                           <SelectItem value={FILTER_ALL}>Παντού</SelectItem>
                           {(AREA_KEYS as readonly AreaKey[]).map((key) => (
                             <SelectItem key={key} value={key}>
@@ -929,7 +929,7 @@ const Movies = () => {
                           <SelectTrigger aria-labelledby="movies-filter-district-label" className={MOVIES_FILTER_TRIGGER}>
                             <SelectValue placeholder="Όλη η Αθήνα" />
                           </SelectTrigger>
-                          <SelectContent position="popper">
+                          <SelectContent position="popper" className="bg-background text-foreground border-border shadow-xl backdrop-blur-none">
                             <SelectItem value={FILTER_ALL}>Όλη η Αθήνα</SelectItem>
                             {(ATHENS_DISTRICT_KEYS as readonly AthensDistrictKey[]).map((key) => (
                               <SelectItem key={key} value={key}>
@@ -953,7 +953,7 @@ const Movies = () => {
                       <SelectTrigger aria-labelledby="movies-filter-venue-label" className={MOVIES_FILTER_TRIGGER}>
                         <SelectValue placeholder="Όλα" />
                       </SelectTrigger>
-                      <SelectContent position="popper">
+                      <SelectContent position="popper" className="bg-background text-foreground border-border shadow-xl backdrop-blur-none">
                         <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
                         {venuesForSelect.map((v) => (
                           <SelectItem key={v.id} value={v.slug}>
@@ -975,7 +975,7 @@ const Movies = () => {
                       <SelectTrigger aria-labelledby="movies-filter-genre-label" className={MOVIES_FILTER_TRIGGER}>
                         <SelectValue placeholder="Όλα" />
                       </SelectTrigger>
-                      <SelectContent position="popper">
+                      <SelectContent position="popper" className="bg-background text-foreground border-border shadow-xl backdrop-blur-none">
                         <SelectItem value={FILTER_ALL}>Όλα</SelectItem>
                         {[...(movieGenresList ?? [])]
                           .sort((a, b) => a.sortOrder - b.sortOrder)

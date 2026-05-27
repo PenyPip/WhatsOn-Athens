@@ -69,7 +69,6 @@ module.exports = createCoreController('api::showtime.showtime', ({ strapi }) => 
         },
         venue: {
           fields: ['id', 'slug', 'name', 'summer_outdoor'],
-          populate: { day_prices: { fields: ['day_of_week', 'regular_price', 'student_price'] } },
         },
         hall: { fields: ['id', 'name'] },
       },

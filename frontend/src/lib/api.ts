@@ -1228,9 +1228,21 @@ export const api = {
   getShowtimes: (options?: { venueSlug?: string }) => {
     const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";
     if (venueSlug) {
-      return fetchAPI<any[]>("/showtimes/venue-calendar", { venue: venueSlug, weeks: "3" }).then((rows) =>
-        (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x)),
-      );
+      const venueFilter = { "filters[venue][slug][$eq]": venueSlug };
+      return fetchAPI<any[]>("/showtimes/venue-calendar", { venue: venueSlug, weeks: "3" })
+        .then((rows) => (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x)))
+        .catch(async () => {
+          // Fallback: αν αποτύχει το lightweight endpoint, χρησιμοποιούμε το κλασικό query.
+          const [catalog, rows] = await Promise.all([
+            fetchMovieGenreCatalog(),
+            fetchAPIPagedEntries("/showtimes", {
+              ...SHOWTIME_POPULATE,
+              ...upcomingShowtimeFilters(),
+              ...venueFilter,
+            }),
+          ]);
+          return rows.flatMap((x) => mapShowtime(x, catalog.hydrate, catalog.linkIndex));
+        });
     }
     return Promise.all([
       fetchMovieGenreCatalog(),
