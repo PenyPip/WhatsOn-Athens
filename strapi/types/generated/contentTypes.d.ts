@@ -562,7 +562,6 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'oneToMany',
       'api::editorial-review.editorial-review'
     >;
-    genre_display: Attribute.String;
     is_dubbed: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
     movie_genres: Attribute.Relation<
@@ -837,7 +836,6 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     >;
     image: Attribute.Media<'images'>;
     info: Attribute.Text & Attribute.Private;
-    info_update: Attribute.Text & Attribute.Private;
     more_link: Attribute.String;
     name: Attribute.String & Attribute.Required;
     publishedAt: Attribute.DateTime;

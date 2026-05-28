@@ -416,7 +416,7 @@ function VenueProgramCalendarWeek({ week, now }: { week: ProgramWeekGroup; now: 
             className="grid border-b border-border/20 bg-muted/25"
             style={{ gridTemplateColumns: `5.5rem repeat(${week.days.length}, minmax(6.25rem, 1fr))` }}
           >
-            <div className="border-r border-border/20 px-2 py-2 text-xs font-semibold uppercase text-muted-foreground">
+            <div className="sticky left-0 z-20 border-r border-border/20 bg-muted/25 px-2 py-2 text-xs font-semibold uppercase text-muted-foreground">
               Ώρα
             </div>
             {week.days.map((day) => (
@@ -432,7 +432,7 @@ function VenueProgramCalendarWeek({ week, now }: { week: ProgramWeekGroup; now: 
               className="grid border-b border-border/20 last:border-b-0"
               style={{ gridTemplateColumns: `5.5rem repeat(${week.days.length}, minmax(6.25rem, 1fr))` }}
             >
-              <div className="border-r border-border/20 px-2 py-3 text-sm font-semibold text-[#13143E]">
+              <div className="sticky left-0 z-10 border-r border-border/20 bg-card/95 px-2 py-3 text-sm font-semibold text-[#13143E] backdrop-blur-[1px]">
                 {timeSlotLabel(slotKey)}
               </div>
               {week.days.map((day) => {
@@ -464,7 +464,6 @@ export default function VenueProgramLayout({
 }) {
   const now = useMemo(() => new Date(), []);
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
-  const [movieQuery, setMovieQuery] = useState("");
   const [showAllWeeks, setShowAllWeeks] = useState(false);
 
   const { availableMovies, programWeeks, totalLines } = useMemo(() => {
@@ -518,13 +517,6 @@ export default function VenueProgramLayout({
 
   const hasActiveFilters = selectedMovieId != null;
   const selectedMovie = selectedMovieId != null ? availableMovies.find((m) => m.id === selectedMovieId) ?? null : null;
-  const filteredMovies = useMemo(() => {
-    const q = movieQuery.trim().toLocaleLowerCase("el");
-    if (!q) return availableMovies;
-    return availableMovies.filter((movie) =>
-      movieTitleLines(movie).primary.toLocaleLowerCase("el").includes(q),
-    );
-  }, [availableMovies, movieQuery]);
   const visibleWeeks = showAllWeeks ? programWeeks : programWeeks.slice(0, 2);
   const hiddenWeeks = Math.max(0, programWeeks.length - visibleWeeks.length);
 
@@ -563,20 +555,13 @@ export default function VenueProgramLayout({
           >
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-xs font-semibold text-muted-foreground">Ταινία:</span>
-              <input
-                type="search"
-                value={movieQuery}
-                onChange={(e) => setMovieQuery(e.target.value)}
-                placeholder="Αναζήτηση ταινίας..."
-                className="h-9 min-w-[13rem] rounded-md border border-border bg-background px-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#13143E]/40 focus:outline-none focus:ring-2 focus:ring-[#13143E]/20"
-              />
               <select
                 value={selectedMovieId == null ? "" : String(selectedMovieId)}
                 onChange={(e) => setSelectedMovieId(e.target.value ? Number(e.target.value) : null)}
                 className="h-9 min-w-[15rem] rounded-md border border-border bg-background px-2 text-sm text-foreground focus:border-[#13143E]/40 focus:outline-none focus:ring-2 focus:ring-[#13143E]/20"
               >
                 <option value="">Επίλεξε ταινία (όλες)</option>
-                {filteredMovies.map((movie) => (
+                {availableMovies.map((movie) => (
                   <option key={`movie-filter-${movie.id}`} value={String(movie.id)}>
                     {movieTitleLines(movie).primary}
                   </option>

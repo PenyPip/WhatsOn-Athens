@@ -392,7 +392,7 @@ async function fetchMovieGenreCatalog(): Promise<MovieGenreCatalog> {
   };
 }
 
-/** Γραμμή είδους για ταινία: relation → genre_display → αντίστροφο index ειδών. */
+/** Γραμμή είδους για ταινία: relation → αντίστροφο index ειδών. */
 export function resolveMovieGenreLine(
   movieId: number,
   movieSlug: string | undefined,
@@ -414,16 +414,6 @@ function movieGenresFromMovieRaw(
   raw: Record<string, unknown>,
   hydrate?: { byId: Map<number, StrapiMovieGenre>; byDoc: Map<string, StrapiMovieGenre>; bySlug: Map<string, StrapiMovieGenre> },
 ): { genre: string; genreSlug?: string; genreSlugs: string[] } {
-  const manual =
-    typeof raw.genre_display === "string"
-      ? raw.genre_display.trim()
-      : typeof (raw as { genreDisplay?: unknown }).genreDisplay === "string"
-        ? String((raw as { genreDisplay: string }).genreDisplay).trim()
-        : "";
-  if (manual) {
-    return { genre: manual, genreSlugs: [], genreSlug: undefined };
-  }
-
   const alt = raw as { movieGenres?: unknown; movie_genre?: unknown; movie_genres?: unknown };
   const merged = [
     ...relationDataEntries(alt.movie_genres),

@@ -39,11 +39,6 @@
       "type": "string",
       "description": "URL ιστοσελίδας/κρατήσεων· εμφανίζεται ως «Περισσότερα»."
     },
-    "info_update": {
-      "type": "text",
-      "private": true,
-      "description": "Μόνο admin — χειροκίνητες σημειώσεις ενημέρωσης. Δεν ενημερώνεται αυτόματα."
-    },
     "seats_total": {
       "type": "integer"
     },
