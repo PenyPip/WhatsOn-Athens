@@ -7,7 +7,7 @@ export const useHomepage = () =>
   useQuery({
     queryKey: ["homepage"],
     queryFn: api.getHomepage,
-    staleTime: 120_000,
+    staleTime: 300_000,
     retry: 1,
     throwOnError: false,
   });
@@ -21,22 +21,30 @@ export const useMovies = (enabled = true) =>
   useQuery({
     queryKey: ["movies"],
     queryFn: api.getMovies,
-    staleTime: 120_000,
+    staleTime: 300_000,
     throwOnError: false,
     retry: 1,
     enabled,
   });
 
-export const useMovieGenres = () =>
-  useQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1, throwOnError: false });
+export const useMovieGenres = (enabled = true) =>
+  useQuery({
+    queryKey: ["movieGenres"],
+    queryFn: api.getMovieGenres,
+    staleTime: 600_000,
+    retry: 1,
+    throwOnError: false,
+    enabled,
+  });
 
-export const useMovieGenreCatalog = () =>
+export const useMovieGenreCatalog = (enabled = true) =>
   useQuery({
     queryKey: ["movieGenreCatalog"],
     queryFn: api.getMovieGenreCatalog,
     staleTime: 600_000,
     retry: 1,
     throwOnError: false,
+    enabled,
   });
 
 export const useMovieBySlug = (slug: string) =>
@@ -46,7 +54,7 @@ export const useTheaterShows = (enabled = true) =>
   useQuery({
     queryKey: ["theaterShows"],
     queryFn: api.getTheaterShows,
-    staleTime: 120_000,
+    staleTime: 300_000,
     throwOnError: false,
     retry: 1,
     enabled,
@@ -56,16 +64,16 @@ export const useTheaterShowBySlug = (slug: string) =>
   useQuery({ queryKey: ["theaterShow", slug], queryFn: () => api.getTheaterShowBySlug(slug), enabled: !!slug });
 
 export const useRestaurants = (enabled = true) =>
-  useQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants, enabled });
+  useQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants, staleTime: 300_000, retry: 1, throwOnError: false, enabled });
 
 export const useRestaurantBySlug = (slug: string) =>
   useQuery({ queryKey: ["restaurant", slug], queryFn: () => api.getRestaurantBySlug(slug), enabled: !!slug });
 
 export const useVenues = (enabled = true) =>
-  useQuery({ queryKey: ["venues"], queryFn: api.getVenues, throwOnError: false, retry: 1, enabled });
+  useQuery({ queryKey: ["venues"], queryFn: api.getVenues, staleTime: 300_000, throwOnError: false, retry: 1, enabled });
 
 export const useEditorialReviews = () =>
-  useQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews });
+  useQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews, staleTime: 300_000, retry: 1, throwOnError: false });
 
 export const useEditorialReviewBySlug = (slug: string) =>
   useQuery({ queryKey: ["editorialReview", slug], queryFn: () => api.getEditorialReviewBySlug(slug), enabled: !!slug });
@@ -74,11 +82,11 @@ export const useShowtimes = (enabled = true, venueSlug?: string) =>
   useQuery({
     queryKey: ["showtimes", venueSlug ?? ""],
     queryFn: () => api.getShowtimes({ venueSlug }),
-    staleTime: 120_000,
+    staleTime: 300_000,
     throwOnError: false,
     retry: 1,
     enabled,
   });
 
 export const useUserReviews = () =>
-  useQuery({ queryKey: ["userReviews"], queryFn: api.getUserReviews });
+  useQuery({ queryKey: ["userReviews"], queryFn: api.getUserReviews, staleTime: 300_000, retry: 1, throwOnError: false });

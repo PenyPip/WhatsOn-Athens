@@ -45,14 +45,11 @@ function mapHomepageLayoutSections(layoutSections: unknown): HomeSectionId[] {
 
 async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(`${API_PREFIX}${endpoint}`, apiRequestBaseUrl());
-  let hasExplicitPopulate = false;
   if (params) {
     for (const [k, v] of Object.entries(params)) {
-      if (k === "populate" || k.startsWith("populate[")) hasExplicitPopulate = true;
       url.searchParams.set(k, v);
     }
   }
-  if (!hasExplicitPopulate) url.searchParams.set("populate", "*");
 
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
@@ -1127,12 +1124,61 @@ const MOVIE_PUBLIC_POPULATE: Record<string, string> = {
   "populate[cast]": "*",
 };
 
+const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
+  "populate[venue][fields][0]": "name",
+  "populate[poster][fields][0]": "url",
+  "populate[poster][fields][1]": "formats",
+};
+
+const RESTAURANT_PUBLIC_QUERY: Record<string, string> = {
+  "populate[poster][fields][0]": "url",
+  "populate[poster][fields][1]": "formats",
+};
+
+const VENUE_PUBLIC_QUERY: Record<string, string> = {
+  "fields[0]": "slug",
+  "fields[1]": "name",
+  "fields[2]": "address",
+  "fields[3]": "city",
+  "fields[4]": "district",
+  "fields[5]": "google_maps_url",
+  "fields[6]": "more_link",
+  "fields[7]": "seats_total",
+  "fields[8]": "type",
+  "fields[9]": "summer_outdoor",
+  "populate[day_prices][fields][0]": "day",
+  "populate[day_prices][fields][1]": "regular_price",
+  "populate[day_prices][fields][2]": "student_price",
+};
+
+const EDITORIAL_REVIEW_PUBLIC_QUERY: Record<string, string> = {
+  "populate[movie][fields][0]": "title",
+  "populate[theater_show][fields][0]": "title",
+  "populate[restaurant][fields][0]": "name",
+};
+
 const SHOWTIME_POPULATE: Record<string, string> = {
-  "populate[movie][populate][movie_genres]": "*",
-  "populate[movie][populate][poster]": "*",
-  "populate[venue][populate][day_prices]": "*",
-  "populate[venue]": "*",
-  "populate[hall]": "*",
+  "fields[0]": "datetime",
+  "fields[1]": "schedule_kind",
+  "fields[2]": "week_end",
+  "fields[3]": "available_seats",
+  "fields[4]": "price",
+  "fields[5]": "summer_screening",
+  "fields[6]": "show_slots",
+  "populate[movie][fields][0]": "title",
+  "populate[movie][fields][1]": "slug",
+  "populate[movie][fields][2]": "language",
+  "populate[movie][fields][3]": "is_dubbed",
+  "populate[movie][populate][movie_genres][fields][0]": "slug",
+  "populate[movie][populate][movie_genres][fields][1]": "label",
+  "populate[movie][populate][movie_genres][fields][2]": "sort_order",
+  "populate[venue][fields][0]": "name",
+  "populate[venue][fields][1]": "slug",
+  "populate[venue][fields][2]": "summer_outdoor",
+  "populate[venue][populate][day_prices][fields][0]": "day",
+  "populate[venue][populate][day_prices][fields][1]": "regular_price",
+  "populate[venue][populate][day_prices][fields][2]": "student_price",
+  "populate[hall][fields][0]": "name",
 };
 
 function upcomingShowtimeFilters(now = new Date()): Record<string, string> {
@@ -1189,28 +1235,32 @@ export const api = {
   getMovieGenres: () => fetchMovieGenreEntities(),
 
   getTheaterShows: () =>
-    fetchAPI<any[]>("/theater-shows").then((d) => (Array.isArray(d) ? d : []).map((x) => mapTheaterShow(x))),
+    fetchAPI<any[]>("/theater-shows", THEATER_SHOW_PUBLIC_QUERY).then((d) =>
+      (Array.isArray(d) ? d : []).map((x) => mapTheaterShow(x)),
+    ),
   getTheaterShowBySlug: (slug: string) =>
-    fetchAPI<any[]>(`/theater-shows`, { "filters[slug][$eq]": slug }).then((d) => {
+    fetchAPI<any[]>(`/theater-shows`, { ...THEATER_SHOW_PUBLIC_QUERY, "filters[slug][$eq]": slug }).then((d) => {
       const row = strapiCollectionFirst(d);
       return row ? mapTheaterShow(row) : undefined;
     }),
 
   getRestaurants: () =>
-    fetchAPI<any[]>("/restaurants").then((d) => (Array.isArray(d) ? d : []).map((x) => mapRestaurant(x))),
+    fetchAPI<any[]>("/restaurants", RESTAURANT_PUBLIC_QUERY).then((d) => (Array.isArray(d) ? d : []).map((x) => mapRestaurant(x))),
   getRestaurantBySlug: (slug: string) =>
-    fetchAPI<any[]>(`/restaurants`, { "filters[slug][$eq]": slug }).then((d) => {
+    fetchAPI<any[]>(`/restaurants`, { ...RESTAURANT_PUBLIC_QUERY, "filters[slug][$eq]": slug }).then((d) => {
       const row = Array.isArray(d) ? d[0] : undefined;
       return row ? mapRestaurant(row) : undefined;
     }),
 
   getVenues: () =>
-    fetchAPIPagedEntries("/venues", {}).then((rows) => rows.map((x) => mapVenue(x))),
+    fetchAPIPagedEntries("/venues", VENUE_PUBLIC_QUERY).then((rows) => rows.map((x) => mapVenue(x))),
 
   getEditorialReviews: () =>
-    fetchAPI<any[]>("/editorial-reviews").then((d) => (Array.isArray(d) ? d : []).map((x) => mapEditorialReview(x))),
+    fetchAPI<any[]>("/editorial-reviews", EDITORIAL_REVIEW_PUBLIC_QUERY).then((d) =>
+      (Array.isArray(d) ? d : []).map((x) => mapEditorialReview(x)),
+    ),
   getEditorialReviewBySlug: (slug: string) =>
-    fetchAPI<any[]>(`/editorial-reviews`, { "filters[slug][$eq]": slug }).then((d) => {
+    fetchAPI<any[]>(`/editorial-reviews`, { ...EDITORIAL_REVIEW_PUBLIC_QUERY, "filters[slug][$eq]": slug }).then((d) => {
       const row = Array.isArray(d) ? d[0] : undefined;
       return row ? mapEditorialReview(row) : undefined;
     }),

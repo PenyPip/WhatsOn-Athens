@@ -10,7 +10,7 @@ import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
 import { slimListQueryCache, trimHomeShowtimesDehydrate } from "@/lib/slimDehydrate";
 
 const queryDefaults = {
-  staleTime: 120_000,
+  staleTime: 300_000,
   retry: 1,
 } as const;
 
@@ -79,8 +79,6 @@ async function prefetchMovieDetail(qc: QueryClient, slug: string) {
       staleTime: 600_000,
       retry: 1,
     }),
-    qc.prefetchQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews }),
-    qc.prefetchQuery({ queryKey: ["userReviews"], queryFn: api.getUserReviews }),
   ]);
 }
 
@@ -88,9 +86,6 @@ async function prefetchTheaterDetail(qc: QueryClient, slug: string) {
   await Promise.all([
     qc.prefetchQuery({ queryKey: ["theaterShow", slug], queryFn: () => api.getTheaterShowBySlug(slug) }),
     qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews }),
-    qc.prefetchQuery({ queryKey: ["userReviews"], queryFn: api.getUserReviews }),
   ]);
 }
 

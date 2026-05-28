@@ -260,17 +260,15 @@ function VenueCalendarScreening({
           {line.timesTba ? (line.weekRangeLabel ? `${line.weekRangeLabel} · ώρες σύντομα` : "Ώρες σύντομα") : formatClock(line.datetime)}
         </div>
       ) : null}
-      <Link
-        to={`/movies/${line.movie.slug}`}
-        className="block text-xs font-medium leading-snug text-foreground hover:text-primary hover:underline sm:text-sm"
-      >
-        {tl.primary}
-      </Link>
-      {line.summerScreening ? (
-        <div className="mt-1">
-          <SummerScreeningIndicator iconClassName="h-3 w-3" />
-        </div>
-      ) : null}
+      <div className="flex items-center gap-1">
+        <Link
+          to={`/movies/${line.movie.slug}`}
+          className="min-w-0 text-xs font-medium leading-snug text-foreground hover:text-primary hover:underline sm:text-sm"
+        >
+          {tl.primary}
+        </Link>
+        {line.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
+      </div>
       {line.hallName ? (
         <p className="mt-0.5 truncate text-[11px] text-muted-foreground sm:text-xs">{line.hallName}</p>
       ) : null}

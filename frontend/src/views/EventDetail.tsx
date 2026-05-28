@@ -168,15 +168,17 @@ function reviewContentMatchesMovie(contentTitle: string, movie: StrapiMovie): bo
 
 const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { slug } = useParams();
+  const isMovieRoute = type === "movie";
+  const isTheaterRoute = type === "theater";
 
-  const { data: movies, isLoading: moviesLoading } = useMovies();
-  const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows();
+  const { data: movies, isLoading: moviesLoading } = useMovies(isMovieRoute);
+  const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows(isTheaterRoute);
   const { data: editorialReviews } = useEditorialReviews();
   const { data: userReviews } = useUserReviews();
-  const { data: showtimes } = useShowtimes();
-  const { data: genreCatalog } = useMovieGenreCatalog();
-  const { data: movieGenresList } = useMovieGenres();
-  const { data: venues } = useVenues();
+  const { data: showtimes } = useShowtimes(isMovieRoute);
+  const { data: genreCatalog } = useMovieGenreCatalog(isMovieRoute);
+  const { data: movieGenresList } = useMovieGenres(isMovieRoute);
+  const { data: venues } = useVenues(isMovieRoute);
 
   const moviesEnriched = useMemo(
     () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
@@ -188,9 +190,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     [type, moviesEnriched, slug],
   );
 
-  const { data: movieBySlug, isLoading: movieBySlugLoading } = useMovieBySlug(
-    type === "movie" && slug ? slug : "",
-  );
+  const { data: movieBySlug, isLoading: movieBySlugLoading } = useMovieBySlug(isMovieRoute && slug ? slug : "");
 
   const event =
     type === "movie"
