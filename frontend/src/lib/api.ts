@@ -45,11 +45,14 @@ function mapHomepageLayoutSections(layoutSections: unknown): HomeSectionId[] {
 
 async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
   const url = new URL(`${API_PREFIX}${endpoint}`, apiRequestBaseUrl());
+  let hasExplicitPopulate = false;
   if (params) {
     for (const [k, v] of Object.entries(params)) {
+      if (k === "populate" || k.startsWith("populate[")) hasExplicitPopulate = true;
       url.searchParams.set(k, v);
     }
   }
+  if (!hasExplicitPopulate) url.searchParams.set("populate", "*");
 
   const res = await fetch(url.toString());
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
@@ -1158,27 +1161,11 @@ const EDITORIAL_REVIEW_PUBLIC_QUERY: Record<string, string> = {
 };
 
 const SHOWTIME_POPULATE: Record<string, string> = {
-  "fields[0]": "datetime",
-  "fields[1]": "schedule_kind",
-  "fields[2]": "week_end",
-  "fields[3]": "available_seats",
-  "fields[4]": "price",
-  "fields[5]": "summer_screening",
-  "fields[6]": "show_slots",
-  "populate[movie][fields][0]": "title",
-  "populate[movie][fields][1]": "slug",
-  "populate[movie][fields][2]": "language",
-  "populate[movie][fields][3]": "is_dubbed",
-  "populate[movie][populate][movie_genres][fields][0]": "slug",
-  "populate[movie][populate][movie_genres][fields][1]": "label",
-  "populate[movie][populate][movie_genres][fields][2]": "sort_order",
-  "populate[venue][fields][0]": "name",
-  "populate[venue][fields][1]": "slug",
-  "populate[venue][fields][2]": "summer_outdoor",
-  "populate[venue][populate][day_prices][fields][0]": "day",
-  "populate[venue][populate][day_prices][fields][1]": "regular_price",
-  "populate[venue][populate][day_prices][fields][2]": "student_price",
-  "populate[hall][fields][0]": "name",
+  "populate[movie][populate][movie_genres]": "*",
+  "populate[movie][populate][poster]": "*",
+  "populate[venue][populate][day_prices]": "*",
+  "populate[venue]": "*",
+  "populate[hall]": "*",
 };
 
 function upcomingShowtimeFilters(now = new Date()): Record<string, string> {
