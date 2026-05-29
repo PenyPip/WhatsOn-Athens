@@ -35,7 +35,6 @@ import { cn } from "@/lib/utils";
 import {
   formatShowtimeWeekRangeLabel,
   moviesDaySectionMeta,
-  parseShowtimeLocalDay,
   showtimeIsWeekBlock,
   showtimeWeekBlockOverlapsLocalDay,
   showtimeWeekRange,
@@ -596,8 +595,8 @@ const Movies = () => {
           appendWeekBlockSlot(block, st, hallRaw, showtimeShowsOutdoorLabel(st));
           continue;
         }
-        const stDate = parseShowtimeLocalDay(st.datetime);
-        if (!stDate) continue;
+        const stDate = new Date(st.datetime);
+        if (Number.isNaN(stDate.getTime())) continue;
         appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
       }
 
@@ -673,9 +672,9 @@ const Movies = () => {
         appendWeekBlockSlot(block, st, hallRaw, showtimeShowsOutdoorLabel(st));
         continue;
       }
-      const slotDay = parseShowtimeLocalDay(st.datetime);
-      if (!slotDay) continue;
-      appendShowingSlot(block, slotDay, hallRaw, showtimeShowsOutdoorLabel(st));
+      const stDate = new Date(st.datetime);
+      if (Number.isNaN(stDate.getTime())) continue;
+      appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
     }
 
     const sections: DaySection[] = [...sectionMovieShowings.keys()].map((key) => {
