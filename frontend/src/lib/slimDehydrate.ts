@@ -1,4 +1,5 @@
 import type { QueryClient } from "@tanstack/react-query";
+import type { MappedHomepage } from "@/config/home";
 import type {
   StrapiMovie,
   StrapiMovieGenre,
@@ -171,6 +172,28 @@ export function trimShowtimesForMovieSlug(qc: QueryClient, movieSlug: string): v
   );
 }
 
+/** Αρχική: μόνο ταινίες που εμφανίζονται στις προβολές + hero slug (όχι ολόκληρο catalog). */
+export function trimMoviesForHomeBootstrap(qc: QueryClient): void {
+  const movies = qc.getQueryData<StrapiMovie[]>(["movies"]);
+  if (!movies?.length) return;
+  const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
+  const homepage = qc.getQueryData<MappedHomepage>(["homepage"]);
+  const keepIds = new Set<number>();
+  const keepSlugs = new Set<string>();
+  const heroSlug = homepage?.heroMovieSlug?.trim();
+  if (heroSlug) keepSlugs.add(heroSlug);
+  for (const st of showtimes ?? []) {
+    if (st.movieId != null) keepIds.add(Number(st.movieId));
+    const slug = typeof st.movieSlug === "string" ? st.movieSlug.trim() : "";
+    if (slug) keepSlugs.add(slug);
+  }
+  if (keepIds.size === 0 && keepSlugs.size === 0) return;
+  qc.setQueryData(
+    ["movies"],
+    movies.filter((m) => keepIds.has(m.id) || keepSlugs.has(m.slug)),
+  );
+}
+
 /** Μόνο venues που εμφανίζονται στις τρέχουσες προβολές. */
 export function trimVenuesForShowtimes(qc: QueryClient): void {
   const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
@@ -196,9 +219,19 @@ export function trimVenuesForShowtimes(qc: QueryClient): void {
 }
 
 /** Τελικό slim + trim για κάθε static export route. */
-export function finalizeBootstrapCache(qc: QueryClient, options?: { movieSlug?: string; trimHomeShowtimes?: boolean }): void {
+export function finalizeBootstrapCache(
+  qc: QueryClient,
+  options?: {
+    movieSlug?: string;
+    trimHomeShowtimes?: boolean;
+    trimHomeMovies?: boolean;
+    trimVenuesForShowtimes?: boolean;
+  },
+): void {
   slimListQueryCache(qc);
   if (options?.trimHomeShowtimes) trimHomeShowtimesDehydrate(qc);
+  if (options?.trimHomeMovies) trimMoviesForHomeBootstrap(qc);
+  if (options?.trimVenuesForShowtimes) trimVenuesForShowtimes(qc);
   if (options?.movieSlug) {
     trimShowtimesForMovieSlug(qc, options.movieSlug);
     trimVenuesForShowtimes(qc);

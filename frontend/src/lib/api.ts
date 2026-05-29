@@ -377,19 +377,28 @@ export type MovieGenreCatalog = {
   linkIndex: MovieGenreLinkIndex;
 };
 
+let movieGenreCatalogPromise: Promise<MovieGenreCatalog> | null = null;
+
+/** Λίστα ειδών μόνο — χωρίς populate[movies] (έσκαγε το payload / TTFB). */
 async function fetchMovieGenreCatalog(): Promise<MovieGenreCatalog> {
-  const rows = await fetchAPI<unknown[]>("/movie-genres", {
-    "pagination[pageSize]": "100",
-    "sort[0]": "sort_order:asc",
-    "populate[movies]": "*",
+  if (movieGenreCatalogPromise) return movieGenreCatalogPromise;
+  movieGenreCatalogPromise = (async () => {
+    const rows = await fetchAPI<unknown[]>("/movie-genres", {
+      "pagination[pageSize]": "100",
+      "sort[0]": "sort_order:asc",
+    });
+    const list = Array.isArray(rows) ? rows : [];
+    const genres = list.map((x) => mapMovieGenre(x));
+    return {
+      genres,
+      hydrate: genreLookupFromList(genres),
+      linkIndex: buildMovieGenreLinkIndex(list),
+    };
+  })().catch((err) => {
+    movieGenreCatalogPromise = null;
+    throw err;
   });
-  const list = Array.isArray(rows) ? rows : [];
-  const genres = list.map((x) => mapMovieGenre(x));
-  return {
-    genres,
-    hydrate: genreLookupFromList(genres),
-    linkIndex: buildMovieGenreLinkIndex(list),
-  };
+  return movieGenreCatalogPromise;
 }
 
 /** Γραμμή είδους για ταινία: relation → αντίστροφο index ειδών. */

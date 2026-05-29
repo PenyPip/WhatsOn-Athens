@@ -40,7 +40,8 @@ export const metadata: Metadata = {
     images: [siteSeo.ogImagePath],
   },
   icons: {
-    icon: "/favicon.ico",
+    icon: [{ url: "/favicon-32.png", sizes: "32x32", type: "image/png" }],
+    apple: "/favicon-32.png",
   },
   other: {
     "google-adsense-account": "ca-pub-8631379283489562",

@@ -52,7 +52,7 @@ async function prefetchHomeBundle(qc: QueryClient) {
     tasks.push(qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }));
   }
   await Promise.all(tasks);
-  finalizeBootstrapCache(qc, { trimHomeShowtimes: true });
+  finalizeBootstrapCache(qc, { trimHomeShowtimes: true, trimHomeMovies: true });
 }
 
 /** Λίστα /movies — χωρίς πλήρες catalog στο HTML (client fetch για ταινίες). */
@@ -60,9 +60,8 @@ async function prefetchMoviesList(qc: QueryClient) {
   await Promise.all([
     qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
   ]);
-  finalizeBootstrapCache(qc, { trimHomeShowtimes: true });
+  finalizeBootstrapCache(qc, { trimHomeShowtimes: true, trimVenuesForShowtimes: true });
 }
 
 /** Πρόγραμμα ενός σινεμά — showtimes venue μόνο · ταινίες client-side. */
@@ -132,7 +131,7 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
         qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
         qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
       ]);
-      finalizeBootstrapCache(qc, { trimHomeShowtimes: true });
+      finalizeBootstrapCache(qc, { trimHomeShowtimes: true, trimVenuesForShowtimes: true });
     } else if (normalized === "/dining") {
       await qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants });
     } else if (diningSlug) {
