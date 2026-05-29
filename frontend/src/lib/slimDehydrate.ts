@@ -17,9 +17,13 @@ function slimMoviesShowtimes(qc: QueryClient): void {
       showtimes.map((st) => ({
         id: st.id,
         datetime: st.datetime,
+        scheduleKind: st.scheduleKind,
+        weekEnd: st.weekEnd,
         venueId: st.venueId,
         venueSlug: st.venueSlug,
         venue: st.venue,
+        hallId: st.hallId,
+        hallName: st.hallName,
         movieId: st.movieId,
         movieSlug: st.movieSlug,
         movieTitle: st.movieTitle,
@@ -27,6 +31,8 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         movieGenreSlugs: st.movieGenreSlugs,
         summerScreening: st.summerScreening,
         venueSummerOutdoor: st.venueSummerOutdoor,
+        price: st.price,
+        priceStudent: st.priceStudent,
       })),
     );
   }
@@ -118,11 +124,13 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         name: v.name,
         address: v.address,
         city: v.city,
+        district: v.district,
         type: v.type,
         summerOutdoor: v.summerOutdoor,
         googleMapsUrl: v.googleMapsUrl,
         moreLink: v.moreLink,
         seatsTotal: v.seatsTotal,
+        dayPrices: v.dayPrices,
       })),
     );
   }
@@ -149,6 +157,52 @@ export function trimHomeShowtimesDehydrate(qc: QueryClient): void {
       return !Number.isFinite(t) || t <= until;
     }),
   );
+}
+
+/** Μόνο προβολές μίας ταινίας στο bootstrap σελίδας λεπτομέρειας. */
+export function trimShowtimesForMovieSlug(qc: QueryClient, movieSlug: string): void {
+  const slug = movieSlug.trim();
+  if (!slug) return;
+  const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
+  if (!showtimes?.length) return;
+  qc.setQueryData(
+    ["showtimes"],
+    showtimes.filter((st) => st.movieSlug === slug),
+  );
+}
+
+/** Μόνο venues που εμφανίζονται στις τρέχουσες προβολές. */
+export function trimVenuesForShowtimes(qc: QueryClient): void {
+  const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
+  const venues = qc.getQueryData<StrapiVenue[]>(["venues"]);
+  if (!showtimes?.length || !venues?.length) return;
+  const venueIds = new Set<number>();
+  const venueSlugs = new Set<string>();
+  const venueNames = new Set<string>();
+  for (const st of showtimes) {
+    if (st.venueId != null) venueIds.add(Number(st.venueId));
+    if (st.venueSlug) venueSlugs.add(st.venueSlug);
+    if (typeof st.venue === "string" && st.venue.trim()) venueNames.add(st.venue.trim());
+  }
+  qc.setQueryData(
+    ["venues"],
+    venues.filter(
+      (v) =>
+        venueIds.has(v.id) ||
+        venueSlugs.has(v.slug) ||
+        venueNames.has(v.name.trim()),
+    ),
+  );
+}
+
+/** Τελικό slim + trim για κάθε static export route. */
+export function finalizeBootstrapCache(qc: QueryClient, options?: { movieSlug?: string; trimHomeShowtimes?: boolean }): void {
+  slimListQueryCache(qc);
+  if (options?.trimHomeShowtimes) trimHomeShowtimesDehydrate(qc);
+  if (options?.movieSlug) {
+    trimShowtimesForMovieSlug(qc, options.movieSlug);
+    trimVenuesForShowtimes(qc);
+  }
 }
 
 /** @deprecated Use slimListQueryCache */

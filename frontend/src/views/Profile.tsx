@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
 import { User, Heart, Star } from "lucide-react";
+import PageHeaderReveal from "@/components/PageHeaderReveal";
 import Footer from "@/components/Footer";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
@@ -11,19 +11,14 @@ const Profile = () => {
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
       <div className="section-black py-10 -mt-28 pt-36 mb-8">
         <div className="container">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <PageHeaderReveal>
             <h1 className="font-display text-3xl font-bold text-white">Προφίλ</h1>
-          </motion.div>
+          </PageHeaderReveal>
         </div>
       </div>
 
       <div className="container max-w-2xl">
-        <motion.div
-          className="card-elevated p-8 text-center"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5, delay: 0.1 }}
-        >
+        <div className="card-elevated animate-fade-in-up p-8 text-center">
           <User className="w-16 h-16 text-muted-foreground mx-auto mb-4" />
           <h2 className="font-display text-xl font-semibold mb-2">Σύνδεση για περισσότερα</h2>
           <p className="text-muted-foreground text-sm mb-3">Συνδέσου για να αποθηκεύσεις αγαπημένα και να γράψεις κριτικές.</p>
@@ -57,24 +52,22 @@ const Profile = () => {
               Σύνδεση με Microsoft
             </button>
           </div>
-        </motion.div>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-8">
           {[
             { icon: Heart, title: "Αγαπημένα", desc: "Δεν υπάρχουν αποθηκεύσεις" },
             { icon: Star, title: "Κριτικές", desc: "Δεν έχεις γράψει κριτικές" },
           ].map((item, i) => (
-            <motion.div
+            <div
               key={item.title}
-              className="card-elevated p-6 text-center"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4, delay: 0.2 + i * 0.08 }}
+              className="card-elevated animate-stagger-in p-6 text-center"
+              style={{ ["--stagger" as string]: i + 1 }}
             >
               <item.icon className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
               <h3 className="font-display font-semibold mb-1">{item.title}</h3>
               <p className="text-xs text-muted-foreground">{item.desc}</p>
-            </motion.div>
+            </div>
           ))}
         </div>
       </div>

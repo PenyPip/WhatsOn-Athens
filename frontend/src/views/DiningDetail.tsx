@@ -1,6 +1,5 @@
 import { useParams, Link } from "react-router-dom";
 import { useMemo } from "react";
-import { motion } from "framer-motion";
 import { MapPin, Phone, Globe, Instagram, ArrowLeft, UtensilsCrossed } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useRestaurants, useUserReviews } from "@/hooks/useStrapi";
@@ -70,11 +69,7 @@ const DiningDetail = () => {
         />
         <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent" />
         <div className="relative z-10 container h-full flex items-end pb-12 pt-36">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
+          <div className="animate-fade-in-up">
             <Link to="/dining" className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors mb-4">
               <ArrowLeft className="w-3 h-3" /> Πίσω στο Φαγητό
             </Link>
@@ -94,25 +89,20 @@ const DiningDetail = () => {
               <span>·</span>
               <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {restaurant.neighborhood}, {restaurant.city}</span>
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
       <div className="container mt-10">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
           <div className="md:col-span-2 space-y-10">
-            <motion.section initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.1 }}>
+            <section className="animate-fade-in-up">
               <h2 className="font-display text-xl font-semibold mb-3">Σχετικά</h2>
               <p className="text-muted-foreground leading-relaxed">{restaurant.synopsis}</p>
-            </motion.section>
+            </section>
 
             {restaurant.editorialReview && (
-              <motion.section
-                className="card-elevated p-6 border-l-4 border-l-[#111111]"
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.5, delay: 0.2 }}
-              >
+              <section className="card-elevated animate-fade-in-up border-l-4 border-l-[#111111] p-6">
                 <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground block mb-3">Κριτική Συντάκτη</span>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="font-bold text-foreground text-lg">{restaurant.editorialScore}/10</span>
@@ -121,7 +111,7 @@ const DiningDetail = () => {
                   «{restaurant.editorialReview}»
                 </p>
                 <p className="text-sm text-muted-foreground mt-4">— {restaurant.editorialAuthor}</p>
-              </motion.section>
+              </section>
             )}
 
             <section>
@@ -163,12 +153,7 @@ const DiningDetail = () => {
           </div>
 
           <div className="space-y-6">
-            <motion.div
-              className="card-elevated p-6 sticky top-28"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
+            <div className="card-elevated sticky top-28 animate-fade-in-up p-6">
               <h3 className="font-display font-semibold mb-4">Πληροφορίες</h3>
               <div className="space-y-4 text-sm">
                 <div>
@@ -208,7 +193,7 @@ const DiningDetail = () => {
                   )}
                 </div>
               </div>
-            </motion.div>
+            </div>
           </div>
         </div>
 

@@ -7,7 +7,7 @@ import {
   type MappedHomepage,
 } from "@/config/home";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
-import { slimListQueryCache, trimHomeShowtimesDehydrate } from "@/lib/slimDehydrate";
+import { finalizeBootstrapCache } from "@/lib/slimDehydrate";
 
 const queryDefaults = {
   staleTime: 300_000,
@@ -52,34 +52,41 @@ async function prefetchHomeBundle(qc: QueryClient) {
     tasks.push(qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }));
   }
   await Promise.all(tasks);
-  slimListQueryCache(qc);
-  trimHomeShowtimesDehydrate(qc);
+  finalizeBootstrapCache(qc, { trimHomeShowtimes: true });
 }
 
+/** Λίστα /movies — χωρίς πλήρες catalog στο HTML (client fetch για ταινίες). */
 async function prefetchMoviesList(qc: QueryClient) {
   await Promise.all([
-    qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMovies, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
   ]);
-  slimListQueryCache(qc);
+  finalizeBootstrapCache(qc, { trimHomeShowtimes: true });
+}
+
+/** Πρόγραμμα ενός σινεμά — showtimes venue μόνο · ταινίες client-side. */
+async function prefetchMoviesVenueProgram(qc: QueryClient, venueSlug: string) {
+  await Promise.all([
+    qc.prefetchQuery({
+      queryKey: ["showtimes", venueSlug],
+      queryFn: () => api.getShowtimes({ venueSlug }),
+      ...queryDefaults,
+    }),
+    qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
+    qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
+  ]);
+  finalizeBootstrapCache(qc);
 }
 
 async function prefetchMovieDetail(qc: QueryClient, slug: string) {
   await Promise.all([
     qc.prefetchQuery({ queryKey: ["movie", slug], queryFn: () => api.getMovieBySlug(slug) }),
-    qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMovies, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
-    qc.prefetchQuery({
-      queryKey: ["movieGenreCatalog"],
-      queryFn: api.getMovieGenreCatalog,
-      staleTime: 600_000,
-      retry: 1,
-    }),
   ]);
+  finalizeBootstrapCache(qc, { movieSlug: slug });
 }
 
 async function prefetchTheaterDetail(qc: QueryClient, slug: string) {
@@ -87,6 +94,7 @@ async function prefetchTheaterDetail(qc: QueryClient, slug: string) {
     qc.prefetchQuery({ queryKey: ["theaterShow", slug], queryFn: () => api.getTheaterShowBySlug(slug) }),
     qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }),
   ]);
+  finalizeBootstrapCache(qc);
 }
 
 /** Prefetch React Query cache για static export / SSR ανά path. */
@@ -95,7 +103,7 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
   const qc = new QueryClient({
     defaultOptions: {
       queries: {
-        staleTime: 60_000,
+        staleTime: 300_000,
         refetchOnWindowFocus: false,
       },
     },
@@ -109,8 +117,10 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
 
     if (normalized === "/") {
       await prefetchHomeBundle(qc);
-    } else if (normalized === "/movies" || matchMoviesVenueSlug(normalized) || isMoviesFilterListPath(normalized)) {
+    } else if (normalized === "/movies" || isMoviesFilterListPath(normalized)) {
       await prefetchMoviesList(qc);
+    } else if (matchMoviesVenueSlug(normalized)) {
+      await prefetchMoviesVenueProgram(qc, matchMoviesVenueSlug(normalized)!);
     } else if (movieSlug) {
       await prefetchMovieDetail(qc, movieSlug);
     } else if (normalized === "/theater") {
@@ -122,6 +132,7 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
         qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
         qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
       ]);
+      finalizeBootstrapCache(qc, { trimHomeShowtimes: true });
     } else if (normalized === "/dining") {
       await qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants });
     } else if (diningSlug) {

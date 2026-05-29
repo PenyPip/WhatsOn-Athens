@@ -1,8 +1,16 @@
-import { useRef } from "react";
+import { lazy, Suspense, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Film, Theater, UtensilsCrossed, Building2, User } from "lucide-react";
 import { useGlobalSearchShortcut } from "@/hooks/globalSearchShortcut";
-import { NavSearch, type NavSearchHandle } from "@/components/GlobalSearch";
+import type { NavSearchHandle } from "@/components/GlobalSearch";
+
+const NavSearch = lazy(() =>
+  import("@/components/GlobalSearch").then((m) => ({ default: m.NavSearch })),
+);
+
+function NavSearchFallback({ className = "" }: { className?: string }) {
+  return <div className={`rounded-md bg-white/10 ${className}`} aria-hidden />;
+}
 import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 
 const NAV_GRADIENT =
@@ -89,11 +97,13 @@ const Navbar = () => {
       >
         <div className="container flex min-h-14 items-center gap-2.5 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <BrandLogo compact />
-          <NavSearch
-            ref={mobileSearchRef}
-            className="min-w-0 flex-1"
-            inputClassName="h-9 text-xs"
-          />
+          <Suspense fallback={<NavSearchFallback className="h-9 min-w-0 flex-1" />}>
+            <NavSearch
+              ref={mobileSearchRef}
+              className="min-w-0 flex-1"
+              inputClassName="h-9 text-xs"
+            />
+          </Suspense>
         </div>
       </nav>
 
@@ -102,11 +112,13 @@ const Navbar = () => {
           <BrandLogo />
 
           <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex">
-            <NavSearch
-              ref={desktopSearchRef}
-              className="w-full max-w-md"
-              inputClassName="h-11 text-sm"
-            />
+            <Suspense fallback={<NavSearchFallback className="h-11 w-full max-w-md" />}>
+              <NavSearch
+                ref={desktopSearchRef}
+                className="w-full max-w-md"
+                inputClassName="h-11 text-sm"
+              />
+            </Suspense>
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-4 md:contents">

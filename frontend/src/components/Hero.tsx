@@ -4,6 +4,7 @@ import { layoutShowsHero, type ResolvedHomepageLayout } from "@/config/home";
 import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
+import PosterPicture from "@/components/PosterPicture";
 import { posterLcpSrc } from "@/lib/posterDelivery";
 import { HOME_HERO_SECTION_CLASS } from "@/lib/homeHeroLayout";
 
@@ -137,18 +138,14 @@ const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady }: HeroPr
       <div className="absolute inset-0">
         {!isTheater && picks.movie?.posterUrl ? (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element -- hero poster Strapi, static export */}
-            <img
-              src={
-                posterLcpSrc(picks.movie.posterUrl, picks.movie.posterSrcSet) ?? picks.movie.posterUrl
-              }
+            <PosterPicture
+              src={posterLcpSrc(picks.movie.posterUrl, picks.movie.posterSrcSet) ?? picks.movie.posterUrl}
               srcSet={picks.movie.posterSrcSet}
               alt={posterAltForMovie(picks.movie)}
               width={640}
               height={960}
               fetchPriority="high"
               loading="eager"
-              decoding="async"
               sizes="(max-width: 768px) 100vw, 800px"
               className="h-full w-full object-cover opacity-55"
               onLoad={notifyPosterReady}

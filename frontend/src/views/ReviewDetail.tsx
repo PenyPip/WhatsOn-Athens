@@ -1,6 +1,5 @@
 import { useParams, Link } from "react-router-dom";
 import { useMemo } from "react";
-import { motion } from "framer-motion";
 import { ArrowLeft } from "lucide-react";
 import { useEditorialReviewBySlug } from "@/hooks/useStrapi";
 import LoadingState from "@/components/LoadingState";
@@ -59,7 +58,7 @@ const ReviewDetail = () => {
         </div>
       )}
       <div className="container max-w-2xl mt-8">
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+        <div className="animate-fade-in-up">
           <Link to="/reviews" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6">
             <ArrowLeft className="w-3 h-3" /> Πίσω στις κριτικές
           </Link>
@@ -79,7 +78,7 @@ const ReviewDetail = () => {
           </p>
 
           <p className="text-foreground leading-relaxed text-lg">{review.body}</p>
-        </motion.div>
+        </div>
       </div>
 
       <Footer />

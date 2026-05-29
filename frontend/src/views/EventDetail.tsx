@@ -1,6 +1,6 @@
 import { useParams, Link } from "react-router-dom";
-import { useCallback, useMemo, type ReactNode } from "react";
-import { motion } from "framer-motion";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import PosterPicture from "@/components/PosterPicture";
 import { Clock, Globe, Users, ArrowLeft, MapPin, Play } from "lucide-react";
 import SharePageButton from "@/components/SharePageButton";
 import { Button } from "@/components/ui/button";
@@ -38,6 +38,7 @@ import {
   enrichMoviesWithShowtimeGenre,
   startOfCinemaWeek,
 } from "@/lib/homeMovieFilters";
+import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
 import {
   formatShowtimeWeekRangeLabel,
   showtimeIsWeekBlock,
@@ -170,13 +171,25 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { slug } = useParams();
   const isMovieRoute = type === "movie";
   const isTheaterRoute = type === "theater";
+  const [loadRelatedMovies, setLoadRelatedMovies] = useState(false);
 
-  const { data: movies, isLoading: moviesLoading } = useMovies(isMovieRoute);
+  useEffect(() => {
+    if (!isMovieRoute) return;
+    const run = () => setLoadRelatedMovies(true);
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(run, { timeout: 2500 });
+      return () => cancelIdleCallback(id);
+    }
+    const t = window.setTimeout(run, 400);
+    return () => window.clearTimeout(t);
+  }, [isMovieRoute]);
+
+  const { data: movies, isLoading: moviesLoading } = useMovies(isMovieRoute && loadRelatedMovies);
   const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows(isTheaterRoute);
   const { data: editorialReviews } = useEditorialReviews();
   const { data: userReviews } = useUserReviews();
   const { data: showtimes } = useShowtimes(isMovieRoute);
-  const { data: genreCatalog } = useMovieGenreCatalog(isMovieRoute);
+  const { data: genreCatalog } = useMovieGenreCatalog(isMovieRoute && loadRelatedMovies);
   const { data: movieGenresList } = useMovieGenres(isMovieRoute);
   const { data: venues } = useVenues(isMovieRoute);
 
@@ -358,7 +371,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const isMovie = type === "movie";
   const movie = isMovie ? event as StrapiMovie : null;
   const related = isMovie
-    ? (moviesEnriched ?? []).filter((m) => m.slug !== slug).slice(0, 4)
+    ? sortMoviesByCinemaCount(
+        (moviesEnriched ?? []).filter((m) => m.slug !== slug),
+        showtimes ?? [],
+        venues,
+        (st) => showtimeIsUpcoming(st),
+      ).slice(0, 4)
     : (theaterShows ?? []).filter((s) => s.slug !== slug).slice(0, 4);
 
   const eventEditorialReviews = (editorialReviews ?? []).filter((r) =>
@@ -564,14 +582,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           />
         ) : movie?.posterUrl ? (
           <>
-            {/* eslint-disable-next-line @next/next/no-img-element -- αφίσες Strapi, static export */}
-            <img
+            <PosterPicture
               src={movie.posterUrl}
+              srcSet={movie.posterSrcSet}
               alt={posterAltForMovie(movie)}
               width={1200}
               height={1800}
               fetchPriority="high"
-              decoding="async"
+              loading="eager"
               className="absolute inset-0 h-full w-full object-cover opacity-35"
             />
           </>
@@ -594,12 +612,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-transparent to-transparent" />
 
         <div className="relative z-10 container flex h-full items-end pb-8 pt-20 md:pb-12 md:pt-36">
-          <motion.div
-            className="max-w-3xl"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-          >
+          <div className="max-w-3xl animate-fade-in-up">
             <Link to={isMovie ? "/movies" : "/theater"} className="inline-flex items-center gap-1 text-sm text-white/50 hover:text-white transition-colors mb-4">
               <ArrowLeft className="w-4 h-4" /> Πίσω στις {isMovie ? "Ταινίες" : "Παραστάσεις"}
             </Link>
@@ -680,19 +693,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 <SharePageButton variant="hero" path={`/movies/${slug}`} title={headline.primary} />
               ) : null}
             </div>
-          </motion.div>
+          </div>
         </div>
       </section>
 
       <div className="container mt-8 space-y-10 md:mt-10 md:space-y-12">
         {isMovie ? (
           <>
-            <motion.section
-              className="max-w-5xl md:max-w-6xl"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
+            <section className="max-w-5xl animate-fade-in-up md:max-w-6xl">
               <div
                 className={cn(
                   "flex flex-col gap-5",
@@ -728,19 +736,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   )}
                 </section>
               </div>
-            </motion.section>
+            </section>
           </>
         ) : (
           <>
-            <motion.section
-              className="max-w-2xl"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
+            <section className="max-w-2xl animate-fade-in-up">
               <h2 className="font-display mb-3 text-xl font-semibold">Υπόθεση</h2>
               <p className="text-base leading-relaxed text-muted-foreground">{event.synopsis}</p>
-            </motion.section>
+            </section>
             {movieInfoAside}
           </>
         )}

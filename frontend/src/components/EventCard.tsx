@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { Clock } from "lucide-react";
+import PosterPicture from "@/components/PosterPicture";
 import { cn } from "@/lib/utils";
 import GenreLinks from "@/components/GenreLinks";
 import type { GenreLinkItem } from "@/lib/movieGenreLinks";
@@ -19,6 +20,7 @@ interface EventCardProps {
   gradientFrom?: string;
   gradientTo?: string;
   posterUrl?: string;
+  posterSrcSet?: string;
   type: "movie" | "theater";
   badge?: string;
   /** Επισήμανση μεταγλωτισμένης ταινίας (δεξιά στην αφίσα). */
@@ -49,6 +51,7 @@ const EventCard = ({
   gradientFrom,
   gradientTo,
   posterUrl,
+  posterSrcSet,
   type,
   badge,
   isDubbed = false,
@@ -107,22 +110,19 @@ const EventCard = ({
             showGradientFallback ? { background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` } : undefined
           }
         >
-          {posterUrl && (
-            <>
-              {/* eslint-disable-next-line @next/next/no-img-element -- αφίσες Strapi, static export */}
-              <img
-                src={posterUrl}
-                alt={posterAlt}
-                width={400}
-                height={600}
-                loading={posterPriority ? "eager" : "lazy"}
-                fetchPriority={posterPriority ? "high" : undefined}
-                decoding="async"
-                sizes="(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 200px"
-                className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-              />
-            </>
-          )}
+          {posterUrl ? (
+            <PosterPicture
+              src={posterUrl}
+              srcSet={posterSrcSet}
+              alt={posterAlt}
+              width={400}
+              height={600}
+              loading={posterPriority ? "eager" : "lazy"}
+              fetchPriority={posterPriority ? "high" : undefined}
+              sizes="(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 200px"
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+            />
+          ) : null}
           {badge && (
             <span className="absolute top-2 left-2 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider rounded bg-[#13143E] text-white z-10">
               {badge}

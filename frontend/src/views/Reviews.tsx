@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
-import { motion } from "framer-motion";
 import EditorialCard from "@/components/EditorialCard";
+import PageHeaderReveal from "@/components/PageHeaderReveal";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useEditorialReviews } from "@/hooks/useStrapi";
@@ -26,10 +26,10 @@ const Reviews = () => {
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
       <div className="section-black py-10 -mt-28 pt-36 mb-8">
         <div className="container">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <PageHeaderReveal>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Κριτικές</h1>
             <p className="text-white/60 text-base">Κριτικές από τη συντακτική ομάδα</p>
-          </motion.div>
+          </PageHeaderReveal>
         </div>
       </div>
 

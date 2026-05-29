@@ -9,7 +9,6 @@ import { homeLcpDisplay } from "@/lib/homeHeroLcp";
 import { homeNeedsTheater, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
 import { slimHomeBootstrapState } from "@/lib/rqBootstrap";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
-import { serializeDehydratedState } from "@/lib/serializeDehydratedState";
 import spaPaths from "@/generated/spa-static-paths.json";
 
 type SpaPathParams = { slug?: string[] };
@@ -64,7 +63,6 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
       <RqBootstrapScript state={dehydratedState} />
       <SpaRoot
         ssrPath={path}
-        bootstrapJson={serializeDehydratedState(dehydratedState)}
         homeMainOverlap={showStaticLcp}
         suppressHydrationWarning={showStaticLcp}
       />

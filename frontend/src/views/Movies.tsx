@@ -48,7 +48,9 @@ import {
   moviesWithShowtimesInUpcomingCinemaWeek,
   enrichMoviesWithShowtimeGenre,
   formatUpcomingCinemaWeekRange,
+  movieStubFromShowtime,
 } from "@/lib/homeMovieFilters";
+import { compareMoviesByShowingVenueCount } from "@/lib/movieCinemaSort";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
@@ -538,6 +540,20 @@ const Movies = () => {
     const movieMap = new Map<number, StrapiMovie>();
     (moviesEnriched ?? []).forEach((movie) => movieMap.set(movie.id, movie));
 
+    const resolveMovie = (st: StrapiShowtime): StrapiMovie | null => {
+      if (st.movieId != null) {
+        const hit = movieMap.get(Number(st.movieId));
+        if (hit) return hit;
+      }
+      const slug = typeof st.movieSlug === "string" ? st.movieSlug.trim() : "";
+      if (slug) {
+        const bySlug = (moviesEnriched ?? []).find((m) => m.slug === slug);
+        if (bySlug) return bySlug;
+        return movieStubFromShowtime(slug, st);
+      }
+      return null;
+    };
+
     const baseSt = showtimes
       .filter((st) => st.movieId != null)
       .filter((st) => !summerOutdoorOnly || showtimeIsSummerOutdoor(st, venues))
@@ -558,9 +574,9 @@ const Movies = () => {
     if (moviesSection === "new" || moviesSection === "soon" || moviesSection === "week") {
       const subset =
         moviesSection === "new"
-          ? moviesReleasedInLastDays(moviesEnriched ?? [], 10, now)
+          ? moviesReleasedInLastDays(moviesEnriched ?? [], 10, showtimes ?? [], venues, now)
           : moviesSection === "soon"
-            ? moviesComingAfterUpcomingCinemaWeek(moviesEnriched ?? [], now)
+            ? moviesComingAfterUpcomingCinemaWeek(moviesEnriched ?? [], showtimes ?? [], venues, now)
             : moviesWithShowtimesInUpcomingCinemaWeek(moviesEnriched ?? [], showtimes ?? [], now);
       if (subset.length === 0) return [];
 
@@ -574,12 +590,13 @@ const Movies = () => {
       });
 
       for (const st of stSubset) {
-        const movie = movieMap.get(Number(st.movieId));
+        const movie = resolveMovie(st);
         if (!movie) continue;
 
         const hallRaw = typeof st.hallName === "string" ? st.hallName.trim() : "";
         const venueKey = cinemaGroupKey(st, venues);
 
+        if (!movieMap.has(movie.id)) movieMap.set(movie.id, movie);
         if (!byMovieVenues.has(movie.id)) byMovieVenues.set(movie.id, new Map());
         const byVenue = byMovieVenues.get(movie.id)!;
 
@@ -614,6 +631,8 @@ const Movies = () => {
             : [];
         return { movie, showings };
       });
+
+      entries.sort(compareMoviesByShowingVenueCount);
 
       return [
         {
@@ -669,12 +688,13 @@ const Movies = () => {
         sectionMeta.set(sectionKey, { label: sectionLabel, date: sectionDate });
       }
 
-      const movie = movieMap.get(Number(st.movieId));
+      const movie = resolveMovie(st);
       if (!movie) continue;
 
       const hallRaw = typeof st.hallName === "string" ? st.hallName.trim() : "";
       const venueKey = cinemaGroupKey(st, venues);
 
+      if (!movieMap.has(movie.id)) movieMap.set(movie.id, movie);
       if (!sectionMovieShowings.has(sectionKey)) {
         sectionMovieShowings.set(sectionKey, new Map());
       }
@@ -712,11 +732,7 @@ const Movies = () => {
         return { movie: mv, showings };
       });
 
-      entries.sort((a, b) => {
-        const ta = a.showings[0]?.slots[0]?.datetime.getTime() ?? 0;
-        const tb = b.showings[0]?.slots[0]?.datetime.getTime() ?? 0;
-        return ta - tb;
-      });
+      entries.sort(compareMoviesByShowingVenueCount);
 
       return { label: meta.label, date: meta.date, entries };
     });
@@ -1055,6 +1071,7 @@ const Movies = () => {
                             duration={movie.duration}
                             score={movie.criticScore}
                             posterUrl={movie.posterUrl}
+                            posterSrcSet={movie.posterSrcSet}
                             type="movie"
                             isDubbed={movie.isDubbed}
                             tone="soft"

@@ -1,6 +1,6 @@
 import { useMemo } from "react";
-import { motion } from "framer-motion";
 import { useSearchParams } from "react-router-dom";
+import PageHeaderReveal from "@/components/PageHeaderReveal";
 import VenueCard from "@/components/VenueCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
@@ -52,10 +52,10 @@ const Venues = () => {
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
       <div className="section-black py-10 -mt-28 pt-36 mb-8">
         <div className="container">
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+          <PageHeaderReveal>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Χώροι</h1>
             <p className="text-white/50 text-sm">Σινεμά, θέατρα & μουσικές σκηνές</p>
-          </motion.div>
+          </PageHeaderReveal>
         </div>
       </div>
 
@@ -97,12 +97,10 @@ const Venues = () => {
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredVenues.map((venue, i) => (
-              <motion.div
+              <div
                 key={venue.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.4, delay: Math.min(i * 0.08, 0.4) }}
-                className="h-full [&>div]:max-w-none"
+                className="h-full animate-stagger-in [&>div]:max-w-none"
+                style={{ ["--stagger" as string]: Math.min(i, 8) }}
               >
                 <VenueCard
                   venue={venue}
@@ -116,7 +114,7 @@ const Venues = () => {
                       : undefined
                   }
                 />
-              </motion.div>
+              </div>
             ))}
           </div>
         )}

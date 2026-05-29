@@ -1,4 +1,5 @@
 import { movieGenreSlugsToDisplayLine, type StrapiMovie, type StrapiShowtime, type StrapiVenue } from "@/lib/api";
+import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
 import { showtimeIsUpcoming as showtimeIsUpcomingCore, showtimeOverlapsRange } from "@/lib/showtimeSchedule";
 import { isCinemaVenue } from "@/lib/venueType";
 
@@ -48,7 +49,8 @@ function stubNumericIdFromSlug(slug: string): number {
 }
 
 /** Όταν η γραμμή `/movies` λείπει (π.χ. draft ταινία) αλλά η προβολή φέρνει slug + τίτλο + είδος από `populate[movie]`. */
-function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefined): StrapiMovie | null {
+/** Όταν το catalog δεν είναι ακόμα στο client — stub από πεδία προβολής. */
+export function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefined): StrapiMovie | null {
   if (!st) return null;
   const title =
     typeof st.movieTitle === "string" && st.movieTitle.trim() ? st.movieTitle.trim() : slug;
@@ -199,7 +201,7 @@ function moviesFromShowtimesOrdered(
     orderedKeys.push(key);
   }
 
-  return orderedKeys
+  const list = orderedKeys
     .map((key) => {
       const st = keyToShowtime.get(key);
       if (!st) return null;
@@ -225,6 +227,8 @@ function moviesFromShowtimesOrdered(
       return movieStubFromShowtime(slug, st);
     })
     .filter((m): m is StrapiMovie => Boolean(m));
+
+  return sortMoviesByCinemaCount(list, showtimes, undefined, predicate);
 }
 
 /** Ταινίες με τουλάχιστον μία προβολή που σημαίνεται ως θερινός εξωτερικός χώρος. */
@@ -327,7 +331,13 @@ export function enrichMoviesWithShowtimeGenre(movies: StrapiMovie[], showtimes: 
 }
 
 /** Ταινίες με ημερομηνία κυκλοφορίας μέσα στις τελευταίες `days` μέρες (τοπικά, συμπεριλαμβανομένης της σήμερας). */
-export function moviesReleasedInLastDays(movies: StrapiMovie[], days: number, now = new Date()): StrapiMovie[] {
+export function moviesReleasedInLastDays(
+  movies: StrapiMovie[],
+  days: number,
+  showtimes: StrapiShowtime[] = [],
+  venues?: StrapiVenue[],
+  now = new Date(),
+): StrapiMovie[] {
   if (days < 1) return [];
   const today = startOfLocalDay(now);
   const windowStart = new Date(today);
@@ -343,7 +353,9 @@ export function moviesReleasedInLastDays(movies: StrapiMovie[], days: number, no
     withParsed.push({ movie, release: r0 });
   }
   withParsed.sort((a, b) => b.release.getTime() - a.release.getTime());
-  return withParsed.map((x) => x.movie);
+  const result = withParsed.map((x) => x.movie);
+  if (!showtimes.length) return result;
+  return sortMoviesByCinemaCount(result, showtimes, venues, (st) => showtimeIsUpcoming(st, now));
 }
 
 /** Ταινίες με ημερομηνία κυκλοφορίας αυστηρά μετά τη σήμερα (τοπικά). Σειρά: πιο κοντινή πρώτη. */
@@ -416,7 +428,7 @@ export function moviesForUpcomingCinemaWeek(
       out.push(m);
     }
   }
-  return out;
+  return sortMoviesByCinemaCount(out, showtimes, undefined, (st) => showtimeOverlapsRange(st, start, end, now));
 }
 
 /**
@@ -434,7 +446,12 @@ export function moviesWithShowtimesInUpcomingCinemaWeek(
 }
 
 /** Προσεχώς: κυκλοφορία μετά το τέλος της επόμενης εβδομάδας κινηματογράφου (όχι μέσα σε αυτή). */
-export function moviesComingAfterUpcomingCinemaWeek(movies: StrapiMovie[], now = new Date()): StrapiMovie[] {
+export function moviesComingAfterUpcomingCinemaWeek(
+  movies: StrapiMovie[],
+  showtimes: StrapiShowtime[] = [],
+  venues?: StrapiVenue[],
+  now = new Date(),
+): StrapiMovie[] {
   const { end } = getUpcomingCinemaWeekBounds(now);
   const afterEnd = new Date(end);
   afterEnd.setDate(afterEnd.getDate() + 1);
@@ -451,7 +468,9 @@ export function moviesComingAfterUpcomingCinemaWeek(movies: StrapiMovie[], now =
     withParsed.push({ movie, release: r0 });
   }
   withParsed.sort((a, b) => a.release.getTime() - b.release.getTime());
-  return withParsed.map((x) => x.movie);
+  const result = withParsed.map((x) => x.movie);
+  if (!showtimes.length) return result;
+  return sortMoviesByCinemaCount(result, showtimes, venues, (st) => showtimeIsUpcoming(st, now));
 }
 
 export function formatUpcomingCinemaWeekRange(now = new Date()): string {

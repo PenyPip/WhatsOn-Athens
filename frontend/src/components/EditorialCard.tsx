@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import type { StrapiEditorialReview } from "@/lib/api";
 
 const categoryLabels: Record<string, string> = {
@@ -10,11 +9,7 @@ const categoryLabels: Record<string, string> = {
 
 const EditorialCard = ({ review, index = 0 }: { review: StrapiEditorialReview; index?: number }) => {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.4, delay: index * 0.08 }}
-    >
+    <div className="animate-stagger-in" style={{ ["--stagger" as string]: Math.min(index, 8) }}>
       <Link to={`/reviews/${review.slug}`} className="group block card-elevated overflow-hidden">
         {review.featuredImageGradientFrom && (
           <div
@@ -39,7 +34,7 @@ const EditorialCard = ({ review, index = 0 }: { review: StrapiEditorialReview; i
           </div>
         </div>
       </Link>
-    </motion.div>
+    </div>
   );
 };
 

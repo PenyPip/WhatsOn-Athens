@@ -141,6 +141,7 @@ function MovieRowScroll({
                         duration={movie.duration}
                         score={movie.criticScore}
                         posterUrl={movie.posterUrl}
+                        posterSrcSet={movie.posterSrcSet}
                         type="movie"
                         isDubbed={movie.isDubbed}
                         uniformMovieSizing
@@ -190,6 +191,7 @@ function MovieRowScroll({
                 duration={movie.duration}
                 score={movie.criticScore}
                 posterUrl={movie.posterUrl}
+                posterSrcSet={movie.posterSrcSet}
                 type="movie"
                 isDubbed={movie.isDubbed}
                 uniformMovieSizing
@@ -269,8 +271,14 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const weekMovies = useMemo(() => moviesForUpcomingCinemaWeek(movieList, stList), [movieList, stList]);
   const upcomingWeekLabel = useMemo(() => formatUpcomingCinemaWeekRange(), []);
   const todayMovies = useMemo(() => moviesWithShowtimeToday(movieList, stList), [movieList, stList]);
-  const newMoviesList = useMemo(() => moviesReleasedInLastDays(movieList, 10), [movieList]);
-  const comingSoonMovies = useMemo(() => moviesComingAfterUpcomingCinemaWeek(movieList), [movieList]);
+  const newMoviesList = useMemo(
+    () => moviesReleasedInLastDays(movieList, 10, stList, venueList),
+    [movieList, stList, venueList],
+  );
+  const comingSoonMovies = useMemo(
+    () => moviesComingAfterUpcomingCinemaWeek(movieList, stList, venueList),
+    [movieList, stList, venueList],
+  );
 
   const sectionEl = (id: HomeSectionId, node: ReactNode) => <Fragment key={id}>{node}</Fragment>;
 

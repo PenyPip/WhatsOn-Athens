@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
+import PosterPicture from "@/components/PosterPicture";
 import type { StrapiMovie } from "@/lib/api";
 import {
   endOfCinemaWeek,
@@ -204,11 +204,7 @@ function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number 
   const alt = posterAltForMovie(movie);
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 12 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.35, delay: Math.min(index * 0.04, 0.24) }}
-    >
+    <div className="animate-stagger-in" style={{ ["--stagger" as string]: Math.min(index, 6) }}>
       <Link
         to={`/movies/${movie.slug}`}
         className="group block min-w-0"
@@ -216,14 +212,13 @@ function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number 
       >
         <div className="relative aspect-[2/3] overflow-hidden rounded-md bg-muted ring-1 ring-border/15 transition-[box-shadow,ring-color] group-hover:ring-[#13143E]/25 group-hover:shadow-md">
           {movie.posterUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
+            <PosterPicture
               src={movie.posterUrl}
+              srcSet={movie.posterSrcSet}
               alt={alt}
               width={200}
               height={300}
               loading="lazy"
-              decoding="async"
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
             />
           ) : (
@@ -241,7 +236,7 @@ function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number 
           {tl.primary}
         </p>
       </Link>
-    </motion.div>
+    </div>
   );
 }
 

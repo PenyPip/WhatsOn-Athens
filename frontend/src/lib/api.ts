@@ -1161,11 +1161,16 @@ const EDITORIAL_REVIEW_PUBLIC_QUERY: Record<string, string> = {
 };
 
 const SHOWTIME_POPULATE: Record<string, string> = {
-  "populate[movie][populate][movie_genres]": "*",
-  "populate[movie][populate][poster]": "*",
+  "populate[movie][fields][0]": "title",
+  "populate[movie][fields][1]": "slug",
+  "populate[movie][populate][movie_genres][fields][0]": "slug",
+  "populate[movie][populate][movie_genres][fields][1]": "label",
+  "populate[movie][populate][movie_genres][fields][2]": "sort_order",
   "populate[venue][populate][day_prices]": "*",
-  "populate[venue]": "*",
-  "populate[hall]": "*",
+  "populate[venue][fields][0]": "name",
+  "populate[venue][fields][1]": "slug",
+  "populate[venue][fields][2]": "summer_outdoor",
+  "populate[hall][fields][0]": "name",
 };
 
 function upcomingShowtimeFilters(now = new Date()): Record<string, string> {

@@ -14,7 +14,8 @@ import { Building2, Clapperboard, Loader2, Search } from "lucide-react";
 import { useMovies, useVenues, useShowtimes } from "@/hooks/useStrapi";
 import type { StrapiMovie, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
-import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
+import { enrichMoviesWithShowtimeGenre, showtimeIsUpcoming } from "@/lib/homeMovieFilters";
+import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
 import { venueKindLabel } from "@/lib/venueType";
 import { textMatchesSearch } from "@/lib/searchTokens";
 import { cn } from "@/lib/utils";
@@ -107,12 +108,10 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
     const trimmed = search.trim();
     let out = trimmed
       ? list.filter((m) => movieMatches(m, trimmed))
-      : [...list].sort((a, b) =>
-          movieTitleLines(a).primary.localeCompare(movieTitleLines(b).primary, "el"),
-        );
+      : sortMoviesByCinemaCount(list, showtimes ?? [], venues, (st) => showtimeIsUpcoming(st));
     if (!trimmed) out = out.slice(0, CAP_EMPTY);
     return out.slice(0, 50);
-  }, [moviesEnriched, search]);
+  }, [moviesEnriched, search, showtimes, venues]);
 
   const venueHits = useMemo(() => {
     const list = venues ?? [];

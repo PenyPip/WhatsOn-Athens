@@ -1,8 +1,8 @@
 "use client";
 
 import { Link } from "react-router-dom";
-import { motion } from "framer-motion";
 import Footer from "@/components/Footer";
+import PageHeaderReveal from "@/components/PageHeaderReveal";
 import { Button } from "@/components/ui/button";
 import {
   clearCookieConsent,
@@ -29,11 +29,11 @@ const Privacy = () => {
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
       <div className="section-black py-10 -mt-28 pt-36 mb-8 md:pt-36">
         <div className="container max-w-3xl">
-          <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.45 }}>
+          <PageHeaderReveal>
             <p className="text-xs uppercase tracking-[0.2em] text-amber-200/80 mb-2">Νομικά</p>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Απόρρητο & cookies</h1>
             <p className="text-white/45 text-sm">Τελευταία ενημέρωση: {LAST_UPDATED}</p>
-          </motion.div>
+          </PageHeaderReveal>
         </div>
       </div>
 
