@@ -123,3 +123,67 @@ export function formatShowtimeWeekRangeLabel(st: StrapiShowtime): string | null 
   if (sameDay) return fromStr;
   return `${fromStr} – ${toStr}`;
 }
+
+export function startOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+export function localDayKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/** week_block ενεργό σήμερα (συμπεριλαμβάνεται η τρέχουσα τοπική μέρα). */
+export function showtimeWeekBlockOverlapsLocalDay(st: StrapiShowtime, day: Date): boolean {
+  const range = showtimeWeekRange(st);
+  if (!range) return false;
+  const dayStart = startOfLocalDay(day);
+  const dayEnd = endOfLocalDay(dayStart);
+  return range.end.getTime() >= dayStart.getTime() && range.start.getTime() <= dayEnd.getTime();
+}
+
+export type MoviesDaySectionMeta = {
+  sectionKey: string;
+  sectionLabel: string;
+  sectionDate: Date;
+};
+
+/** Ομαδοποίηση προβολής σε «Σήμερα» / «Αύριο» / ημερομηνία — τοπική μέρα, όχι UTC. */
+export function moviesDaySectionMeta(st: StrapiShowtime, now = new Date()): MoviesDaySectionMeta | null {
+  const todayStart = startOfLocalDay(now);
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  const dayAfterTomorrowStart = new Date(tomorrowStart);
+  dayAfterTomorrowStart.setDate(dayAfterTomorrowStart.getDate() + 1);
+
+  const weekRange = showtimeWeekRange(st);
+  let bucketDay: Date;
+
+  if (weekRange) {
+    if (showtimeWeekBlockOverlapsLocalDay(st, now)) {
+      bucketDay = todayStart;
+    } else {
+      bucketDay = weekRange.start;
+    }
+  } else {
+    const day = parseShowtimeLocalDay(st.datetime);
+    if (!day) return null;
+    if (day.getTime() < todayStart.getTime()) return null;
+    bucketDay = day;
+  }
+
+  if (bucketDay.getTime() === todayStart.getTime()) {
+    return { sectionKey: "today", sectionLabel: "Σήμερα", sectionDate: todayStart };
+  }
+  if (bucketDay.getTime() === tomorrowStart.getTime()) {
+    return { sectionKey: "tomorrow", sectionLabel: "Αύριο", sectionDate: tomorrowStart };
+  }
+  return {
+    sectionKey: localDayKey(bucketDay),
+    sectionLabel: bucketDay.toLocaleDateString("el-GR", {
+      weekday: "long",
+      day: "numeric",
+      month: "long",
+    }),
+    sectionDate: bucketDay,
+  };
+}

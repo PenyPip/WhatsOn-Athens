@@ -1,5 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
-import { ExternalLink, MapPin, SlidersHorizontal } from "lucide-react";
+import { ChevronDown, ExternalLink, MapPin, SlidersHorizontal } from "lucide-react";
 import { Link, Navigate, useLocation, useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import {
@@ -16,7 +16,6 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMovies, useShowtimes, useVenues, useMovieGenres } from "@/hooks/useStrapi";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import {
@@ -33,7 +32,15 @@ import VenueProgramLayout from "@/components/VenueProgramDay";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { cn } from "@/lib/utils";
-import { formatShowtimeWeekRangeLabel, showtimeIsWeekBlock, showtimeWeekRange } from "@/lib/showtimeSchedule";
+import {
+  formatShowtimeWeekRangeLabel,
+  moviesDaySectionMeta,
+  parseShowtimeLocalDay,
+  showtimeIsWeekBlock,
+  showtimeWeekBlockOverlapsLocalDay,
+  showtimeWeekRange,
+  startOfLocalDay,
+} from "@/lib/showtimeSchedule";
 import {
   showtimeIsSummerOutdoor,
   showtimeShowsOutdoorLabel,
@@ -229,6 +236,25 @@ type ShowingSlot = {
   weekRangeEnd?: Date;
 };
 
+function appendWeekBlockSlot(block: VenueShowingsBlock, st: StrapiShowtime, hallRaw: string, summerScreening: boolean) {
+  const wr = showtimeWeekRange(st);
+  if (!wr) return;
+  const label = formatShowtimeWeekRangeLabel(st) ?? "Εβδομάδα";
+  if (block.slots.some((s) => s.timesTba && `${s.weekRangeLabel ?? ""}-${s.hallName ?? ""}` === `${label}-${hallRaw}`)) {
+    return;
+  }
+  const now = new Date();
+  const slotDay = showtimeWeekBlockOverlapsLocalDay(st, now) ? startOfLocalDay(now) : wr.start;
+  block.slots.push({
+    datetime: slotDay,
+    hallName: hallRaw || undefined,
+    timesTba: true,
+    weekRangeLabel: label,
+    weekRangeEnd: wr.end,
+    ...(summerScreening ? { summerScreening: true } : {}),
+  });
+}
+
 function appendShowingSlot(block: VenueShowingsBlock, stDate: Date, hallRaw: string, summerScreening: boolean) {
   const slotDedupeKey = `${Math.floor(stDate.getTime() / 60000)}-${hallRaw}`;
   const existing = block.slots.find(
@@ -288,11 +314,8 @@ function clipShowingsToCinemaWeek(showings: VenueShowingsBlock[], clip: CinemaWe
 function flattenShowingsToRows(showings: VenueShowingsBlock[], cinemaWeekClip?: CinemaWeekClip): ShowingRow[] {
   const rows: ShowingRow[] = [];
   for (const b of showings) {
-    const slots = [...b.slots]
-      .filter((s) => !s.timesTba)
-      .sort((x, y) => x.datetime.getTime() - y.datetime.getTime());
+    const slots = [...b.slots].sort((x, y) => x.datetime.getTime() - y.datetime.getTime());
     for (const slot of slots) {
-      if (slot.timesTba) continue;
       rows.push({
         key: `${b.key}-${slot.timesTba ? `tba-${slot.weekRangeLabel}` : slot.datetime.getTime()}-${slot.hallName ?? ""}`,
         venueKey: b.key,
@@ -349,8 +372,9 @@ const FILTER_ALL = "__all__";
 
 /** Φίλτρα λίστας ταινιών — συμπαγές πλάτος, ευανάγνωστα κείμενα. */
 const MOVIES_FILTER_LABEL = "text-xs font-medium text-muted-foreground";
-const MOVIES_FILTER_DISTRICT_CELL = "w-[9.25rem] min-w-0 shrink-0 space-y-1";
-const MOVIES_FILTER_TRIGGER = "h-9 w-full min-w-0 px-2.5 text-sm";
+const MOVIES_FILTER_DISTRICT_CELL = "w-full min-w-[13.5rem] max-w-[18rem] shrink-0 space-y-1.5";
+const MOVIES_FILTER_SELECT =
+  "h-10 w-full min-w-0 appearance-none rounded-md border border-input bg-background py-2 pl-3 pr-9 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50";
 
 function SummerOutdoorToggle({
   checked,
@@ -568,9 +592,12 @@ const Movies = () => {
           byVenue.set(venueKey, { key: venueKey, venueLabel: venueName, slots: [] });
         }
         const block = byVenue.get(venueKey)!;
-        if (showtimeIsWeekBlock(st)) continue;
-        const stDate = new Date(st.datetime);
-        if (Number.isNaN(stDate.getTime())) continue;
+        if (showtimeIsWeekBlock(st)) {
+          appendWeekBlockSlot(block, st, hallRaw, showtimeShowsOutdoorLabel(st));
+          continue;
+        }
+        const stDate = parseShowtimeLocalDay(st.datetime);
+        if (!stDate) continue;
         appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
       }
 
@@ -615,37 +642,9 @@ const Movies = () => {
     const sectionMeta = new Map<string, { label: string; date: Date }>();
 
     for (const st of programSt) {
-      let stDate: Date;
-      if (showtimeIsWeekBlock(st)) {
-        const wr = showtimeWeekRange(st);
-        if (!wr) continue;
-        stDate = wr.start;
-      } else {
-        stDate = new Date(st.datetime);
-        if (Number.isNaN(stDate.getTime())) continue;
-      }
-
-      let sectionKey: string;
-      let sectionLabel: string;
-      let sectionDate: Date;
-
-      if (stDate >= todayStart && stDate < tomorrowStart) {
-        sectionKey = "today";
-        sectionLabel = "Σήμερα";
-        sectionDate = todayStart;
-      } else if (stDate >= tomorrowStart && stDate < dayAfterTomorrowStart) {
-        sectionKey = "tomorrow";
-        sectionLabel = "Αύριο";
-        sectionDate = tomorrowStart;
-      } else {
-        sectionDate = new Date(stDate.getFullYear(), stDate.getMonth(), stDate.getDate());
-        sectionKey = sectionDate.toISOString().slice(0, 10);
-        sectionLabel = sectionDate.toLocaleDateString("el-GR", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-        });
-      }
+      const section = moviesDaySectionMeta(st, now);
+      if (!section) continue;
+      const { sectionKey, sectionLabel, sectionDate } = section;
 
       if (!sectionMeta.has(sectionKey)) {
         sectionMeta.set(sectionKey, { label: sectionLabel, date: sectionDate });
@@ -670,8 +669,13 @@ const Movies = () => {
         byVenue.set(venueKey, { key: venueKey, venueLabel: venueName, slots: [] });
       }
       const block = byVenue.get(venueKey)!;
-      if (showtimeIsWeekBlock(st)) continue;
-      appendShowingSlot(block, stDate, hallRaw, showtimeShowsOutdoorLabel(st));
+      if (showtimeIsWeekBlock(st)) {
+        appendWeekBlockSlot(block, st, hallRaw, showtimeShowsOutdoorLabel(st));
+        continue;
+      }
+      const slotDay = parseShowtimeLocalDay(st.datetime);
+      if (!slotDay) continue;
+      appendShowingSlot(block, slotDay, hallRaw, showtimeShowsOutdoorLabel(st));
     }
 
     const sections: DaySection[] = [...sectionMovieShowings.keys()].map((key) => {
@@ -700,7 +704,11 @@ const Movies = () => {
       return { label: meta.label, date: meta.date, entries };
     });
 
-    return sections.filter((s) => s.entries.length > 0).sort((a, b) => a.date.getTime() - b.date.getTime());
+    return sections
+      .filter(
+        (s) => s.entries.length > 0 && s.entries.some((e) => e.showings.some((sh) => sh.slots.length > 0)),
+      )
+      .sort((a, b) => a.date.getTime() - b.date.getTime());
   }, [
     showtimes,
     movies,
@@ -884,28 +892,33 @@ const Movies = () => {
                 <div className="flex flex-wrap items-end gap-2 lg:gap-3">
                   {!venueFilter ? (
                     <div className={MOVIES_FILTER_DISTRICT_CELL}>
-                      <span className={MOVIES_FILTER_LABEL} id="movies-filter-district-label">
+                      <label htmlFor="movies-filter-district" className={MOVIES_FILTER_LABEL}>
                         Περιοχή
-                      </span>
-                      <Select
-                        value={districtFilter ?? FILTER_ALL}
-                        onValueChange={(v) =>
-                          setDistrictParam(v === FILTER_ALL ? null : (v as AthensDistrictKey))
-                        }
-                        disabled={venuesLoading}
-                      >
-                        <SelectTrigger aria-labelledby="movies-filter-district-label" className={MOVIES_FILTER_TRIGGER}>
-                          <SelectValue placeholder="Όλη η Αθήνα" />
-                        </SelectTrigger>
-                        <SelectContent position="popper" className="bg-background text-foreground border-border shadow-xl backdrop-blur-none">
-                          <SelectItem value={FILTER_ALL}>Όλη η Αθήνα</SelectItem>
+                      </label>
+                      <div className="relative">
+                        <select
+                          id="movies-filter-district"
+                          value={districtFilter ?? FILTER_ALL}
+                          onChange={(e) => {
+                            const v = e.target.value;
+                            setDistrictParam(v === FILTER_ALL ? null : (v as AthensDistrictKey));
+                          }}
+                          disabled={venuesLoading}
+                          className={MOVIES_FILTER_SELECT}
+                          aria-label="Περιοχή Αθήνας"
+                        >
+                          <option value={FILTER_ALL}>Όλη η Αθήνα</option>
                           {(ATHENS_DISTRICT_KEYS as readonly AthensDistrictKey[]).map((key) => (
-                            <SelectItem key={key} value={key}>
+                            <option key={key} value={key}>
                               {ATHENS_DISTRICT_LABELS[key]}
-                            </SelectItem>
+                            </option>
                           ))}
-                        </SelectContent>
-                      </Select>
+                        </select>
+                        <ChevronDown
+                          className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                          aria-hidden
+                        />
+                      </div>
                     </div>
                   ) : null}
                   <SummerOutdoorToggle
