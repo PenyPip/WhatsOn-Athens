@@ -1,5 +1,5 @@
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
-import { movieTitleLines } from "@/lib/movieTitles";
+import { movieTitleLines, movieOriginalTitleKey } from "@/lib/movieTitles";
 import { cinemaGroupKey } from "@/lib/venueResolve";
 
 function movieKeyFromShowtime(st: StrapiShowtime): string | null {
@@ -13,6 +13,8 @@ function movieKeysForMovie(movie: StrapiMovie): string[] {
   const keys = [`id:${movie.id}`];
   const slug = typeof movie.slug === "string" ? movie.slug.trim() : "";
   if (slug) keys.push(`slug:${slug}`);
+  const originalKey = movieOriginalTitleKey(movie);
+  if (originalKey) keys.push(`original:${originalKey}`);
   return keys;
 }
 

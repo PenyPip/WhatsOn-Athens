@@ -49,7 +49,9 @@ import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
 import { usePageSeo } from "@/hooks/usePageSeo";
-import { moviePageDescription, staticPageSeo, theaterPageDescription } from "@/lib/pageSeoCopy";
+import { moviePageDescription, moviePageTitle, staticPageSeo, theaterPageDescription } from "@/lib/pageSeoCopy";
+import ImdbRatingBadge from "@/components/ImdbRatingBadge";
+import { resolveImdbRating } from "@/lib/movieImdb";
 import { buildMovieDetailJsonLd } from "@/lib/jsonLdMovieDetail";
 import { buildTheaterDetailJsonLd } from "@/lib/jsonLdTheaterDetail";
 import JsonLd from "@/components/JsonLd";
@@ -328,7 +330,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       if (isMovieEarly && movieEarly) {
         const tl = movieTitleLines(movieEarly);
         return {
-          title: tl.primary,
+          title: moviePageTitle(movieEarly, genreLabel),
           description: moviePageDescription(movieEarly, genreLabel),
           path: `/movies/${slug}`,
           image: movieEarly.posterUrl,
@@ -388,9 +390,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const headline = isMovie && movie ? movieTitleLines(movie) : { primary: event.title, secondary: undefined as string | undefined };
 
+  const imdbRating = movie ? resolveImdbRating(movie) : null;
+
   const hasCast = castList.length > 0;
-  const showCriticScoreBadge =
-    Boolean(movie) && eventEditorialReviews.length > 0 && Number(movie?.criticScore) > 0;
 
   const directorLabel = (event.director ?? "").trim();
   const hasDirector = directorLabel.length > 0;
@@ -617,11 +619,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               <ArrowLeft className="w-4 h-4" /> Πίσω στις {isMovie ? "Ταινίες" : "Παραστάσεις"}
             </Link>
 
-            {movie && (showCriticScoreBadge || movie.ageRating?.trim()) ? (
+            {movie && (imdbRating != null || movie.ageRating?.trim()) ? (
               <div className="flex items-center gap-3 mb-3">
-                {showCriticScoreBadge ? (
-                  <span className="px-2 py-0.5 bg-white text-sm font-bold text-[#13143E] rounded">{movie.criticScore}/10</span>
-                ) : null}
+                {imdbRating != null ? <ImdbRatingBadge rating={imdbRating} variant="hero" /> : null}
                 {movie.ageRating?.trim() ? (
                   <span className="text-sm text-white/60">{movie.ageRating}</span>
                 ) : null}
@@ -805,7 +805,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   subtitle={item.director}
                   genre={item.genre}
                   duration={item.duration}
-                  score={isMovie ? (item as StrapiMovie).criticScore : undefined}
+                  imdbRating={isMovie ? resolveImdbRating(item as StrapiMovie) : undefined}
                   gradientFrom={isMovie ? undefined : (item as StrapiTheaterShow).gradientFrom}
                   gradientTo={isMovie ? undefined : (item as StrapiTheaterShow).gradientTo}
                   posterUrl={isMovie ? (item as StrapiMovie).posterUrl : item.posterUrl}

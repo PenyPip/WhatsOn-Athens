@@ -67,6 +67,7 @@
       "path": "/movies/devil",
       "slug": "devil",
       "title": "devil",
+      "originalTitle": "devil",
       "genreSlugs": [],
       "posterUrl": "http://127.0.0.1:1337/uploads/poster_new_617007128d.webp"
     }

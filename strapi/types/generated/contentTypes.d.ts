@@ -562,6 +562,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'oneToMany',
       'api::editorial-review.editorial-review'
     >;
+    imdb_rating: Attribute.Decimal;
     is_dubbed: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
     movie_genres: Attribute.Relation<
@@ -569,7 +570,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'manyToMany',
       'api::movie-genre.movie-genre'
     >;
-    original_title: Attribute.String;
+    original_title: Attribute.String & Attribute.Required & Attribute.Unique;
     poster: Attribute.Media<'images'>;
     publishedAt: Attribute.DateTime;
     release_date: Attribute.Date;
@@ -583,7 +584,8 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'oneToMany',
       'api::showtime.showtime'
     >;
-    slug: Attribute.UID<'api::movie.movie', 'title'> & Attribute.Required;
+    slug: Attribute.UID<'api::movie.movie', 'original_title'> &
+      Attribute.Required;
     synopsis: Attribute.Text;
     title: Attribute.String & Attribute.Required;
     trailer_url: Attribute.String;

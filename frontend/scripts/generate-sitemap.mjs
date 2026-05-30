@@ -75,6 +75,13 @@ function pickString(attrs, key) {
   return typeof v === "string" && v.trim() ? v.trim() : "";
 }
 
+function pickDecimal(attrs, key) {
+  const v = attrs[key];
+  if (v == null || v === "") return undefined;
+  const n = Number(v);
+  return Number.isFinite(n) && n > 0 ? n : undefined;
+}
+
 function relationList(attrs, key) {
   const raw = attrs[key];
   if (!raw) return [];
@@ -111,7 +118,7 @@ async function buildCrawlEnrichment() {
         extraFields: ["name", "address", "google_maps_url"],
       }),
       fetchCollection("movies", {
-        extraFields: ["title", "synopsis"],
+        extraFields: ["title", "synopsis", "original_title", "director", "imdb_rating", "critic_score"],
         populate: `${POSTER_POPULATE}&populate[movie_genres][fields][0]=slug&populate[movie_genres][fields][1]=label`,
       }),
       fetchCollection("theater-shows", {
@@ -169,11 +176,22 @@ async function buildCrawlEnrichment() {
           .filter(Boolean)
           .map((s) => s.toLowerCase());
         const synopsis = pickString(a, "synopsis");
+        const imdbRating = pickDecimal(a, "imdb_rating") ?? pickDecimal(a, "critic_score");
+        const originalTitle = pickString(a, "original_title") || pickString(a, "title") || slug;
+        const director = pickString(a, "director");
+        const genreLine = genreSlugs
+          .map((s) => genres.find((g) => g.slug === s)?.label)
+          .filter(Boolean)
+          .join(" · ");
         return {
           path: `/movies/${encodeURIComponent(slug)}`,
           slug,
           title: pickString(a, "title") || slug,
+          originalTitle,
           genreSlugs: [...new Set(genreSlugs)],
+          ...(genreLine ? { genreLine } : {}),
+          ...(imdbRating != null ? { imdbRating } : {}),
+          ...(director ? { director } : {}),
           posterUrl: strapiMediaUrl(a.poster),
           ...(synopsis ? { synopsis } : {}),
         };

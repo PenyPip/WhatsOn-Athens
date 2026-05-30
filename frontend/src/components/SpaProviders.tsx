@@ -17,6 +17,7 @@ export default function SpaProviders({ children, dehydratedState }: SpaProviders
             gcTime: 1_800_000,
             refetchOnWindowFocus: false,
             refetchOnReconnect: false,
+            refetchOnMount: false,
           },
         },
       }),

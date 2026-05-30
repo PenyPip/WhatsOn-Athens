@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import HorizontalScroll from "@/components/HorizontalScroll";
 import EventCard from "@/components/EventCard";
 import RestaurantCard from "@/components/RestaurantCard";
-import LoadingState from "@/components/LoadingState";
+import VenueCard from "@/components/VenueCard";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useVenues } from "@/hooks/useStrapi";
@@ -23,10 +23,11 @@ import {
   moviesWithSummerOutdoorShowtimeThisCinemaWeek,
   moviesWithShowtimeToday,
   summerVenuesWithShowtimesOrAll,
+  moviesFromUpcomingShowtimes,
   enrichMoviesWithShowtimeGenre,
   formatUpcomingCinemaWeekRange,
 } from "@/lib/homeMovieFilters";
-import VenueCard from "@/components/VenueCard";
+import { resolveImdbRating } from "@/lib/movieImdb";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { siteSeo } from "@/lib/siteMetadata";
@@ -47,6 +48,35 @@ const summerStrip = [
   "Θέατρο καλοκαιριού",
   "Ξανά στη σκηνή",
 ];
+
+function HomeMovieCardsSkeleton({ layout = "scroll" }: { layout?: "scroll" | "grid" }) {
+  const cards = Array.from({ length: layout === "grid" ? 5 : 4 }, (_, i) => i);
+  if (layout === "grid") {
+    return (
+      <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+        {cards.map((i) => (
+          <div key={i} className="overflow-hidden rounded-lg bg-muted/30 ring-1 ring-border/[0.1]">
+            <div className="aspect-[2/3] w-full animate-pulse bg-[#1C1D62]/10" />
+            <div className="space-y-2 px-2 py-3">
+              <div className="h-3 w-full animate-pulse rounded bg-[#1C1D62]/10" />
+              <div className="h-3 w-2/3 animate-pulse rounded bg-[#1C1D62]/8" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  return (
+    <div className="flex gap-4 overflow-hidden pb-2">
+      {cards.map((i) => (
+        <div
+          key={i}
+          className="h-[18rem] w-[11rem] shrink-0 animate-pulse rounded-lg bg-[#1C1D62]/10 md:h-[20rem] md:w-[13rem]"
+        />
+      ))}
+    </div>
+  );
+}
 
 function MovieRowScroll({
   loading,
@@ -79,9 +109,42 @@ function MovieRowScroll({
     return movieRowShell(
       layout,
       spotlight,
-      <div className="sr-only" role="status" aria-live="polite">
-        {loadingMessage}
-      </div>,
+      <>
+        <section
+          className={
+            muted
+              ? "relative border-y border-border/40 bg-muted/20 py-8 md:py-10"
+              : "section-black relative border-y border-white/[0.07] py-12 md:py-16"
+          }
+        >
+          <div className="container max-w-7xl">
+            <span
+              className={
+                muted
+                  ? "mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-muted-foreground opacity-75"
+                  : "mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-amber-200/85"
+              }
+            >
+              {eyebrow}
+            </span>
+            <h2
+              className={
+                muted
+                  ? "font-display text-xl font-bold text-foreground md:text-2xl"
+                  : "font-display text-2xl font-bold text-white md:text-3xl"
+              }
+            >
+              {title}
+            </h2>
+            <div className="mt-6">
+              <HomeMovieCardsSkeleton layout={layout} />
+            </div>
+          </div>
+        </section>
+        <span className="sr-only" role="status" aria-live="polite">
+          {loadingMessage}
+        </span>
+      </>,
     );
   }
   if (fetchErrorMessage) {
@@ -139,7 +202,7 @@ function MovieRowScroll({
                         subtitle=""
                         genre=""
                         duration={movie.duration}
-                        score={movie.criticScore}
+                        imdbRating={resolveImdbRating(movie)}
                         posterUrl={movie.posterUrl}
                         posterSrcSet={movie.posterSrcSet}
                         type="movie"
@@ -189,7 +252,7 @@ function MovieRowScroll({
                 subtitle=""
                 genre=""
                 duration={movie.duration}
-                score={movie.criticScore}
+                imdbRating={resolveImdbRating(movie)}
                 posterUrl={movie.posterUrl}
                 posterSrcSet={movie.posterSrcSet}
                 type="movie"
@@ -250,10 +313,12 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const apiSectionFailed = moviesError || showtimesError || venuesError || theaterError || restaurantsError;
 
   const stList = useMemo(() => showtimes ?? [], [showtimes]);
-  const movieList = useMemo(
-    () => enrichMoviesWithShowtimeGenre(movies ?? [], stList),
-    [movies, stList],
-  );
+  const movieList = useMemo(() => {
+    const cat = movies ?? [];
+    if (cat.length) return enrichMoviesWithShowtimeGenre(cat, stList);
+    if (stList.length) return moviesFromUpcomingShowtimes([], stList);
+    return [];
+  }, [movies, stList]);
   const venueList = useMemo(() => venues ?? [], [venues]);
   const diningToShow = useMemo(() => {
     const all = restaurants ?? [];
@@ -314,7 +379,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "movies_today",
               <MovieRowScroll
-                loading={awaitingMovies || awaitingShowtimes}
+                loading={awaitingShowtimes}
                 loadingMessage="Φόρτωση προβολών της ημέρας..."
                 fetchErrorMessage={
                   moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
@@ -330,7 +395,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "summer_cinema",
               <MovieRowScroll
-                loading={awaitingMovies || awaitingShowtimes}
+                loading={awaitingShowtimes}
                 loadingMessage="Φόρτωση θερινών προβολών..."
                 fetchErrorMessage={
                   moviesError || showtimesError || venuesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
@@ -347,8 +412,17 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "summer_venues",
               <>
-                {venuesLoading ? (
-                  <LoadingState message="Φόρτωση θερινών χώρων..." />
+                {venues === undefined && venuesLoading ? (
+                  <section className="relative section-black border-y border-white/[0.07] py-10 md:py-14">
+                    <div className="container max-w-7xl">
+                      <div className="mb-8 h-8 w-48 animate-pulse rounded bg-white/10" />
+                      <ul className="grid list-none grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
+                        {[0, 1, 2].map((i) => (
+                          <li key={i} className="h-28 animate-pulse rounded-xl bg-white/10" />
+                        ))}
+                      </ul>
+                    </div>
+                  </section>
                 ) : venuesError ? (
                   <section className="relative section-black border-y border-white/[0.07] py-12 md:py-16">
                     <div className="container max-w-7xl">
@@ -434,8 +508,15 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                       Περιοδείες & παραστάσεις που ταξιδεύουν
                     </h2>
                   </div>
-                  {theaterLoading ? (
-                    <LoadingState message="Φόρτωση παραστάσεων..." />
+                  {theaterShows === undefined && theaterLoading ? (
+                    <div className="mt-10 flex gap-4 overflow-hidden pb-2">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className="h-[18rem] w-[11rem] shrink-0 animate-pulse rounded-lg bg-white/10 md:w-[13rem]"
+                        />
+                      ))}
+                    </div>
                   ) : theaterError ? (
                     <div className="mt-10 max-w-xl rounded-xl border border-amber-500/20 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
                       <p className="text-sm leading-relaxed text-amber-100/85 font-body">Δεν ήταν δυνατή η φόρτωση.</p>
@@ -490,7 +571,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "movies_week",
               <MovieRowScroll
-                loading={awaitingMovies || awaitingShowtimes}
+                loading={awaitingShowtimes}
                 loadingMessage="Φόρτωση ταινιών εβδομάδας..."
                 fetchErrorMessage={moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={weekMovies}
@@ -520,8 +601,17 @@ export default function HomeBody({ layout }: HomeBodyProps) {
           case "dining":
             return sectionEl(
               "dining",
-              restaurantsLoading ? (
-                <LoadingState message="Φόρτωση εστιατορίων..." />
+              restaurants === undefined && restaurantsLoading ? (
+                <div className="section-black border-y border-white/[0.07] py-10">
+                  <div className="container max-w-7xl">
+                    <div className="mb-6 h-7 w-40 animate-pulse rounded bg-white/10" />
+                    <div className="flex gap-4 overflow-hidden">
+                      {[0, 1, 2].map((i) => (
+                        <div key={i} className="h-52 w-[220px] shrink-0 animate-pulse rounded-lg bg-white/10 md:w-[260px]" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
               ) : restaurantsError ? (
                 <div className="section-black border-y border-amber-500/20 bg-amber-950/15 py-10">
                   <div className="container max-w-7xl text-sm leading-relaxed text-amber-100/85 font-body">

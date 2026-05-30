@@ -27,7 +27,9 @@ export function buildMetadataForPath(path: string): Metadata {
 
   return {
     metadataBase: getMetadataBase(),
-    title: fullTitle,
+    title: {
+      absolute: fullTitle,
+    },
     description,
     alternates: {
       canonical,

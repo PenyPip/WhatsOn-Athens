@@ -1,6 +1,7 @@
 import { Link } from "react-router-dom";
 import { Clock } from "lucide-react";
 import PosterPicture from "@/components/PosterPicture";
+import ImdbRatingBadge from "@/components/ImdbRatingBadge";
 import { cn } from "@/lib/utils";
 import GenreLinks from "@/components/GenreLinks";
 import type { GenreLinkItem } from "@/lib/movieGenreLinks";
@@ -15,6 +16,9 @@ interface EventCardProps {
   /** Αν υπάρχουν slugs, το είδος γίνεται σύνδεσμος προς `/movies/genre/…`. */
   genreLinkItems?: GenreLinkItem[];
   duration: number;
+  /** Βαθμολογία IMDb (ταινίες). */
+  imdbRating?: number | null;
+  /** @deprecated Χρησιμοποίησε imdbRating */
   score?: number;
   /** Fallback όταν λείπει poster (π.χ. θέατρο) · οι ταινίες χρησιμοποιούν μόνο poster ή ουδέτερο φόντο */
   gradientFrom?: string;
@@ -47,6 +51,7 @@ const EventCard = ({
   genre,
   genreLinkItems,
   duration,
+  imdbRating,
   score,
   gradientFrom,
   gradientTo,
@@ -66,15 +71,22 @@ const EventCard = ({
   const showGradientFallback =
     !posterUrl && typeof gradientFrom === "string" && typeof gradientTo === "string";
   const subtitleLine = typeof subtitle === "string" && subtitle.trim() ? subtitle.trim() : "\u00a0";
-  const posterAlt = titleSecondary ? `${title} · ${titleSecondary}` : title;
+  const secondaryLine =
+    typeof titleSecondary === "string" &&
+    titleSecondary.trim() &&
+    titleSecondary.trim().toLocaleLowerCase("el") !== title.trim().toLocaleLowerCase("el")
+      ? titleSecondary.trim()
+      : "";
+  const posterAlt = secondaryLine ? `${title} · ${secondaryLine}` : title;
   const showDuration = typeof duration === "number" && Number.isFinite(duration) && duration > 0;
   const genreTrimmed = typeof genre === "string" ? genre.trim() : "";
   const isMovie = type === "movie";
   /** Ομοιόμορφες καρτέλες για ταινίες ανά σειρά · θέατρο όχι. */
   const uniformMovie = uniformMovieSizing ?? isMovie;
-  const secondaryLine = typeof titleSecondary === "string" && titleSecondary.trim() ? titleSecondary.trim() : "";
   /** Λίστα /movies ή αρχική: διάρκεια στην αφίσα, χωρίς είδος/σκηνοθέτη κάτω. */
   const movieListingMeta = isMovie && (attachShowtimes || compactMovieMeta);
+  const imdbDisplay =
+    isMovie && (imdbRating != null && imdbRating > 0 ? imdbRating : score && score > 0 ? score : null);
   /** Οριζόντια σειρά (αρχική, κ.λπ.): σταθερό ύψος τίτλου/υπότιτλου/ειδους. */
   const uniformScrollCard = uniformMovie && !movieListingMeta && !attachShowtimes;
 
@@ -128,6 +140,9 @@ const EventCard = ({
               {badge}
             </span>
           )}
+          {imdbDisplay != null ? (
+            <ImdbRatingBadge rating={imdbDisplay} variant="poster" className={badge ? "top-9" : undefined} />
+          ) : null}
           {isDubbed && (
             <span className="absolute top-2 right-2 z-10 rounded bg-amber-600/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm">
               Μεταγλωτ.
@@ -141,18 +156,6 @@ const EventCard = ({
               {duration}′
             </span>
           ) : null}
-          {score && (
-            <div
-              className={cn(
-                "absolute bottom-2 left-2 rounded px-2 py-0.5 text-xs font-bold text-[#13143E] z-10",
-                tone === "soft"
-                  ? "bg-background/85 ring-1 ring-border/[0.08]"
-                  : "bg-card/95 shadow-sm ring-1 ring-border/10",
-              )}
-            >
-              {score}/10
-            </div>
-          )}
         </div>
         <div
           className={cn(
@@ -181,6 +184,11 @@ const EventCard = ({
             >
               {title}
             </h3>
+            {isMovie && imdbDisplay != null && movieListingMeta ? (
+              <div className="mt-1">
+                <ImdbRatingBadge rating={imdbDisplay} variant="inline" />
+              </div>
+            ) : null}
             {isMovie ? (
               <p
                 className="mt-0.5 line-clamp-2 min-h-[2.4375rem] text-sm font-medium leading-snug text-muted-foreground"

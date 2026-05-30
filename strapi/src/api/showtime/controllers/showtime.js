@@ -64,7 +64,7 @@ module.exports = createCoreController('api::showtime.showtime', ({ strapi }) => 
       fields: ['datetime', 'week_end', 'schedule_kind', 'available_seats', 'price', 'summer_screening'],
       populate: {
         movie: {
-          fields: ['id', 'slug', 'title', 'is_dubbed', 'language'],
+          fields: ['id', 'slug', 'title', 'original_title', 'is_dubbed', 'language'],
           populate: { movie_genres: { fields: ['slug', 'label', 'sort_order'] }, poster: { fields: ['url', 'formats'] } },
         },
         venue: {

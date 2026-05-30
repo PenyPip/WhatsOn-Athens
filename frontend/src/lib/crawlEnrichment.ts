@@ -1,6 +1,8 @@
 import crawlData from "@/generated/spa-crawl-enrichment.json";
 import { parseMoviesFilterPath } from "@/lib/moviesFilterPaths";
 import { moviesAreaSeo, moviesGenreSeo, moviesSectionSeo } from "@/lib/moviesFilterSeo";
+import { moviePageDescription, moviePageTitle } from "@/lib/pageSeoCopy";
+import type { StrapiMovie } from "@/lib/api";
 import { truncateDescription } from "@/lib/siteMetadata";
 
 export type CrawlGenre = { slug: string; label: string; href: string };
@@ -16,7 +18,12 @@ export type CrawlMovie = {
   path: string;
   slug: string;
   title: string;
+  /** Μοναδικό business key — ταυτίζεται με original_title στο CMS. */
+  originalTitle: string;
   genreSlugs: string[];
+  genreLine?: string;
+  imdbRating?: number;
+  director?: string;
   posterUrl?: string;
   synopsis?: string;
 };
@@ -124,14 +131,16 @@ export function crawlSeoCopyForPath(path: string): { title: string; description:
 
   if (hit.kind === "movie") {
     const m = hit.entity;
-    const when =
-      "Δες πότε παίζεται, σε ποιον κινηματογράφο και τι ώρα — πρόγραμμα προβολών στο 37Ν (the37n.gr).";
-    const desc = m.synopsis?.trim()
-      ? truncateDescription(`Ταινία «${m.title}»: τι παίζεται — ${m.synopsis.trim()} ${when}`)
-      : truncateDescription(`Ταινία «${m.title}»: ${when}`);
+    const stub = {
+      title: m.title,
+      originalTitle: m.originalTitle,
+      synopsis: m.synopsis ?? "",
+      director: m.director ?? "",
+    } as StrapiMovie;
+    const genreLine = m.genreLine?.trim() ?? "";
     return {
-      title: `${m.title} — πότε παίζεται · κινηματογράφοι`,
-      description: desc,
+      title: moviePageTitle(stub, genreLine),
+      description: moviePageDescription(stub, genreLine),
     };
   }
   if (hit.kind === "theater") {

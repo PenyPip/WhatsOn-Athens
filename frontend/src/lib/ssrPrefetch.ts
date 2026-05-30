@@ -3,6 +3,8 @@ import { api } from "@/lib/api";
 import {
   homeNeedsShowtimes,
   homeNeedsTheater,
+  homeNeedsVenues,
+  homeNeedsDining,
   resolveHomepageLayout,
   type MappedHomepage,
 } from "@/config/home";
@@ -50,6 +52,12 @@ async function prefetchHomeBundle(qc: QueryClient) {
   }
   if (homeNeedsTheater(layout.sections)) {
     tasks.push(qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }));
+  }
+  if (homeNeedsVenues(layout.sections)) {
+    tasks.push(qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }));
+  }
+  if (homeNeedsDining(layout.sections)) {
+    tasks.push(qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants, ...queryDefaults }));
   }
   await Promise.all(tasks);
   finalizeBootstrapCache(qc, { trimHomeShowtimes: true, trimHomeMovies: true });

@@ -1,6 +1,7 @@
 import type { MappedHomepage, HomeSectionId } from "@/config/home";
 import { FALLBACK_SECTIONS, normalizeHomeSectionId } from "@/config/home";
 import { apiRequestBaseUrl } from "@/lib/apiRequestBase";
+import { normalizeMovieOriginalTitle } from "@/lib/movieTitles";
 import { normalizeVenueKind, type VenueKind } from "@/lib/venueType";
 import { mapVenueDayPrices, resolveShowtimePricing, type VenueDayPrice } from "@/lib/venuePricing";
 
@@ -586,6 +587,12 @@ function movieIsDubbedFromRaw(m: Record<string, unknown>): boolean {
   return /μεταγλωτισ|μεταγλωτίσ|dubbed|\bdub\b/i.test(lang);
 }
 
+function parseOptionalDecimal(raw: unknown): number | undefined {
+  if (raw === null || raw === undefined || raw === "") return undefined;
+  const n = typeof raw === "number" ? raw : Number(raw);
+  return Number.isFinite(n) ? n : undefined;
+}
+
 function mapMovie(
   raw: unknown,
   hydrate?: {
@@ -602,7 +609,9 @@ function mapMovie(
   let numericId = NaN;
   if (typeof rawId === "number" && Number.isFinite(rawId)) numericId = rawId;
   else if (typeof rawId === "string" && rawId.trim() !== "") numericId = Number(rawId);
-  const originalTitle = typeof m.original_title === "string" ? m.original_title.trim() : "";
+  const originalTitle = normalizeMovieOriginalTitle(
+    typeof m.original_title === "string" ? m.original_title : "",
+  );
   const slugStr = typeof m.slug === "string" ? m.slug : undefined;
 
   let genreLine =
@@ -623,7 +632,7 @@ function mapMovie(
     documentId: m.documentId,
     slug: m.slug,
     title: m.title,
-    originalTitle: originalTitle || undefined,
+    originalTitle,
     director: m.director,
     cast: normalizeCastFromStrapi(m.cast),
     genre: genreLine,
@@ -635,6 +644,7 @@ function mapMovie(
     ageRating: m.age_rating,
     synopsis: m.synopsis,
     criticScore: m.critic_score,
+    imdbRating: parseOptionalDecimal(m.imdb_rating) ?? parseOptionalDecimal(m.critic_score),
     releaseDate: m.release_date,
     trailerUrl: m.trailer_url,
     ...(() => {
@@ -855,6 +865,12 @@ function mapShowtime(
       : typeof s.movie?.title === "string"
         ? s.movie.title
         : undefined;
+  const movieOriginalTitle =
+    typeof mAttrs?.original_title === "string"
+      ? normalizeMovieOriginalTitle(mAttrs.original_title)
+      : typeof (s.movie as { original_title?: unknown } | undefined)?.original_title === "string"
+        ? normalizeMovieOriginalTitle(String((s.movie as { original_title: string }).original_title))
+        : undefined;
   const movieId = strapiRelationNumericId(s.movie as unknown);
 
   const gfShow = movieGenresFromMovieRaw((mAttrs ?? {}) as Record<string, unknown>, hydrate);
@@ -868,6 +884,10 @@ function mapShowtime(
     movieGenreFromShowtime = fromLink.genre;
     movieGenreSlugsFromShowtime = fromLink.genreSlugs;
   }
+
+  const posterVariants = mAttrs ? strapiPosterSrcSet(mAttrs.poster) : undefined;
+  const moviePosterUrl = mAttrs ? strapiMediaUrl(mAttrs.poster, "small") ?? posterVariants?.src ?? null : undefined;
+  const moviePosterSrcSet = posterVariants?.srcSet;
 
   const baseId = String(s.id);
   const slots = Array.isArray(s.show_slots) ? s.show_slots : [];
@@ -912,8 +932,11 @@ function mapShowtime(
     movieId,
     movieSlug,
     movieTitle,
+    movieOriginalTitle,
     movieGenre: movieGenreFromShowtime || undefined,
     movieGenreSlugs: movieGenreSlugsFromShowtime.length ? movieGenreSlugsFromShowtime : undefined,
+    moviePosterUrl,
+    moviePosterSrcSet,
   };
   };
 
@@ -976,10 +999,10 @@ export interface StrapiMovie {
   id: number;
   documentId: string;
   slug: string;
-  /** Ελληνικός τίτλος (slug target) — κύρια γραμμή εμφάνισης. */
+  /** Ελληνικός τίτλος — κύρια γραμμή εμφάνισης (δεν είναι μοναδικό κλειδί). */
   title: string;
-  /** Πρωτότυπος τίτλος (π.χ. διεθνής) — δεύτερη γραμμή όταν διαφέρει και είναι συμπληρωμένος. */
-  originalTitle?: string;
+  /** Πρωτότυπος / διεθνής τίτλος — μοναδικό business key (εκτός id). Το slug προκύπτει από αυτό. */
+  originalTitle: string;
   director: string;
   cast: string[];
   /** Οι ετικέτες ενωμένες με « · » για λίστες και κείμενο. */
@@ -995,6 +1018,7 @@ export interface StrapiMovie {
   ageRating: string;
   synopsis: string;
   criticScore: number;
+  imdbRating?: number;
   releaseDate: string;
   trailerUrl?: string;
   posterUrl?: string;
@@ -1102,9 +1126,14 @@ export interface StrapiShowtime {
   movieId?: number;
   movieSlug?: string;
   movieTitle?: string;
+  /** Μοναδικό κλειδί ταινίας — από populate movie.original_title. */
+  movieOriginalTitle?: string;
   /** Από `populate[movie]=*`: είδη όταν η γραμμή `/movies` δεν φέρνει σχέση ή χρησιμοποιούμε stub ταινίας. */
   movieGenre?: string;
   movieGenreSlugs?: string[];
+  /** Από populate poster στη σχέση movie — λίστες χωρίς πλήρες catalog. */
+  moviePosterUrl?: string | null;
+  moviePosterSrcSet?: string;
   hallId?: number;
   hallName?: string;
 }
@@ -1172,6 +1201,8 @@ const EDITORIAL_REVIEW_PUBLIC_QUERY: Record<string, string> = {
 const SHOWTIME_POPULATE: Record<string, string> = {
   "populate[movie][fields][0]": "title",
   "populate[movie][fields][1]": "slug",
+  "populate[movie][fields][2]": "original_title",
+  "populate[movie][populate][poster]": "*",
   "populate[movie][populate][movie_genres][fields][0]": "slug",
   "populate[movie][populate][movie_genres][fields][1]": "label",
   "populate[movie][populate][movie_genres][fields][2]": "sort_order",
@@ -1226,6 +1257,18 @@ export const api = {
       fetchMovieGenreCatalog(),
       fetchAPI<any[]>(`/movies`, {
         "filters[slug][$eq]": slug,
+        ...MOVIE_PUBLIC_POPULATE,
+      }),
+    ]).then(([catalog, d]) => {
+      const row = strapiCollectionFirst(d);
+      return row ? mapMovie(row, catalog.hydrate, catalog.linkIndex, "large") : undefined;
+    }),
+
+  getMovieByOriginalTitle: (originalTitle: string) =>
+    Promise.all([
+      fetchMovieGenreCatalog(),
+      fetchAPI<any[]>(`/movies`, {
+        "filters[original_title][$eq]": normalizeMovieOriginalTitle(originalTitle),
         ...MOVIE_PUBLIC_POPULATE,
       }),
     ]).then(([catalog, d]) => {

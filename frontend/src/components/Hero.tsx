@@ -102,7 +102,7 @@ const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady }: HeroPr
   }
 
   const notifyPosterReady = () => onPosterReady?.();
-  const movieTitles = !isTheater ? movieTitleLines(featured) : null;
+  const movieTitles = !isTheater ? movieTitleLines(featured as StrapiMovie) : null;
 
   let heroGenreLabel = "";
   if (isTheater) {

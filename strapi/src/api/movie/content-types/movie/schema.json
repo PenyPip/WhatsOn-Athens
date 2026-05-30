@@ -14,15 +14,17 @@
     "title": {
       "type": "string",
       "required": true,
-      "description": "Ελληνικός τίτλος — κύρια εμφάνιση στο site."
+      "description": "Ελληνικός τίτλος — κύρια εμφάνιση στο site (δεν είναι μοναδικό κλειδί)."
     },
     "original_title": {
       "type": "string",
-      "description": "Πρωτότυπος / διεθνής τίτλος· δεύτερη γραμμή στις κάρτες και στη σελίδα ταινίας, όταν υπάρχει."
+      "required": true,
+      "unique": true,
+      "description": "Πρωτότυπος / διεθνής τίτλος — μοναδικό κλειδί ταυτοποίησης κάθε ταινίας (εκτός id). Το slug προκύπτει από αυτό."
     },
     "slug": {
       "type": "uid",
-      "targetField": "title",
+      "targetField": "original_title",
       "required": true
     },
     "synopsis": {
@@ -70,6 +72,10 @@
     },
     "critic_score": {
       "type": "decimal"
+    },
+    "imdb_rating": {
+      "type": "decimal",
+      "description": "Βαθμολογία IMDb (π.χ. 7.8). Εμφανίζεται στις κάρτες και στη σελίδα ταινίας."
     },
     "showtimes": {
       "type": "relation",

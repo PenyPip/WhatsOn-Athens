@@ -1,5 +1,6 @@
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { absolutePageUrl, resolvePublicAssetUrl } from "@/lib/siteMetadata";
+import { resolveImdbRating } from "@/lib/movieImdb";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { findVenueForShowtime, isValidExternalUrl } from "@/lib/venueResolve";
 import { resolvePricingForShowtime } from "@/lib/venuePricing";
@@ -140,11 +141,11 @@ export function buildMovieDetailJsonLd(input: MovieDetailJsonLdInput): JsonLdObj
     movieEntity.genre = parts.length === 1 ? parts[0] : parts;
   }
 
-  const critic = Number(movie.criticScore);
-  if (Number.isFinite(critic) && critic > 0) {
+  const imdb = resolveImdbRating(movie);
+  if (imdb != null) {
     movieEntity.aggregateRating = {
       "@type": "AggregateRating",
-      ratingValue: critic,
+      ratingValue: imdb,
       bestRating: 10,
       worstRating: 0,
     };

@@ -30,6 +30,8 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         movieTitle: st.movieTitle,
         movieGenre: st.movieGenre,
         movieGenreSlugs: st.movieGenreSlugs,
+        moviePosterUrl: st.moviePosterUrl,
+        moviePosterSrcSet: st.moviePosterSrcSet,
         summerScreening: st.summerScreening,
         venueSummerOutdoor: st.venueSummerOutdoor,
         price: st.price,

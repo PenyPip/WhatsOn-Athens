@@ -51,11 +51,13 @@ import {
   moviesComingAfterUpcomingCinemaWeek,
   getUpcomingCinemaWeekBounds,
   moviesWithShowtimesInUpcomingCinemaWeek,
+  moviesFromUpcomingShowtimes,
   enrichMoviesWithShowtimeGenre,
   formatUpcomingCinemaWeekRange,
   movieStubFromShowtime,
 } from "@/lib/homeMovieFilters";
 import { compareMoviesByShowingVenueCount } from "@/lib/movieCinemaSort";
+import { resolveImdbRating } from "@/lib/movieImdb";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
@@ -427,19 +429,7 @@ const Movies = () => {
   };
 
   const needsCatalogMovies = moviesSection === "new" || moviesSection === "soon" || moviesSection === "week";
-  const [loadFullMovieCatalog, setLoadFullMovieCatalog] = useState(needsCatalogMovies);
-  useEffect(() => {
-    if (needsCatalogMovies) return;
-    const schedule = () => setLoadFullMovieCatalog(true);
-    if (typeof requestIdleCallback === "function") {
-      const id = requestIdleCallback(schedule, { timeout: 2800 });
-      return () => cancelIdleCallback(id);
-    }
-    const t = window.setTimeout(schedule, 1200);
-    return () => window.clearTimeout(t);
-  }, [needsCatalogMovies]);
-
-  const { data: movies, isLoading: moviesLoading } = useMovies(loadFullMovieCatalog || needsCatalogMovies);
+  const { data: movies, isLoading: moviesLoading } = useMovies(needsCatalogMovies);
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(true, venueSlug || undefined);
   const { data: venues, isLoading: venuesLoading } = useVenues();
   const needsGenreList = Boolean(genreFilterSlug || pathFilters.genreSlug || routeGenreSlug);
@@ -461,10 +451,13 @@ const Movies = () => {
       summerOutdoorOnly,
   );
 
-  const moviesEnriched = useMemo(
-    () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
-    [movies, showtimes],
-  );
+  const moviesEnriched = useMemo(() => {
+    const cat = movies ?? [];
+    const st = showtimes ?? [];
+    if (cat.length) return enrichMoviesWithShowtimeGenre(cat, st);
+    if (st.length) return moviesFromUpcomingShowtimes([], st);
+    return [];
+  }, [movies, showtimes]);
 
   const setDistrictParam = (key: AthensDistrictKey | null) => {
     const next = new URLSearchParams(searchParams);
@@ -991,7 +984,7 @@ const Movies = () => {
                             genre={movie.genre}
                             genreLinkItems={movieGenreLinkItems(movie, movieGenresList)}
                             duration={movie.duration}
-                            score={movie.criticScore}
+                            imdbRating={resolveImdbRating(movie)}
                             posterUrl={movie.posterUrl}
                             posterSrcSet={movie.posterSrcSet}
                             type="movie"

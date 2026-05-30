@@ -1,8 +1,9 @@
-import { lazy, Suspense, useMemo } from "react";
+import { useMemo } from "react";
 import Hero, { HeroShell } from "@/components/Hero";
 import HomeSeoIntro from "@/components/HomeSeoIntro";
 import HomeSectionsSkeleton from "@/components/HomeSectionsSkeleton";
 import MarkLcpDone from "@/components/MarkLcpDone";
+import HomeBody from "@/views/HomeBody";
 import {
   homeNeedsShowtimes,
   homeNeedsTheater,
@@ -12,9 +13,8 @@ import {
 import { useHomeLcpDone } from "@/hooks/useHomeLcpDone";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useMovies, useShowtimes, useTheaterShows, useHomeLayout } from "@/hooks/useStrapi";
+import { enrichMoviesWithShowtimeGenre, moviesFromUpcomingShowtimes } from "@/lib/homeMovieFilters";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
-
-const HomeBody = lazy(() => import(/* webpackChunkName: "home-body" */ "@/views/HomeBody"));
 
 const Index = () => {
   usePageSeo(staticPageSeo.home);
@@ -26,36 +26,38 @@ const Index = () => {
   );
 
   const { data: movies } = useMovies();
-  const movieList = movies ?? [];
-
+  const { data: showtimes } = useShowtimes(homeNeedsShowtimes(belowHeroSections) || layoutShowsHero(layout));
   const needsHeroTheater = layoutShowsHero(layout) && Boolean(layout.heroTheaterSlug);
-  const needsHeroShowtimes = layoutShowsHero(layout) && !needsHeroTheater;
-  const { data: showtimes } = useShowtimes(needsHeroShowtimes);
   const { data: theaterShows } = useTheaterShows(needsHeroTheater || homeNeedsTheater(belowHeroSections));
 
-  const needsShowtimesForHome = homeNeedsShowtimes(belowHeroSections);
-  const needsTheaterForHome = homeNeedsTheater(belowHeroSections);
+  const heroMovieList = useMemo(() => {
+    const st = showtimes ?? [];
+    const cat = movies ?? [];
+    if (cat.length) return enrichMoviesWithShowtimeGenre(cat, st);
+    if (st.length) return moviesFromUpcomingShowtimes([], st);
+    return [];
+  }, [movies, showtimes]);
 
+  const hasHero = layout.sections.includes("hero");
   const heroReady =
-    movies !== undefined &&
-    (!needsHeroTheater || theaterShows !== undefined);
+    !hasHero ||
+    (needsHeroTheater
+      ? theaterShows !== undefined
+      : movies !== undefined || showtimes !== undefined);
 
-  const homeDataReady =
-    movies !== undefined &&
-    (!needsShowtimesForHome || showtimes !== undefined) &&
-    (!needsTheaterForHome || theaterShows !== undefined);
+  const homeBodyReady = layout.sections.length > 0;
+  const showHomeSkeleton = !homeBodyReady;
 
   const markLcpDone = useHomeLcpDone();
-  const hasHero = layout.sections.includes("hero");
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      {!hasHero && homeDataReady ? <MarkLcpDone /> : null}
+      {!hasHero && showtimes !== undefined ? <MarkLcpDone /> : null}
       {hasHero && !heroReady ? <HeroShell /> : null}
       {hasHero && heroReady ? (
         <Hero
           layout={layout}
-          movies={movieList}
+          movies={heroMovieList}
           showtimes={showtimes ?? []}
           theaterShows={theaterShows ?? []}
           onPosterReady={markLcpDone}
@@ -63,13 +65,7 @@ const Index = () => {
       ) : null}
 
       <HomeSeoIntro />
-      {homeDataReady ? (
-        <Suspense fallback={<HomeSectionsSkeleton />}>
-          <HomeBody layout={layout} />
-        </Suspense>
-      ) : (
-        <HomeSectionsSkeleton />
-      )}
+      {showHomeSkeleton ? <HomeSectionsSkeleton /> : <HomeBody layout={layout} />}
 
       <footer className="section-black border-t border-white/10 py-12">
         <div className="container">

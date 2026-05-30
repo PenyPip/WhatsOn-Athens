@@ -1,4 +1,5 @@
 import { movieGenreSlugsToDisplayLine, type StrapiMovie, type StrapiShowtime, type StrapiVenue } from "@/lib/api";
+import { normalizeMovieOriginalTitle } from "@/lib/movieTitles";
 import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
 import { showtimeIsUpcoming as showtimeIsUpcomingCore, showtimeOverlapsRange } from "@/lib/showtimeSchedule";
 import { isCinemaVenue } from "@/lib/venueType";
@@ -54,6 +55,10 @@ export function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefin
   if (!st) return null;
   const title =
     typeof st.movieTitle === "string" && st.movieTitle.trim() ? st.movieTitle.trim() : slug;
+  const originalTitle =
+    typeof st.movieOriginalTitle === "string" && st.movieOriginalTitle.trim()
+      ? normalizeMovieOriginalTitle(st.movieOriginalTitle)
+      : normalizeMovieOriginalTitle(slug);
   const id =
     st.movieId != null && Number.isFinite(Number(st.movieId))
       ? Number(st.movieId)
@@ -66,6 +71,7 @@ export function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefin
     documentId: "",
     slug,
     title,
+    originalTitle,
     director: "—",
     cast: [],
     genre: genreLine || (slugs.length ? movieGenreSlugsToDisplayLine(slugs) : ""),
@@ -77,7 +83,18 @@ export function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefin
     synopsis: "",
     criticScore: 0,
     releaseDate: "",
+    posterUrl: st.moviePosterUrl ?? undefined,
+    posterSrcSet: st.moviePosterSrcSet,
   };
+}
+
+/** Λίστα ταινιών από προβολές όταν λείπει catalog (hero / αρχική). */
+export function moviesFromUpcomingShowtimes(
+  movies: StrapiMovie[],
+  showtimes: StrapiShowtime[],
+  now = new Date(),
+): StrapiMovie[] {
+  return moviesFromShowtimesOrdered(movies, showtimes, (st) => showtimeIsUpcoming(st, now));
 }
 
 function startOfWeekMonday(d: Date): Date {

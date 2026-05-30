@@ -6,7 +6,7 @@ import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
 import HomeStaticLcp from "@/components/HomeStaticLcp";
 import { homeLcpDisplay } from "@/lib/homeHeroLcp";
-import { homeNeedsTheater, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
+import { homeNeedsTheater, homeNeedsVenues, homeNeedsDining, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
 import { slimHomeBootstrapState } from "@/lib/rqBootstrap";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
 import spaPaths from "@/generated/spa-static-paths.json";
@@ -45,7 +45,11 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
         ? (homepageEntry.state.data as MappedHomepage | undefined)
         : undefined;
     const layout = resolveHomepageLayout(homepageData ?? null);
-    const extraBootstrapKeys = homeNeedsTheater(layout.sections) ? (["theaterShows"] as const) : [];
+    const extraBootstrapKeys = [
+      ...(homeNeedsTheater(layout.sections) ? (["theaterShows"] as const) : []),
+      ...(homeNeedsVenues(layout.sections) ? (["venues"] as const) : []),
+      ...(homeNeedsDining(layout.sections) ? (["restaurants"] as const) : []),
+    ];
     dehydratedState = slimHomeBootstrapState(dehydratedState, extraBootstrapKeys);
   }
   const lcp = homeLcpDisplay(path, dehydratedState);
