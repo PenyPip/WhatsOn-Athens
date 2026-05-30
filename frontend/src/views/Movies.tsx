@@ -14,7 +14,7 @@ import { moviesAreaSeo, moviesGenreSeo, moviesSectionSeo } from "@/lib/moviesFil
 import { truncateDescription } from "@/lib/siteMetadata";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import EventCard from "@/components/EventCard";
-import LoadingState from "@/components/LoadingState";
+import MoviesGridSkeleton from "@/components/MoviesGridSkeleton";
 import Footer from "@/components/Footer";
 import { useMovies, useShowtimes, useVenues, useMovieGenres } from "@/hooks/useStrapi";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
@@ -795,6 +795,11 @@ const Movies = () => {
 
   const needsVenueData = Boolean(venueSlug || areaFilter || districtFilter || summerOutdoorOnly || moviesSection === "summer");
 
+  const showListSkeleton =
+    (showtimes === undefined && showtimesLoading) ||
+    (needsVenueData && venues === undefined && venuesLoading) ||
+    (needsCatalogMovies && movies === undefined && moviesLoading);
+
   return (
     <div className="min-h-screen pb-20 md:pb-8">
       <div className="section-black mb-6 max-md:-mt-16 max-md:py-5 max-md:pt-20 md:-mt-28 md:mb-8 md:py-10 md:pt-36">
@@ -930,8 +935,8 @@ const Movies = () => {
           </Collapsible>
         </div>
 
-        {showtimesLoading || (needsVenueData && venuesLoading) || (needsCatalogMovies && moviesLoading) ? (
-          <LoadingState message="Φόρτωση ταινιών..." />
+        {showListSkeleton ? (
+          <MoviesGridSkeleton sections={moviesSection === "week" ? 1 : 2} />
         ) : (
           <div className="space-y-10">
             {venueFilter && groupedMovies.length > 0 ? (
@@ -1047,9 +1052,7 @@ const Movies = () => {
           </div>
         )}
 
-        {!showtimesLoading &&
-          !(needsVenueData && venuesLoading) &&
-          !(needsCatalogMovies && moviesLoading) &&
+        {!showListSkeleton &&
           groupedMovies.length === 0 && (
           <div className="text-center py-20 text-muted-foreground text-base">
             <p>
