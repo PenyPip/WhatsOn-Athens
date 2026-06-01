@@ -22,6 +22,7 @@ import {
   cinemaGroupKey,
   findVenueFromStableKey,
   isValidExternalUrl,
+  resolveGoogleMapsHref,
   moviesHrefForVenue,
   resolveCinemaGroupFromShowtimes,
 } from "@/lib/venueResolve";
@@ -809,20 +810,24 @@ const Movies = () => {
                 {venueFilter.address?.trim() ? (
                   <p className="flex items-start gap-2 max-w-2xl">
                     <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-white/45" aria-hidden />
-                    {isValidExternalUrl(venueFilter.googleMapsUrl) ? (
-                      <a
-                        href={venueFilter.googleMapsUrl.trim()}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex flex-wrap items-center gap-1 underline decoration-white/25 underline-offset-2 hover:text-white hover:decoration-white/50"
-                      >
+                    {(() => {
+                      const mapsHref = resolveGoogleMapsHref(venueFilter.googleMapsUrl, venueFilter.address);
+                      return mapsHref ? (
+                        <a
+                          href={mapsHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="inline-flex flex-wrap items-center gap-1 underline decoration-white/25 underline-offset-2 hover:text-white hover:decoration-white/50"
+                        >
+                          <span>{venueFilter.address.trim()}</span>
+                          <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
+                          <span className="sr-only"> (χάρτης)</span>
+                        </a>
+                      ) : (
                         <span>{venueFilter.address.trim()}</span>
-                        <ExternalLink className="h-3.5 w-3.5 shrink-0 opacity-70" aria-hidden />
-                        <span className="sr-only"> (χάρτης)</span>
-                      </a>
-                    ) : (
-                      <span>{venueFilter.address.trim()}</span>
-                    )}
+                      );
+                    })()}
                   </p>
                 ) : null}
                 {venueCityLabel(venueFilter) ? (

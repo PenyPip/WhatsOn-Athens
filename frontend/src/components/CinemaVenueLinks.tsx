@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { ExternalLink, MapPin } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StrapiVenue } from "@/lib/api";
-import { isValidExternalUrl, moviesHrefForVenue } from "@/lib/venueResolve";
+import { isValidExternalUrl, moviesHrefForVenue, resolveGoogleMapsHref } from "@/lib/venueResolve";
 
 type CinemaVenueLinksProps = {
   venueName: string;
@@ -26,7 +26,7 @@ export default function CinemaVenueLinks({
   className,
 }: CinemaVenueLinksProps) {
   const moviesHref = programHref ?? moviesHrefForVenue(venue);
-  const mapsUrl = isValidExternalUrl(venue?.googleMapsUrl) ? venue!.googleMapsUrl.trim() : null;
+  const mapsUrl = resolveGoogleMapsHref(venue?.googleMapsUrl, venue?.address);
   const address = venue?.address?.trim();
 
   const nameEl = (
@@ -63,7 +63,13 @@ export default function CinemaVenueLinks({
       </div>
       {address ? (
         mapsUrl ? (
-          <a href={mapsUrl} target="_blank" rel="noopener noreferrer" className={addressLinkClass}>
+          <a
+            href={mapsUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={addressLinkClass}
+            onClick={(e) => e.stopPropagation()}
+          >
             <MapPin className="mt-0.5 h-3 w-3 shrink-0 opacity-60" aria-hidden />
             <span>{address}</span>
             <ExternalLink className="mt-0.5 h-3 w-3 shrink-0 opacity-50" aria-hidden />

@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import type { StrapiVenue } from "@/lib/api";
 import { programHrefForVenue, venueKindLabel } from "@/lib/venueType";
 import VenueBookingLink from "@/components/VenueBookingLink";
-import { isValidExternalUrl } from "@/lib/venueResolve";
+import { isValidExternalUrl, resolveGoogleMapsHref } from "@/lib/venueResolve";
 
 const cityLabels: Record<string, string> = {
   athens: "Αθήνα",
@@ -67,7 +67,7 @@ const VenueCard = ({
     compact && "px-2.5 py-1.5 text-xs",
   );
 
-  const mapsUrl = isValidExternalUrl(venue.googleMapsUrl) ? venue.googleMapsUrl.trim() : null;
+  const mapsUrl = resolveGoogleMapsHref(venue.googleMapsUrl, venue.address);
   const hasActions = Boolean(programHref || venue.moreLink);
 
   const cardMinH = compact ? "" : "min-h-[296px]";
@@ -119,6 +119,7 @@ const VenueCard = ({
                   href={mapsUrl}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={(e) => e.stopPropagation()}
                   className={cn(
                     "underline decoration-current/30 underline-offset-2 transition-colors",
                     isSpotlight ? "text-white/80 hover:text-white" : "text-foreground/90 hover:text-foreground",

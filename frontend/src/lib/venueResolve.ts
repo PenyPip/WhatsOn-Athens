@@ -221,13 +221,31 @@ export function moviesHrefForShowtimes(
   return undefined;
 }
 
-export function isValidExternalUrl(raw: string | undefined | null): raw is string {
+function normalizeHttpUrl(raw: string | undefined | null): string | null {
   const s = typeof raw === "string" ? raw.trim() : "";
-  if (!s) return false;
+  if (!s) return null;
+  const candidate = /^[a-z][a-z0-9+.-]*:/i.test(s) ? s : `https://${s}`;
   try {
-    const u = new URL(s);
-    return u.protocol === "http:" || u.protocol === "https:";
+    const u = new URL(candidate);
+    if (u.protocol === "http:" || u.protocol === "https:") return u.toString();
   } catch {
-    return false;
+    return null;
   }
+  return null;
+}
+
+/** Σύνδεσμος Google Maps — CMS URL (με https αν λείπει) ή αναζήτηση από διεύθυνση. */
+export function resolveGoogleMapsHref(
+  googleMapsUrl: string | undefined | null,
+  address?: string | undefined | null,
+): string | null {
+  const fromCms = normalizeHttpUrl(googleMapsUrl);
+  if (fromCms) return fromCms;
+  const addr = typeof address === "string" ? address.trim() : "";
+  if (!addr) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
+}
+
+export function isValidExternalUrl(raw: string | undefined | null): raw is string {
+  return normalizeHttpUrl(raw) != null;
 }

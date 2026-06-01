@@ -2,7 +2,7 @@ import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { absolutePageUrl, resolvePublicAssetUrl } from "@/lib/siteMetadata";
 import { resolveImdbRating } from "@/lib/movieImdb";
 import { movieTitleLines } from "@/lib/movieTitles";
-import { findVenueForShowtime, isValidExternalUrl } from "@/lib/venueResolve";
+import { findVenueForShowtime, isValidExternalUrl, resolveGoogleMapsHref } from "@/lib/venueResolve";
 import { resolvePricingForShowtime } from "@/lib/venuePricing";
 
 type JsonLdObject = Record<string, unknown>;
@@ -53,7 +53,7 @@ function screeningEvent(
   const venueRecord = findVenueForShowtime(venues, st);
   const venueName = venueRecord?.name?.trim() || (st.venue ?? "").trim() || "Σινεμά";
   const tl = movieTitleLines(movie);
-  const mapsUrl = isValidExternalUrl(venueRecord?.googleMapsUrl) ? venueRecord!.googleMapsUrl.trim() : undefined;
+  const mapsUrl = resolveGoogleMapsHref(venueRecord?.googleMapsUrl, venueRecord?.address);
 
   const location: JsonLdObject = {
     "@type": "MovieTheater",
