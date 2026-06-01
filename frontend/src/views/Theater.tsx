@@ -2,7 +2,9 @@ import { useState, useMemo } from "react";
 import EventCard from "@/components/EventCard";
 import PageHeaderReveal from "@/components/PageHeaderReveal";
 import LoadingState from "@/components/LoadingState";
+import TheaterComingSoon from "@/components/TheaterComingSoon";
 import Footer from "@/components/Footer";
+import { THEATER_PAGE_COMING_SOON } from "@/config/features";
 import { useTheaterShows } from "@/hooks/useStrapi";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
@@ -12,8 +14,10 @@ const tags = ["Όλα", "Δράμα", "Μιούζικαλ", "Κωμωδία", "�
 const TheaterPage = () => {
   usePageSeo(staticPageSeo.theater);
 
-  const { data: theaterShows, isLoading } = useTheaterShows();
+  const { data: theaterShows, isLoading } = useTheaterShows(!THEATER_PAGE_COMING_SOON);
   const [tag, setTag] = useState("Όλα");
+
+  const hasShows = (theaterShows?.length ?? 0) > 0;
 
   const filtered = useMemo(() => {
     if (!theaterShows) return [];
@@ -33,36 +37,55 @@ const TheaterPage = () => {
       </div>
 
       <div className="container">
-        <div className="flex flex-wrap items-center gap-2 mb-8">
-          <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Είδος:</span>
-          {tags.map((t) => (
-            <button
-              key={t}
-              onClick={() => setTag(t)}
-              className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
-                tag === t ? "bg-[#13143E] text-white border-[#13143E]" : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
-
-        {isLoading ? (
+        {THEATER_PAGE_COMING_SOON ? (
+          <TheaterComingSoon variant="page" />
+        ) : isLoading ? (
           <LoadingState message="Φόρτωση παραστάσεων..." />
+        ) : !hasShows ? (
+          <TheaterComingSoon variant="page" />
         ) : (
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-            {filtered.map((show, i) => (
-              <EventCard
-                key={show.id} slug={show.slug} title={show.title} subtitle={show.director}
-                genre={show.genre} duration={show.duration}
-                gradientFrom={show.gradientFrom} gradientTo={show.gradientTo}
-                posterUrl={show.posterUrl}
-                type="theater" index={i}
-                badge={show.isPremiere ? "Πρεμιέρα" : show.isLastShows ? "Τελευταίες" : undefined}
-              />
-            ))}
-          </div>
+          <>
+            <div className="flex flex-wrap items-center gap-2 mb-8">
+              <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Είδος:</span>
+              {tags.map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTag(t)}
+                  className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                    tag === t
+                      ? "bg-[#13143E] text-white border-[#13143E]"
+                      : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+                  }`}
+                >
+                  {t}
+                </button>
+              ))}
+            </div>
+
+            {filtered.length === 0 ? (
+              <TheaterComingSoon variant="page" />
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+                {filtered.map((show, i) => (
+                  <EventCard
+                    key={show.id}
+                    slug={show.slug}
+                    title={show.title}
+                    subtitle={show.director}
+                    genre={show.genre}
+                    duration={show.duration}
+                    gradientFrom={show.gradientFrom}
+                    gradientTo={show.gradientTo}
+                    posterUrl={show.posterUrl}
+                    type="theater"
+                    index={i}
+                    badge={show.isPremiere ? "Πρεμιέρα" : show.isLastShows ? "Τελευταίες" : undefined}
+                  />
+                ))}
+              </div>
+            )}
+          </>
         )}
       </div>
       <Footer />

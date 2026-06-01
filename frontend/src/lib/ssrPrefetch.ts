@@ -5,11 +5,12 @@ import {
   homeNeedsTheater,
   homeNeedsVenues,
   homeNeedsDining,
+  homeNeedsFullMovieCatalog,
   resolveHomepageLayout,
   type MappedHomepage,
 } from "@/config/home";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
-import { finalizeBootstrapCache } from "@/lib/slimDehydrate";
+import { finalizeBootstrapCache, minifyDehydratedState } from "@/lib/slimDehydrate";
 
 const queryDefaults = {
   staleTime: 300_000,
@@ -44,8 +45,9 @@ function matchMoviesVenueSlug(path: string): string | null {
 async function prefetchHomeBundle(qc: QueryClient) {
   await qc.prefetchQuery({ queryKey: ["homepage"], queryFn: api.getHomepage, ...queryDefaults });
   const layout = resolveHomepageLayout(qc.getQueryData<MappedHomepage>(["homepage"]) ?? null);
+  const movieQueryFn = homeNeedsFullMovieCatalog(layout.sections) ? api.getMovies : api.getMoviesForHome;
   const tasks: Promise<unknown>[] = [
-    qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMovies, ...queryDefaults }),
+    qc.prefetchQuery({ queryKey: ["movies"], queryFn: movieQueryFn, ...queryDefaults }),
   ];
   if (homeNeedsShowtimes(layout.sections)) {
     tasks.push(qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }));
@@ -60,7 +62,11 @@ async function prefetchHomeBundle(qc: QueryClient) {
     tasks.push(qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants, ...queryDefaults }));
   }
   await Promise.all(tasks);
-  finalizeBootstrapCache(qc, { trimHomeShowtimes: true, trimHomeMovies: true });
+  finalizeBootstrapCache(qc, {
+    trimHomeShowtimes: true,
+    trimHomeMovies: true,
+    slimHomepage: true,
+  });
 }
 
 /** Λίστα /movies — χωρίς πλήρες catalog στο HTML (client fetch για ταινίες). */
@@ -164,5 +170,5 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
     console.warn(`[ssrPrefetch] ${normalized}:`, err);
   }
 
-  return dehydrate(qc);
+  return minifyDehydratedState(dehydrate(qc));
 }

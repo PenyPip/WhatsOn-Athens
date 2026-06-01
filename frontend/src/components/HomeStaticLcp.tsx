@@ -5,11 +5,13 @@ import { homeHeroCriticalCss } from "@/lib/homeHeroLayout";
 type HomeStaticLcpProps = {
   posterHref: string;
   title: string;
+  synopsis?: string;
 };
 
-export default function HomeStaticLcp({ posterHref, title }: HomeStaticLcpProps) {
+export default function HomeStaticLcp({ posterHref, title, synopsis }: HomeStaticLcpProps) {
   const src = lcpImageSrc(posterHref);
   const displayTitle = title?.trim() || "Ταινία";
+  const displaySynopsis = synopsis?.trim() ?? "";
 
   const criticalCss =
     "html,body{margin:0;min-height:100%}body{font-family:system-ui,-apple-system,sans-serif;background:#f0edf8;color:#1c1d62}" +
@@ -24,6 +26,7 @@ export default function HomeStaticLcp({ posterHref, title }: HomeStaticLcpProps)
             <div className="home-static-lcp__copy">
               <span className="home-static-lcp__badge">Πιο πολυσυζητημένες</span>
               <p className="home-static-lcp__title">{displayTitle}</p>
+              {displaySynopsis ? <p className="home-static-lcp__synopsis">{displaySynopsis}</p> : null}
             </div>
             {/* eslint-disable-next-line @next/next/no-img-element -- LCP: πρέπει στο αρχικό HTML */}
             <div className="home-static-lcp__poster-wrap">

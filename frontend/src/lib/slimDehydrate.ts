@@ -1,4 +1,4 @@
-import type { QueryClient } from "@tanstack/react-query";
+import type { DehydratedState, QueryClient } from "@tanstack/react-query";
 import type { MappedHomepage } from "@/config/home";
 import type {
   StrapiMovie,
@@ -31,7 +31,6 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         movieGenre: st.movieGenre,
         movieGenreSlugs: st.movieGenreSlugs,
         moviePosterUrl: st.moviePosterUrl,
-        moviePosterSrcSet: st.moviePosterSrcSet,
         summerScreening: st.summerScreening,
         venueSummerOutdoor: st.venueSummerOutdoor,
         price: st.price,
@@ -57,6 +56,7 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         criticScore: m.criticScore,
         mostTalkedAbout: m.mostTalkedAbout,
         synopsis: m.mostTalkedAbout ? m.synopsis : undefined,
+        director: m.mostTalkedAbout ? m.director : undefined,
         releaseDate: m.releaseDate,
         posterUrl: m.posterUrl,
         posterSrcSet: m.posterSrcSet,
@@ -146,7 +146,39 @@ export function slimListQueryCache(qc: QueryClient): void {
   slimMoviesShowtimes(qc);
 }
 
-const HOME_SHOWTIME_HORIZON_MS = 14 * 24 * 60 * 60 * 1000;
+const HOME_SHOWTIME_HORIZON_MS = 7 * 24 * 60 * 60 * 1000;
+
+/** Μικρότερο `#__RQ_STATE__` — λιγότερο JSON.parse στην αρχική (TBT). */
+export function minifyDehydratedState(state: DehydratedState): DehydratedState {
+  return {
+    mutations: state.mutations,
+    queries: state.queries.map((q) => {
+      const { dehydratedAt: _d, ...query } = q;
+      const { error: _e, errorUpdatedAt: _eu, fetchFailureCount: _f, ...restState } = q.state;
+      return {
+        ...query,
+        state: {
+          ...restState,
+          error: null,
+          fetchFailureCount: 0,
+        },
+      };
+    }),
+  } as DehydratedState;
+}
+
+function slimHomepageBootstrap(qc: QueryClient): void {
+  const homepage = qc.getQueryData<MappedHomepage>(["homepage"]);
+  if (!homepage) return;
+  qc.setQueryData(["homepage"], {
+    sections: homepage.sections,
+    heroTheaterSlug: homepage.heroTheaterSlug,
+    heroMovieSlug: homepage.heroMovieSlug,
+    featuredMovieIndex: homepage.featuredMovieIndex,
+    priorityMovieGenre: homepage.priorityMovieGenre,
+    priorityTheaterGenre: homepage.priorityTheaterGenre,
+  });
+}
 
 /** Λιγότερες εγγραφές showtimes στο bootstrap αρχικής (ταχύτερο JSON.parse). */
 export function trimHomeShowtimesDehydrate(qc: QueryClient): void {
@@ -236,9 +268,11 @@ export function finalizeBootstrapCache(
     trimHomeShowtimes?: boolean;
     trimHomeMovies?: boolean;
     trimVenuesForShowtimes?: boolean;
+    slimHomepage?: boolean;
   },
 ): void {
   slimListQueryCache(qc);
+  if (options?.slimHomepage) slimHomepageBootstrap(qc);
   if (options?.trimHomeShowtimes) trimHomeShowtimesDehydrate(qc);
   if (options?.trimHomeMovies) trimMoviesForHomeBootstrap(qc);
   if (options?.trimVenuesForShowtimes) trimVenuesForShowtimes(qc);

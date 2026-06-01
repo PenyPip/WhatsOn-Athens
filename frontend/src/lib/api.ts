@@ -1168,6 +1168,12 @@ const MOVIE_PUBLIC_POPULATE: Record<string, string> = {
   "populate[cast]": "*",
 };
 
+/** Αρχική / λίστες — χωρίς cast (μικρότερο bootstrap & TBT). */
+const MOVIE_HOME_LIST_POPULATE: Record<string, string> = {
+  "populate[movie_genres]": "*",
+  "populate[poster]": "*",
+};
+
 const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
   "populate[venue][fields][0]": "name",
   "populate[poster][fields][0]": "url",
@@ -1253,6 +1259,13 @@ export const api = {
     Promise.all([
       fetchMovieGenreCatalog(),
       fetchAPIPagedEntries("/movies", { ...MOVIE_PUBLIC_POPULATE }),
+    ]).then(([catalog, rows]) => rows.map((x) => mapMovie(x, catalog.hydrate, catalog.linkIndex))),
+
+  /** Ελαφρύτερο payload για αρχική όταν δεν χρειάζονται new/soon/week sections. */
+  getMoviesForHome: () =>
+    Promise.all([
+      fetchMovieGenreCatalog(),
+      fetchAPIPagedEntries("/movies", { ...MOVIE_HOME_LIST_POPULATE }),
     ]).then(([catalog, rows]) => rows.map((x) => mapMovie(x, catalog.hydrate, catalog.linkIndex))),
 
   getMovieBySlug: (slug: string) =>

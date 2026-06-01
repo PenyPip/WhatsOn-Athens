@@ -29,9 +29,11 @@ import {
 } from "@/lib/homeMovieFilters";
 import { resolveImdbRating } from "@/lib/movieImdb";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
+import TheaterComingSoon from "@/components/TheaterComingSoon";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
+import { THEATER_PAGE_COMING_SOON } from "@/config/features";
 import { siteSeo } from "@/lib/siteMetadata";
 
 const MOVIE_ROW_MIN_H = "min-h-[20rem] md:min-h-[22rem]";
@@ -301,7 +303,7 @@ type HomeBodyProps = {
 export default function HomeBody({ layout }: HomeBodyProps) {
   const sections = layout.sections;
   const needsVenues = homeNeedsVenues(sections);
-  const needsTheater = homeNeedsTheater(sections);
+  const needsTheater = homeNeedsTheater(sections) && !THEATER_PAGE_COMING_SOON;
   const needsDining = homeNeedsDining(sections);
   const needsShowtimes = homeNeedsShowtimes(sections);
 
@@ -516,7 +518,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                       Περιοδείες & παραστάσεις που ταξιδεύουν
                     </h2>
                   </div>
-                  {theaterShows === undefined && theaterLoading ? (
+                  {THEATER_PAGE_COMING_SOON ? (
+                    <TheaterComingSoon variant="section" />
+                  ) : theaterShows === undefined && theaterLoading ? (
                     <div className="mt-10 flex gap-4 overflow-hidden pb-2">
                       {[0, 1, 2, 3].map((i) => (
                         <div
@@ -530,9 +534,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                       <p className="text-sm leading-relaxed text-amber-100/85 font-body">Δεν ήταν δυνατή η φόρτωση.</p>
                     </div>
                   ) : (theaterShows ?? []).length === 0 ? (
-                    <div className="mt-10 max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
-                      <p className="text-sm leading-relaxed text-white/70 font-body">Δεν υπάρχουν παραστάσεις προς το παρόν.</p>
-                    </div>
+                    <TheaterComingSoon variant="section" />
                   ) : (
                     <div className="mt-10 flex items-stretch gap-4 overflow-x-auto scrollbar-hide pb-2">
                       {(theaterShows ?? []).map((show, i) => (

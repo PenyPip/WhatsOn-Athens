@@ -15,10 +15,10 @@ type SpaRootProps = {
   suppressHydrationWarning?: boolean;
 };
 
-/** Client boundary — bootstrap από prop (SSG) ή `#__RQ_STATE__` (μετά strip του flight payload). */
+/** Client boundary — bootstrap μόνο από `#__RQ_STATE__` (αποφυγή διπλού JSON στο HTML). */
 export default function SpaRoot({ ssrPath, bootstrapState, homeMainOverlap, suppressHydrationWarning }: SpaRootProps) {
   const dehydratedState = useMemo(
-    () => bootstrapState ?? readRqBootstrapState(),
+    () => readRqBootstrapState() ?? bootstrapState,
     [bootstrapState],
   );
 

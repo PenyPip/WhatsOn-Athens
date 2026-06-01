@@ -4,7 +4,10 @@ import type { StrapiMovie } from "@/lib/api";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { posterLcpSrc } from "@/lib/posterDelivery";
 import { lcpImageSrc } from "@/lib/lcpImageSrc";
+import { synopsisExcerpt } from "@/lib/synopsisExcerpt";
 import { resolvePublicAssetUrl } from "@/lib/siteMetadata";
+
+const HERO_SYNOPSIS_MAX = 280;
 
 function queryData<T>(state: DehydratedState, queryKey: string): T | undefined {
   const entry = state.queries.find(
@@ -17,6 +20,7 @@ function queryData<T>(state: DehydratedState, queryKey: string): T | undefined {
 export type HomeLcpDisplay = {
   posterHref: string;
   title: string;
+  synopsis: string;
   /** CMS ενότητα hero — το SPA σχεδιάζει το πλήρες hero. */
   hasHeroSection: boolean;
 };
@@ -34,11 +38,13 @@ export function homeLcpDisplay(path: string, dehydratedState?: DehydratedState):
 
   let posterPath: string | null = null;
   let title = "";
+  let synopsis = "";
 
   if (movie) {
     const href = posterLcpSrc(movie.posterUrl, movie.posterSrcSet) ?? movie.posterUrl?.trim();
     if (href) posterPath = href;
     title = movie.title;
+    synopsis = synopsisExcerpt(movie.synopsis ?? "", HERO_SYNOPSIS_MAX);
   }
 
   if (!posterPath && !hasHeroSection) {
@@ -46,6 +52,7 @@ export function homeLcpDisplay(path: string, dehydratedState?: DehydratedState):
     if (fallback) {
       posterPath = posterLcpSrc(fallback.posterUrl, fallback.posterSrcSet) ?? fallback.posterUrl!.trim();
       title = fallback.title;
+      synopsis = synopsisExcerpt(fallback.synopsis ?? "", HERO_SYNOPSIS_MAX);
     }
   }
 
@@ -53,7 +60,7 @@ export function homeLcpDisplay(path: string, dehydratedState?: DehydratedState):
 
   const absolute = resolvePublicAssetUrl(posterPath) ?? posterPath;
   const posterHref = lcpImageSrc(absolute);
-  return { posterHref, title, hasHeroSection };
+  return { posterHref, title, synopsis, hasHeroSection };
 }
 
 /** Preload hero — μόνο όταν υπάρχει CMS hero (αλλιώς το static LCP block). */

@@ -10,6 +10,7 @@ import { posterLcpSrc } from "@/lib/posterDelivery";
 import { cn } from "@/lib/utils";
 
 const AUTO_ADVANCE_MS = 8000;
+const HERO_SYNOPSIS_MAX = 280;
 
 const navBtnClass =
   "flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-[#13143E]/85 text-white shadow-lg shadow-black/30 backdrop-blur-sm transition-colors hover:border-amber-200/50 hover:bg-[#1e1c4a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300/80";
@@ -18,15 +19,17 @@ export function MostTalkedAboutHeroShell() {
   return (
     <section className={HOME_HERO_COMPACT_SECTION_CLASS} aria-hidden="true">
       <div className="absolute inset-0 bg-gradient-to-br from-[#1c1a52] via-[#13143E] to-[#0d0c24]" />
-      <div className="relative z-10 container flex min-h-[400px] max-w-7xl items-center px-12 py-10 md:min-h-[440px] md:px-14">
-        <div className="grid w-full grid-cols-1 items-center gap-8 md:grid-cols-[1fr_auto] md:gap-10">
-          <div className="space-y-3">
-            <div className="h-8 w-52 rounded-full bg-white/10" />
-            <div className="h-9 w-4/5 max-w-md rounded bg-white/10 md:h-10" />
-            <div className="h-4 w-full max-w-sm rounded bg-white/10" />
-            <div className="h-9 w-32 rounded bg-white/15" />
+      <div className="relative z-10 container flex min-h-[520px] max-w-7xl items-center px-12 py-12 md:min-h-[580px] md:px-14 md:py-14">
+        <div className="grid w-full grid-cols-1 items-center gap-10 md:grid-cols-[1fr_auto] md:gap-12">
+          <div className="space-y-4">
+            <div className="h-9 w-56 rounded-full bg-white/10" />
+            <div className="h-10 w-4/5 max-w-lg rounded bg-white/10 md:h-12" />
+            <div className="h-4 w-full max-w-2xl rounded bg-white/10" />
+            <div className="h-4 w-full max-w-xl rounded bg-white/10" />
+            <div className="h-4 w-5/6 max-w-lg rounded bg-white/10" />
+            <div className="h-10 w-36 rounded bg-white/15" />
           </div>
-          <div className="mx-auto aspect-[2/3] w-44 animate-pulse rounded-xl bg-white/10 md:mx-0 md:w-52" />
+          <div className="mx-auto aspect-[2/3] w-48 animate-pulse rounded-xl bg-white/10 md:mx-0 md:w-60 lg:w-64" />
         </div>
       </div>
     </section>
@@ -59,6 +62,18 @@ function HeroNavButton({
       </svg>
     </button>
   );
+}
+
+function heroSynopsisText(movie: StrapiMovie): string {
+  return synopsisExcerpt(movie.synopsis ?? "", HERO_SYNOPSIS_MAX);
+}
+
+function heroMetaLine(movie: StrapiMovie): string {
+  const parts: string[] = [];
+  const director = (movie.director ?? "").trim();
+  if (director && director !== "—") parts.push(`Σκηνοθεσία: ${director}`);
+  if (movie.duration) parts.push(`${movie.duration}′`);
+  return parts.join(" · ");
 }
 
 const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
@@ -99,7 +114,8 @@ const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
 
   const active = movies[activeIndex];
   const titles = movieTitleLines(active);
-  const excerpt = synopsisExcerpt(active.synopsis, 130);
+  const synopsis = heroSynopsisText(active);
+  const meta = heroMetaLine(active);
   const notifyPosterReady = () => markLcpDone();
   const hasCarousel = movies.length > 1;
 
@@ -107,7 +123,7 @@ const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
     <section className={HOME_HERO_COMPACT_SECTION_CLASS} aria-roledescription="carousel" aria-label="Πιο πολυσυζητημένες ταινίες">
       <div className="absolute inset-0 bg-gradient-to-br from-[#1c1a52] via-[#13143E] to-[#0d0c24]" />
       <div
-        className="pointer-events-none absolute -right-8 top-1/2 h-64 w-64 -translate-y-1/2 rounded-full bg-amber-500/10 blur-3xl md:right-[12%]"
+        className="pointer-events-none absolute -right-8 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-amber-500/12 blur-3xl md:right-[10%]"
         aria-hidden
       />
 
@@ -116,76 +132,81 @@ const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
           <HeroNavButton
             direction="prev"
             onClick={() => goTo(activeIndex - 1)}
-            className="absolute left-2 top-1/2 z-20 -translate-y-1/2 md:left-4"
+            className="absolute left-2 top-[52%] z-20 -translate-y-1/2 md:left-5 md:top-1/2"
           />
           <HeroNavButton
             direction="next"
             onClick={() => goTo(activeIndex + 1)}
-            className="absolute right-2 top-1/2 z-20 -translate-y-1/2 md:right-4"
+            className="absolute right-2 top-[52%] z-20 -translate-y-1/2 md:right-5 md:top-1/2"
           />
         </>
       ) : null}
 
       <div
         className={cn(
-          "relative z-10 container flex max-w-7xl items-center py-8 md:py-10",
-          hasCarousel ? "px-12 md:px-16" : "px-4 md:px-6",
+          "relative z-10 container flex max-w-7xl items-center py-10 md:py-14",
+          hasCarousel ? "px-12 md:px-16" : "px-4 md:px-8",
         )}
       >
-        <div className="grid w-full grid-cols-1 items-center gap-8 md:grid-cols-[minmax(0,1fr)_auto] md:gap-10 lg:gap-14">
-          <div className="min-w-0 max-w-xl">
-            <div className="mb-4">
-              <span className="inline-flex items-center rounded-full border border-amber-300/55 bg-gradient-to-r from-amber-400/30 via-amber-500/20 to-amber-600/10 px-4 py-2 font-body text-[11px] font-bold uppercase tracking-[0.22em] text-amber-50 shadow-[0_4px_28px_rgba(251,191,36,0.22)] ring-1 ring-amber-100/25 md:text-xs md:tracking-[0.24em]">
+        <div className="grid w-full grid-cols-1 items-center gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:gap-12 lg:gap-16">
+          <div className="min-w-0 max-w-2xl lg:max-w-3xl">
+            <div className="mb-5">
+              <span className="inline-flex items-center rounded-full border border-amber-300/55 bg-gradient-to-r from-amber-400/30 via-amber-500/20 to-amber-600/10 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.22em] text-amber-50 shadow-[0_4px_28px_rgba(251,191,36,0.22)] ring-1 ring-amber-100/25 md:px-5 md:text-xs md:tracking-[0.24em]">
                 Πιο πολυσυζητημένες
               </span>
             </div>
-            <h2 className="font-display text-2xl font-bold leading-tight text-white md:text-[2rem] lg:text-4xl">{titles.primary}</h2>
+            <h2 className="font-display text-3xl font-bold leading-[1.08] text-white md:text-4xl lg:text-[2.75rem]">{titles.primary}</h2>
             {titles.secondary ? (
-              <p className="font-display mt-1.5 text-lg font-medium leading-tight text-white/88 md:text-xl">{titles.secondary}</p>
+              <p className="font-display mt-2 text-xl font-medium leading-tight text-white/90 md:text-2xl">{titles.secondary}</p>
             ) : null}
-            {excerpt ? (
-              <p className="mt-3 font-body text-sm leading-relaxed text-white/72 md:text-[0.9375rem]">{excerpt}</p>
+            {(active.genre ?? "").trim() ? (
+              <span className="mt-3 inline-flex rounded border border-white/15 bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200/95">
+                {active.genre}
+              </span>
             ) : null}
-            <div className="mt-5 flex flex-wrap items-center gap-3">
+            <p
+              className={cn(
+                "mt-4 font-body text-base leading-relaxed text-white/78 md:mt-5 md:text-lg md:leading-[1.7]",
+                synopsis ? "line-clamp-5 md:line-clamp-6" : "text-white/50 italic",
+              )}
+            >
+              {synopsis || "Δεν υπάρχει σύνοψη για αυτή την ταινία."}
+            </p>
+            {meta ? <p className="mt-3 font-body text-sm text-white/55">{meta}</p> : null}
+            <div className="mt-6 flex flex-wrap items-center gap-4 md:mt-8">
               <Link
                 to={`/movies/${active.slug}`}
-                className="inline-flex items-center rounded bg-white px-5 py-2.5 text-sm font-semibold text-[#13143E] transition-colors hover:bg-white/90"
+                className="inline-flex items-center rounded bg-white px-6 py-3 text-sm font-semibold text-[#13143E] transition-colors hover:bg-white/90"
               >
                 Δες προβολές
               </Link>
-              {active.genre ? (
-                <span className="text-xs uppercase tracking-wider text-white/55">{active.genre}</span>
+              {hasCarousel ? (
+                <span className="font-body text-xs font-medium tabular-nums tracking-wide text-amber-200/75">
+                  {activeIndex + 1} / {movies.length}
+                </span>
               ) : null}
             </div>
-            {hasCarousel ? (
-              <p className="mt-4 font-body text-[11px] font-medium tabular-nums tracking-wide text-amber-200/70">
-                {activeIndex + 1} από {movies.length}
-              </p>
-            ) : null}
           </div>
 
-          <figure className="relative mx-auto w-[10.5rem] shrink-0 sm:w-44 md:mx-0 md:w-48 lg:w-52">
-            <div
-              className="pointer-events-none absolute -inset-3 rounded-2xl bg-amber-400/15 blur-xl"
-              aria-hidden
-            />
-            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-[#1a1844]/80 shadow-2xl shadow-black/40 ring-1 ring-white/15">
+          <figure className="relative mx-auto w-48 shrink-0 sm:w-52 md:mx-0 md:w-60 lg:w-64">
+            <div className="pointer-events-none absolute -inset-4 rounded-2xl bg-amber-400/18 blur-2xl" aria-hidden />
+            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-[#1a1844]/80 shadow-2xl shadow-black/45 ring-1 ring-white/20">
               {active.posterUrl ? (
                 <PosterPicture
                   key={active.id}
                   src={posterLcpSrc(active.posterUrl, active.posterSrcSet) ?? active.posterUrl}
                   srcSet={active.posterSrcSet}
                   alt={posterAltForMovie(active)}
-                  width={416}
-                  height={624}
+                  width={512}
+                  height={768}
                   fetchPriority={activeIndex === 0 ? "high" : "auto"}
                   loading={activeIndex === 0 ? "eager" : "lazy"}
-                  sizes="(max-width: 768px) 168px, 208px"
+                  sizes="(max-width: 768px) 192px, 256px"
                   className="h-full w-full object-contain object-center"
                   onLoad={activeIndex === 0 ? notifyPosterReady : undefined}
                 />
               ) : (
-                <div className="flex h-full w-full items-center justify-center bg-[#2a2444] text-xs text-white/40">Χωρίς αφίσα</div>
+                <div className="flex h-full w-full items-center justify-center bg-[#2a2444] text-sm text-white/40">Χωρίς αφίσα</div>
               )}
             </div>
           </figure>
@@ -193,7 +214,7 @@ const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
       </div>
 
       {hasCarousel ? (
-        <div className="absolute bottom-4 left-0 right-0 z-20 flex justify-center gap-2 pb-0.5 md:bottom-5">
+        <div className="absolute bottom-5 left-0 right-0 z-20 flex justify-center gap-2 md:bottom-7">
           {movies.map((m, i) => (
             <button
               key={m.id}

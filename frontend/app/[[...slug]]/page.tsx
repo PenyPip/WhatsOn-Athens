@@ -72,12 +72,13 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
       {preloadPoster ? (
         <link rel="preload" as="image" href={preloadPoster} fetchPriority="high" />
       ) : null}
-      {showStaticLcp && lcp ? <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} /> : null}
+      {showStaticLcp && lcp ? (
+        <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} synopsis={lcp.synopsis} />
+      ) : null}
       <ServerJsonLd path={path} />
       <RqBootstrapScript state={dehydratedState} />
       <SpaRoot
         ssrPath={path}
-        bootstrapState={dehydratedState}
         homeMainOverlap={showStaticLcp}
         suppressHydrationWarning={showStaticLcp}
       />

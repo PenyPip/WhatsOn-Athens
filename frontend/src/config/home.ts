@@ -107,3 +107,8 @@ export function homeNeedsShowtimes(sections: readonly HomeSectionId[]): boolean 
     ["movies_today", "summer_cinema", "summer_venues", "movies_week"].includes(id),
   );
 }
+
+/** Πλήρες catalog ταινιών (release date κ.λπ.) — όχι για απλές σειρές από showtimes. */
+export function homeNeedsFullMovieCatalog(sections: readonly HomeSectionId[]): boolean {
+  return sections.some((id) => ["new_movies", "movies_week", "coming_soon"].includes(id));
+}
