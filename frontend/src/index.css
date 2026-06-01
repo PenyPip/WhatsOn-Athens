@@ -155,8 +155,12 @@
   }
 
   .section-black .home-tour-card p,
-  .section-black .home-tour-card span {
+  .section-black .home-tour-card span:not(.home-tour-card-badge) {
     color: #13143e;
+  }
+
+  .section-black .home-tour-card .home-tour-card-badge {
+    color: #ffffff;
   }
 
   .grad-bg {

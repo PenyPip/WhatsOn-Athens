@@ -171,7 +171,7 @@ const EventCard = ({
               badge={badge}
             />
           ) : badge ? (
-            <span className="absolute left-2 top-2 z-10 rounded bg-[#13143E] px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-white">
+            <span className="home-tour-card-badge absolute left-2 top-2 z-10 rounded bg-[#13143E] px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-white">
               {badge}
             </span>
           ) : null}
