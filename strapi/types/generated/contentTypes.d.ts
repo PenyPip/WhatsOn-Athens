@@ -749,6 +749,8 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     gradient_to: Attribute.String;
     is_last_shows: Attribute.Boolean & Attribute.DefaultTo<false>;
     is_premiere: Attribute.Boolean & Attribute.DefaultTo<false>;
+    more_link: Attribute.String;
+    on_tour: Attribute.Boolean & Attribute.DefaultTo<false>;
     poster: Attribute.Media<'images'>;
     reviews: Attribute.Relation<
       'api::theater-show.theater-show',

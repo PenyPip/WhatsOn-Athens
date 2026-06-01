@@ -54,7 +54,7 @@ const Venues = () => {
         <div className="container">
           <PageHeaderReveal>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Χώροι</h1>
-            <p className="text-white/50 text-sm">Σινεμά, θέατρα & μουσικές σκηνές</p>
+            <p className="text-white/50 text-sm">Σινεμά & θερινά — πρόγραμμα προβολών ανά χώρο</p>
           </PageHeaderReveal>
         </div>
       </div>
@@ -88,11 +88,9 @@ const Venues = () => {
           <LoadingState message="Φόρτωση χώρων..." />
         ) : filteredVenues.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {kindFilter === "all"
-              ? "Δεν υπάρχουν καταχωρημένοι χώροι προς το παρόν."
-              : kindFilter === "cinema"
-                ? "Δεν βρέθηκαν σινεμά για αυτό το φίλτρο."
-                : "Δεν βρέθηκαν θέατρα για αυτό το φίλτρο."}
+            {kindFilter === "cinema"
+              ? "Δεν βρέθηκαν σινεμά για αυτό το φίλτρο."
+              : "Δεν υπάρχουν καταχωρημένοι χώροι προβολής προς το παρόν."}
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

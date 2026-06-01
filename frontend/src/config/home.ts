@@ -1,6 +1,6 @@
 /**
  * Το layout της αρχικής έρχεται από Strapi Single Type «Homepage».
- * Έτοιμα τμήματα: hero, movies_today, summer_cinema, summer_venues, tours (θέατρο + more link),
+ * Έτοιμα τμήματα: hero, movies_today, summer_cinema, summer_venues, tours (παραστάσεις με on_tour),
  * new_movies (τελευταίες 10 ημέρες release date), movies_week (ερχόμενη εβδομάδα κινηματογράφου Πέμ–Τετ),
  * coming_soon (κυκλοφορίες μετά από αυτή την εβδομάδα) — διάλεξε ποια εμφανίζονται και με ποια σειρά.
  */
@@ -70,15 +70,7 @@ export function layoutShowsHero(layout: ResolvedHomepageLayout): boolean {
 }
 
 export function homeNeedsVenues(sections: readonly HomeSectionId[]): boolean {
-  return (
-    sections.includes("summer_venues") ||
-    sections.includes("summer_cinema") ||
-    sections.includes("tours")
-  );
-}
-
-export function homeNeedsTourVenues(sections: readonly HomeSectionId[]): boolean {
-  return sections.includes("tours");
+  return sections.includes("summer_venues") || sections.includes("summer_cinema");
 }
 
 export function homeNeedsTheater(sections: readonly HomeSectionId[]): boolean {

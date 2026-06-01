@@ -6,6 +6,7 @@ import TheaterComingSoon from "@/components/TheaterComingSoon";
 import Footer from "@/components/Footer";
 import { THEATER_PAGE_COMING_SOON } from "@/config/features";
 import { useTheaterShows } from "@/hooks/useStrapi";
+import { filterResidentTheaterShows } from "@/lib/theaterTours";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
@@ -17,13 +18,16 @@ const TheaterPage = () => {
   const { data: theaterShows, isLoading } = useTheaterShows(!THEATER_PAGE_COMING_SOON);
   const [tag, setTag] = useState("Όλα");
 
-  const hasShows = (theaterShows?.length ?? 0) > 0;
+  const residentShows = useMemo(
+    () => filterResidentTheaterShows(theaterShows ?? []),
+    [theaterShows],
+  );
+  const hasShows = residentShows.length > 0;
 
   const filtered = useMemo(() => {
-    if (!theaterShows) return [];
-    if (tag === "Όλα") return theaterShows;
-    return theaterShows.filter((s) => s.tags?.includes(tag) || s.genre === tag);
-  }, [theaterShows, tag]);
+    if (tag === "Όλα") return residentShows;
+    return residentShows.filter((s) => s.tags?.includes(tag) || s.genre === tag);
+  }, [residentShows, tag]);
 
   return (
     <div className="min-h-screen pt-36 pb-20 md:pb-8">

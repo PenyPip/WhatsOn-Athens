@@ -10,13 +10,13 @@ import {
   type KeyboardEvent,
 } from "react";
 import { useNavigate } from "react-router-dom";
-import { Building2, Clapperboard, Loader2, Search } from "lucide-react";
-import { useMovies, useVenues, useShowtimes } from "@/hooks/useStrapi";
-import type { StrapiMovie, StrapiVenue } from "@/lib/api";
+import { Building2, Clapperboard, Loader2, Search, Theater } from "lucide-react";
+import { useMovies, useTheaterShows, useVenues, useShowtimes } from "@/hooks/useStrapi";
+import type { StrapiMovie, StrapiTheaterShow, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre, showtimeIsUpcoming } from "@/lib/homeMovieFilters";
 import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
-import { venueKindLabel } from "@/lib/venueType";
+import { isPublicVenueListing, venueKindLabel } from "@/lib/venueType";
 import { textMatchesSearch } from "@/lib/searchTokens";
 import { cn } from "@/lib/utils";
 
@@ -40,6 +40,15 @@ function venueMatches(venue: StrapiVenue, q: string): boolean {
 
 function cmpVenueNames(a: StrapiVenue, b: StrapiVenue): number {
   return (a.name ?? "").localeCompare(b.name ?? "", "el");
+}
+
+function theaterShowMatches(show: StrapiTheaterShow, q: string): boolean {
+  const hay = [show.title ?? "", show.slug ?? "", show.director ?? "", show.genre ?? "", show.venue ?? ""].join(" ");
+  return textMatchesSearch(hay, q);
+}
+
+function cmpShowTitles(a: StrapiTheaterShow, b: StrapiTheaterShow): number {
+  return (a.title ?? "").localeCompare(b.title ?? "", "el");
 }
 
 const CAP_EMPTY = 10;
@@ -70,6 +79,11 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies(searchActive);
   const { data: showtimes } = useShowtimes(searchActive);
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(searchActive);
+  const {
+    data: theaterShows,
+    isLoading: theaterLoading,
+    isError: theaterError,
+  } = useTheaterShows(searchActive);
 
   const moviesEnriched = useMemo(() => {
     const list = movies ?? [];
@@ -77,8 +91,8 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
     return enrichMoviesWithShowtimeGenre(list, showtimes);
   }, [movies, showtimes, searchActive]);
 
-  const loading = moviesLoading || venuesLoading;
-  const listsError = moviesError || venuesError;
+  const loading = moviesLoading || venuesLoading || theaterLoading;
+  const listsError = moviesError || venuesError || theaterError;
 
   const close = useCallback(() => {
     setPanelOpen(false);
@@ -114,14 +128,22 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   }, [moviesEnriched, search, showtimes, venues]);
 
   const venueHits = useMemo(() => {
-    const list = venues ?? [];
+    const list = (venues ?? []).filter(isPublicVenueListing);
     const trimmed = search.trim();
     let out = trimmed ? list.filter((v) => venueMatches(v, trimmed)) : [...list].sort(cmpVenueNames);
     if (!trimmed) out = out.slice(0, CAP_EMPTY);
     return out.slice(0, 50);
   }, [venues, search]);
 
-  const hasHits = movieHits.length > 0 || venueHits.length > 0;
+  const theaterHits = useMemo(() => {
+    const list = theaterShows ?? [];
+    const trimmed = search.trim();
+    let out = trimmed ? list.filter((s) => theaterShowMatches(s, trimmed)) : [...list].sort(cmpShowTitles);
+    if (!trimmed) out = out.slice(0, CAP_EMPTY);
+    return out.slice(0, 50);
+  }, [theaterShows, search]);
+
+  const hasHits = movieHits.length > 0 || venueHits.length > 0 || theaterHits.length > 0;
   const showPanel = panelOpen;
 
   const runMovie = useCallback(
@@ -142,6 +164,15 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
     [close, navigate],
   );
 
+  const runTheaterShow = useCallback(
+    (slug: string) => {
+      if (!slug?.trim()) return;
+      close();
+      navigate(`/theater/${slug.trim()}`);
+    },
+    [close, navigate],
+  );
+
   const onInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Escape") {
       e.preventDefault();
@@ -153,7 +184,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   return (
     <div ref={rootRef} className={cn("relative min-w-0", className)}>
       <label htmlFor={inputId} className="sr-only">
-        Αναζήτηση ταινίας ή χώρου
+        Αναζήτηση ταινίας, παράστασης ή χώρου προβολής
       </label>
       <div
         className={cn(
@@ -171,7 +202,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
           onChange={(e) => setSearch(e.target.value)}
           onFocus={() => setPanelOpen(true)}
           onKeyDown={onInputKeyDown}
-          placeholder="Ταινίες, χώροι…"
+          placeholder="Ταινίες, παραστάσεις, σινεμά…"
           autoComplete="off"
           autoCorrect="off"
           spellCheck={false}
@@ -236,10 +267,38 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                   </ul>
                 </section>
               ) : null}
+              {theaterHits.length > 0 ? (
+                <section className="px-2 pb-1">
+                  <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">Παραστάσεις</p>
+                  <ul>
+                    {theaterHits.map((s) => (
+                      <li key={`theater-${s.id}`}>
+                        <button
+                          type="button"
+                          role="option"
+                          className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => runTheaterShow(s.slug ?? "")}
+                        >
+                          <Theater className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
+                          <span className="min-w-0 flex-1">
+                            <span className="block truncate font-medium">{s.title || "Παράσταση"}</span>
+                            {(s.director || s.venue) && (
+                              <span className="mt-0.5 block truncate text-xs text-white/45">
+                                {[s.director, s.venue].filter(Boolean).join(" · ")}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </section>
+              ) : null}
               {venueHits.length > 0 ? (
                 <section className="px-2">
                   <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">
-                    Χώροι προβολής
+                    Σινεμά
                   </p>
                   <ul>
                     {venueHits.map((v) => (

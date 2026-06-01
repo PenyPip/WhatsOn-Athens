@@ -6,10 +6,11 @@ import VenueCard from "@/components/VenueCard";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
-import { useMovies, useShowtimes, useRestaurants, useVenues } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows } from "@/hooks/useStrapi";
 import {
   homeNeedsDining,
   homeNeedsShowtimes,
+  homeNeedsTheater,
   homeNeedsVenues,
   type HomeSectionId,
   type ResolvedHomepageLayout,
@@ -32,7 +33,7 @@ import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
-import { filterTouringVenuesForHome } from "@/lib/touringVenues";
+import { filterTouringShowsForHome } from "@/lib/theaterTours";
 import { siteSeo } from "@/lib/siteMetadata";
 
 const MOVIE_ROW_MIN_H = "min-h-[20rem] md:min-h-[22rem]";
@@ -302,6 +303,7 @@ type HomeBodyProps = {
 export default function HomeBody({ layout }: HomeBodyProps) {
   const sections = layout.sections;
   const needsVenues = homeNeedsVenues(sections);
+  const needsTheater = homeNeedsTheater(sections);
   const needsDining = homeNeedsDining(sections);
   const needsShowtimes = homeNeedsShowtimes(sections);
   const deferSecondary = useDeferUntilLcpDone();
@@ -314,7 +316,10 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(
     needsDining && deferSecondary,
   );
-  const apiSectionFailed = moviesError || showtimesError || venuesError || restaurantsError;
+  const { data: theaterShows, isLoading: theaterLoading, isError: theaterError } = useTheaterShows(
+    needsTheater && deferSecondary,
+  );
+  const apiSectionFailed = moviesError || showtimesError || venuesError || restaurantsError || theaterError;
 
   const stList = useMemo(() => showtimes ?? [], [showtimes]);
   const movieList = useMemo(() => {
@@ -333,7 +338,10 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     () => summerVenuesWithShowtimesOrAll(venueList, stList),
     [venueList, stList],
   );
-  const touringVenuesForHome = useMemo(() => filterTouringVenuesForHome(venueList), [venueList]);
+  const touringShowsForHome = useMemo(
+    () => filterTouringShowsForHome(theaterShows ?? []),
+    [theaterShows],
+  );
   const summerMoviesForHome = useMemo(
     () => moviesWithSummerOutdoorShowtimeThisCinemaWeek(movieList, stList, venueList),
     [movieList, stList, venueList],
@@ -523,32 +531,33 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                       Περιοδείες & παραστάσεις που ταξιδεύουν
                     </h2>
                   </div>
-                  {venues === undefined && venuesLoading ? (
+                  {theaterShows === undefined && theaterLoading ? (
                     <div className="mt-10 flex gap-4 overflow-hidden pb-2">
                       {[0, 1, 2, 3].map((i) => (
                         <div
                           key={i}
-                          className="h-[14rem] w-[260px] shrink-0 animate-pulse rounded-xl bg-white/10 sm:w-[280px]"
+                          className="h-[18rem] w-[11rem] shrink-0 animate-pulse rounded-lg bg-white/10 md:h-[20rem] md:w-[13rem]"
                         />
                       ))}
                     </div>
-                  ) : venuesError ? (
+                  ) : theaterError ? (
                     <div className="mt-10 max-w-xl rounded-xl border border-amber-500/20 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
                       <p className="text-sm leading-relaxed text-amber-100/85 font-body">Δεν ήταν δυνατή η φόρτωση.</p>
                     </div>
-                  ) : touringVenuesForHome.length === 0 ? (
+                  ) : touringShowsForHome.length === 0 ? (
                     <div className="mt-10 max-w-2xl rounded-xl border border-white/10 bg-black/35 px-5 py-6 md:px-7 md:py-7">
                       <p className="font-body text-sm leading-relaxed text-white/75 md:text-[0.9375rem]">
-                        Δεν υπάρχουν περιοδείες προς το παρόν. Στο CMS πρόσθεσε{" "}
-                        <strong className="font-medium text-white">Χώρο / Σινεμά</strong> με τύπο{" "}
-                        <strong className="font-medium text-white">Θέατρο</strong> και συμπλήρωσε το πεδίο{" "}
-                        <strong className="font-medium text-white">more link</strong> (URL περιοδείας ή κρατήσεων).
+                        Δεν υπάρχουν περιοδείες προς το παρόν. Στο CMS δημιούργησε{" "}
+                        <strong className="font-medium text-white">Theater Show</strong> με ενεργό{" "}
+                        <strong className="font-medium text-white">on tour</strong>, προαιρετικά χωρίς χώρο (venue), και
+                        βάλε το <strong className="font-medium text-white">more link</strong> στην παράσταση (όχι στον
+                        χώρο).
                       </p>
                       <a
-                        href="/venues?type=theater"
+                        href="/theater"
                         className="mt-5 inline-flex text-sm font-semibold text-amber-200/95 transition-colors hover:text-amber-50"
                       >
-                        Όλοι οι θεατρικοί χώροι
+                        Όλες οι παραστάσεις
                         <span aria-hidden className="ml-1 opacity-75">
                           →
                         </span>
@@ -560,18 +569,32 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                         className="mt-10 flex list-none items-stretch gap-4 overflow-x-auto scrollbar-hide pb-2"
                         aria-label="Περιοδείες θεάτρου"
                       >
-                        {touringVenuesForHome.map((venue) => (
-                          <li key={venue.id} className="flex h-full min-h-0 shrink-0">
-                            <VenueCard venue={venue} variant="spotlight" layout="carousel" tourMode />
+                        {touringShowsForHome.map((show, i) => (
+                          <li key={show.id} className="flex h-full min-h-0 shrink-0">
+                            <EventCard
+                              slug={show.slug}
+                              title={show.title}
+                              subtitle={show.director ?? ""}
+                              genre={show.genre ?? ""}
+                              duration={show.duration ?? 0}
+                              gradientFrom={show.gradientFrom}
+                              gradientTo={show.gradientTo}
+                              posterUrl={show.posterUrl}
+                              type="theater"
+                              badge="Περιοδεία"
+                              compactMovieMeta
+                              className="w-[11rem] md:w-[13rem]"
+                              index={i}
+                            />
                           </li>
                         ))}
                       </ul>
                       <div className="mt-10 border-t border-white/10 pt-8 text-center">
                         <a
-                          href="/venues?type=theater"
+                          href="/theater"
                           className="inline-flex items-center gap-1 text-sm font-semibold text-amber-200/95 transition-colors hover:text-amber-50"
                         >
-                          Όλοι οι θεατρικοί χώροι
+                          Όλες οι παραστάσεις
                           <span aria-hidden className="opacity-75">
                             →
                           </span>

@@ -628,6 +628,8 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     gradientTo: s.gradient_to || "#8e44ad",
     isPremiere: s.is_premiere,
     isLastShows: s.is_last_shows,
+    onTour: s.on_tour === true,
+    moreLink: typeof s.more_link === "string" ? s.more_link.trim() : "",
   };
 }
 
@@ -987,6 +989,10 @@ export interface StrapiTheaterShow {
   gradientTo: string;
   isPremiere?: boolean;
   isLastShows?: boolean;
+  /** Περιοδεία — τμήμα tours στην αρχική. */
+  onTour: boolean;
+  /** URL περιοδείας / κρατήσεων / site παράστασης. */
+  moreLink: string;
 }
 
 export interface StrapiRestaurant {
@@ -1117,6 +1123,19 @@ const MOVIE_HOME_LIST_POPULATE: Record<string, string> = {
 };
 
 const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
+  "fields[0]": "slug",
+  "fields[1]": "title",
+  "fields[2]": "synopsis",
+  "fields[3]": "director",
+  "fields[4]": "genre",
+  "fields[5]": "duration",
+  "fields[6]": "gradient_from",
+  "fields[7]": "gradient_to",
+  "fields[8]": "is_premiere",
+  "fields[9]": "is_last_shows",
+  "fields[10]": "on_tour",
+  "fields[11]": "more_link",
+  "populate[cast]": "*",
   "populate[venue][fields][0]": "name",
   "populate[poster][fields][0]": "url",
   "populate[poster][fields][1]": "formats",

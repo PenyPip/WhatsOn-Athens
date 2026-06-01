@@ -10,19 +10,25 @@ export const VENUE_KIND_LABELS: Record<VenueKind, string> = {
 
 export type VenueKindFilter = "all" | VenueKind;
 
+/** Φίλτρα στη σελίδα /venues — μόνο σινεμά (το θέατρο = παραστάσεις, όχι venues). */
 export const VENUE_KIND_FILTER_OPTIONS: { value: VenueKindFilter; label: string }[] = [
   { value: "all", label: "Όλα" },
   { value: "cinema", label: VENUE_KIND_LABELS.cinema },
-  { value: "theater", label: VENUE_KIND_LABELS.theater },
 ];
 
 export function parseVenueKindFilterParam(raw: string | null | undefined): VenueKindFilter {
   const v = raw?.trim().toLowerCase();
-  if (v === "cinema" || v === "theater") return v;
+  if (v === "cinema") return "cinema";
   return "all";
 }
 
+/** Χώροι που εμφανίζονται δημόσια (λίστες, αναζήτηση). Θεατρικά venues μένουν στο CMS για εσωτερική χρήση. */
+export function isPublicVenueListing(venue: Pick<StrapiVenue, "type">): boolean {
+  return !isTheaterVenue(venue);
+}
+
 export function venueMatchesKindFilter(venue: Pick<StrapiVenue, "type">, filter: VenueKindFilter): boolean {
+  if (!isPublicVenueListing(venue)) return false;
   if (filter === "all") return true;
   return venue.type === filter;
 }
@@ -54,14 +60,10 @@ export function isTheaterVenue(venue: Pick<StrapiVenue, "type">): boolean {
 
 export function programHrefForVenue(venue: Pick<StrapiVenue, "slug" | "type">): string | undefined {
   const slug = venue.slug?.trim();
-  if (!slug) return undefined;
-  if (venue.type === "cinema") return `/movies/venue/${encodeURIComponent(slug)}`;
-  if (venue.type === "theater") return "/theater";
-  return undefined;
+  if (!slug || !isCinemaVenue(venue)) return undefined;
+  return `/movies/venue/${encodeURIComponent(slug)}`;
 }
 
 export function programLinkLabelForVenue(venue: Pick<StrapiVenue, "type">): string {
-  return venue.type === "theater"
-    ? "Παραστάσεις σε αυτόν τον χώρο"
-    : "Πρόγραμμα ταινιών σε αυτόν τον χώρο";
+  return "Πρόγραμμα ταινιών σε αυτόν τον χώρο";
 }

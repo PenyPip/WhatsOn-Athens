@@ -64,11 +64,21 @@
       "type": "boolean",
       "default": false
     },
+    "on_tour": {
+      "type": "boolean",
+      "default": false,
+      "description": "Περιοδεία — εμφανίζεται στο τμήμα tours της αρχικής. Δεν απαιτείται χώρος (venue)."
+    },
+    "more_link": {
+      "type": "string",
+      "description": "URL περιοδείας, κρατήσεων ή επίσημης σελίδας της παράστασης (όχι στον χώρο)."
+    },
     "venue": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::venue.venue",
-      "inversedBy": "theater_shows"
+      "inversedBy": "theater_shows",
+      "description": "Προαιρετικό — σταθερή σκηνή. Κενό για περιοδείες χωρίς συγκεκριμένο venue."
     },
     "reviews": {
       "type": "relation",

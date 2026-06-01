@@ -59,6 +59,8 @@ import JsonLd from "@/components/JsonLd";
 import GenreLinks from "@/components/GenreLinks";
 import CinemaVenueLinks from "@/components/CinemaVenueLinks";
 import VenueBookingLink from "@/components/VenueBookingLink";
+import TheaterShowMoreLink from "@/components/TheaterShowMoreLink";
+import { isTouringTheaterShow } from "@/lib/theaterTours";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import {
@@ -373,6 +375,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const isMovie = type === "movie";
   const movie = isMovie ? event as StrapiMovie : null;
+  const theaterShow = !isMovie ? (event as StrapiTheaterShow) : null;
   const related = isMovie
     ? sortMoviesByCinemaCount(
         (moviesEnriched ?? []).filter((m) => m.slug !== slug),
@@ -682,10 +685,19 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   <Globe className="w-4 h-4" /> {movie.language.trim()}
                 </span>
               ) : null}
-              {!isMovie && <span className="flex items-center gap-1"><Users className="w-4 h-4" /> {(event as StrapiTheaterShow).venue}</span>}
+              {theaterShow?.venue?.trim() ? (
+                <span className="flex items-center gap-1">
+                  <Users className="w-4 h-4" /> {theaterShow.venue}
+                </span>
+              ) : theaterShow && isTouringTheaterShow(theaterShow) ? (
+                <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
+                  Περιοδεία
+                </span>
+              ) : null}
             </div>
 
             <div className="flex flex-wrap gap-3">
+              {theaterShow ? <TheaterShowMoreLink show={theaterShow} variant="hero" /> : null}
               {isMovie && hasMovieShowtimes ? (
                 <a
                   href="#showtimes"
@@ -777,6 +789,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             <section className="max-w-2xl animate-fade-in-up">
               <h2 className="font-display mb-3 text-xl font-semibold">Υπόθεση</h2>
               <p className="text-base leading-relaxed text-muted-foreground">{event.synopsis}</p>
+              {theaterShow ? (
+                <div className="mt-5">
+                  <TheaterShowMoreLink show={theaterShow} />
+                </div>
+              ) : null}
             </section>
             {movieInfoAside}
           </>
