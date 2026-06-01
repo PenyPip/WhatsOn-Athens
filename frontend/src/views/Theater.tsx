@@ -7,16 +7,19 @@ import Footer from "@/components/Footer";
 import { THEATER_PAGE_COMING_SOON } from "@/config/features";
 import { useTheaterShows } from "@/hooks/useStrapi";
 import { filterResidentTheaterShows } from "@/lib/theaterTours";
+import {
+  THEATER_GENRE_FILTER_OPTIONS,
+  theaterGenreLabel,
+  type TheaterGenreFilter,
+} from "@/lib/theaterGenre";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
-
-const tags = ["Όλα", "Δράμα", "Μιούζικαλ", "Κωμωδία", "Χορός", "Κλασικό"];
 
 const TheaterPage = () => {
   usePageSeo(staticPageSeo.theater);
 
   const { data: theaterShows, isLoading } = useTheaterShows(!THEATER_PAGE_COMING_SOON);
-  const [tag, setTag] = useState("Όλα");
+  const [genreFilter, setGenreFilter] = useState<TheaterGenreFilter>("all");
 
   const residentShows = useMemo(
     () => filterResidentTheaterShows(theaterShows ?? []),
@@ -25,9 +28,9 @@ const TheaterPage = () => {
   const hasShows = residentShows.length > 0;
 
   const filtered = useMemo(() => {
-    if (tag === "Όλα") return residentShows;
-    return residentShows.filter((s) => s.tags?.includes(tag) || s.genre === tag);
-  }, [residentShows, tag]);
+    if (genreFilter === "all") return residentShows;
+    return residentShows.filter((s) => s.genre === genreFilter);
+  }, [residentShows, genreFilter]);
 
   return (
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
@@ -51,18 +54,18 @@ const TheaterPage = () => {
           <>
             <div className="flex flex-wrap items-center gap-2 mb-8">
               <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Είδος:</span>
-              {tags.map((t) => (
+              {THEATER_GENRE_FILTER_OPTIONS.map(({ value, label }) => (
                 <button
-                  key={t}
+                  key={value}
                   type="button"
-                  onClick={() => setTag(t)}
+                  onClick={() => setGenreFilter(value)}
                   className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
-                    tag === t
+                    genreFilter === value
                       ? "bg-[#13143E] text-white border-[#13143E]"
                       : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
                   }`}
                 >
-                  {t}
+                  {label}
                 </button>
               ))}
             </div>
@@ -77,10 +80,8 @@ const TheaterPage = () => {
                     slug={show.slug}
                     title={show.title}
                     subtitle={show.director}
-                    genre={show.genre}
+                    genre={theaterGenreLabel(show.genre)}
                     duration={show.duration}
-                    gradientFrom={show.gradientFrom}
-                    gradientTo={show.gradientTo}
                     posterUrl={show.posterUrl}
                     type="theater"
                     index={i}

@@ -33,6 +33,7 @@ import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
+import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { filterTouringShowsForHome } from "@/lib/theaterTours";
 import { siteSeo } from "@/lib/siteMetadata";
 
@@ -536,7 +537,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                       {[0, 1, 2, 3].map((i) => (
                         <div
                           key={i}
-                          className="h-[18rem] w-[11rem] shrink-0 animate-pulse rounded-lg bg-white/10 md:h-[20rem] md:w-[13rem]"
+                          className="h-[11.5rem] w-[17rem] shrink-0 animate-pulse rounded-lg bg-white/10 md:h-[12.5rem] md:w-[19rem]"
                         />
                       ))}
                     </div>
@@ -575,15 +576,14 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               slug={show.slug}
                               title={show.title}
                               subtitle={show.director ?? ""}
-                              genre={show.genre ?? ""}
+                              genre={theaterGenreLabel(show.genre)}
                               duration={show.duration ?? 0}
-                              gradientFrom={show.gradientFrom}
-                              gradientTo={show.gradientTo}
                               posterUrl={show.posterUrl}
                               type="theater"
                               badge="Περιοδεία"
                               compactMovieMeta
-                              className="w-[11rem] md:w-[13rem]"
+                              darkSectionCard
+                              className="w-[17rem] md:w-[19rem]"
                               index={i}
                             />
                           </li>

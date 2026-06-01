@@ -60,6 +60,7 @@ import GenreLinks from "@/components/GenreLinks";
 import CinemaVenueLinks from "@/components/CinemaVenueLinks";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import TheaterShowMoreLink from "@/components/TheaterShowMoreLink";
+import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { isTouringTheaterShow } from "@/lib/theaterTours";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
@@ -281,7 +282,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     if (!event) return "";
     const isM = type === "movie";
     const mov = isM ? (event as StrapiMovie) : null;
-    if (!isM || !mov) return (event.genre ?? "").trim();
+    if (!isM || !mov) return theaterGenreLabel(event.genre);
     const fromMovie = resolveMovieGenreLine(mov.id, mov.slug, mov, genreCatalog?.linkIndex);
     if (fromMovie) return fromMovie;
     const list = showtimes ?? [];
@@ -578,14 +579,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           isMovie ? "md:min-h-[min(52vh,640px)]" : "min-h-[50vh]",
         )}
       >
-        {!isMovie ? (
-          <div
-            className="absolute inset-0 opacity-40"
-            style={{
-              background: `linear-gradient(135deg, ${(event as StrapiTheaterShow).gradientFrom}, ${(event as StrapiTheaterShow).gradientTo})`,
-            }}
-          />
-        ) : movie?.posterUrl ? (
+        {isMovie && movie?.posterUrl ? (
           <PosterPicture
             src={movie.posterUrl}
             srcSet={movie.posterSrcSet}
@@ -597,12 +591,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             aria-hidden
             className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-[0.22] blur-2xl"
           />
-        ) : !isMovie && (event as StrapiTheaterShow).posterUrl ? (
+        ) : theaterShow?.posterUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={(event as StrapiTheaterShow).posterUrl}
-              alt={posterAltForTheater((event as StrapiTheaterShow).title)}
+              src={theaterShow.posterUrl}
+              alt={posterAltForTheater(theaterShow.title)}
               width={1200}
               height={1800}
               fetchPriority="high"
@@ -610,9 +604,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               className="absolute inset-0 h-full w-full object-cover opacity-35"
             />
           </>
-        ) : (
-          <div className="absolute inset-0 bg-[#13143E]" />
-        )}
+        ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-[#13143E]/75 to-[#13143E]/35" />
 
         <div className="relative z-10 container pb-8 pt-20 md:pb-12 md:pt-32 lg:pt-36">
@@ -854,11 +846,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   title={itemTl.primary}
                   titleSecondary={itemTl.secondary}
                   subtitle={isMovie ? "" : item.director}
-                  genre={isMovie ? "" : item.genre}
+                  genre={isMovie ? "" : theaterGenreLabel((item as StrapiTheaterShow).genre)}
                   duration={item.duration}
                   imdbRating={isMovie ? resolveImdbRating(item as StrapiMovie) : undefined}
-                  gradientFrom={isMovie ? undefined : (item as StrapiTheaterShow).gradientFrom}
-                  gradientTo={isMovie ? undefined : (item as StrapiTheaterShow).gradientTo}
                   posterUrl={isMovie ? (item as StrapiMovie).posterUrl : item.posterUrl}
                   posterSrcSet={isMovie ? (item as StrapiMovie).posterSrcSet : undefined}
                   isDubbed={isMovie ? (item as StrapiMovie).isDubbed : false}

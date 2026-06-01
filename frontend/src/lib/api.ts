@@ -622,10 +622,7 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     duration: s.duration,
     venue,
     synopsis: s.synopsis,
-    tags: s.tags || [],
     posterUrl: strapiMediaUrl(s.poster, "medium") ?? undefined,
-    gradientFrom: s.gradient_from || "#2c3e50",
-    gradientTo: s.gradient_to || "#8e44ad",
     isPremiere: s.is_premiere,
     isLastShows: s.is_last_shows,
     onTour: s.on_tour === true,
@@ -983,10 +980,7 @@ export interface StrapiTheaterShow {
   duration: number;
   venue: string;
   synopsis: string;
-  tags: string[];
   posterUrl?: string;
-  gradientFrom: string;
-  gradientTo: string;
   isPremiere?: boolean;
   isLastShows?: boolean;
   /** Περιοδεία — τμήμα tours στην αρχική. */
@@ -1129,12 +1123,10 @@ const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
   "fields[3]": "director",
   "fields[4]": "genre",
   "fields[5]": "duration",
-  "fields[6]": "gradient_from",
-  "fields[7]": "gradient_to",
-  "fields[8]": "is_premiere",
-  "fields[9]": "is_last_shows",
-  "fields[10]": "on_tour",
-  "fields[11]": "more_link",
+  "fields[6]": "is_premiere",
+  "fields[7]": "is_last_shows",
+  "fields[8]": "on_tour",
+  "fields[9]": "more_link",
   "populate[cast]": "*",
   "populate[venue][fields][0]": "name",
   "populate[poster][fields][0]": "url",

@@ -745,8 +745,6 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     genre: Attribute.Enumeration<
       ['drama', 'comedy', 'musical', 'dance', 'opera']
     >;
-    gradient_from: Attribute.String;
-    gradient_to: Attribute.String;
     is_last_shows: Attribute.Boolean & Attribute.DefaultTo<false>;
     is_premiere: Attribute.Boolean & Attribute.DefaultTo<false>;
     more_link: Attribute.String;
@@ -760,7 +758,6 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     slug: Attribute.UID<'api::theater-show.theater-show', 'title'> &
       Attribute.Required;
     synopsis: Attribute.Text;
-    tags: Attribute.JSON;
     title: Attribute.String & Attribute.Required;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<

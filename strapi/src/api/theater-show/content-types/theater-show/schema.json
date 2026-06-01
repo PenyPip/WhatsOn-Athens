@@ -47,15 +47,6 @@
         "images"
       ]
     },
-    "tags": {
-      "type": "json"
-    },
-    "gradient_from": {
-      "type": "string"
-    },
-    "gradient_to": {
-      "type": "string"
-    },
     "is_premiere": {
       "type": "boolean",
       "default": false

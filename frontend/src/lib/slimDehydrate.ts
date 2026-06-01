@@ -79,8 +79,6 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         cast: s.cast,
         venue: s.venue,
         posterUrl: s.posterUrl,
-        gradientFrom: s.gradientFrom,
-        gradientTo: s.gradientTo,
         onTour: s.onTour,
         moreLink: s.moreLink,
       })),

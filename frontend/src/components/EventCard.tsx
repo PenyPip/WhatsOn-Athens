@@ -37,6 +37,8 @@ interface EventCardProps {
   uniformMovieSizing?: boolean;
   /** Αρχική / συμπαγής κάρτα: διάρκεια στην αφίσα, χωρίς σκηνοθέτη, είδος, διάρκεια κάτω. */
   compactMovieMeta?: boolean;
+  /** Σκούρο section (π.χ. περιοδείες αρχικής): σκούρο κείμενο σε λευκή κάρτα. */
+  darkSectionCard?: boolean;
   /** Πρώτες ορατές αφίσες — LCP / image delivery */
   posterPriority?: boolean;
   className?: string;
@@ -64,6 +66,7 @@ const EventCard = ({
   attachShowtimes = false,
   uniformMovieSizing,
   compactMovieMeta = false,
+  darkSectionCard = false,
   posterPriority = false,
   className = "",
   index: _index = 0,
@@ -81,10 +84,19 @@ const EventCard = ({
   const showDuration = typeof duration === "number" && Number.isFinite(duration) && duration > 0;
   const genreTrimmed = typeof genre === "string" ? genre.trim() : "";
   const isMovie = type === "movie";
+  const isTheater = type === "theater";
+  /** Οριζόντια αφίσα θεάτρου — ολόκληρη, χωρίς crop σε 2:3. */
+  const landscapePoster = isTheater;
+  /** Αρχική περιοδείες: μόνο τίτλος κάτω από την αφίσα. */
+  const theaterHomeCompact = isTheater && compactMovieMeta;
   /** Ομοιόμορφες καρτέλες για ταινίες ανά σειρά · θέατρο όχι. */
   const uniformMovie = uniformMovieSizing ?? isMovie;
   /** Λίστα /movies ή αρχική: διάρκεια στην αφίσα, χωρίς είδος/σκηνοθέτη κάτω. */
   const movieListingMeta = isMovie && (attachShowtimes || compactMovieMeta);
+  const titleClass = darkSectionCard
+    ? "text-[#13143E] group-hover:text-[#0a0b28]"
+    : "text-foreground group-hover:text-primary";
+  const metaClass = darkSectionCard ? "text-[#13143E]/78" : "text-muted-foreground";
   /** Οριζόντια σειρά (αρχική, κ.λπ.): σταθερό ύψος τίτλου/υπότιτλου/ειδους. */
   const uniformScrollCard = uniformMovie && !movieListingMeta && !attachShowtimes;
 
@@ -107,14 +119,19 @@ const EventCard = ({
                 "h-full min-h-0 flex-1",
                 tone === "soft"
                   ? "rounded-lg border-transparent bg-muted/35 shadow-none ring-1 ring-border/10 hover:-translate-y-0.5 hover:bg-muted/45 hover:shadow-[0_4px_14px_rgba(28,29,98,0.09)] hover:ring-border/[0.22]"
-                  : "card-elevated rounded-lg",
+                  : cn(
+                      "card-elevated rounded-lg",
+                      darkSectionCard && "bg-white shadow-[0_8px_28px_rgba(0,0,0,0.28)] ring-1 ring-white/20",
+                    ),
               ),
         )}
       >
         <div
           className={cn(
-            "relative aspect-[2/3] shrink-0 overflow-hidden",
-            !posterUrl && !showGradientFallback && "bg-secondary",
+            "relative shrink-0 overflow-hidden",
+            landscapePoster ? "aspect-[3/2] bg-[#ebe8f2]" : "aspect-[2/3]",
+            !posterUrl && !showGradientFallback && !landscapePoster && "bg-secondary",
+            !posterUrl && !showGradientFallback && landscapePoster && "bg-[#ebe8f2]",
           )}
           style={
             showGradientFallback ? { background: `linear-gradient(135deg, ${gradientFrom}, ${gradientTo})` } : undefined
@@ -129,8 +146,17 @@ const EventCard = ({
               height={600}
               loading={posterPriority ? "eager" : "lazy"}
               fetchPriority={posterPriority ? "high" : undefined}
-              sizes="(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 200px"
-              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              sizes={
+                landscapePoster
+                  ? "(max-width: 640px) 72vw, (max-width: 1024px) 36vw, 304px"
+                  : "(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 200px"
+              }
+              className={cn(
+                "h-full w-full transition-transform duration-500",
+                landscapePoster
+                  ? "object-contain object-center p-1.5 group-hover:scale-[1.02]"
+                  : "object-cover group-hover:scale-105",
+              )}
             />
           ) : null}
           {isMovie ? (
@@ -156,19 +182,32 @@ const EventCard = ({
               ? "shrink-0 border-t border-border/[0.1] px-3 py-2 pb-2"
               : cn(
                   "min-h-0 flex-1 gap-0",
-                  tone === "soft" ? "border-t border-border/[0.07]" : "border-t border-border/12",
+                  tone === "soft"
+                    ? "border-t border-border/[0.07]"
+                    : darkSectionCard
+                      ? "border-t border-[#13143E]/10"
+                      : "border-t border-border/12",
                 ),
           )}
         >
           <div
             className={cn(
               "flex shrink-0 flex-col",
-              uniformScrollCard ? "min-h-[7.25rem]" : isMovie ? (movieListingMeta ? "min-h-[3.75rem]" : "min-h-[5.5rem]") : "min-h-[2.75rem]",
+              uniformScrollCard
+                ? "min-h-[7.25rem]"
+                : isMovie
+                  ? movieListingMeta
+                    ? "min-h-[3.75rem]"
+                    : "min-h-[5.5rem]"
+                  : theaterHomeCompact
+                    ? "min-h-[2.5rem]"
+                    : "min-h-[2.75rem]",
             )}
           >
             <h3
               className={cn(
-                "font-display font-semibold leading-tight text-foreground transition-colors group-hover:text-primary",
+                "font-display font-semibold leading-tight transition-colors",
+                titleClass,
                 isMovie ? "line-clamp-2 text-base" : "line-clamp-2 text-base",
                 isMovie && "min-h-[2.5rem]",
                 uniformScrollCard && "min-h-[2.5rem]",
@@ -176,6 +215,9 @@ const EventCard = ({
             >
               {title}
             </h3>
+            {theaterHomeCompact && subtitleLine !== "\u00a0" ? (
+              <p className={cn("mt-0.5 line-clamp-1 text-sm font-medium leading-snug", metaClass)}>{subtitleLine}</p>
+            ) : null}
             {isMovie ? (
               <p
                 className="mt-0.5 line-clamp-2 min-h-[2.4375rem] text-sm font-medium leading-snug text-muted-foreground"
@@ -184,7 +226,7 @@ const EventCard = ({
                 {secondaryLine || "\u00a0"}
               </p>
             ) : titleSecondary ? (
-              <p className="mt-0.5 text-sm font-medium leading-snug text-muted-foreground line-clamp-2">{titleSecondary}</p>
+              <p className={cn("mt-0.5 text-sm font-medium leading-snug line-clamp-2", metaClass)}>{titleSecondary}</p>
             ) : null}
             {isMovie && !movieListingMeta ? (
               genreLinkItems?.length ? (
@@ -211,9 +253,9 @@ const EventCard = ({
           {isMovie && !movieListingMeta && uniformMovie ? (
             <div className="min-h-0 flex-1 shrink grow basis-0" aria-hidden />
           ) : null}
-          {movieListingMeta ? null : (
+          {movieListingMeta || theaterHomeCompact ? null : (
             <>
-              <p className="mb-1 mt-2 min-h-[1.3125rem] shrink-0 text-sm leading-snug text-muted-foreground line-clamp-1">
+              <p className={cn("mb-1 mt-2 min-h-[1.3125rem] shrink-0 text-sm leading-snug line-clamp-1", metaClass)}>
                 {subtitleLine}
               </p>
               <div
@@ -223,13 +265,18 @@ const EventCard = ({
                   !attachShowtimes && !uniformMovie ? "mt-auto" : "",
                 )}
               >
-                {type === "theater" ? (
-                  <span className="min-w-0 flex-1 text-xs font-medium uppercase tracking-wider text-muted-foreground/90 line-clamp-1">
+                {isTheater ? (
+                  <span
+                    className={cn(
+                      "min-w-0 flex-1 text-xs font-medium uppercase tracking-wider line-clamp-1",
+                      darkSectionCard ? "text-[#13143E]/65" : "text-muted-foreground/90",
+                    )}
+                  >
                     {genreTrimmed || "\u00a0"}
                   </span>
                 ) : null}
                 {!isMovie && showDuration ? (
-                  <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
+                  <div className={cn("flex shrink-0 items-center gap-1 text-sm", metaClass)}>
                     <Clock className="h-3.5 w-3.5 shrink-0" />
                     <span>{duration}&nbsp;′</span>
                   </div>

@@ -1,4 +1,5 @@
 import type { StrapiTheaterShow } from "@/lib/api";
+import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { absolutePageUrl, resolvePublicAssetUrl } from "@/lib/siteMetadata";
 
 type JsonLdObject = Record<string, unknown>;
@@ -68,8 +69,9 @@ export function buildTheaterDetailJsonLd(input: TheaterDetailJsonLdInput): JsonL
       : undefined,
   };
 
-  if (show.genre?.trim()) {
-    event.genre = show.genre.trim();
+  const genre = theaterGenreLabel(show.genre);
+  if (genre) {
+    event.genre = genre;
   }
 
   return {
