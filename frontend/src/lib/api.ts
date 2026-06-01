@@ -1,5 +1,7 @@
 import type { MappedHomepage, HomeSectionId } from "@/config/home";
 import { FALLBACK_SECTIONS, normalizeHomeSectionId } from "@/config/home";
+import { DEFAULT_SITE_NAVIGATION, type MappedSiteNavigation } from "@/config/navigation";
+import { resolveSiteNavigation } from "@/lib/navigation";
 import { apiRequestBaseUrl } from "@/lib/apiRequestBase";
 import { normalizeMovieOriginalTitle } from "@/lib/movieTitles";
 import { normalizeVenueKind, type VenueKind } from "@/lib/venueType";
@@ -1234,6 +1236,19 @@ function upcomingShowtimeFilters(now = new Date()): Record<string, string> {
   };
 }
 
+async function fetchSiteNavigation(): Promise<MappedSiteNavigation | null> {
+  const url = new URL(`${API_PREFIX}/site-navigation`, apiRequestBaseUrl());
+  url.searchParams.set("populate[items]", "*");
+  const res = await fetch(url.toString());
+  if (res.status === 404 || res.status === 403) return null;
+  if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
+  const json = (await res.json()) as unknown;
+  const root = json as { data?: { attributes?: Record<string, unknown> } };
+  const attrs = root?.data?.attributes;
+  if (!attrs) return null;
+  return resolveSiteNavigation(attrs);
+}
+
 async function fetchHomepage(): Promise<MappedHomepage | null> {
   const { hydrate: h } = await fetchMovieGenreCatalog();
   const url = new URL(`${API_PREFIX}/homepage`, apiRequestBaseUrl());
@@ -1250,7 +1265,11 @@ async function fetchHomepage(): Promise<MappedHomepage | null> {
   return mapHomeAttributes(attrs, h);
 }
 
+export type { MappedSiteNavigation, NavLinkItem, NavIconKey } from "@/config/navigation";
+
 export const api = {
+  getSiteNavigation: () => fetchSiteNavigation().then((n) => n ?? DEFAULT_SITE_NAVIGATION),
+
   getHomepage: () => fetchHomepage(),
 
   getMovieGenreCatalog: () => fetchMovieGenreCatalog(),

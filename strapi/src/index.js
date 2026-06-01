@@ -23,7 +23,18 @@ const PUBLIC_COLLECTION_READ_ACTIONS = [
   'api::user-review.user-review.findOne',
 ];
 
-const PUBLIC_SINGLE_TYPE_ACTIONS = ['api::homepage.homepage.find'];
+const PUBLIC_SINGLE_TYPE_ACTIONS = [
+  'api::homepage.homepage.find',
+  'api::site-navigation.site-navigation.find',
+];
+
+const DEFAULT_NAV_ITEMS = [
+  { label: 'Αρχική', path: '/', icon: 'home', show_on_desktop: true, show_on_mobile_tab: false },
+  { label: 'Ταινίες', path: '/movies', icon: 'film', show_on_desktop: true, show_on_mobile_tab: true },
+  { label: 'Θέατρο', path: '/theater', icon: 'theater', show_on_desktop: true, show_on_mobile_tab: true },
+  { label: 'Φαγητό', path: '/dining', icon: 'dining', show_on_desktop: true, show_on_mobile_tab: true },
+  { label: 'Χώροι', path: '/venues', icon: 'venues', show_on_desktop: true, show_on_mobile_tab: true },
+];
 
 async function enablePublicPermission(strapi, action, publicRoleId) {
   let perms = await strapi.db.query('plugin::users-permissions.permission').findMany({
@@ -91,6 +102,25 @@ module.exports = {
       await migrateLegacyVenueTypes(strapi);
     } catch (e) {
       strapi.log.warn('[whatson bootstrap venue types]', e);
+    }
+
+    try {
+      const existing = await strapi.entityService.findMany('api::site-navigation.site-navigation', {
+        publicationState: 'preview',
+      });
+      const hasEntry = Array.isArray(existing) ? existing.length > 0 : Boolean(existing);
+      if (!hasEntry) {
+        await strapi.entityService.create('api::site-navigation.site-navigation', {
+          data: {
+            brand_tagline: 'Cinema · Events · Culture',
+            items: DEFAULT_NAV_ITEMS,
+            publishedAt: new Date(),
+          },
+        });
+        strapi.log.info('[whatson] Δημιουργήθηκε προεπιλεγμένο μενού (Μενού ιστοτόπου).');
+      }
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap site navigation]', e);
     }
 
   },

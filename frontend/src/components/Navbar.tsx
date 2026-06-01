@@ -1,8 +1,12 @@
 import { lazy, Suspense, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
-import { Film, Theater, UtensilsCrossed, Building2, User } from "lucide-react";
+import { User } from "lucide-react";
 import { useGlobalSearchShortcut } from "@/hooks/globalSearchShortcut";
+import { useSiteNavigationData } from "@/hooks/useStrapi";
+import { isNavLinkActive } from "@/lib/navigation";
+import { navIconComponent } from "@/lib/navIcons";
 import type { NavSearchHandle } from "@/components/GlobalSearch";
+import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 
 const NavSearch = lazy(() =>
   import("@/components/GlobalSearch").then((m) => ({ default: m.NavSearch })),
@@ -11,12 +15,11 @@ const NavSearch = lazy(() =>
 function NavSearchFallback({ className = "" }: { className?: string }) {
   return <div className={`rounded-md bg-white/10 ${className}`} aria-hidden />;
 }
-import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 
 const NAV_GRADIENT =
   "linear-gradient(95deg, #742374 0%, #872F8B 18%, #7A2D84 34%, #5A286F 56%, #382154 76%, #13143E 100%)";
 
-function BrandLogo({ compact = false }: { compact?: boolean }) {
+function BrandLogo({ compact = false, tagline }: { compact?: boolean; tagline: string }) {
   if (compact) {
     return (
       <Link to="/" className="flex min-w-0 shrink-0 items-center gap-2">
@@ -53,7 +56,7 @@ function BrandLogo({ compact = false }: { compact?: boolean }) {
           ATHENS GUIDE
         </span>
         <span className="font-body text-[0.72rem] font-normal uppercase tracking-[2.5px] text-[#F0EDF8]/65">
-          Cinema · Events · Culture
+          {tagline}
         </span>
       </div>
     </Link>
@@ -64,6 +67,7 @@ const Navbar = () => {
   const location = useLocation();
   const mobileSearchRef = useRef<NavSearchHandle>(null);
   const desktopSearchRef = useRef<NavSearchHandle>(null);
+  const nav = useSiteNavigationData();
 
   const focusNavSearch = () => {
     const desktop = window.matchMedia("(min-width: 768px)").matches;
@@ -72,22 +76,9 @@ const Navbar = () => {
 
   useGlobalSearchShortcut(focusNavSearch);
 
-  const links = [
-    { to: "/", label: "Αρχική" },
-    { to: "/movies", label: "Ταινίες" },
-    { to: "/theater", label: "Θέατρο" },
-    { to: "/dining", label: "Φαγητό" },
-    { to: "/venues", label: "Χώροι" },
-  ];
-
-  const mobileLinks = [
-    { to: "/movies", label: "Ταινίες", icon: Film },
-    { to: "/theater", label: "Θέατρο", icon: Theater },
-    { to: "/dining", label: "Φαγητό", icon: UtensilsCrossed },
-    { to: "/venues", label: "Χώροι", icon: Building2 },
-  ];
-
-  const mobileTabCount = mobileLinks.length + (SHOW_PROFILE_IN_NAV ? 1 : 0);
+  const desktopLinks = nav.desktopLinks;
+  const mobileTabLinks = nav.mobileTabLinks;
+  const mobileTabCount = mobileTabLinks.length + (SHOW_PROFILE_IN_NAV ? 1 : 0);
 
   return (
     <>
@@ -96,7 +87,7 @@ const Navbar = () => {
         style={{ background: NAV_GRADIENT, borderColor: "rgba(141,47,143,0.35)" }}
       >
         <div className="container flex min-h-14 items-center gap-2.5 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
-          <BrandLogo compact />
+          <BrandLogo compact tagline={nav.brandTagline} />
           <Suspense fallback={<NavSearchFallback className="h-9 min-w-0 flex-1" />}>
             <NavSearch
               ref={mobileSearchRef}
@@ -109,7 +100,7 @@ const Navbar = () => {
 
       <nav className="fixed top-0 left-0 right-0 z-[60] hidden md:block" style={{ background: NAV_GRADIENT }}>
         <div className="container flex h-28 items-center gap-4">
-          <BrandLogo />
+          <BrandLogo tagline={nav.brandTagline} />
 
           <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex">
             <Suspense fallback={<NavSearchFallback className="h-11 w-full max-w-md" />}>
@@ -123,24 +114,27 @@ const Navbar = () => {
 
           <div className="flex flex-1 items-center justify-end gap-4 md:contents">
             <div className="flex items-center gap-6 md:gap-8">
-              {links.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  className={`font-body relative text-base transition-colors ${
-                    location.pathname === link.to ? "text-white" : "text-white/75 hover:text-white"
-                  }`}
-                >
-                  {link.label}
-                  {location.pathname === link.to ? (
-                    <span
-                      className="absolute -bottom-1 left-0 right-0 h-0.5"
-                      style={{ background: "linear-gradient(110deg, #7C2B76, #1C1D62)" }}
-                      aria-hidden
-                    />
-                  ) : null}
-                </Link>
-              ))}
+              {desktopLinks.map((link) => {
+                const active = isNavLinkActive(location.pathname, link.path);
+                return (
+                  <Link
+                    key={link.path}
+                    to={link.path}
+                    className={`font-body relative text-base transition-colors ${
+                      active ? "text-white" : "text-white/75 hover:text-white"
+                    }`}
+                  >
+                    {link.label}
+                    {active ? (
+                      <span
+                        className="absolute -bottom-1 left-0 right-0 h-0.5"
+                        style={{ background: "linear-gradient(110deg, #7C2B76, #1C1D62)" }}
+                        aria-hidden
+                      />
+                    ) : null}
+                  </Link>
+                );
+              })}
             </div>
 
             {SHOW_PROFILE_IN_NAV ? (
@@ -160,13 +154,13 @@ const Navbar = () => {
             gridTemplateColumns: `repeat(${mobileTabCount}, minmax(0, 1fr))`,
           }}
         >
-          {mobileLinks.map((link) => {
-            const Icon = link.icon;
-            const isActive = location.pathname === link.to;
+          {mobileTabLinks.map((link) => {
+            const Icon = navIconComponent(link.icon);
+            const isActive = isNavLinkActive(location.pathname, link.path);
             return (
               <Link
-                key={link.to}
-                to={link.to}
+                key={link.path}
+                to={link.path}
                 className="flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-center transition-colors"
                 style={{
                   color: isActive ? "#B47EC8" : "rgba(240,237,248,0.72)",

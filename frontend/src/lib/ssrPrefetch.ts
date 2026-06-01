@@ -123,6 +123,12 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
   });
 
   try {
+    await qc.prefetchQuery({
+      queryKey: ["siteNavigation"],
+      queryFn: api.getSiteNavigation,
+      ...queryDefaults,
+    });
+
     const movieSlug = matchMovieSlug(normalized);
     const theaterSlug = matchTheaterSlug(normalized);
     const diningSlug = matchDiningSlug(normalized);

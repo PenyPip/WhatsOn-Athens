@@ -166,8 +166,8 @@ const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
             ) : null}
             <p
               className={cn(
-                "mt-4 font-body text-base leading-relaxed text-white/78 md:mt-5 md:text-lg md:leading-[1.7]",
-                synopsis ? "line-clamp-5 md:line-clamp-6" : "text-white/50 italic",
+                "mt-4 font-body text-base leading-relaxed text-white md:mt-5 md:text-lg md:leading-[1.7]",
+                synopsis ? "line-clamp-5 md:line-clamp-6" : "italic text-white/90",
               )}
             >
               {synopsis || "Δεν υπάρχει σύνοψη για αυτή την ταινία."}

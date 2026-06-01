@@ -704,6 +704,39 @@ export interface ApiShowtimeShowtime extends Schema.CollectionType {
   };
 }
 
+export interface ApiSiteNavigationSiteNavigation extends Schema.SingleType {
+  collectionName: 'site_navigations';
+  info: {
+    description: '\u03A3\u03CD\u03BD\u03B4\u03B5\u03C3\u03BC\u03BF\u03B9 navbar (desktop) \u03BA\u03B1\u03B9 \u03BA\u03AC\u03C4\u03C9 \u03BC\u03C0\u03AC\u03C1\u03B1\u03C2 \u03BA\u03B9\u03BD\u03B7\u03C4\u03BF\u03CD.';
+    displayName: '\u039C\u03B5\u03BD\u03BF\u03CD \u03B9\u03C3\u03C4\u03BF\u03C4\u03CC\u03C0\u03BF\u03C5';
+    pluralName: 'site-navigations';
+    singularName: 'site-navigation';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    brand_tagline: Attribute.String &
+      Attribute.DefaultTo<'Cinema \u00B7 Events \u00B7 Culture'>;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::site-navigation.site-navigation',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    items: Attribute.Component<'navigation.nav-item', true>;
+    publishedAt: Attribute.DateTime;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::site-navigation.site-navigation',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
   collectionName: 'theater_shows';
   info: {
@@ -1312,6 +1345,7 @@ declare module '@strapi/types' {
       'api::movie.movie': ApiMovieMovie;
       'api::restaurant.restaurant': ApiRestaurantRestaurant;
       'api::showtime.showtime': ApiShowtimeShowtime;
+      'api::site-navigation.site-navigation': ApiSiteNavigationSiteNavigation;
       'api::theater-show.theater-show': ApiTheaterShowTheaterShow;
       'api::user-review.user-review': ApiUserReviewUserReview;
       'api::venue.venue': ApiVenueVenue;

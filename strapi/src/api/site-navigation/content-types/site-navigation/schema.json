@@ -1,0 +1,25 @@
+{
+  "kind": "singleType",
+  "collectionName": "site_navigations",
+  "info": {
+    "singularName": "site-navigation",
+    "pluralName": "site-navigations",
+    "displayName": "Μενού ιστοτόπου",
+    "description": "Σύνδεσμοι navbar (desktop) και κάτω μπάρας κινητού."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "brand_tagline": {
+      "type": "string",
+      "default": "Cinema · Events · Culture",
+      "description": "Υπότιτλος δίπλα στο logo (desktop)."
+    },
+    "items": {
+      "type": "component",
+      "repeatable": true,
+      "component": "navigation.nav-item"
+    }
+  }
+}

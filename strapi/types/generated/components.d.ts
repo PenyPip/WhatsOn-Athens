@@ -51,6 +51,24 @@ export interface HomeLayoutSection extends Schema.Component {
   };
 }
 
+export interface NavigationNavItem extends Schema.Component {
+  collectionName: 'components_navigation_nav_items';
+  info: {
+    description: '\u0395\u03C4\u03B9\u03BA\u03AD\u03C4\u03B1 \u03BA\u03B1\u03B9 \u03B4\u03B9\u03B1\u03B4\u03C1\u03BF\u03BC\u03AE (\u03C0.\u03C7. /movies). \u03A3\u03B5\u03B9\u03C1\u03AC = \u03C3\u03B5\u03B9\u03C1\u03AC \u03B5\u03BC\u03C6\u03AC\u03BD\u03B9\u03C3\u03B7\u03C2. \u0395\u03B9\u03BA\u03BF\u03BD\u03AF\u03B4\u03B9\u03BF \u03B3\u03B9\u03B1 \u03C4\u03B7\u03BD \u03BA\u03AC\u03C4\u03C9 \u03BC\u03C0\u03AC\u03C1\u03B1 \u03BA\u03B9\u03BD\u03B7\u03C4\u03BF\u03CD.';
+    displayName: '\u03A3\u03CD\u03BD\u03B4\u03B5\u03C3\u03BC\u03BF\u03C2 \u03BC\u03B5\u03BD\u03BF\u03CD';
+  };
+  attributes: {
+    icon: Attribute.Enumeration<
+      ['home', 'film', 'theater', 'dining', 'venues', 'user', 'none']
+    > &
+      Attribute.DefaultTo<'none'>;
+    label: Attribute.String & Attribute.Required;
+    path: Attribute.String & Attribute.Required;
+    show_on_desktop: Attribute.Boolean & Attribute.DefaultTo<true>;
+    show_on_mobile_tab: Attribute.Boolean & Attribute.DefaultTo<false>;
+  };
+}
+
 export interface SchedulingSkipDay extends Schema.Component {
   collectionName: 'components_scheduling_skip_days';
   info: {
@@ -78,6 +96,7 @@ declare module '@strapi/types' {
     export interface Components {
       'cinema.day-price': CinemaDayPrice;
       'home.layout-section': HomeLayoutSection;
+      'navigation.nav-item': NavigationNavItem;
       'scheduling.skip-day': SchedulingSkipDay;
       'shared.cast-name': SharedCastName;
     }

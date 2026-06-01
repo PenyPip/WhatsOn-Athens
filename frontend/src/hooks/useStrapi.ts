@@ -2,6 +2,21 @@ import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { resolveHomepageLayout } from "@/config/home";
+import { DEFAULT_SITE_NAVIGATION } from "@/config/navigation";
+
+export const useSiteNavigation = () =>
+  useQuery({
+    queryKey: ["siteNavigation"],
+    queryFn: api.getSiteNavigation,
+    staleTime: 600_000,
+    retry: 1,
+    throwOnError: false,
+  });
+
+export function useSiteNavigationData() {
+  const q = useSiteNavigation();
+  return q.data ?? DEFAULT_SITE_NAVIGATION;
+}
 
 export const useHomepage = () =>
   useQuery({

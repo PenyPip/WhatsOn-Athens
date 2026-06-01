@@ -17,7 +17,7 @@ export function homeHeroCriticalCss(): string {
     `#home-static-lcp .home-static-lcp__badge{display:inline-block;margin:0 0 1rem;padding:.5rem 1rem;border:1px solid rgba(252,211,77,.55);border-radius:9999px;background:linear-gradient(90deg,rgba(251,191,36,.3),rgba(217,119,6,.1));font:700 11px/1.2 system-ui,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#fffbeb}` +
     `#home-static-lcp .home-static-lcp__title{margin:0 0 .75rem;font-family:Georgia,serif;font-size:1.75rem;font-weight:700;line-height:1.12;color:#fff}` +
     `@media(min-width:768px){#home-static-lcp .home-static-lcp__title{font-size:2.5rem;margin-bottom:1rem}}` +
-    `#home-static-lcp .home-static-lcp__synopsis{margin:0;font:400 .9375rem/1.65 system-ui,sans-serif;color:rgba(255,255,255,.78);display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;max-width:38rem}` +
+    `#home-static-lcp .home-static-lcp__synopsis{margin:0;font:400 .9375rem/1.65 system-ui,sans-serif;color:#fff;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical;overflow:hidden;max-width:38rem}` +
     `@media(min-width:768px){#home-static-lcp .home-static-lcp__synopsis{font-size:1rem;line-height:1.7;-webkit-line-clamp:6}}` +
     `#home-static-lcp .home-static-lcp__poster-wrap{flex-shrink:0;width:11.5rem;aspect-ratio:2/3}` +
     `@media(min-width:768px){#home-static-lcp .home-static-lcp__poster-wrap{width:15.5rem}}` +

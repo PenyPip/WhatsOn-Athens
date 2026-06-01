@@ -1,0 +1,31 @@
+{
+  "collectionName": "components_navigation_nav_items",
+  "info": {
+    "displayName": "Σύνδεσμος μενού",
+    "description": "Ετικέτα και διαδρομή (π.χ. /movies). Σειρά = σειρά εμφάνισης. Εικονίδιο για την κάτω μπάρα κινητού."
+  },
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "path": {
+      "type": "string",
+      "required": true,
+      "description": "Εσωτερικό path, π.χ. /movies ή /theater"
+    },
+    "icon": {
+      "type": "enumeration",
+      "enum": ["home", "film", "theater", "dining", "venues", "user", "none"],
+      "default": "none"
+    },
+    "show_on_desktop": {
+      "type": "boolean",
+      "default": true
+    },
+    "show_on_mobile_tab": {
+      "type": "boolean",
+      "default": false
+    }
+  }
+}
