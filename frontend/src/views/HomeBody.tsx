@@ -96,6 +96,7 @@ function MovieRowScroll({
   subtitle,
   moviesMoreHref,
   layout = "scroll",
+  summerScreeningOnPoster = false,
 }: {
   loading: boolean;
   loadingMessage: string;
@@ -109,6 +110,8 @@ function MovieRowScroll({
   subtitle?: string;
   moviesMoreHref?: string;
   layout?: "scroll" | "grid";
+  /** Ετικέτα «Θερινό» πάνω δεξιά στην αφίσα (ενότητα θερινών προβολών). */
+  summerScreeningOnPoster?: boolean;
 }) {
   if (loading) {
     return movieRowShell(
@@ -212,6 +215,7 @@ function MovieRowScroll({
                         posterSrcSet={movie.posterSrcSet}
                         type="movie"
                         isDubbed={movie.isDubbed}
+                        summerScreening={summerScreeningOnPoster}
                         uniformMovieSizing
                         compactMovieMeta
                         index={i}
@@ -262,6 +266,7 @@ function MovieRowScroll({
                 posterSrcSet={movie.posterSrcSet}
                 type="movie"
                 isDubbed={movie.isDubbed}
+                summerScreening={summerScreeningOnPoster}
                 uniformMovieSizing
                 compactMovieMeta
                 index={i}
@@ -436,6 +441,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 title="Θερινά σινεμά"
                 subtitle="Παίζουν τώρα"
                 moviesMoreHref={moviesSectionPath("summer")}
+                summerScreeningOnPoster
               />,
             );
           case "summer_venues":

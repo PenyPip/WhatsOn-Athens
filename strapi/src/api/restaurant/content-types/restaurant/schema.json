@@ -48,7 +48,7 @@
     },
     "google_place_id": {
       "type": "string",
-      "description": "Google Place ID (ChIJ…) για κριτικές Maps. Βρίσκεται στο URL του μέρους ή από Place ID finder."
+      "description": "ChIJ…, ή επικόλλησε το share link (maps.app.goo.gl / Google Maps URL) — το σύστημα επιλύει το Place ID."
     },
     "phone": {
       "type": "string"

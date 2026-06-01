@@ -8,6 +8,7 @@ import {
   startOfCinemaWeek,
 } from "@/lib/homeMovieFilters";
 import { movieTitleLines, posterAltForMovie } from "@/lib/movieTitles";
+import MoviePosterMeta from "@/components/MoviePosterMeta";
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import { isValidExternalUrl } from "@/lib/venueResolve";
@@ -226,11 +227,14 @@ function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number 
               {tl.primary}
             </div>
           )}
-          {movie.isDubbed ? (
-            <span className="absolute right-1 top-1 rounded bg-amber-600/95 px-1 py-0.5 text-[8px] font-bold uppercase text-white">
-              Μεταγλ.
-            </span>
-          ) : null}
+          <MoviePosterMeta
+            movie={{
+              imdbRating: movie.imdbRating,
+              criticScore: movie.criticScore,
+              duration: movie.duration,
+              isDubbed: movie.isDubbed,
+            }}
+          />
         </div>
         <p className="mt-1.5 line-clamp-2 text-[11px] font-semibold leading-tight text-foreground group-hover:text-primary sm:text-xs">
           {tl.primary}

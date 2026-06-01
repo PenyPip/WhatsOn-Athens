@@ -5,6 +5,7 @@ import MoviePosterMeta from "@/components/MoviePosterMeta";
 import { cn } from "@/lib/utils";
 import GenreLinks from "@/components/GenreLinks";
 import type { GenreLinkItem } from "@/lib/movieGenreLinks";
+import { POSTER_BADGE_CORNER_TOP_LEFT, POSTER_BADGE_TOP_LEFT } from "@/lib/posterBadges";
 
 interface EventCardProps {
   slug: string;
@@ -27,8 +28,10 @@ interface EventCardProps {
   posterSrcSet?: string;
   type: "movie" | "theater";
   badge?: string;
-  /** Επισήμανση μεταγλωτισμένης ταινίας (δεξιά στην αφίσα). */
+  /** Επισήμανση μεταγλωτισμένης ταινίας (πάνω δεξιά στην αφίσα). */
   isDubbed?: boolean;
+  /** Θερινή προβολή (πάνω δεξιά, πριν το «Μεταγλωτ.» αν υπάρχει). */
+  summerScreening?: boolean;
   /** Λίστες όπως /movies: ηπιότερο πλαίσιο (λιγότερο «λευκό» από το προεπιλεγμένο card-elevated). */
   tone?: "default" | "soft";
   /** Σε λίστα με προβολές: τα κορυφαία (αφίσα+λίζτ) διατείνονται ώστε οι καρτέλες στην ίδια σειρά να ευθυγραμμίζονται. */
@@ -62,6 +65,7 @@ const EventCard = ({
   type,
   badge,
   isDubbed = false,
+  summerScreening = false,
   tone = "default",
   attachShowtimes = false,
   uniformMovieSizing,
@@ -167,11 +171,14 @@ const EventCard = ({
                 criticScore: score,
                 duration,
                 isDubbed,
+                summerScreening,
               }}
               badge={badge}
             />
           ) : badge ? (
-            <span className="home-tour-card-badge absolute left-2 top-2 z-10 rounded bg-[#13143E] px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-white">
+            <span
+              className={`home-tour-card-badge ${POSTER_BADGE_CORNER_TOP_LEFT} ${POSTER_BADGE_TOP_LEFT} text-xs`}
+            >
               {badge}
             </span>
           ) : null}

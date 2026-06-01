@@ -4,6 +4,7 @@ import PosterPicture from "@/components/PosterPicture";
 import { cn } from "@/lib/utils";
 import type { StrapiRestaurant } from "@/lib/api";
 import { restaurantAreaLine } from "@/lib/restaurantLinks";
+import { POSTER_BADGE_CORNER_TOP_LEFT, POSTER_BADGE_TOP_LEFT } from "@/lib/posterBadges";
 
 const RestaurantCard = ({ restaurant }: { restaurant: StrapiRestaurant; index?: number }) => {
   const isNew = restaurant.isNew;
@@ -31,11 +32,9 @@ const RestaurantCard = ({ restaurant }: { restaurant: StrapiRestaurant; index?: 
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : null}
-          {isNew && (
-            <span className="absolute left-2 top-2 z-10 rounded bg-[#13143E] px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-white">
-              Νέο
-            </span>
-          )}
+          {isNew ? (
+            <span className={`${POSTER_BADGE_CORNER_TOP_LEFT} ${POSTER_BADGE_TOP_LEFT} text-xs`}>Νέο</span>
+          ) : null}
           {restaurant.editorialScore ? (
             <div className="absolute bottom-2 left-2 z-10 rounded bg-white px-2 py-0.5 text-sm font-bold text-[#13143E]">
               {restaurant.editorialScore}/10

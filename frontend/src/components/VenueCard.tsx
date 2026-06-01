@@ -5,6 +5,12 @@ import type { StrapiVenue } from "@/lib/api";
 import { programHrefForVenue, venueKindLabel } from "@/lib/venueType";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import { isValidExternalUrl, resolveGoogleMapsHref } from "@/lib/venueResolve";
+import {
+  POSTER_BADGE_CORNER_TOP_LEFT,
+  POSTER_BADGE_CORNER_TOP_RIGHT,
+  POSTER_BADGE_TOP_LEFT,
+  POSTER_BADGE_TOP_RIGHT_AMBER,
+} from "@/lib/posterBadges";
 
 const cityLabels: Record<string, string> = {
   athens: "Αθήνα",
@@ -69,6 +75,9 @@ const VenueCard = ({
 
   const mapsUrl = resolveGoogleMapsHref(venue.googleMapsUrl, venue.address);
   const hasActions = Boolean(programHref || venue.moreLink);
+  const typeLabel = venueKindLabel(venue.type);
+  const showSummerBadge = venue.summerOutdoor;
+  const badgeRow = Boolean(typeLabel || showSummerBadge);
 
   const cardMinH = compact ? "" : "min-h-[296px]";
   const spotlightShell = cn(
@@ -89,25 +98,29 @@ const VenueCard = ({
       )}
     >
       <div className={cn(isSpotlight ? spotlightShell : pageShell, className)}>
-        <div className={cn("flex items-start justify-between gap-2", compact ? "mb-2" : "mb-3")}>
-          <h3 className={headingClass}>{venue.name}</h3>
-          <div className="flex flex-wrap justify-end gap-1.5 shrink-0">
-            {venueKindLabel(venue.type) ? (
+        {badgeRow ? (
+          <>
+            {typeLabel ? (
               <span
                 className={cn(
-                  "px-2 py-0.5 text-[10px] uppercase tracking-wider rounded font-medium",
-                  isSpotlight ? "border border-white/10 bg-black/35 text-white/90" : "bg-[#111111] text-white",
+                  POSTER_BADGE_CORNER_TOP_LEFT,
+                  isSpotlight
+                    ? "border border-white/10 bg-black/35 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider text-white/90"
+                    : POSTER_BADGE_TOP_LEFT,
                 )}
               >
-                {venueKindLabel(venue.type)}
+                {typeLabel}
               </span>
             ) : null}
-            {venue.summerOutdoor ? (
-              <span className="shrink-0 rounded bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#13143E]">
-                θερινό
-              </span>
+            {showSummerBadge ? (
+              <div className={POSTER_BADGE_CORNER_TOP_RIGHT}>
+                <span className={POSTER_BADGE_TOP_RIGHT_AMBER}>θερινό</span>
+              </div>
             ) : null}
-          </div>
+          </>
+        ) : null}
+        <div className={cn(badgeRow && (compact ? "pt-7" : "pt-8"), compact ? "mb-2" : "mb-3")}>
+          <h3 className={headingClass}>{venue.name}</h3>
         </div>
 
         <div className={cn(metaBodyClass, "flex min-h-0 flex-1 flex-col")}>

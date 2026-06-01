@@ -1162,24 +1162,8 @@ const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
   "populate[cast]": "*",
 };
 
+/** Χωρίς fields[] — μόνο έγκυρα πεδία schema (όχι editorial_review/author: δεν υπάρχουν στο Restaurant). */
 const RESTAURANT_PUBLIC_QUERY: Record<string, string> = {
-  "fields[0]": "slug",
-  "fields[1]": "name",
-  "fields[2]": "synopsis",
-  "fields[3]": "cuisine",
-  "fields[4]": "neighborhood",
-  "fields[5]": "city",
-  "fields[6]": "price_range",
-  "fields[7]": "address",
-  "fields[8]": "phone",
-  "fields[9]": "website",
-  "fields[10]": "instagram",
-  "fields[11]": "opening_date",
-  "fields[12]": "is_new",
-  "fields[13]": "editorial_score",
-  "fields[14]": "editorial_review",
-  "fields[15]": "editorial_author",
-  "fields[16]": "google_place_id",
   "populate[poster][fields][0]": "url",
   "populate[poster][fields][1]": "formats",
   "populate[cuisine][fields][0]": "label",

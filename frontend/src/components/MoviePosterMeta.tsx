@@ -1,31 +1,42 @@
 import ImdbRatingBadge from "@/components/ImdbRatingBadge";
 import { resolveImdbRating, type MovieImdbFields } from "@/lib/movieImdb";
+import {
+  POSTER_BADGE_CORNER_TOP_LEFT,
+  POSTER_BADGE_CORNER_TOP_RIGHT,
+  POSTER_BADGE_TOP_LEFT,
+  POSTER_BADGE_TOP_RIGHT_AMBER,
+} from "@/lib/posterBadges";
 
 type MoviePosterMetaProps = {
-  movie: MovieImdbFields & { duration?: number; isDubbed?: boolean };
-  /** Προαιρετική ετικέτα πάνω αριστερά (π.χ. «Νέα»). */
+  movie: MovieImdbFields & { duration?: number; isDubbed?: boolean; summerScreening?: boolean };
+  /** Ετικέτα πάνω αριστερά (π.χ. «Νέα», «Πρεμιέρα»). */
   badge?: string;
 };
 
-/** IMDb κάτω αριστερά · διάρκεια κάτω δεξιά στην αφίσα — ίδιο σε αρχική, /movies, hero κ.λπ. */
+/** IMDb κάτω αριστερά · διάρκεια κάτω δεξιά · πάνω: αριστερά badge, δεξιά θερινό/μεταγλωτ. */
 export default function MoviePosterMeta({ movie, badge }: MoviePosterMetaProps) {
   const imdb = resolveImdbRating(movie);
   const showDuration = typeof movie.duration === "number" && Number.isFinite(movie.duration) && movie.duration > 0;
+  const topRight: { key: string; label: string }[] = [];
+  if (movie.summerScreening) topRight.push({ key: "summer", label: "Θερινό" });
+  if (movie.isDubbed) topRight.push({ key: "dub", label: "Μεταγλωτ." });
 
   return (
     <>
       {badge ? (
-        <span className="absolute left-2 top-2 z-10 rounded bg-[#13143E] px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-white">
-          {badge}
-        </span>
+        <span className={`${POSTER_BADGE_CORNER_TOP_LEFT} ${POSTER_BADGE_TOP_LEFT}`}>{badge}</span>
+      ) : null}
+      {topRight.length > 0 ? (
+        <div className={POSTER_BADGE_CORNER_TOP_RIGHT}>
+          {topRight.map(({ key, label }) => (
+            <span key={key} className={POSTER_BADGE_TOP_RIGHT_AMBER}>
+              {label}
+            </span>
+          ))}
+        </div>
       ) : null}
       {imdb != null ? (
         <ImdbRatingBadge rating={imdb} variant="poster" className="bottom-2 left-2 right-auto top-auto" />
-      ) : null}
-      {movie.isDubbed ? (
-        <span className="absolute right-2 top-2 z-10 rounded bg-amber-600/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm">
-          Μεταγλωτ.
-        </span>
       ) : null}
       {showDuration ? (
         <span
