@@ -10,6 +10,14 @@ import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { truncateDescription } from "@/lib/siteMetadata";
+import RestaurantLocationMap from "@/components/RestaurantLocationMap";
+import {
+  restaurantAreaLine,
+  restaurantInstagramHref,
+  restaurantInstagramLabel,
+  restaurantMapsHref,
+  restaurantWebsiteHref,
+} from "@/lib/restaurantLinks";
 
 const DiningDetail = () => {
   const { slug } = useParams();
@@ -24,7 +32,7 @@ const DiningDetail = () => {
       if (!restaurant) {
         return { ...staticPageSeo.notFound, path: slug ? `/dining/${slug}` : "/dining" };
       }
-      const place = [restaurant.neighborhood, restaurant.city].filter(Boolean).join(", ");
+      const place = restaurantAreaLine(restaurant);
       return {
         title: restaurant.name,
         description: truncateDescription(
@@ -59,15 +67,27 @@ const DiningDetail = () => {
 
   const relatedUserReviews = (userReviews ?? []).filter((r) => r.contentTitle === restaurant.name);
   const relatedRestaurants = (restaurants ?? []).filter((r) => r.slug !== slug).slice(0, 3);
+  const mapsHref = restaurantMapsHref(restaurant);
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
       <section className="relative min-h-[45vh] overflow-hidden bg-[#111111]">
-        <div
-          className="absolute inset-0 opacity-40"
-          style={{ background: `linear-gradient(135deg, ${restaurant.gradientFrom}, ${restaurant.gradientTo})` }}
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-transparent to-transparent" />
+        {restaurant.posterUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={restaurant.posterUrl}
+              alt=""
+              width={1200}
+              height={800}
+              fetchPriority="high"
+              decoding="async"
+              className="absolute inset-0 h-full w-full object-cover opacity-40"
+              aria-hidden
+            />
+          </>
+        ) : null}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-[#111111]/50 to-transparent" />
         <div className="relative z-10 container h-full flex items-end pb-12 pt-36">
           <div className="animate-fade-in-up">
             <Link to="/dining" className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors mb-4">
@@ -87,7 +107,9 @@ const DiningDetail = () => {
               <span>·</span>
               <span>{restaurant.priceRange}</span>
               <span>·</span>
-              <span className="flex items-center gap-1"><MapPin className="w-3.5 h-3.5" /> {restaurant.neighborhood}, {restaurant.city}</span>
+              <span className="flex items-center gap-1">
+                <MapPin className="w-3.5 h-3.5" /> {restaurantAreaLine(restaurant)}
+              </span>
             </div>
           </div>
         </div>
@@ -142,13 +164,7 @@ const DiningDetail = () => {
 
             <section>
               <h2 className="font-display text-xl font-semibold mb-4">Τοποθεσία</h2>
-              <div className="h-64 rounded-lg bg-secondary border border-border flex items-center justify-center">
-                <div className="text-center">
-                  <MapPin className="w-8 h-8 text-muted-foreground mx-auto mb-2" />
-                  <p className="text-sm text-muted-foreground">{restaurant.address}</p>
-                  <p className="text-xs text-muted-foreground mt-1">Χάρτης</p>
-                </div>
-              </div>
+              <RestaurantLocationMap restaurant={restaurant} />
             </section>
           </div>
 
@@ -165,32 +181,56 @@ const DiningDetail = () => {
                   <p className="font-medium mt-1">{restaurant.priceRange}</p>
                 </div>
                 <div>
-                  <span className="text-muted-foreground text-xs uppercase tracking-wider">Γειτονιά</span>
-                  <p className="font-medium mt-1">{restaurant.neighborhood}, {restaurant.city}</p>
+                  <span className="text-muted-foreground text-xs uppercase tracking-wider">Περιοχή</span>
+                  <p className="mt-1 font-medium">{restaurantAreaLine(restaurant) || "—"}</p>
                 </div>
                 <div className="border-t border-border pt-4 space-y-3">
-                  <p className="flex items-center gap-2 text-sm">
-                    <MapPin className="w-4 h-4 text-muted-foreground" />
-                    <span>{restaurant.address}</span>
-                  </p>
+                  {restaurant.address || mapsHref ? (
+                    <p className="flex items-start gap-2 text-sm">
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+                      {mapsHref ? (
+                        <a
+                          href={mapsHref}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-primary hover:underline"
+                        >
+                          {restaurant.address || restaurantAreaLine(restaurant)}
+                          <span className="sr-only"> (χάρτης)</span>
+                        </a>
+                      ) : (
+                        <span>{restaurant.address}</span>
+                      )}
+                    </p>
+                  ) : null}
                   {restaurant.phone && (
                     <p className="flex items-center gap-2 text-sm">
                       <Phone className="w-4 h-4 text-muted-foreground" />
                       <span>{restaurant.phone}</span>
                     </p>
                   )}
-                  {restaurant.website && (
-                    <a href={restaurant.website} className="flex items-center gap-2 text-sm text-primary hover:underline">
-                      <Globe className="w-4 h-4" />
-                      <span>Website</span>
+                  {restaurantWebsiteHref(restaurant.website) ? (
+                    <a
+                      href={restaurantWebsiteHref(restaurant.website)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                    >
+                      <Globe className="h-4 w-4 shrink-0" aria-hidden />
+                      <span>Ιστοσελίδα</span>
                     </a>
-                  )}
-                  {restaurant.instagram && (
-                    <p className="flex items-center gap-2 text-sm">
-                      <Instagram className="w-4 h-4 text-muted-foreground" />
-                      <span>{restaurant.instagram}</span>
-                    </p>
-                  )}
+                  ) : null}
+                  {restaurantInstagramHref(restaurant.instagram) ? (
+                    <a
+                      href={restaurantInstagramHref(restaurant.instagram)!}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center gap-2 text-sm font-medium text-primary hover:underline"
+                    >
+                      <Instagram className="h-4 w-4 shrink-0" aria-hidden />
+                      <span>{restaurantInstagramLabel(restaurant.instagram)}</span>
+                    </a>
+                  ) : null}
                 </div>
               </div>
             </div>

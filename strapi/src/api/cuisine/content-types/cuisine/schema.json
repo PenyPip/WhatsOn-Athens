@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "cuisines",
+  "info": {
+    "singularName": "cuisine",
+    "pluralName": "cuisines",
+    "displayName": "Κουζίνα",
+    "description": "Τύποι κουζίνας για εστιατόρια· επιλογή από dropdown στο Restaurant και φίλτρο στη σελίδα Φαγητό."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "label",
+      "required": true
+    },
+    "sort_order": {
+      "type": "integer",
+      "default": 0,
+      "description": "Μικρότερο = πρώτο στα φίλτρα."
+    },
+    "restaurants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::restaurant.restaurant",
+      "mappedBy": "cuisine"
+    }
+  }
+}

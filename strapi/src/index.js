@@ -6,6 +6,8 @@ const PUBLIC_COLLECTION_READ_ACTIONS = [
   'api::movie.movie.findOne',
   'api::movie-genre.movie-genre.find',
   'api::movie-genre.movie-genre.findOne',
+  'api::cuisine.cuisine.find',
+  'api::cuisine.cuisine.findOne',
   'api::showtime.showtime.find',
   'api::showtime.showtime.findOne',
   'api::showtime.showtime.venueCalendar',
@@ -102,6 +104,13 @@ module.exports = {
       await migrateLegacyVenueTypes(strapi);
     } catch (e) {
       strapi.log.warn('[whatson bootstrap venue types]', e);
+    }
+
+    try {
+      const { migrateRestaurantCuisines } = require('./utils/migrateRestaurantCuisines');
+      await migrateRestaurantCuisines(strapi);
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap restaurant cuisines]', e);
     }
 
     try {

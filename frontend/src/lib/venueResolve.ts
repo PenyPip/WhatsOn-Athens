@@ -221,7 +221,7 @@ export function moviesHrefForShowtimes(
   return undefined;
 }
 
-function normalizeHttpUrl(raw: string | undefined | null): string | null {
+export function normalizeHttpUrl(raw: string | undefined | null): string | null {
   const s = typeof raw === "string" ? raw.trim() : "";
   if (!s) return null;
   const candidate = /^[a-z][a-z0-9+.-]*:/i.test(s) ? s : `https://${s}`;
@@ -244,6 +244,29 @@ export function resolveGoogleMapsHref(
   const addr = typeof address === "string" ? address.trim() : "";
   if (!addr) return null;
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
+}
+
+/** URL για ενσωμάτωση χάρτη (iframe) — CMS embed/share ή αναζήτηση από κείμενο τοποθεσίας. */
+export function resolveGoogleMapsEmbedSrc(
+  googleMapsUrl: string | undefined | null,
+  searchQuery?: string | undefined | null,
+): string | null {
+  const fromCms = normalizeHttpUrl(googleMapsUrl);
+  if (fromCms) {
+    if (fromCms.includes("/maps/embed")) return fromCms;
+    try {
+      const u = new URL(fromCms);
+      if (/\.google\./i.test(u.hostname) && u.pathname.includes("/maps")) {
+        u.searchParams.set("output", "embed");
+        return u.toString();
+      }
+    } catch {
+      /* πέφτουμε σε αναζήτηση */
+    }
+  }
+  const q = typeof searchQuery === "string" ? searchQuery.trim() : "";
+  if (!q) return null;
+  return `https://www.google.com/maps?q=${encodeURIComponent(q)}&hl=el&z=16&output=embed`;
 }
 
 export function isValidExternalUrl(raw: string | undefined | null): raw is string {

@@ -362,6 +362,43 @@ export interface AdminUser extends Schema.CollectionType {
   };
 }
 
+export interface ApiCuisineCuisine extends Schema.CollectionType {
+  collectionName: 'cuisines';
+  info: {
+    description: '\u03A4\u03CD\u03C0\u03BF\u03B9 \u03BA\u03BF\u03C5\u03B6\u03AF\u03BD\u03B1\u03C2 \u03B3\u03B9\u03B1 \u03B5\u03C3\u03C4\u03B9\u03B1\u03C4\u03CC\u03C1\u03B9\u03B1\u00B7 \u03B5\u03C0\u03B9\u03BB\u03BF\u03B3\u03AE \u03B1\u03C0\u03CC dropdown \u03C3\u03C4\u03BF Restaurant \u03BA\u03B1\u03B9 \u03C6\u03AF\u03BB\u03C4\u03C1\u03BF \u03C3\u03C4\u03B7 \u03C3\u03B5\u03BB\u03AF\u03B4\u03B1 \u03A6\u03B1\u03B3\u03B7\u03C4\u03CC.';
+    displayName: '\u039A\u03BF\u03C5\u03B6\u03AF\u03BD\u03B1';
+    pluralName: 'cuisines';
+    singularName: 'cuisine';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::cuisine.cuisine',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    label: Attribute.String & Attribute.Required;
+    restaurants: Attribute.Relation<
+      'api::cuisine.cuisine',
+      'oneToMany',
+      'api::restaurant.restaurant'
+    >;
+    slug: Attribute.UID<'api::cuisine.cuisine', 'label'> & Attribute.Required;
+    sort_order: Attribute.Integer & Attribute.DefaultTo<0>;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::cuisine.cuisine',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiEditorialReviewEditorialReview
   extends Schema.CollectionType {
   collectionName: 'editorial_reviews';
@@ -599,15 +636,18 @@ export interface ApiRestaurantRestaurant extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
-    cuisine: Attribute.String;
+    cuisine: Attribute.Relation<
+      'api::restaurant.restaurant',
+      'manyToOne',
+      'api::cuisine.cuisine'
+    >;
+    cuisine_text: Attribute.String;
     editorial_reviews: Attribute.Relation<
       'api::restaurant.restaurant',
       'oneToMany',
       'api::editorial-review.editorial-review'
     >;
     editorial_score: Attribute.Decimal;
-    gradient_from: Attribute.String;
-    gradient_to: Attribute.String;
     instagram: Attribute.String;
     is_new: Attribute.Boolean & Attribute.DefaultTo<true>;
     name: Attribute.String & Attribute.Required;
@@ -1319,6 +1359,7 @@ declare module '@strapi/types' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::cuisine.cuisine': ApiCuisineCuisine;
       'api::editorial-review.editorial-review': ApiEditorialReviewEditorialReview;
       'api::hall.hall': ApiHallHall;
       'api::homepage.homepage': ApiHomepageHomepage;

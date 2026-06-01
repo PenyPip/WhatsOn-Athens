@@ -81,6 +81,16 @@ export const useTheaterShows = (enabled = true) =>
 export const useTheaterShowBySlug = (slug: string) =>
   useQuery({ queryKey: ["theaterShow", slug], queryFn: () => api.getTheaterShowBySlug(slug), enabled: !!slug });
 
+export const useCuisines = (enabled = true) =>
+  useQuery({
+    queryKey: ["cuisines"],
+    queryFn: api.getCuisines,
+    staleTime: 600_000,
+    retry: 1,
+    throwOnError: false,
+    enabled,
+  });
+
 export const useRestaurants = (enabled = true) =>
   useQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants, staleTime: 300_000, retry: 1, throwOnError: false, enabled });
 

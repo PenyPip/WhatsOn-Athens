@@ -19,8 +19,15 @@
     "synopsis": {
       "type": "text"
     },
+    "cuisine_text": {
+      "type": "string",
+      "description": "Παλιό πεδίο κειμένου — αγνοείται μετά τη μετάβαση στο relation cuisine."
+    },
     "cuisine": {
-      "type": "string"
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::cuisine.cuisine",
+      "inversedBy": "restaurants"
     },
     "neighborhood": {
       "type": "string"
@@ -60,12 +67,6 @@
       "allowedTypes": [
         "images"
       ]
-    },
-    "gradient_from": {
-      "type": "string"
-    },
-    "gradient_to": {
-      "type": "string"
     },
     "editorial_score": {
       "type": "decimal"

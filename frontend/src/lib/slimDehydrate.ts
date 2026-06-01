@@ -94,13 +94,12 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         slug: r.slug,
         name: r.name,
         cuisine: r.cuisine,
+        cuisineSlug: r.cuisineSlug,
         neighborhood: r.neighborhood,
         city: r.city,
         priceRange: r.priceRange,
         isNew: r.isNew,
         posterUrl: r.posterUrl,
-        gradientFrom: r.gradientFrom,
-        gradientTo: r.gradientTo,
       })),
     );
   }

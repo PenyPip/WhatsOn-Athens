@@ -151,6 +151,20 @@ function mapMovieGenre(raw: unknown): StrapiMovieGenre {
   };
 }
 
+function mapCuisine(raw: unknown): StrapiCuisine {
+  return mapMovieGenre(raw) as StrapiCuisine;
+}
+
+function cuisineFromRestaurantRaw(r: Record<string, unknown>): { cuisine: string; cuisineSlug: string } {
+  for (const entry of relationDataEntries(r.cuisine)) {
+    const c = mapCuisine(entry);
+    if (c.label) return { cuisine: c.label, cuisineSlug: c.slug };
+  }
+  const legacy = typeof r.cuisine_text === "string" ? r.cuisine_text.trim() : "";
+  if (legacy) return { cuisine: legacy, cuisineSlug: "" };
+  return { cuisine: "", cuisineSlug: "" };
+}
+
 type StrapiMediaAttrs = Record<string, unknown>;
 
 function strapiMediaAttributes(media: unknown): StrapiMediaAttrs | null {
@@ -632,13 +646,15 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
 
 function mapRestaurant(raw: unknown): StrapiRestaurant {
   const r = unwrapStrapiEntry(raw);
+  const { cuisine, cuisineSlug } = cuisineFromRestaurantRaw(r as Record<string, unknown>);
   return {
     id: r.id,
     documentId: r.documentId,
     slug: r.slug,
     name: r.name,
     synopsis: r.synopsis,
-    cuisine: r.cuisine,
+    cuisine,
+    cuisineSlug: cuisineSlug || undefined,
     neighborhood: r.neighborhood,
     city: r.city,
     priceRange: r.price_range,
@@ -649,8 +665,6 @@ function mapRestaurant(raw: unknown): StrapiRestaurant {
     openingDate: r.opening_date,
     isNew: r.is_new,
     posterUrl: strapiMediaUrl(r.poster, "medium") ?? undefined,
-    gradientFrom: r.gradient_from || "#1a1a2e",
-    gradientTo: r.gradient_to || "#e8a020",
     editorialScore: r.editorial_score,
     editorialReview: r.editorial_review,
     editorialAuthor: r.editorial_author,
@@ -989,6 +1003,14 @@ export interface StrapiTheaterShow {
   moreLink: string;
 }
 
+export interface StrapiCuisine {
+  id: number;
+  documentId: string;
+  slug: string;
+  label: string;
+  sortOrder: number;
+}
+
 export interface StrapiRestaurant {
   id: number;
   documentId: string;
@@ -996,6 +1018,7 @@ export interface StrapiRestaurant {
   name: string;
   synopsis: string;
   cuisine: string;
+  cuisineSlug?: string;
   neighborhood: string;
   city: string;
   priceRange: string;
@@ -1006,8 +1029,6 @@ export interface StrapiRestaurant {
   openingDate: string;
   isNew: boolean;
   posterUrl?: string;
-  gradientFrom: string;
-  gradientTo: string;
   editorialScore?: number;
   editorialReview?: string;
   editorialAuthor?: string;
@@ -1125,6 +1146,17 @@ const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
 const RESTAURANT_PUBLIC_QUERY: Record<string, string> = {
   "populate[poster][fields][0]": "url",
   "populate[poster][fields][1]": "formats",
+  "populate[cuisine][fields][0]": "label",
+  "populate[cuisine][fields][1]": "slug",
+  "populate[cuisine][fields][2]": "sort_order",
+};
+
+const CUISINE_PUBLIC_QUERY: Record<string, string> = {
+  "pagination[pageSize]": "100",
+  "sort[0]": "sort_order:asc",
+  "fields[0]": "label",
+  "fields[1]": "slug",
+  "fields[2]": "sort_order",
 };
 
 const VENUE_PUBLIC_QUERY: Record<string, string> = {
@@ -1268,6 +1300,11 @@ export const api = {
       const row = strapiCollectionFirst(d);
       return row ? mapTheaterShow(row) : undefined;
     }),
+
+  getCuisines: () =>
+    fetchAPI<unknown[]>("/cuisines", CUISINE_PUBLIC_QUERY).then((d) =>
+      (Array.isArray(d) ? d : []).map((x) => mapCuisine(x)).filter((c) => c.label && c.slug),
+    ),
 
   getRestaurants: () =>
     fetchAPI<any[]>("/restaurants", RESTAURANT_PUBLIC_QUERY).then((d) => (Array.isArray(d) ? d : []).map((x) => mapRestaurant(x))),
