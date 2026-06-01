@@ -56,6 +56,7 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         isDubbed: m.isDubbed,
         criticScore: m.criticScore,
         mostTalkedAbout: m.mostTalkedAbout,
+        synopsis: m.mostTalkedAbout ? m.synopsis : undefined,
         releaseDate: m.releaseDate,
         posterUrl: m.posterUrl,
         posterSrcSet: m.posterSrcSet,

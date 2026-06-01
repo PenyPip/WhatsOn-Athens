@@ -1,28 +1,34 @@
 /** Κοινές διαστάσεις hero (server critical CSS + React) — αποφυγή CLS. */
 export const HOME_HERO_MIN_HEIGHT_PX = 500;
-export const HOME_HERO_COMPACT_MIN_HEIGHT_PX = 340;
+export const HOME_HERO_COMPACT_MIN_HEIGHT_PX = 400;
+export const HOME_HERO_COMPACT_MIN_HEIGHT_MD_PX = 440;
 
 /** Κρίσιμο CSS για `/` — in-flow slot + overlap του main (χωρίς fixed overlay). */
 export function homeHeroCriticalCss(): string {
+  const min = HOME_HERO_COMPACT_MIN_HEIGHT_PX;
+  const minMd = HOME_HERO_COMPACT_MIN_HEIGHT_MD_PX;
   return (
-    `#home-hero-slot{position:relative;width:100%;height:75vh;min-height:${HOME_HERO_MIN_HEIGHT_PX}px;background:#111;overflow:hidden;contain:layout style paint}` +
-    `#home-static-lcp{position:absolute;inset:0;z-index:1;width:100%;height:100%;overflow:hidden;pointer-events:none}` +
-    `#home-static-lcp img{display:block;width:100%;height:100%;object-fit:cover;opacity:.55}` +
-    `#home-static-lcp .home-static-lcp__shade{position:absolute;inset:0;background:linear-gradient(to top,#111 0%,rgba(17,17,17,.45) 45%,rgba(17,17,17,.15) 100%)` +
-    `#home-static-lcp .home-static-lcp__copy{position:absolute;left:0;right:0;bottom:0;z-index:2;padding:0 1rem 4rem;max-width:42rem;margin:0 auto}` +
-    "@media(min-width:768px){#home-static-lcp .home-static-lcp__copy{padding:0 1.5rem 5rem;max-width:80rem}}" +
-    "#home-static-lcp .home-static-lcp__kicker{display:block;margin:0 0 .5rem;font:600 10px/1.2 system-ui,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:rgba(255,255,255,.7)}" +
-    "#home-static-lcp .home-static-lcp__title{margin:0;font-family:Georgia,serif;font-size:2.25rem;font-weight:700;line-height:1.1;color:#fff}" +
-    "@media(min-width:768px){#home-static-lcp .home-static-lcp__title{font-size:3.75rem}}" +
-    "html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}" +
-    `.home-main-overlap{margin-top:calc(-1 * max(75vh,${HOME_HERO_MIN_HEIGHT_PX}px));padding-top:4rem}` +
-    "@media(min-width:768px){.home-main-overlap{padding-top:7rem}}"
+    `#home-hero-slot{position:relative;width:100%;min-height:${min}px;background:#13143e;overflow:hidden;contain:layout style paint}` +
+    `@media(min-width:768px){#home-hero-slot{min-height:${minMd}px}}` +
+    `#home-static-lcp{position:absolute;inset:0;z-index:1;width:100%;height:100%;overflow:hidden;pointer-events:none;background:linear-gradient(135deg,#1c1a52,#13143e 50%,#0d0c24)}` +
+    `#home-static-lcp .home-static-lcp__inner{position:relative;display:flex;align-items:center;justify-content:center;max-width:80rem;height:100%;margin:0 auto;padding:2rem 3rem;box-sizing:border-box}` +
+    `@media(min-width:768px){#home-static-lcp .home-static-lcp__inner{padding:2.5rem 4rem;justify-content:space-between;gap:2.5rem}}` +
+    `#home-static-lcp .home-static-lcp__copy{flex:1;min-width:0;max-width:36rem;align-self:center}` +
+    `#home-static-lcp .home-static-lcp__badge{display:inline-block;margin:0 0 1rem;padding:.5rem 1rem;border:1px solid rgba(252,211,77,.55);border-radius:9999px;background:linear-gradient(90deg,rgba(251,191,36,.3),rgba(217,119,6,.1));font:700 11px/1.2 system-ui,sans-serif;letter-spacing:.22em;text-transform:uppercase;color:#fffbeb}` +
+    `#home-static-lcp .home-static-lcp__title{margin:0;font-family:Georgia,serif;font-size:1.5rem;font-weight:700;line-height:1.15;color:#fff}` +
+    `@media(min-width:768px){#home-static-lcp .home-static-lcp__title{font-size:2rem}}` +
+    `#home-static-lcp .home-static-lcp__poster-wrap{flex-shrink:0;width:10.5rem;aspect-ratio:2/3}` +
+    `@media(min-width:768px){#home-static-lcp .home-static-lcp__poster-wrap{width:13rem}}` +
+    `#home-static-lcp img.home-static-lcp__poster{display:block;width:100%;height:100%;object-fit:contain;object-position:center;border-radius:.75rem}` +
+    `html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}` +
+    `.home-main-overlap{margin-top:-${min}px;padding-top:3.5rem}` +
+    `@media(min-width:768px){.home-main-overlap{margin-top:-${minMd}px;padding-top:4rem}}`
   );
 }
 
-/** Compact hero — πιο πολυσυζητημένες (μικρότερο από παλιό fullscreen). */
+/** Compact hero — πιο πολυσυζητημένες (χωράει ολόκληρη αφίσα 2:3). */
 export const HOME_HERO_COMPACT_SECTION_CLASS =
-  "relative h-[52vh] min-h-[340px] max-h-[480px] overflow-hidden bg-[#13143E] max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28";
+  "relative min-h-[400px] overflow-hidden bg-[#13143E] max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28 md:min-h-[440px]";
 
 /** @deprecated Χρησιμοποίησε HOME_HERO_COMPACT_SECTION_CLASS */
 export const HOME_HERO_SECTION_CLASS = HOME_HERO_COMPACT_SECTION_CLASS;

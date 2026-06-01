@@ -6,7 +6,14 @@ import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
 import HomeStaticLcp from "@/components/HomeStaticLcp";
 import { homeLcpDisplay } from "@/lib/homeHeroLcp";
-import { homeNeedsTheater, homeNeedsVenues, homeNeedsDining, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
+import {
+  homeNeedsTheater,
+  homeNeedsVenues,
+  homeNeedsDining,
+  layoutShowsHero,
+  resolveHomepageLayout,
+  type MappedHomepage,
+} from "@/config/home";
 import { slimHomeBootstrapState } from "@/lib/rqBootstrap";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
 import spaPaths from "@/generated/spa-static-paths.json";
@@ -38,24 +45,27 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
   const { slug } = await params;
   const path = pathFromSlugParam(slug);
   let dehydratedState = await prefetchRouteData(path);
+  let homepageData: MappedHomepage | undefined;
   if (path === "/") {
     const homepageEntry = dehydratedState.queries.find((q) => q.queryKey[0] === "homepage");
-    const homepageData =
+    homepageData =
       homepageEntry?.state.status === "success"
         ? (homepageEntry.state.data as MappedHomepage | undefined)
         : undefined;
-    const layout = resolveHomepageLayout(homepageData ?? null);
+    const layoutForBootstrap = resolveHomepageLayout(homepageData ?? null);
     const extraBootstrapKeys = [
-      ...(homeNeedsTheater(layout.sections) ? (["theaterShows"] as const) : []),
-      ...(homeNeedsVenues(layout.sections) ? (["venues"] as const) : []),
-      ...(homeNeedsDining(layout.sections) ? (["restaurants"] as const) : []),
+      ...(homeNeedsTheater(layoutForBootstrap.sections) ? (["theaterShows"] as const) : []),
+      ...(homeNeedsVenues(layoutForBootstrap.sections) ? (["venues"] as const) : []),
+      ...(homeNeedsDining(layoutForBootstrap.sections) ? (["restaurants"] as const) : []),
     ];
     dehydratedState = slimHomeBootstrapState(dehydratedState, extraBootstrapKeys);
   }
+  const layout = resolveHomepageLayout(homepageData ?? null);
   const lcp = homeLcpDisplay(path, dehydratedState);
-  const preloadPoster = path === "/" ? lcp?.posterHref ?? null : null;
-  /** Hero είναι πλέον horizontal row — χωρίς fullscreen static overlay. */
-  const showStaticLcp = false;
+  const preloadPoster =
+    path === "/" && layoutShowsHero(layout) ? lcp?.posterHref ?? null : null;
+  /** Server HTML για LCP (αφίσα + τίτλος) — κρύβεται με `spa-lcp-done` μετά hydrate. */
+  const showStaticLcp = path === "/" && layoutShowsHero(layout) && Boolean(lcp?.posterHref);
 
   return (
     <>
