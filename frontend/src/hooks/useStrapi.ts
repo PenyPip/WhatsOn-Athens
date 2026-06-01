@@ -97,6 +97,16 @@ export const useRestaurants = (enabled = true) =>
 export const useRestaurantBySlug = (slug: string) =>
   useQuery({ queryKey: ["restaurant", slug], queryFn: () => api.getRestaurantBySlug(slug), enabled: !!slug });
 
+export const useRestaurantGoogleReviews = (slug: string, enabled = true) =>
+  useQuery({
+    queryKey: ["restaurantGoogleReviews", slug],
+    queryFn: () => api.getRestaurantGoogleReviews(slug),
+    staleTime: 3_600_000,
+    retry: 1,
+    throwOnError: false,
+    enabled: enabled && !!slug,
+  });
+
 export const useVenues = (enabled = true) =>
   useQuery({ queryKey: ["venues"], queryFn: api.getVenues, staleTime: 300_000, throwOnError: false, retry: 1, enabled });
 

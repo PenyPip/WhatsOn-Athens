@@ -44,6 +44,7 @@ services:
       URL: https://the37n.gr
       STRAPI_ADMIN_BACKEND_URL: https://the37n.gr
       PUBLIC_URL: https://the37n.gr
+      # GOOGLE_PLACES_API_KEY: από Google Cloud (Places API New) — κριτικές εστιατορίων
     volumes:
       - strapi_uploads:/app/public/uploads
     healthcheck:

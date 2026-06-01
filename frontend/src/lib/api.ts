@@ -32,7 +32,7 @@ function mapHomepageLayoutSections(layoutSections: unknown): HomeSectionId[] {
 async function fetchAPI<T>(
   endpoint: string,
   params?: Record<string, string>,
-  options?: { noStore?: boolean },
+  options?: { noStore?: boolean; noPopulate?: boolean },
 ): Promise<T> {
   const url = new URL(`${API_PREFIX}${endpoint}`, apiRequestBaseUrl());
   let hasExplicitPopulate = false;
@@ -42,7 +42,7 @@ async function fetchAPI<T>(
       url.searchParams.set(k, v);
     }
   }
-  if (!hasExplicitPopulate) url.searchParams.set("populate", "*");
+  if (!options?.noPopulate && !hasExplicitPopulate) url.searchParams.set("populate", "*");
 
   const res = await fetch(url.toString(), options?.noStore ? { cache: "no-store" } : undefined);
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
@@ -668,6 +668,7 @@ function mapRestaurant(raw: unknown): StrapiRestaurant {
     editorialScore: r.editorial_score,
     editorialReview: r.editorial_review,
     editorialAuthor: r.editorial_author,
+    googlePlaceId: typeof r.google_place_id === "string" ? r.google_place_id.trim() : "",
   };
 }
 
@@ -1032,6 +1033,24 @@ export interface StrapiRestaurant {
   editorialScore?: number;
   editorialReview?: string;
   editorialAuthor?: string;
+  /** Google Place ID (ChIJ…) — για κριτικές Maps. */
+  googlePlaceId?: string;
+}
+
+export interface GooglePlaceReview {
+  authorName: string;
+  rating: number;
+  text: string;
+  relativeTime: string;
+  profilePhotoUrl?: string;
+}
+
+export interface RestaurantGoogleReviews {
+  placeName?: string | null;
+  rating?: number | null;
+  userRatingCount?: number | null;
+  googleMapsUri?: string | null;
+  reviews: GooglePlaceReview[];
 }
 
 export interface StrapiVenue {
@@ -1144,6 +1163,23 @@ const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
 };
 
 const RESTAURANT_PUBLIC_QUERY: Record<string, string> = {
+  "fields[0]": "slug",
+  "fields[1]": "name",
+  "fields[2]": "synopsis",
+  "fields[3]": "cuisine",
+  "fields[4]": "neighborhood",
+  "fields[5]": "city",
+  "fields[6]": "price_range",
+  "fields[7]": "address",
+  "fields[8]": "phone",
+  "fields[9]": "website",
+  "fields[10]": "instagram",
+  "fields[11]": "opening_date",
+  "fields[12]": "is_new",
+  "fields[13]": "editorial_score",
+  "fields[14]": "editorial_review",
+  "fields[15]": "editorial_author",
+  "fields[16]": "google_place_id",
   "populate[poster][fields][0]": "url",
   "populate[poster][fields][1]": "formats",
   "populate[cuisine][fields][0]": "label",
@@ -1312,6 +1348,12 @@ export const api = {
     fetchAPI<any[]>(`/restaurants`, { ...RESTAURANT_PUBLIC_QUERY, "filters[slug][$eq]": slug }).then((d) => {
       const row = Array.isArray(d) ? d[0] : undefined;
       return row ? mapRestaurant(row) : undefined;
+    }),
+
+  getRestaurantGoogleReviews: (slug: string) =>
+    fetchAPI<RestaurantGoogleReviews>(`/restaurants/google-reviews/${encodeURIComponent(slug)}`, undefined, {
+      noPopulate: true,
+      noStore: true,
     }),
 
   getVenues: () =>

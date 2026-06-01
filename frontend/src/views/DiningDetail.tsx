@@ -1,12 +1,11 @@
 import { useParams, Link } from "react-router-dom";
 import { useMemo } from "react";
 import { MapPin, Phone, Globe, Instagram, ArrowLeft, UtensilsCrossed } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { useRestaurants, useUserReviews } from "@/hooks/useStrapi";
+import { useRestaurantGoogleReviews, useRestaurants } from "@/hooks/useStrapi";
 import RestaurantCard from "@/components/RestaurantCard";
+import RestaurantGoogleReviewsSection from "@/components/RestaurantGoogleReviews";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
-import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { truncateDescription } from "@/lib/siteMetadata";
@@ -22,9 +21,13 @@ import {
 const DiningDetail = () => {
   const { slug } = useParams();
   const { data: restaurants, isLoading } = useRestaurants();
-  const { data: userReviews } = useUserReviews();
 
   const restaurant = restaurants?.find((r) => r.slug === slug);
+  const hasGooglePlace = Boolean(restaurant?.googlePlaceId?.trim());
+  const { data: googleReviews, isLoading: googleReviewsLoading } = useRestaurantGoogleReviews(
+    slug ?? "",
+    hasGooglePlace,
+  );
 
   usePageSeo(
     useMemo(() => {
@@ -65,7 +68,6 @@ const DiningDetail = () => {
     );
   }
 
-  const relatedUserReviews = (userReviews ?? []).filter((r) => r.contentTitle === restaurant.name);
   const relatedRestaurants = (restaurants ?? []).filter((r) => r.slug !== slug).slice(0, 3);
   const mapsHref = restaurantMapsHref(restaurant);
 
@@ -137,35 +139,17 @@ const DiningDetail = () => {
             )}
 
             <section>
-              <h2 className="font-display text-xl font-semibold mb-4">Κριτικές Χρηστών</h2>
-              {relatedUserReviews.length > 0 ? (
-                relatedUserReviews.map((r) => (
-                  <div key={r.id} className="card-elevated p-4 mb-3">
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="font-medium text-sm">{r.userName}</span>
-                      <span className="text-xs font-bold">{r.rating}/5 ★</span>
-                    </div>
-                    <p className="text-sm text-muted-foreground">{r.body}</p>
-                  </div>
-                ))
-              ) : (
-                <p className="text-sm text-muted-foreground mb-4">Δεν υπάρχουν κριτικές ακόμα.</p>
-              )}
-              {SHOW_WRITE_REVIEW_CTA ? (
-                <div className="card-elevated p-6 text-center border-2 border-[#111111] mt-4">
-                  <h3 className="font-display font-semibold mb-2">Γράψε Κριτική</h3>
-                  <p className="text-sm text-muted-foreground mb-3">Σύνδεση για κριτική</p>
-                  <Button variant="outline" size="sm" className="border-foreground text-foreground hover:bg-foreground hover:text-background" asChild>
-                    <Link to="/profile">Σύνδεση</Link>
-                  </Button>
-                </div>
-              ) : null}
-            </section>
-
-            <section>
               <h2 className="font-display text-xl font-semibold mb-4">Τοποθεσία</h2>
               <RestaurantLocationMap restaurant={restaurant} />
             </section>
+
+            {hasGooglePlace ? (
+              <RestaurantGoogleReviewsSection
+                data={googleReviews}
+                isLoading={googleReviewsLoading}
+                fallbackMapsHref={mapsHref}
+              />
+            ) : null}
           </div>
 
           <div className="space-y-6">
