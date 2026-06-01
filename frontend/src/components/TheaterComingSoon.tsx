@@ -93,7 +93,7 @@ export default function TheaterComingSoon({ variant = "page", className }: Theat
           </h2>
           <p
             className={cn(
-              "mt-4 max-w-md font-body leading-relaxed text-white/92",
+              "mt-4 max-w-md font-body leading-relaxed text-white",
               isPage ? "text-base md:text-lg" : "text-sm md:text-base",
             )}
           >
@@ -101,7 +101,7 @@ export default function TheaterComingSoon({ variant = "page", className }: Theat
             χρειάζεσαι για να κλείσεις την επόμενη έξοδο.
           </p>
 
-          <ul className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 font-body text-xs font-medium uppercase tracking-[0.16em] text-white/85 md:text-[13px]">
+          <ul className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 font-body text-xs font-medium uppercase tracking-[0.16em] text-white md:text-[13px]">
             <li>Περιοδείες</li>
             <li aria-hidden className="text-white/50">
               ·
