@@ -532,7 +532,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 <div className="container relative z-[1] max-w-7xl">
                   <div>
                     <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.24em] text-amber-200/85">
-                      Σεζόν & περιοδική κίνηση
+                      Καλοκαιρινές περιοδείες
                     </span>
                     <h2 className="font-display text-3xl font-bold leading-tight text-white md:text-5xl md:leading-[1.1]">
                       Περιοδείες & παραστάσεις που ταξιδεύουν

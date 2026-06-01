@@ -2,9 +2,7 @@ import { useState, useMemo } from "react";
 import EventCard from "@/components/EventCard";
 import PageHeaderReveal from "@/components/PageHeaderReveal";
 import LoadingState from "@/components/LoadingState";
-import TheaterComingSoon from "@/components/TheaterComingSoon";
 import Footer from "@/components/Footer";
-import { THEATER_PAGE_COMING_SOON } from "@/config/features";
 import { useTheaterShows } from "@/hooks/useStrapi";
 import { filterResidentTheaterShows } from "@/lib/theaterTours";
 import {
@@ -18,7 +16,7 @@ import { staticPageSeo } from "@/lib/pageSeoCopy";
 const TheaterPage = () => {
   usePageSeo(staticPageSeo.theater);
 
-  const { data: theaterShows, isLoading } = useTheaterShows(!THEATER_PAGE_COMING_SOON);
+  const { data: theaterShows, isLoading } = useTheaterShows();
   const [genreFilter, setGenreFilter] = useState<TheaterGenreFilter>("all");
 
   const residentShows = useMemo(
@@ -44,25 +42,25 @@ const TheaterPage = () => {
       </div>
 
       <div className="container">
-        {THEATER_PAGE_COMING_SOON ? (
-          <TheaterComingSoon variant="page" />
-        ) : isLoading ? (
+        {isLoading ? (
           <LoadingState message="Φόρτωση παραστάσεων..." />
         ) : !hasShows ? (
-          <TheaterComingSoon variant="page" />
+          <p className="text-sm text-muted-foreground">
+            Δεν υπάρχουν παραστάσεις προς το παρόν. Πρόσθεσέ τες στο CMS (Theater Show).
+          </p>
         ) : (
           <>
-            <div className="flex flex-wrap items-center gap-2 mb-8">
-              <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Είδος:</span>
+            <div className="mb-8 flex flex-wrap items-center gap-2">
+              <span className="mr-1 text-sm uppercase tracking-wider text-muted-foreground">Είδος:</span>
               {THEATER_GENRE_FILTER_OPTIONS.map(({ value, label }) => (
                 <button
                   key={value}
                   type="button"
                   onClick={() => setGenreFilter(value)}
-                  className={`px-4 py-1.5 rounded text-sm font-medium transition-all border ${
+                  className={`rounded border px-4 py-1.5 text-sm font-medium transition-all ${
                     genreFilter === value
-                      ? "bg-[#13143E] text-white border-[#13143E]"
-                      : "bg-card text-muted-foreground border-border hover:border-foreground hover:text-foreground"
+                      ? "border-[#13143E] bg-[#13143E] text-white"
+                      : "border-border bg-card text-muted-foreground hover:border-foreground hover:text-foreground"
                   }`}
                 >
                   {label}
@@ -71,9 +69,9 @@ const TheaterPage = () => {
             </div>
 
             {filtered.length === 0 ? (
-              <TheaterComingSoon variant="page" />
+              <p className="text-sm text-muted-foreground">Δεν βρέθηκαν παραστάσεις για αυτό το είδος.</p>
             ) : (
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
                 {filtered.map((show, i) => (
                   <EventCard
                     key={show.id}

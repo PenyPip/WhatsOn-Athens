@@ -94,9 +94,9 @@ const EventCard = ({
   /** Λίστα /movies ή αρχική: διάρκεια στην αφίσα, χωρίς είδος/σκηνοθέτη κάτω. */
   const movieListingMeta = isMovie && (attachShowtimes || compactMovieMeta);
   const titleClass = darkSectionCard
-    ? "text-[#13143E] group-hover:text-[#0a0b28]"
+    ? "!text-[#13143E] group-hover:!text-[#0a0b28]"
     : "text-foreground group-hover:text-primary";
-  const metaClass = darkSectionCard ? "text-[#13143E]/78" : "text-muted-foreground";
+  const metaClass = darkSectionCard ? "!text-[#13143E]/90" : "text-muted-foreground";
   /** Οριζόντια σειρά (αρχική, κ.λπ.): σταθερό ύψος τίτλου/υπότιτλου/ειδους. */
   const uniformScrollCard = uniformMovie && !movieListingMeta && !attachShowtimes;
 
@@ -121,7 +121,8 @@ const EventCard = ({
                   ? "rounded-lg border-transparent bg-muted/35 shadow-none ring-1 ring-border/10 hover:-translate-y-0.5 hover:bg-muted/45 hover:shadow-[0_4px_14px_rgba(28,29,98,0.09)] hover:ring-border/[0.22]"
                   : cn(
                       "card-elevated rounded-lg",
-                      darkSectionCard && "bg-white shadow-[0_8px_28px_rgba(0,0,0,0.28)] ring-1 ring-white/20",
+                      darkSectionCard &&
+                        "home-tour-card bg-white shadow-[0_8px_28px_rgba(0,0,0,0.28)] ring-1 ring-white/20",
                     ),
               ),
         )}
@@ -269,7 +270,7 @@ const EventCard = ({
                   <span
                     className={cn(
                       "min-w-0 flex-1 text-xs font-medium uppercase tracking-wider line-clamp-1",
-                      darkSectionCard ? "text-[#13143E]/65" : "text-muted-foreground/90",
+                      darkSectionCard ? "!text-[#13143E]/80" : "text-muted-foreground/90",
                     )}
                   >
                     {genreTrimmed || "\u00a0"}

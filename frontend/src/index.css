@@ -149,6 +149,16 @@
     color: rgba(240, 237, 248, 0.6);
   }
 
+  /* Λευκές κάρτες περιοδειών στην αρχική — σκούρο κείμενο (όχι χρώματα section-black). */
+  .section-black .home-tour-card h3 {
+    color: #13143e;
+  }
+
+  .section-black .home-tour-card p,
+  .section-black .home-tour-card span {
+    color: #13143e;
+  }
+
   .grad-bg {
     background: linear-gradient(110deg, #7C2B76 0%, #4A2272 45%, #1C1D62 100%);
   }
