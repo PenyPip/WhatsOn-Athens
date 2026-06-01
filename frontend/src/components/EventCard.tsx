@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { Clock } from "lucide-react";
 import PosterPicture from "@/components/PosterPicture";
-import ImdbRatingBadge from "@/components/ImdbRatingBadge";
+import MoviePosterMeta from "@/components/MoviePosterMeta";
 import { cn } from "@/lib/utils";
 import GenreLinks from "@/components/GenreLinks";
 import type { GenreLinkItem } from "@/lib/movieGenreLinks";
@@ -85,8 +85,6 @@ const EventCard = ({
   const uniformMovie = uniformMovieSizing ?? isMovie;
   /** Λίστα /movies ή αρχική: διάρκεια στην αφίσα, χωρίς είδος/σκηνοθέτη κάτω. */
   const movieListingMeta = isMovie && (attachShowtimes || compactMovieMeta);
-  const imdbDisplay =
-    isMovie && (imdbRating != null && imdbRating > 0 ? imdbRating : score && score > 0 ? score : null);
   /** Οριζόντια σειρά (αρχική, κ.λπ.): σταθερό ύψος τίτλου/υπότιτλου/ειδους. */
   const uniformScrollCard = uniformMovie && !movieListingMeta && !attachShowtimes;
 
@@ -135,35 +133,19 @@ const EventCard = ({
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />
           ) : null}
-          {badge && (
-            <span className="absolute top-2 left-2 px-2 py-0.5 text-xs font-semibold uppercase tracking-wider rounded bg-[#13143E] text-white z-10">
-              {badge}
-            </span>
-          )}
-          {imdbDisplay != null ? (
-            <ImdbRatingBadge
-              rating={imdbDisplay}
-              variant="poster"
-              className={
-                movieListingMeta
-                  ? "bottom-2 left-2 top-auto"
-                  : badge
-                    ? "top-9"
-                    : undefined
-              }
+          {isMovie ? (
+            <MoviePosterMeta
+              movie={{
+                imdbRating: imdbRating ?? undefined,
+                criticScore: score,
+                duration,
+                isDubbed,
+              }}
+              badge={badge}
             />
-          ) : null}
-          {isDubbed && (
-            <span className="absolute top-2 right-2 z-10 rounded bg-amber-600/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm">
-              Μεταγλωτ.
-            </span>
-          )}
-          {movieListingMeta && showDuration ? (
-            <span
-              className="absolute bottom-2 right-2 z-10 flex h-7 min-w-7 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold leading-none tabular-nums text-[#13143E] shadow-[0_1px_5px_rgba(0,0,0,0.35)] ring-1 ring-[#13143E]/25"
-              aria-label={`Διάρκεια ${duration} λεπτά`}
-            >
-              {duration}′
+          ) : badge ? (
+            <span className="absolute left-2 top-2 z-10 rounded bg-[#13143E] px-2 py-0.5 text-xs font-semibold uppercase tracking-wider text-white">
+              {badge}
             </span>
           ) : null}
         </div>
@@ -246,7 +228,7 @@ const EventCard = ({
                     {genreTrimmed || "\u00a0"}
                   </span>
                 ) : null}
-                {showDuration ? (
+                {!isMovie && showDuration ? (
                   <div className="flex shrink-0 items-center gap-1 text-sm text-muted-foreground">
                     <Clock className="h-3.5 w-3.5 shrink-0" />
                     <span>{duration}&nbsp;′</span>

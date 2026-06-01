@@ -996,6 +996,8 @@ const Movies = () => {
                             isDubbed={movie.isDubbed}
                             tone="soft"
                             attachShowtimes={hasShowRows}
+                            compactMovieMeta
+                            uniformMovieSizing
                             index={i}
                             className="w-full"
                           />

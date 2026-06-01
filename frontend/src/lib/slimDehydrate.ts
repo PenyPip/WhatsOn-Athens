@@ -172,11 +172,6 @@ function slimHomepageBootstrap(qc: QueryClient): void {
   if (!homepage) return;
   qc.setQueryData(["homepage"], {
     sections: homepage.sections,
-    heroTheaterSlug: homepage.heroTheaterSlug,
-    heroMovieSlug: homepage.heroMovieSlug,
-    featuredMovieIndex: homepage.featuredMovieIndex,
-    priorityMovieGenre: homepage.priorityMovieGenre,
-    priorityTheaterGenre: homepage.priorityTheaterGenre,
   });
 }
 
@@ -208,16 +203,13 @@ export function trimShowtimesForMovieSlug(qc: QueryClient, movieSlug: string): v
   );
 }
 
-/** Αρχική: μόνο ταινίες που εμφανίζονται στις προβολές + hero slug (όχι ολόκληρο catalog). */
+/** Αρχική: μόνο ταινίες που εμφανίζονται στις προβολές + πολυσυζητημένες (όχι ολόκληρο catalog). */
 export function trimMoviesForHomeBootstrap(qc: QueryClient): void {
   const movies = qc.getQueryData<StrapiMovie[]>(["movies"]);
   if (!movies?.length) return;
   const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
-  const homepage = qc.getQueryData<MappedHomepage>(["homepage"]);
   const keepIds = new Set<number>();
   const keepSlugs = new Set<string>();
-  const heroSlug = homepage?.heroMovieSlug?.trim();
-  if (heroSlug) keepSlugs.add(heroSlug);
   for (const m of movies) {
     if (m.mostTalkedAbout) {
       keepIds.add(m.id);

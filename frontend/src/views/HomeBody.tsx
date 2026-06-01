@@ -366,7 +366,11 @@ export default function HomeBody({ layout }: HomeBodyProps) {
           case "hero":
             return sectionEl(
               "hero",
-              <MostTalkedAboutHero movies={mostTalkedAboutList} loading={awaitingMovies} />,
+              <MostTalkedAboutHero
+                movies={mostTalkedAboutList}
+                showtimes={stList}
+                loading={awaitingMovies}
+              />,
             );
           case "strip":
             return sectionEl(

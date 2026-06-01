@@ -1,6 +1,6 @@
 /**
  * Το layout της αρχικής έρχεται από Strapi Single Type «Homepage».
- * Έτοιμα τμήματα: hero (πιο συζητημένες ταινίες), movies_today, summer_cinema, summer_venues, tours,
+ * Έτοιμα τμήματα: hero (πολυσυζητημένες ταινίες), movies_today, summer_cinema, summer_venues, tours,
  * new_movies (τελευταίες 10 ημέρες release date), movies_week (ερχόμενη εβδομάδα κινηματογράφου Πέμ–Τετ),
  * coming_soon (κυκλοφορίες μετά από αυτή την εβδομάδα) — διάλεξε ποια εμφανίζονται και με ποια σειρά.
  */
@@ -53,36 +53,16 @@ export function normalizeHomeSectionId(raw: string): HomeSectionId | null {
 /** Αποτέλεσμα mapping από το Strapi REST */
 export interface MappedHomepage {
   sections: HomeSectionId[];
-  heroTheaterSlug: string | null;
-  heroMovieSlug: string | null;
-  featuredMovieIndex: number;
-  /** Από `populate[priority_movie]=*` — ετικέτα είδους (legacy CMS). */
-  priorityMovieGenre: string | null;
-  /** Από το συνδεδεμένο priority θεατρικό — εμφάνιση είδους στο Hero. */
-  priorityTheaterGenre: string | null;
 }
 
 export interface ResolvedHomepageLayout extends MappedHomepage {}
 
 /** Ενοποίηση: κενές λίστες ή null → προεπιλογές */
 export function resolveHomepageLayout(mapped: MappedHomepage | null): ResolvedHomepageLayout {
-  const base: ResolvedHomepageLayout = {
-    sections: [...FALLBACK_SECTIONS],
-    heroTheaterSlug: null,
-    heroMovieSlug: null,
-    featuredMovieIndex: 2,
-    priorityMovieGenre: null,
-    priorityTheaterGenre: null,
-  };
-  if (!mapped) return base;
-  return {
-    sections: mapped.sections.length > 0 ? mapped.sections : [...FALLBACK_SECTIONS],
-    heroTheaterSlug: mapped.heroTheaterSlug ?? null,
-    heroMovieSlug: mapped.heroMovieSlug ?? null,
-    featuredMovieIndex: Number.isFinite(mapped.featuredMovieIndex) ? mapped.featuredMovieIndex : 2,
-    priorityMovieGenre: mapped.priorityMovieGenre ?? null,
-    priorityTheaterGenre: mapped.priorityTheaterGenre ?? null,
-  };
+  if (!mapped?.sections.length) {
+    return { sections: [...FALLBACK_SECTIONS] };
+  }
+  return { sections: mapped.sections };
 }
 
 export function layoutShowsHero(layout: ResolvedHomepageLayout): boolean {

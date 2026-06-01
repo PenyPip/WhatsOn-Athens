@@ -802,15 +802,18 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   slug={item.slug}
                   title={itemTl.primary}
                   titleSecondary={itemTl.secondary}
-                  subtitle={item.director}
-                  genre={item.genre}
+                  subtitle={isMovie ? "" : item.director}
+                  genre={isMovie ? "" : item.genre}
                   duration={item.duration}
                   imdbRating={isMovie ? resolveImdbRating(item as StrapiMovie) : undefined}
                   gradientFrom={isMovie ? undefined : (item as StrapiTheaterShow).gradientFrom}
                   gradientTo={isMovie ? undefined : (item as StrapiTheaterShow).gradientTo}
                   posterUrl={isMovie ? (item as StrapiMovie).posterUrl : item.posterUrl}
+                  posterSrcSet={isMovie ? (item as StrapiMovie).posterSrcSet : undefined}
                   isDubbed={isMovie ? (item as StrapiMovie).isDubbed : false}
                   type={type}
+                  uniformMovieSizing={isMovie}
+                  compactMovieMeta={isMovie}
                   index={i}
                   className="w-full flex-1"
                 />

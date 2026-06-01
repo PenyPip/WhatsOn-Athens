@@ -9,23 +9,6 @@ import { mapVenueDayPrices, resolveShowtimePricing, type VenueDayPrice } from "@
 
 const API_PREFIX = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
 
-function homepageRelationSlug(rel: unknown): string | null {
-  if (rel === null || rel === undefined) return null;
-  const r = rel as Record<string, unknown>;
-  const d = r.data as unknown;
-  if (d !== null && d !== undefined) {
-    const row = Array.isArray(d) ? d[0] : d;
-    if (row && typeof row === "object") {
-      const inner = row as Record<string, unknown>;
-      const attrs = inner.attributes as Record<string, unknown> | undefined;
-      const slug = (attrs?.slug ?? inner.slug) as unknown;
-      if (typeof slug === "string" && slug) return slug;
-    }
-  }
-  const top = r.slug as unknown;
-  return typeof top === "string" && top ? top : null;
-}
-
 function mapHomepageLayoutSections(layoutSections: unknown): HomeSectionId[] {
   if (!Array.isArray(layoutSections)) return [];
 
@@ -135,20 +118,6 @@ function unwrapStrapiEntry(raw: unknown): any {
     return { ...(attrs as Record<string, unknown>), id: o.id, documentId: o.documentId };
   }
   return raw;
-}
-
-/** Σχέση από Homepage (priority movie/show) → ίδιο σχήμα με `unwrapStrapiEntry`. */
-function homepageRelationAsEntry(rel: unknown): Record<string, unknown> | null {
-  if (rel == null || typeof rel !== "object") return null;
-  const o = rel as Record<string, unknown>;
-  if ("data" in o) {
-    const d = o.data;
-    if (d === null || d === undefined) return null;
-    const node = Array.isArray(d) ? d[0] : d;
-    if (!node || typeof node !== "object") return null;
-    return unwrapStrapiEntry(node) as Record<string, unknown>;
-  }
-  return unwrapStrapiEntry(rel) as Record<string, unknown>;
 }
 
 function mapMovieGenre(raw: unknown): StrapiMovieGenre {
@@ -489,51 +458,10 @@ function movieGenresFromMovieRaw(
   };
 }
 
-function mapHomeAttributes(
-  attrs: Record<string, unknown>,
-  hydrate?: {
-    byId: Map<number, StrapiMovieGenre>;
-    byDoc: Map<string, StrapiMovieGenre>;
-    bySlug: Map<string, StrapiMovieGenre>;
-  },
-): MappedHomepage {
+function mapHomeAttributes(attrs: Record<string, unknown>): MappedHomepage {
   const sections = mapHomepageLayoutSections(attrs.layout_sections);
-  const idxRaw = attrs.featured_movie_list_index;
-  let featuredMovieIndex = 2;
-  if (typeof idxRaw === "number" && Number.isFinite(idxRaw)) {
-    featuredMovieIndex = idxRaw;
-  } else if (idxRaw !== null && idxRaw !== undefined) {
-    const p = parseInt(String(idxRaw), 10);
-    if (Number.isFinite(p)) featuredMovieIndex = p;
-  }
-
-  const resolvedSections = sections.length > 0 ? sections : [...FALLBACK_SECTIONS];
-
-  const pm = homepageRelationAsEntry(attrs.priority_movie);
-  let priorityMovieGenre: string | null = null;
-  if (pm) {
-    const gf = movieGenresFromMovieRaw(pm, hydrate);
-    const line =
-      typeof gf.genre === "string" && gf.genre.trim()
-        ? gf.genre.trim()
-        : movieGenreSlugsToDisplayLine(gf.genreSlugs);
-    priorityMovieGenre = line.trim() ? line : null;
-  }
-
-  const pt = homepageRelationAsEntry(attrs.priority_theater_show);
-  let priorityTheaterGenre: string | null = null;
-  if (pt) {
-    const g = pt.genre;
-    priorityTheaterGenre = typeof g === "string" && g.trim() ? g.trim() : null;
-  }
-
   return {
-    sections: resolvedSections,
-    heroTheaterSlug: homepageRelationSlug(attrs.priority_theater_show),
-    heroMovieSlug: homepageRelationSlug(attrs.priority_movie),
-    featuredMovieIndex,
-    priorityMovieGenre,
-    priorityTheaterGenre,
+    sections: sections.length > 0 ? sections : [...FALLBACK_SECTIONS],
   };
 }
 
@@ -1250,11 +1178,8 @@ async function fetchSiteNavigation(): Promise<MappedSiteNavigation | null> {
 }
 
 async function fetchHomepage(): Promise<MappedHomepage | null> {
-  const { hydrate: h } = await fetchMovieGenreCatalog();
   const url = new URL(`${API_PREFIX}/homepage`, apiRequestBaseUrl());
   url.searchParams.set("populate[layout_sections]", "*");
-  url.searchParams.set("populate[priority_movie]", "*");
-  url.searchParams.set("populate[priority_theater_show]", "*");
   const res = await fetch(url.toString());
   if (res.status === 404 || res.status === 403) return null;
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
@@ -1262,7 +1187,7 @@ async function fetchHomepage(): Promise<MappedHomepage | null> {
   const root = json as { data?: { attributes?: Record<string, unknown> } };
   const attrs = root?.data?.attributes;
   if (!attrs) return null;
-  return mapHomeAttributes(attrs, h);
+  return mapHomeAttributes(attrs);
 }
 
 export type { MappedSiteNavigation, NavLinkItem, NavIconKey } from "@/config/navigation";

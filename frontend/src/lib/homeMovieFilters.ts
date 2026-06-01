@@ -307,7 +307,7 @@ export function moviesWithShowtimeToday(movies: StrapiMovie[], showtimes: Strapi
   });
 }
 
-function parseReleaseDateLocal(value: string): Date | null {
+export function parseReleaseDateLocal(value: string): Date | null {
   const s = typeof value === "string" ? value.trim() : "";
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
   if (!m) return null;
@@ -321,6 +321,17 @@ function parseReleaseDateLocal(value: string): Date | null {
 
 function startOfLocalDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+
+/** Ετικέτα κυκλοφορίας για κάρτες / hero (τοπική ημερομηνία). */
+export function formatMovieReleaseDateLabel(movie: StrapiMovie, now = new Date()): string | null {
+  const release = parseReleaseDateLocal(movie.releaseDate ?? "");
+  if (!release) return null;
+  return release.toLocaleDateString("el-GR", {
+    day: "numeric",
+    month: "short",
+    year: release.getFullYear() !== now.getFullYear() ? "numeric" : undefined,
+  });
 }
 
 export function enrichMoviesWithShowtimeGenre(movies: StrapiMovie[], showtimes: StrapiShowtime[]): StrapiMovie[] {

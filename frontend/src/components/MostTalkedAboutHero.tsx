@@ -1,11 +1,13 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { StrapiMovie } from "@/lib/api";
+import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
+import { heroCtaForSchedule, resolveHeroScheduleDisplay } from "@/lib/heroScheduleLine";
 import { movieTitleLines, posterAltForMovie } from "@/lib/movieTitles";
 import { synopsisExcerpt } from "@/lib/synopsisExcerpt";
 import { HOME_HERO_COMPACT_SECTION_CLASS } from "@/lib/homeHeroLayout";
 import { useHomeLcpDone } from "@/hooks/useHomeLcpDone";
 import PosterPicture from "@/components/PosterPicture";
+import MoviePosterMeta from "@/components/MoviePosterMeta";
 import { posterLcpSrc } from "@/lib/posterDelivery";
 import { cn } from "@/lib/utils";
 
@@ -38,6 +40,7 @@ export function MostTalkedAboutHeroShell() {
 
 type MostTalkedAboutHeroProps = {
   movies: StrapiMovie[];
+  showtimes?: StrapiShowtime[];
   loading?: boolean;
 };
 
@@ -72,11 +75,10 @@ function heroMetaLine(movie: StrapiMovie): string {
   const parts: string[] = [];
   const director = (movie.director ?? "").trim();
   if (director && director !== "—") parts.push(`Σκηνοθεσία: ${director}`);
-  if (movie.duration) parts.push(`${movie.duration}′`);
   return parts.join(" · ");
 }
 
-const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
+const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAboutHeroProps) => {
   const markLcpDone = useHomeLcpDone();
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -115,6 +117,8 @@ const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
   const active = movies[activeIndex];
   const titles = movieTitleLines(active);
   const synopsis = heroSynopsisText(active);
+  const schedule = resolveHeroScheduleDisplay(active, showtimes);
+  const cta = heroCtaForSchedule(active.slug, schedule);
   const meta = heroMetaLine(active);
   const notifyPosterReady = () => markLcpDone();
   const hasCarousel = movies.length > 1;
@@ -172,13 +176,16 @@ const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
             >
               {synopsis || "Δεν υπάρχει σύνοψη για αυτή την ταινία."}
             </p>
+            {schedule.mode !== "none" ? (
+              <p className="mt-3 font-body text-sm font-medium text-white md:text-base">{schedule.label}</p>
+            ) : null}
             {meta ? <p className="mt-3 font-body text-sm text-white/55">{meta}</p> : null}
             <div className="mt-6 flex flex-wrap items-center gap-4 md:mt-8">
               <Link
-                to={`/movies/${active.slug}`}
+                to={cta.to}
                 className="inline-flex items-center rounded bg-white px-6 py-3 text-sm font-semibold text-[#13143E] transition-colors hover:bg-white/90"
               >
-                Δες προβολές
+                {cta.label}
               </Link>
               {hasCarousel ? (
                 <span className="font-body text-xs font-medium tabular-nums tracking-wide text-amber-200/75">
@@ -208,6 +215,7 @@ const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-[#2a2444] text-sm text-white/40">Χωρίς αφίσα</div>
               )}
+              <MoviePosterMeta movie={active} />
             </div>
           </figure>
         </div>

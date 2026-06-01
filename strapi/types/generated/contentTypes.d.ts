@@ -449,7 +449,7 @@ export interface ApiHallHall extends Schema.CollectionType {
 export interface ApiHomepageHomepage extends Schema.SingleType {
   collectionName: 'homepage';
   info: {
-    description: '\u03A3\u03B5\u03B9\u03C1\u03AC \u03BC\u03C0\u03BB\u03BF\u03BA \u03C3\u03C4\u03B7\u03BD \u03B1\u03C1\u03C7\u03B9\u03BA\u03AE \u03BA\u03B1\u03B9 \u03C0\u03C1\u03BF\u03C4\u03B5\u03B9\u03BD\u03CC\u03BC\u03B5\u03BD\u03BF hero (\u03C4\u03B1\u03B9\u03BD\u03AF\u03B1/\u03C0\u03B1\u03C1\u03AC\u03C3\u03C4\u03B1\u03C3\u03B7).';
+    description: '\u03A3\u03B5\u03B9\u03C1\u03AC \u03BC\u03C0\u03BB\u03BF\u03BA \u03C3\u03C4\u03B7\u03BD \u03B1\u03C1\u03C7\u03B9\u03BA\u03AE (hero, \u03C4\u03B1\u03B9\u03BD\u03AF\u03B5\u03C2 \u03C3\u03AE\u03BC\u03B5\u03C1\u03B1, \u03B8\u03B5\u03C1\u03B9\u03BD\u03AC \u03BA.\u03BB\u03C0.). \u03A4\u03BF hero \u00AB\u03A0\u03BF\u03BB\u03C5\u03C3\u03C5\u03B6\u03B7\u03C4\u03B7\u03BC\u03AD\u03BD\u03B5\u03C2\u00BB \u03B5\u03BB\u03AD\u03B3\u03C7\u03B5\u03C4\u03B1\u03B9 \u03B1\u03C0\u03CC \u03C4\u03BF \u03C0\u03B5\u03B4\u03AF\u03BF most_talked_about \u03C3\u03B5 \u03BA\u03AC\u03B8\u03B5 \u03C4\u03B1\u03B9\u03BD\u03AF\u03B1.';
     displayName: '\u0391\u03C1\u03C7\u03B9\u03BA\u03AE \u03C3\u03B5\u03BB\u03AF\u03B4\u03B1';
     pluralName: 'homepages';
     singularName: 'homepage';
@@ -465,25 +465,7 @@ export interface ApiHomepageHomepage extends Schema.SingleType {
       'admin::user'
     > &
       Attribute.Private;
-    featured_movie_list_index: Attribute.Integer &
-      Attribute.SetMinMax<
-        {
-          min: 0;
-        },
-        number
-      > &
-      Attribute.DefaultTo<2>;
     layout_sections: Attribute.Component<'home.layout-section', true>;
-    priority_movie: Attribute.Relation<
-      'api::homepage.homepage',
-      'manyToOne',
-      'api::movie.movie'
-    >;
-    priority_theater_show: Attribute.Relation<
-      'api::homepage.homepage',
-      'manyToOne',
-      'api::theater-show.theater-show'
-    >;
     publishedAt: Attribute.DateTime;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
