@@ -24,6 +24,8 @@ export function homeHeroCriticalCss(): string {
     `@media(min-width:1024px){#home-static-lcp .home-static-lcp__poster-wrap{width:17rem}}` +
     `#home-static-lcp img.home-static-lcp__poster{display:block;width:100%;height:100%;object-fit:contain;object-position:center;border-radius:.75rem}` +
     `html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}` +
+    `html:not(.spa-lcp-done) [data-home-hero-live]{opacity:0;pointer-events:none}` +
+    `html.spa-lcp-done [data-home-hero-live]{opacity:1;pointer-events:auto}` +
     `.home-main-overlap{margin-top:-${min}px;padding-top:3.5rem}` +
     `@media(min-width:768px){.home-main-overlap{margin-top:-${minMd}px;padding-top:4rem}}`
   );

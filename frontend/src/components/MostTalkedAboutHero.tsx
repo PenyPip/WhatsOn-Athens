@@ -101,12 +101,26 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
   }, [activeIndex, movies.length, goTo]);
 
   useEffect(() => {
-    if (loading || movies.length === 0) return;
-    const first = movies[0];
-    if (!first.posterUrl?.trim()) markLcpDone();
-  }, [loading, movies, markLcpDone]);
+    if (loading) return;
+    if (movies.length === 0) {
+      markLcpDone();
+      return;
+    }
+    if (typeof document === "undefined" || !document.getElementById("home-static-lcp")) {
+      markLcpDone();
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => markLcpDone());
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [loading, movies.length, markLcpDone]);
+
+  const hasStaticLcp =
+    typeof document !== "undefined" && Boolean(document.getElementById("home-static-lcp"));
 
   if (loading && movies.length === 0) {
+    if (hasStaticLcp) return null;
     return <MostTalkedAboutHeroShell />;
   }
 
@@ -120,11 +134,15 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
   const schedule = resolveHeroScheduleDisplay(active, showtimes);
   const cta = heroMovieCta(active.slug);
   const meta = heroMetaLine(active);
-  const notifyPosterReady = () => markLcpDone();
   const hasCarousel = movies.length > 1;
 
   return (
-    <section className={HOME_HERO_COMPACT_SECTION_CLASS} aria-roledescription="carousel" aria-label="Πολυσυζητημένες ταινίες">
+    <section
+      className={HOME_HERO_COMPACT_SECTION_CLASS}
+      data-home-hero-live
+      aria-roledescription="carousel"
+      aria-label="Πολυσυζητημένες ταινίες"
+    >
       <div className="absolute inset-0 bg-gradient-to-br from-[#1c1a52] via-[#13143E] to-[#0d0c24]" />
       <div
         className="pointer-events-none absolute -right-8 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-amber-500/12 blur-3xl md:right-[10%]"
@@ -206,11 +224,10 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
                   alt={posterAltForMovie(active)}
                   width={512}
                   height={768}
-                  fetchPriority={activeIndex === 0 ? "high" : "auto"}
-                  loading={activeIndex === 0 ? "eager" : "lazy"}
+                  fetchPriority="auto"
+                  loading="lazy"
                   sizes="(max-width: 768px) 192px, 256px"
                   className="h-full w-full object-contain object-center"
-                  onLoad={activeIndex === 0 ? notifyPosterReady : undefined}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-[#2a2444] text-sm text-white/40">Χωρίς αφίσα</div>

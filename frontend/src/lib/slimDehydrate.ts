@@ -146,7 +146,8 @@ export function slimListQueryCache(qc: QueryClient): void {
   slimMoviesShowtimes(qc);
 }
 
-const HOME_SHOWTIME_HORIZON_MS = 7 * 24 * 60 * 60 * 1000;
+/** Bootstrap αρχικής: μόνο κοντινές προβολές (μικρότερο JSON.parse). */
+const HOME_SHOWTIME_HORIZON_MS = 4 * 24 * 60 * 60 * 1000;
 
 /** Μικρότερο `#__RQ_STATE__` — λιγότερο JSON.parse στην αρχική (TBT). */
 export function minifyDehydratedState(state: DehydratedState): DehydratedState {
@@ -154,7 +155,21 @@ export function minifyDehydratedState(state: DehydratedState): DehydratedState {
     mutations: state.mutations,
     queries: state.queries.map((q) => {
       const { dehydratedAt: _d, ...query } = q;
-      const { error: _e, errorUpdatedAt: _eu, fetchFailureCount: _f, ...restState } = q.state;
+      const s = q.state;
+      if (s.status === "success" && s.fetchStatus === "idle") {
+        return {
+          ...query,
+          state: {
+            data: s.data,
+            status: "success",
+            fetchStatus: "idle",
+            dataUpdatedAt: s.dataUpdatedAt,
+            error: null,
+            fetchFailureCount: 0,
+          },
+        };
+      }
+      const { error: _e, errorUpdatedAt: _eu, fetchFailureCount: _f, ...restState } = s;
       return {
         ...query,
         state: {

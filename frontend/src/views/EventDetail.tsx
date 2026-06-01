@@ -1,6 +1,7 @@
 import { useParams, Link } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import PosterPicture from "@/components/PosterPicture";
+import MoviePosterMeta from "@/components/MoviePosterMeta";
 import { Clock, Globe, Users, ArrowLeft, MapPin, Play } from "lucide-react";
 import SharePageButton from "@/components/SharePageButton";
 import { Button } from "@/components/ui/button";
@@ -411,9 +412,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const movieInfoAside = hasInfoBlock ? (
     <aside
       className={cn(
-        "card-elevated h-fit w-full",
-        "relative left-1/2 w-screen max-w-[100vw] -translate-x-1/2 rounded-none border-x-0 px-4 py-5",
-        "md:static md:left-auto md:w-full md:max-w-none md:translate-x-0 md:rounded-2xl md:border-x md:p-5 md:sticky md:top-28 lg:top-32",
+        "card-elevated h-fit w-full rounded-xl px-4 py-5",
+        /* Edge-to-edge χωρίς transform/100vw — αποφεύγει «zoom» στο scroll (iOS Safari). */
+        "max-md:-mx-6 max-md:rounded-none max-md:border-x-0 max-md:px-6",
+        "md:sticky md:top-28 md:rounded-2xl md:p-5 lg:top-32",
       )}
     >
       <h2 className="font-display mb-3 text-left text-base font-semibold md:mb-4 md:text-lg">Πληροφορίες</h2>
@@ -567,7 +569,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   return (
     <div className="min-h-screen pb-20 md:pb-8">
       {detailJsonLd ? <JsonLd data={detailJsonLd} /> : null}
-      <section className="relative min-h-[50vh] overflow-hidden bg-[#13143E]">
+      <section
+        className={cn(
+          "relative overflow-hidden bg-[#13143E]",
+          isMovie ? "md:min-h-[min(52vh,640px)]" : "min-h-[50vh]",
+        )}
+      >
         {!isMovie ? (
           <div
             className="absolute inset-0 opacity-40"
@@ -576,18 +583,17 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             }}
           />
         ) : movie?.posterUrl ? (
-          <>
-            <PosterPicture
-              src={movie.posterUrl}
-              srcSet={movie.posterSrcSet}
-              alt={posterAltForMovie(movie)}
-              width={1200}
-              height={1800}
-              fetchPriority="high"
-              loading="eager"
-              className="absolute inset-0 h-full w-full object-cover opacity-35"
-            />
-          </>
+          <PosterPicture
+            src={movie.posterUrl}
+            srcSet={movie.posterSrcSet}
+            alt=""
+            width={800}
+            height={1200}
+            fetchPriority="high"
+            loading="eager"
+            aria-hidden
+            className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-[0.22] blur-2xl"
+          />
         ) : !isMovie && (event as StrapiTheaterShow).posterUrl ? (
           <>
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -604,10 +610,23 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         ) : (
           <div className="absolute inset-0 bg-[#13143E]" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-transparent to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-[#13143E]/75 to-[#13143E]/35" />
 
-        <div className="relative z-10 container flex h-full items-end pb-8 pt-20 md:pb-12 md:pt-36">
-          <div className="max-w-3xl animate-fade-in-up">
+        <div className="relative z-10 container pb-8 pt-20 md:pb-12 md:pt-32 lg:pt-36">
+          <div
+            className={cn(
+              "animate-fade-in-up",
+              isMovie && movie?.posterUrl
+                ? "flex flex-col gap-8 md:flex-row md:items-end md:justify-between md:gap-10 lg:gap-14"
+                : "flex h-full items-end",
+            )}
+          >
+            <div
+              className={cn(
+                "min-w-0 max-w-3xl",
+                isMovie && movie?.posterUrl ? "md:flex-1 md:pb-1" : "",
+              )}
+            >
             <Link to={isMovie ? "/movies" : "/theater"} className="inline-flex items-center gap-1 text-sm text-white/50 hover:text-white transition-colors mb-4">
               <ArrowLeft className="w-4 h-4" /> Πίσω στις {isMovie ? "Ταινίες" : "Παραστάσεις"}
             </Link>
@@ -688,6 +707,26 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 <SharePageButton variant="hero" path={`/movies/${slug}`} title={headline.primary} />
               ) : null}
             </div>
+            </div>
+
+            {isMovie && movie?.posterUrl ? (
+              <figure className="mx-auto w-[9.5rem] shrink-0 sm:w-44 md:mx-0 md:w-52 lg:w-60">
+                <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
+                  <PosterPicture
+                    src={movie.posterUrl}
+                    srcSet={movie.posterSrcSet}
+                    alt={posterAltForMovie(movie)}
+                    width={512}
+                    height={768}
+                    fetchPriority="high"
+                    loading="eager"
+                    sizes="(max-width: 768px) 152px, 240px"
+                    className="h-full w-full object-contain object-center"
+                  />
+                  <MoviePosterMeta movie={movie} />
+                </div>
+              </figure>
+            ) : null}
           </div>
         </div>
       </section>

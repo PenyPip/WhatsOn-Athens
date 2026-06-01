@@ -2,9 +2,6 @@ import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-qu
 import { api } from "@/lib/api";
 import {
   homeNeedsShowtimes,
-  homeNeedsTheater,
-  homeNeedsVenues,
-  homeNeedsDining,
   homeNeedsFullMovieCatalog,
   resolveHomepageLayout,
   type MappedHomepage,
@@ -51,15 +48,6 @@ async function prefetchHomeBundle(qc: QueryClient) {
   ];
   if (homeNeedsShowtimes(layout.sections)) {
     tasks.push(qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }));
-  }
-  if (homeNeedsTheater(layout.sections)) {
-    tasks.push(qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }));
-  }
-  if (homeNeedsVenues(layout.sections)) {
-    tasks.push(qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }));
-  }
-  if (homeNeedsDining(layout.sections)) {
-    tasks.push(qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants, ...queryDefaults }));
   }
   await Promise.all(tasks);
   finalizeBootstrapCache(qc, {
@@ -123,12 +111,6 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
   });
 
   try {
-    await qc.prefetchQuery({
-      queryKey: ["siteNavigation"],
-      queryFn: api.getSiteNavigation,
-      ...queryDefaults,
-    });
-
     const movieSlug = matchMovieSlug(normalized);
     const theaterSlug = matchTheaterSlug(normalized);
     const diningSlug = matchDiningSlug(normalized);

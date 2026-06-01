@@ -1,4 +1,6 @@
 import { lazy, Suspense, useRef } from "react";
+import { useIdleMount } from "@/hooks/useIdleMount";
+import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { Link, useLocation } from "react-router-dom";
 import { User } from "lucide-react";
 import { useSiteNavigationData } from "@/hooks/useStrapi";
@@ -66,7 +68,9 @@ const Navbar = () => {
   const location = useLocation();
   const mobileSearchRef = useRef<NavSearchHandle>(null);
   const desktopSearchRef = useRef<NavSearchHandle>(null);
-  const nav = useSiteNavigationData();
+  const deferNav = useDeferUntilLcpDone();
+  const showSearch = useIdleMount(2500);
+  const nav = useSiteNavigationData(deferNav);
 
   const desktopLinks = nav.desktopLinks;
   const mobileTabLinks = nav.mobileTabLinks;
@@ -80,13 +84,17 @@ const Navbar = () => {
       >
         <div className="container flex min-h-14 items-center gap-2.5 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <BrandLogo compact tagline={nav.brandTagline} />
-          <Suspense fallback={<NavSearchFallback className="h-9 min-w-0 flex-1" />}>
-            <NavSearch
-              ref={mobileSearchRef}
-              className="min-w-0 flex-1"
-              inputClassName="h-9 text-xs"
-            />
-          </Suspense>
+          {showSearch ? (
+            <Suspense fallback={<NavSearchFallback className="h-9 min-w-0 flex-1" />}>
+              <NavSearch
+                ref={mobileSearchRef}
+                className="min-w-0 flex-1"
+                inputClassName="h-9 text-xs"
+              />
+            </Suspense>
+          ) : (
+            <NavSearchFallback className="h-9 min-w-0 flex-1" />
+          )}
         </div>
       </nav>
 
@@ -95,13 +103,17 @@ const Navbar = () => {
           <BrandLogo tagline={nav.brandTagline} />
 
           <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex">
-            <Suspense fallback={<NavSearchFallback className="h-11 w-full max-w-md" />}>
-              <NavSearch
-                ref={desktopSearchRef}
-                className="w-full max-w-md"
-                inputClassName="h-11 text-sm"
-              />
-            </Suspense>
+            {showSearch ? (
+              <Suspense fallback={<NavSearchFallback className="h-11 w-full max-w-md" />}>
+                <NavSearch
+                  ref={desktopSearchRef}
+                  className="w-full max-w-md"
+                  inputClassName="h-11 text-sm"
+                />
+              </Suspense>
+            ) : (
+              <NavSearchFallback className="h-11 w-full max-w-md" />
+            )}
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-4 md:contents">

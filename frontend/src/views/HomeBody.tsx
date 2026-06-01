@@ -5,6 +5,7 @@ import RestaurantCard from "@/components/RestaurantCard";
 import VenueCard from "@/components/VenueCard";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
+import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useVenues } from "@/hooks/useStrapi";
 import {
   homeNeedsDining,
@@ -306,14 +307,19 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsTheater = homeNeedsTheater(sections) && !THEATER_PAGE_COMING_SOON;
   const needsDining = homeNeedsDining(sections);
   const needsShowtimes = homeNeedsShowtimes(sections);
+  const deferSecondary = useDeferUntilLcpDone();
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies();
   const { data: showtimes, isPending: showtimesPending, isError: showtimesError } = useShowtimes(needsShowtimes);
   const awaitingMovies = movies === undefined && moviesPending;
   const awaitingShowtimes = showtimes === undefined && showtimesPending;
-  const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues);
-  const { data: theaterShows, isLoading: theaterLoading, isError: theaterError } = useTheaterShows(needsTheater);
-  const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(needsDining);
+  const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues && deferSecondary);
+  const { data: theaterShows, isLoading: theaterLoading, isError: theaterError } = useTheaterShows(
+    needsTheater && deferSecondary,
+  );
+  const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(
+    needsDining && deferSecondary,
+  );
   const apiSectionFailed = moviesError || showtimesError || venuesError || theaterError || restaurantsError;
 
   const stList = useMemo(() => showtimes ?? [], [showtimes]);

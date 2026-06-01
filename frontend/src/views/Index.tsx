@@ -1,12 +1,13 @@
+import { lazy, Suspense, useEffect, useState } from "react";
 import HomeSeoIntro from "@/components/HomeSeoIntro";
-import HomeSectionsSkeleton from "@/components/HomeSectionsSkeleton";
 import MarkLcpDone from "@/components/MarkLcpDone";
-import HomeBody from "@/views/HomeBody";
 import { layoutShowsHero } from "@/config/home";
 import { SITE_INSTAGRAM_URL } from "@/config/siteLinks";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useHomeLayout } from "@/hooks/useStrapi";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+
+const HomeBody = lazy(() => import("@/views/HomeBody"));
 
 const Index = () => {
   usePageSeo(staticPageSeo.home);
@@ -14,12 +15,21 @@ const Index = () => {
   const layout = useHomeLayout();
   const hasHero = layoutShowsHero(layout);
   const homeBodyReady = layout.sections.length > 0;
-  const showHomeSkeleton = !homeBodyReady;
+  const [clientReady, setClientReady] = useState(false);
+
+  useEffect(() => {
+    setClientReady(true);
+  }, []);
+
   return (
     <div className="min-h-screen pb-20 md:pb-0">
       {!hasHero ? <MarkLcpDone /> : null}
 
-      {showHomeSkeleton ? <HomeSectionsSkeleton /> : <HomeBody layout={layout} />}
+      {clientReady && homeBodyReady ? (
+        <Suspense fallback={null}>
+          <HomeBody layout={layout} />
+        </Suspense>
+      ) : null}
 
       <HomeSeoIntro />
 

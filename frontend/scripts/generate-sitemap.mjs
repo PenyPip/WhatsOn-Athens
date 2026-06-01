@@ -90,6 +90,7 @@ function relationList(attrs, key) {
   return [];
 }
 
+/** Σχετικό `/uploads/...` για og:image στο the37n.gr (όχι localhost Strapi). */
 function strapiMediaUrl(media) {
   if (!media) return undefined;
   const data = media.data ?? media;
@@ -98,8 +99,18 @@ function strapiMediaUrl(media) {
   const attrs = row.attributes && typeof row.attributes === "object" ? row.attributes : row;
   const url = typeof attrs.url === "string" ? attrs.url.trim() : "";
   if (!url) return undefined;
-  if (url.startsWith("http://") || url.startsWith("https://")) return url;
-  return `${STRAPI_ORIGIN}${url.startsWith("/") ? url : `/${url}`}`;
+  if (url.startsWith("/uploads/")) return url;
+  if (url.startsWith("http://") || url.startsWith("https://")) {
+    try {
+      const pathname = new URL(url).pathname;
+      if (pathname.startsWith("/uploads/")) return pathname;
+    } catch {
+      /* ignore */
+    }
+    return url;
+  }
+  const path = url.startsWith("/") ? url : `/${url}`;
+  return path.startsWith("/uploads/") ? path : `${STRAPI_ORIGIN}${path}`;
 }
 
 const POSTER_POPULATE = "populate[poster][fields][0]=url";

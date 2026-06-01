@@ -4,17 +4,18 @@ import { api } from "@/lib/api";
 import { resolveHomepageLayout } from "@/config/home";
 import { DEFAULT_SITE_NAVIGATION } from "@/config/navigation";
 
-export const useSiteNavigation = () =>
+export const useSiteNavigation = (enabled = true) =>
   useQuery({
     queryKey: ["siteNavigation"],
     queryFn: api.getSiteNavigation,
     staleTime: 600_000,
     retry: 1,
     throwOnError: false,
+    enabled,
   });
 
-export function useSiteNavigationData() {
-  const q = useSiteNavigation();
+export function useSiteNavigationData(enabled = true) {
+  const q = useSiteNavigation(enabled);
   return q.data ?? DEFAULT_SITE_NAVIGATION;
 }
 
