@@ -16,7 +16,10 @@ const SyncProgramPage = () => {
             πεδία προγράμματος.
           </Typography>
           <Box paddingTop={4}>
-            <Typography>Το πεδίο «updated» ενημερώνεται μόνο χειροκίνητα από administrator.</Typography>
+            <Typography>
+              Το πεδίο «updated» ενημερώνεται χειροκίνητα από administrator. Κάθε Δευτέρα 06:00 (ώρα server)
+              επανέρχεται αυτόματα σε false για όλα τα σινεμά.
+            </Typography>
           </Box>
         </Box>
       </ContentLayout>

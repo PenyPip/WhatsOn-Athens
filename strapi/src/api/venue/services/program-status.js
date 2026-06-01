@@ -21,8 +21,16 @@ async function scheduleVenueProgramSyncFromShowtime() {
   return;
 }
 
-async function resetCinemaManualCompleted() {
-  return 0;
+async function resetCinemaManualCompleted(strapi) {
+  const result = await strapi.db.query('api::venue.venue').updateMany({
+    where: { type: 'cinema' },
+    data: { updated: false },
+  });
+  const count = typeof result?.count === 'number' ? result.count : 0;
+  if (count > 0) {
+    strapi.log.info(`[whatson] venue updated → false (Δευτέρα πρωί): ${count} σινεμά`);
+  }
+  return count;
 }
 
 async function runInitialProgramBootstrap() {

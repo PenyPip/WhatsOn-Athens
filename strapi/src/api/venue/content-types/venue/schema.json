@@ -74,7 +74,7 @@
       "type": "boolean",
       "default": false,
       "private": true,
-      "description": "Χειροκίνητο — δεν εμφανίζεται στο site. Ο administrator το ενημερώνει μόνο χειροκίνητα."
+      "description": "Χειροκίνητο — δεν εμφανίζεται στο site. Ενημερώνεται από administrator· κάθε Δευτέρα 06:00 επανέρχεται σε false (cron)."
     },
     "info": {
       "type": "text",

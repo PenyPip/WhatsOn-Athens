@@ -64,8 +64,9 @@ const Index = () => {
         />
       ) : null}
 
-      <HomeSeoIntro />
       {showHomeSkeleton ? <HomeSectionsSkeleton /> : <HomeBody layout={layout} />}
+
+      <HomeSeoIntro />
 
       <footer className="section-black border-t border-white/10 py-12">
         <div className="container">

@@ -1018,10 +1018,6 @@ const Movies = () => {
                                 ))}
                               </div>
                             </div>
-                          ) : moviesSection === "new" || moviesSection === "soon" ? (
-                            <div className="border-t border-border/[0.1] px-2.5 py-3 text-center text-[11px] leading-relaxed text-muted-foreground sm:text-xs">
-                              Δεν έχουν καταχωρηθεί προβολές από σήμερα για αυτό το φίλτρο.
-                            </div>
                           ) : null}
                         </div>
                       );
