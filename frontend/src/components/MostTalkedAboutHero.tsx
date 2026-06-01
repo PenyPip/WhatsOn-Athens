@@ -120,7 +120,7 @@ const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
   const hasCarousel = movies.length > 1;
 
   return (
-    <section className={HOME_HERO_COMPACT_SECTION_CLASS} aria-roledescription="carousel" aria-label="Πιο πολυσυζητημένες ταινίες">
+    <section className={HOME_HERO_COMPACT_SECTION_CLASS} aria-roledescription="carousel" aria-label="Πολυσυζητημένες ταινίες">
       <div className="absolute inset-0 bg-gradient-to-br from-[#1c1a52] via-[#13143E] to-[#0d0c24]" />
       <div
         className="pointer-events-none absolute -right-8 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-amber-500/12 blur-3xl md:right-[10%]"
@@ -152,7 +152,7 @@ const MostTalkedAboutHero = ({ movies, loading }: MostTalkedAboutHeroProps) => {
           <div className="min-w-0 max-w-2xl lg:max-w-3xl">
             <div className="mb-5">
               <span className="inline-flex items-center rounded-full border border-amber-300/55 bg-gradient-to-r from-amber-400/30 via-amber-500/20 to-amber-600/10 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.22em] text-amber-50 shadow-[0_4px_28px_rgba(251,191,36,0.22)] ring-1 ring-amber-100/25 md:px-5 md:text-xs md:tracking-[0.24em]">
-                Πιο πολυσυζητημένες
+                Πολυσυζητημένες
               </span>
             </div>
             <h2 className="font-display text-3xl font-bold leading-[1.08] text-white md:text-4xl lg:text-[2.75rem]">{titles.primary}</h2>

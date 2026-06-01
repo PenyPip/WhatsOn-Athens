@@ -106,7 +106,7 @@ const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady }: HeroPr
   const kicker = isTheater
     ? "Προτεινόμενη παράσταση"
     : picks.movie?.mostTalkedAbout
-      ? "Πιο συζητημένη"
+      ? "Πολυσυζητημένη"
       : "Προτεινόμενη ταινία";
 
   return (
