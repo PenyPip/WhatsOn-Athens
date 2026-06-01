@@ -2,6 +2,7 @@ import { Calendar, MapPin, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import type { StrapiVenue } from "@/lib/api";
+import { isTouringTheaterVenue } from "@/lib/touringVenues";
 import { programHrefForVenue, venueKindLabel } from "@/lib/venueType";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import { isValidExternalUrl, resolveGoogleMapsHref } from "@/lib/venueResolve";
@@ -30,6 +31,8 @@ export interface VenueCardProps {
   showProgramDates?: boolean;
   programDatesLabel?: string | null;
   programDatesLoading?: boolean;
+  /** Αρχική / περιοδείες: χωρίς εσωτερικό πρόγραμμα, έμφαση στο more_link. */
+  tourMode?: boolean;
   className?: string;
 }
 
@@ -42,9 +45,11 @@ const VenueCard = ({
   showProgramDates = false,
   programDatesLabel,
   programDatesLoading = false,
+  tourMode = false,
   className,
 }: VenueCardProps) => {
-  const programHref = moviesHref ?? programHrefForVenue(venue);
+  const isTour = tourMode || isTouringTheaterVenue(venue);
+  const programHref = isTour ? undefined : (moviesHref ?? programHrefForVenue(venue));
   const programLabel = venue.type === "theater" ? "Παραστάσεις" : "Πρόγραμμα";
   const isSpotlight = variant === "spotlight";
   const headingClass = cn(
@@ -102,7 +107,12 @@ const VenueCard = ({
                 {venueKindLabel(venue.type)}
               </span>
             ) : null}
-            {venue.summerOutdoor ? (
+            {isTour ? (
+              <span className="shrink-0 rounded border border-amber-300/50 bg-amber-400/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-amber-100">
+                Περιοδεία
+              </span>
+            ) : null}
+            {!isTour && venue.summerOutdoor ? (
               <span className="shrink-0 rounded bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#13143E]">
                 θερινό
               </span>
@@ -140,7 +150,7 @@ const VenueCard = ({
             </p>
           ) : null}
           {cityLabel(venue) ? <p className={cityClass}>{cityLabel(venue)}</p> : null}
-          {showProgramDates ? (
+          {showProgramDates && !isTour ? (
             programDatesLoading ? (
               <p className={cn("text-xs", isSpotlight ? "text-white/50" : "text-muted-foreground")}>
                 Φόρτωση προγράμματος…
@@ -181,6 +191,7 @@ const VenueCard = ({
                 venue={venue}
                 variant="button"
                 compact={compact}
+                label={isTour ? "Δες περιοδεία" : undefined}
                 className={cn(
                   compact ? "px-2.5 py-1.5 text-xs" : undefined,
                   isSpotlight && "border-white/20 bg-white/10 text-white hover:bg-white/20",

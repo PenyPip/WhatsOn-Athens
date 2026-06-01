@@ -6,11 +6,10 @@ import VenueCard from "@/components/VenueCard";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
-import { useMovies, useShowtimes, useTheaterShows, useRestaurants, useVenues } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useRestaurants, useVenues } from "@/hooks/useStrapi";
 import {
   homeNeedsDining,
   homeNeedsShowtimes,
-  homeNeedsTheater,
   homeNeedsVenues,
   type HomeSectionId,
   type ResolvedHomepageLayout,
@@ -30,11 +29,10 @@ import {
 } from "@/lib/homeMovieFilters";
 import { resolveImdbRating } from "@/lib/movieImdb";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
-import TheaterComingSoon from "@/components/TheaterComingSoon";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
-import { THEATER_PAGE_COMING_SOON } from "@/config/features";
+import { filterTouringVenuesForHome } from "@/lib/touringVenues";
 import { siteSeo } from "@/lib/siteMetadata";
 
 const MOVIE_ROW_MIN_H = "min-h-[20rem] md:min-h-[22rem]";
@@ -304,7 +302,6 @@ type HomeBodyProps = {
 export default function HomeBody({ layout }: HomeBodyProps) {
   const sections = layout.sections;
   const needsVenues = homeNeedsVenues(sections);
-  const needsTheater = homeNeedsTheater(sections) && !THEATER_PAGE_COMING_SOON;
   const needsDining = homeNeedsDining(sections);
   const needsShowtimes = homeNeedsShowtimes(sections);
   const deferSecondary = useDeferUntilLcpDone();
@@ -314,13 +311,10 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const awaitingMovies = movies === undefined && moviesPending;
   const awaitingShowtimes = showtimes === undefined && showtimesPending;
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues && deferSecondary);
-  const { data: theaterShows, isLoading: theaterLoading, isError: theaterError } = useTheaterShows(
-    needsTheater && deferSecondary,
-  );
   const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(
     needsDining && deferSecondary,
   );
-  const apiSectionFailed = moviesError || showtimesError || venuesError || theaterError || restaurantsError;
+  const apiSectionFailed = moviesError || showtimesError || venuesError || restaurantsError;
 
   const stList = useMemo(() => showtimes ?? [], [showtimes]);
   const movieList = useMemo(() => {
@@ -339,6 +333,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     () => summerVenuesWithShowtimesOrAll(venueList, stList),
     [venueList, stList],
   );
+  const touringVenuesForHome = useMemo(() => filterTouringVenuesForHome(venueList), [venueList]);
   const summerMoviesForHome = useMemo(
     () => moviesWithSummerOutdoorShowtimeThisCinemaWeek(movieList, stList, venueList),
     [movieList, stList, venueList],
@@ -528,47 +523,61 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                       Περιοδείες & παραστάσεις που ταξιδεύουν
                     </h2>
                   </div>
-                  {THEATER_PAGE_COMING_SOON ? (
-                    <TheaterComingSoon variant="section" />
-                  ) : theaterShows === undefined && theaterLoading ? (
+                  {venues === undefined && venuesLoading ? (
                     <div className="mt-10 flex gap-4 overflow-hidden pb-2">
                       {[0, 1, 2, 3].map((i) => (
                         <div
                           key={i}
-                          className="h-[18rem] w-[11rem] shrink-0 animate-pulse rounded-lg bg-white/10 md:w-[13rem]"
+                          className="h-[14rem] w-[260px] shrink-0 animate-pulse rounded-xl bg-white/10 sm:w-[280px]"
                         />
                       ))}
                     </div>
-                  ) : theaterError ? (
+                  ) : venuesError ? (
                     <div className="mt-10 max-w-xl rounded-xl border border-amber-500/20 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
                       <p className="text-sm leading-relaxed text-amber-100/85 font-body">Δεν ήταν δυνατή η φόρτωση.</p>
                     </div>
-                  ) : (theaterShows ?? []).length === 0 ? (
-                    <TheaterComingSoon variant="section" />
-                  ) : (
-                    <div className="mt-10 flex items-stretch gap-4 overflow-x-auto scrollbar-hide pb-2">
-                      {(theaterShows ?? []).map((show, i) => (
-                        <div
-                          key={show.id}
-                          className="flex h-full min-h-0 min-w-[170px] max-w-[170px] flex-shrink-0 md:min-w-[200px] md:max-w-[200px]"
-                        >
-                          <EventCard
-                            slug={show.slug}
-                            title={show.title}
-                            subtitle={show.director}
-                            genre={show.genre}
-                            duration={show.duration}
-                            gradientFrom={show.gradientFrom}
-                            gradientTo={show.gradientTo}
-                            posterUrl={show.posterUrl}
-                            type="theater"
-                            index={i}
-                            badge={show.isPremiere ? "Πρεμιέρα" : show.isLastShows ? "Τελευταίες" : undefined}
-                            className="w-full flex-1"
-                          />
-                        </div>
-                      ))}
+                  ) : touringVenuesForHome.length === 0 ? (
+                    <div className="mt-10 max-w-2xl rounded-xl border border-white/10 bg-black/35 px-5 py-6 md:px-7 md:py-7">
+                      <p className="font-body text-sm leading-relaxed text-white/75 md:text-[0.9375rem]">
+                        Δεν υπάρχουν περιοδείες προς το παρόν. Στο CMS πρόσθεσε{" "}
+                        <strong className="font-medium text-white">Χώρο / Σινεμά</strong> με τύπο{" "}
+                        <strong className="font-medium text-white">Θέατρο</strong> και συμπλήρωσε το πεδίο{" "}
+                        <strong className="font-medium text-white">more link</strong> (URL περιοδείας ή κρατήσεων).
+                      </p>
+                      <a
+                        href="/venues?type=theater"
+                        className="mt-5 inline-flex text-sm font-semibold text-amber-200/95 transition-colors hover:text-amber-50"
+                      >
+                        Όλοι οι θεατρικοί χώροι
+                        <span aria-hidden className="ml-1 opacity-75">
+                          →
+                        </span>
+                      </a>
                     </div>
+                  ) : (
+                    <>
+                      <ul
+                        className="mt-10 flex list-none items-stretch gap-4 overflow-x-auto scrollbar-hide pb-2"
+                        aria-label="Περιοδείες θεάτρου"
+                      >
+                        {touringVenuesForHome.map((venue) => (
+                          <li key={venue.id} className="flex h-full min-h-0 shrink-0">
+                            <VenueCard venue={venue} variant="spotlight" layout="carousel" tourMode />
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-10 border-t border-white/10 pt-8 text-center">
+                        <a
+                          href="/venues?type=theater"
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-amber-200/95 transition-colors hover:text-amber-50"
+                        >
+                          Όλοι οι θεατρικοί χώροι
+                          <span aria-hidden className="opacity-75">
+                            →
+                          </span>
+                        </a>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>,
