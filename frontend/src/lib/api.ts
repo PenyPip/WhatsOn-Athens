@@ -666,7 +666,6 @@ function mapRestaurant(raw: unknown): StrapiRestaurant {
     editorialScore: r.editorial_score,
     editorialReview: r.editorial_review,
     editorialAuthor: r.editorial_author,
-    googlePlaceId: typeof r.google_place_id === "string" ? r.google_place_id.trim() : "",
   };
 }
 
@@ -1031,26 +1030,6 @@ export interface StrapiRestaurant {
   editorialScore?: number;
   editorialReview?: string;
   editorialAuthor?: string;
-  /** Google Place ID (ChIJ…) — για κριτικές Maps. */
-  googlePlaceId?: string;
-}
-
-export interface GooglePlaceReview {
-  authorName: string;
-  rating: number;
-  text: string;
-  relativeTime: string;
-  profilePhotoUrl?: string;
-}
-
-export interface RestaurantGoogleReviews {
-  placeName?: string | null;
-  rating?: number | null;
-  userRatingCount?: number | null;
-  googleMapsUri?: string | null;
-  reviews: GooglePlaceReview[];
-  /** Διαγνωστικό από Strapi — όχι για εμφάνιση στο UI */
-  status?: string | null;
 }
 
 export interface StrapiVenue {
@@ -1332,12 +1311,6 @@ export const api = {
     fetchAPI<any[]>(`/restaurants`, { ...RESTAURANT_PUBLIC_QUERY, "filters[slug][$eq]": slug }).then((d) => {
       const row = Array.isArray(d) ? d[0] : undefined;
       return row ? mapRestaurant(row) : undefined;
-    }),
-
-  getRestaurantGoogleReviews: (slug: string) =>
-    fetchAPI<RestaurantGoogleReviews>(`/restaurants/google-reviews/${encodeURIComponent(slug)}`, undefined, {
-      noPopulate: true,
-      noStore: true,
     }),
 
   getVenues: () =>

@@ -1,9 +1,8 @@
 import { useParams, Link } from "react-router-dom";
 import { useMemo } from "react";
 import { MapPin, Phone, Globe, Instagram, ArrowLeft, UtensilsCrossed } from "lucide-react";
-import { useRestaurantGoogleReviews, useRestaurants } from "@/hooks/useStrapi";
+import { useRestaurants } from "@/hooks/useStrapi";
 import RestaurantCard from "@/components/RestaurantCard";
-import RestaurantGoogleReviewsSection from "@/components/RestaurantGoogleReviews";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { usePageSeo } from "@/hooks/usePageSeo";
@@ -23,7 +22,6 @@ const DiningDetail = () => {
   const { data: restaurants, isLoading } = useRestaurants();
 
   const restaurant = restaurants?.find((r) => r.slug === slug);
-  const { data: googleReviews, isLoading: googleReviewsLoading } = useRestaurantGoogleReviews(slug ?? "", !!slug);
 
   usePageSeo(
     useMemo(() => {
@@ -58,7 +56,9 @@ const DiningDetail = () => {
       <div className="min-h-screen pt-36 flex items-center justify-center">
         <div className="text-center">
           <h1 className="font-display text-2xl mb-2">Δεν βρέθηκε</h1>
-          <Link to="/dining" className="text-primary text-sm">Πίσω στο Φαγητό</Link>
+          <Link to="/dining" className="text-primary text-sm">
+            Πίσω στο Φαγητό
+          </Link>
         </div>
       </div>
     );
@@ -88,20 +88,29 @@ const DiningDetail = () => {
         <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-[#111111]/50 to-transparent" />
         <div className="relative z-10 container h-full flex items-end pb-12 pt-36">
           <div className="animate-fade-in-up">
-            <Link to="/dining" className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors mb-4">
+            <Link
+              to="/dining"
+              className="inline-flex items-center gap-1 text-xs text-white/50 hover:text-white transition-colors mb-4"
+            >
               <ArrowLeft className="w-3 h-3" /> Πίσω στο Φαγητό
             </Link>
             <div className="flex items-center gap-3 mb-3">
               {restaurant.isNew && (
-                <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-white text-[#111111]">Νέο</span>
+                <span className="px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider rounded bg-white text-[#111111]">
+                  Νέο
+                </span>
               )}
               {restaurant.editorialScore && (
-                <span className="px-2 py-0.5 bg-white text-[11px] font-bold text-[#111111] rounded">{restaurant.editorialScore}/10</span>
+                <span className="px-2 py-0.5 bg-white text-[11px] font-bold text-[#111111] rounded">
+                  {restaurant.editorialScore}/10
+                </span>
               )}
             </div>
             <h1 className="font-display text-3xl md:text-5xl font-bold mb-4 text-white">{restaurant.name}</h1>
             <div className="flex flex-wrap items-center gap-3 text-sm text-white/50">
-              <span className="flex items-center gap-1"><UtensilsCrossed className="w-3.5 h-3.5" /> {restaurant.cuisine}</span>
+              <span className="flex items-center gap-1">
+                <UtensilsCrossed className="w-3.5 h-3.5" /> {restaurant.cuisine}
+              </span>
               <span>·</span>
               <span>{restaurant.priceRange}</span>
               <span>·</span>
@@ -123,13 +132,13 @@ const DiningDetail = () => {
 
             {restaurant.editorialReview && (
               <section className="card-elevated animate-fade-in-up border-l-4 border-l-[#111111] p-6">
-                <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground block mb-3">Κριτική Συντάκτη</span>
+                <span className="text-[10px] uppercase tracking-[0.15em] text-muted-foreground block mb-3">
+                  Κριτική Συντάκτη
+                </span>
                 <div className="flex items-center gap-2 mb-3">
                   <span className="font-bold text-foreground text-lg">{restaurant.editorialScore}/10</span>
                 </div>
-                <p className="text-foreground leading-relaxed italic text-lg">
-                  «{restaurant.editorialReview}»
-                </p>
+                <p className="text-foreground leading-relaxed italic text-lg">«{restaurant.editorialReview}»</p>
                 <p className="text-sm text-muted-foreground mt-4">— {restaurant.editorialAuthor}</p>
               </section>
             )}
@@ -138,10 +147,6 @@ const DiningDetail = () => {
               <h2 className="font-display text-xl font-semibold mb-4">Τοποθεσία</h2>
               <RestaurantLocationMap restaurant={restaurant} />
             </section>
-
-            {hasGooglePlace ? (
-              <RestaurantGoogleReviewsSection data={googleReviews} isLoading={googleReviewsLoading} />
-            ) : null}
           </div>
 
           <div className="space-y-6">

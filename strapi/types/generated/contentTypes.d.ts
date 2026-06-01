@@ -647,7 +647,6 @@ export interface ApiRestaurantRestaurant extends Schema.CollectionType {
       'api::editorial-review.editorial-review'
     >;
     editorial_score: Attribute.Decimal;
-    google_place_id: Attribute.String;
     instagram: Attribute.String;
     is_new: Attribute.Boolean & Attribute.DefaultTo<true>;
     name: Attribute.String & Attribute.Required;
