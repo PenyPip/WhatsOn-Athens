@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
-import { heroCtaForSchedule, resolveHeroScheduleDisplay } from "@/lib/heroScheduleLine";
+import { heroMovieCta, resolveHeroScheduleDisplay } from "@/lib/heroScheduleLine";
 import { movieTitleLines, posterAltForMovie } from "@/lib/movieTitles";
 import { synopsisExcerpt } from "@/lib/synopsisExcerpt";
 import { HOME_HERO_COMPACT_SECTION_CLASS } from "@/lib/homeHeroLayout";
@@ -118,7 +118,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
   const titles = movieTitleLines(active);
   const synopsis = heroSynopsisText(active);
   const schedule = resolveHeroScheduleDisplay(active, showtimes);
-  const cta = heroCtaForSchedule(active.slug, schedule);
+  const cta = heroMovieCta(active.slug);
   const meta = heroMetaLine(active);
   const notifyPosterReady = () => markLcpDone();
   const hasCarousel = movies.length > 1;
@@ -176,7 +176,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
             >
               {synopsis || "Δεν υπάρχει σύνοψη για αυτή την ταινία."}
             </p>
-            {schedule.mode !== "none" ? (
+            {schedule.mode === "release" ? (
               <p className="mt-3 font-body text-sm font-medium text-white md:text-base">{schedule.label}</p>
             ) : null}
             {meta ? <p className="mt-3 font-body text-sm text-white/55">{meta}</p> : null}

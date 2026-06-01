@@ -1,4 +1,5 @@
 import { Link } from "react-router-dom";
+import { SITE_INSTAGRAM_URL } from "@/config/siteLinks";
 import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 
 const Footer = () => {
@@ -41,9 +42,14 @@ const Footer = () => {
               <a href="/privacy#oroi" className="block text-white/60 hover:text-white transition-colors">
                 Όροι χρήσης
               </a>
-              <span className="block text-white/60">Instagram</span>
-              <span className="block text-white/60">Facebook</span>
-              <span className="block text-white/60">Twitter</span>
+              <a
+                href={SITE_INSTAGRAM_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block text-white/60 hover:text-white transition-colors"
+              >
+                Instagram
+              </a>
             </div>
           </div>
         </div>

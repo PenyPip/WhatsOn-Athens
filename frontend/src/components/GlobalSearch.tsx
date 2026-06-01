@@ -179,11 +179,8 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
           aria-expanded={showPanel}
           aria-controls={showPanel ? panelId : undefined}
           aria-autocomplete="list"
-          className="min-w-0 flex-1 bg-transparent font-body text-white/90 outline-none placeholder:text-white/55"
+          className="min-w-0 flex-1 bg-transparent py-0.5 font-body text-white/90 outline-none placeholder:text-white/55 pr-3"
         />
-        <kbd className="mr-3 hidden shrink-0 rounded border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-[10px] text-white/45 lg:inline">
-          ⌘K
-        </kbd>
       </div>
 
       {showPanel ? (

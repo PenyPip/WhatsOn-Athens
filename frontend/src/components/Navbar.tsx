@@ -1,7 +1,6 @@
 import { lazy, Suspense, useRef } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { User } from "lucide-react";
-import { useGlobalSearchShortcut } from "@/hooks/globalSearchShortcut";
 import { useSiteNavigationData } from "@/hooks/useStrapi";
 import { isNavLinkActive } from "@/lib/navigation";
 import { navIconComponent } from "@/lib/navIcons";
@@ -68,13 +67,6 @@ const Navbar = () => {
   const mobileSearchRef = useRef<NavSearchHandle>(null);
   const desktopSearchRef = useRef<NavSearchHandle>(null);
   const nav = useSiteNavigationData();
-
-  const focusNavSearch = () => {
-    const desktop = window.matchMedia("(min-width: 768px)").matches;
-    (desktop ? desktopSearchRef : mobileSearchRef).current?.focus();
-  };
-
-  useGlobalSearchShortcut(focusNavSearch);
 
   const desktopLinks = nav.desktopLinks;
   const mobileTabLinks = nav.mobileTabLinks;

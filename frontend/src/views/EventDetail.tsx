@@ -467,7 +467,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     </aside>
   ) : null;
 
-  const movieShowtimesSection = isMovie ? (
+  const hasMovieShowtimes = cinemaWeekShowtimes.length > 0 || soonShowtimes.length > 0;
+
+  const movieShowtimesSection =
+    isMovie && hasMovieShowtimes ? (
     <section
       id="showtimes"
       className="scroll-mt-24 rounded-xl border border-[#13143E]/12 bg-[#13143E]/[0.03] p-4 md:p-6"
@@ -479,52 +482,44 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           <p className="mt-0.5 text-sm text-muted-foreground">Τρέχουσα εβδομάδα κινηματογράφου</p>
         </div>
       </div>
-      {cinemaWeekShowtimes.length === 0 && soonShowtimes.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Δεν υπάρχουν επερχόμενες προβολές.</p>
-      ) : (
-        <>
-          {cinemaWeekShowtimes.length > 0 ? (
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
-              {showtimesByVenue.map(({ key, venueName, slots, venue }) => {
-                if (!slots.length) return null;
-                return (
-                  <div
-                    key={key}
-                    className="flex min-h-0 flex-col rounded-lg border border-border/80 bg-card/50 p-3 sm:p-4"
-                  >
-                    <div className="mb-2 border-b border-border/60 pb-2">
-                      <CinemaVenueLinks
-                        venueName={venueName}
-                        venue={venue}
-                        programHref={moviesHrefForShowtimes(slots, venues, key)}
-                        showProgramButton
-                        compact
-                      />
-                      {slots.some(showtimeIsWeekBlock) && venue ? (
-                        <VenueDayPricesTable venue={venue} className="mt-2" />
-                      ) : null}
-                    </div>
-                    <ShowtimesExpandable listClassName="min-h-0 flex-1">
-                      {slots.map((st) => (
-                        <ShowtimeCompactRow key={st.id} st={st} venue={venue} emphasized />
-                      ))}
-                    </ShowtimesExpandable>
-                    {isValidExternalUrl(venue?.moreLink) ? (
-                      <div className="mt-2 border-t border-border/50 pt-2">
-                        <VenueBookingLink venue={venue} compact />
-                      </div>
-                    ) : null}
+      {cinemaWeekShowtimes.length > 0 ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
+          {showtimesByVenue.map(({ key, venueName, slots, venue }) => {
+            if (!slots.length) return null;
+            return (
+              <div
+                key={key}
+                className="flex min-h-0 flex-col rounded-lg border border-border/80 bg-card/50 p-3 sm:p-4"
+              >
+                <div className="mb-2 border-b border-border/60 pb-2">
+                  <CinemaVenueLinks
+                    venueName={venueName}
+                    venue={venue}
+                    programHref={moviesHrefForShowtimes(slots, venues, key)}
+                    showProgramButton
+                    compact
+                  />
+                  {slots.some(showtimeIsWeekBlock) && venue ? (
+                    <VenueDayPricesTable venue={venue} className="mt-2" />
+                  ) : null}
+                </div>
+                <ShowtimesExpandable listClassName="min-h-0 flex-1">
+                  {slots.map((st) => (
+                    <ShowtimeCompactRow key={st.id} st={st} venue={venue} emphasized />
+                  ))}
+                </ShowtimesExpandable>
+                {isValidExternalUrl(venue?.moreLink) ? (
+                  <div className="mt-2 border-t border-border/50 pt-2">
+                    <VenueBookingLink venue={venue} compact />
                   </div>
-                );
-              })}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              Δεν υπάρχουν προβολές για την τρέχουσα εβδομάδα κινηματογράφου.
-            </p>
-          )}
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
 
-          {soonShowtimes.length > 0 ? (
+      {soonShowtimes.length > 0 ? (
             <div className="mt-8 border-t border-border/60 pt-6 md:mt-10">
               <h3 className="font-display text-base font-semibold text-foreground md:text-lg">Προσεχώς</h3>
               <p className="mt-1 text-sm text-muted-foreground">
@@ -566,8 +561,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               </div>
             </div>
           ) : null}
-        </>
-      )}
     </section>
   ) : null;
 
@@ -674,12 +667,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              <a
-                href="#showtimes"
-                className="inline-flex items-center rounded bg-white px-6 py-3 text-base font-semibold text-[#13143E] transition-colors hover:bg-white/90"
-              >
-                Προβολές & τιμές
-              </a>
+              {isMovie && hasMovieShowtimes ? (
+                <a
+                  href="#showtimes"
+                  className="inline-flex items-center rounded bg-white px-6 py-3 text-base font-semibold text-[#13143E] transition-colors hover:bg-white/90"
+                >
+                  Προβολές & τιμές
+                </a>
+              ) : null}
               {isMovie ? (
                 <a
                   href="#trailer"

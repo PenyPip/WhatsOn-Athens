@@ -3,6 +3,7 @@ import HomeSectionsSkeleton from "@/components/HomeSectionsSkeleton";
 import MarkLcpDone from "@/components/MarkLcpDone";
 import HomeBody from "@/views/HomeBody";
 import { layoutShowsHero } from "@/config/home";
+import { SITE_INSTAGRAM_URL } from "@/config/siteLinks";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useHomeLayout } from "@/hooks/useStrapi";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
@@ -67,8 +68,14 @@ const Index = () => {
             <div>
               <h4 className="text-xs uppercase tracking-[0.15em] text-white/70 mb-3">Social</h4>
               <div className="space-y-2 text-sm">
-                <span className="block text-white/75">Instagram</span>
-                <span className="block text-white/75">Facebook</span>
+                <a
+                  href={SITE_INSTAGRAM_URL}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block text-white/75 hover:text-white transition-colors"
+                >
+                  Instagram
+                </a>
               </div>
             </div>
           </div>
