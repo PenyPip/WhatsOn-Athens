@@ -19,10 +19,6 @@
     "synopsis": {
       "type": "text"
     },
-    "cuisine_text": {
-      "type": "string",
-      "description": "Παλιό πεδίο κειμένου — αγνοείται μετά τη μετάβαση στο relation cuisine."
-    },
     "cuisine": {
       "type": "relation",
       "relation": "manyToOne",

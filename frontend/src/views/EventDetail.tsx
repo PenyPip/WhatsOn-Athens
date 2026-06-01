@@ -194,7 +194,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows(isTheaterRoute);
   const { data: editorialReviews } = useEditorialReviews();
   const { data: userReviews } = useUserReviews();
-  const { data: showtimes } = useShowtimes(isMovieRoute);
+  const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(isMovieRoute);
   const { data: genreCatalog } = useMovieGenreCatalog(isMovieRoute && loadRelatedMovies);
   const { data: movieGenresList } = useMovieGenres(isMovieRoute);
   const { data: venues } = useVenues(isMovieRoute);
@@ -475,8 +475,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const hasMovieShowtimes = cinemaWeekShowtimes.length > 0 || soonShowtimes.length > 0;
 
-  const movieShowtimesSection =
-    isMovie && hasMovieShowtimes ? (
+  const movieShowtimesSection = isMovie ? (
     <section
       id="showtimes"
       className="scroll-mt-24 rounded-xl border border-[#13143E]/12 bg-[#13143E]/[0.03] p-4 md:p-6"
@@ -488,7 +487,17 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           <p className="mt-0.5 text-sm text-muted-foreground">Τρέχουσα εβδομάδα κινηματογράφου</p>
         </div>
       </div>
-      {cinemaWeekShowtimes.length > 0 ? (
+      {showtimesLoading && showtimes === undefined ? (
+        <p className="text-sm text-muted-foreground" role="status">
+          Φόρτωση προβολών…
+        </p>
+      ) : null}
+      {!showtimesLoading && !hasMovieShowtimes ? (
+        <p className="text-sm text-muted-foreground">
+          Δεν υπάρχουν καταχωρημένες επερχόμενες προβολές για αυτή την ταινία.
+        </p>
+      ) : null}
+      {hasMovieShowtimes && cinemaWeekShowtimes.length > 0 ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
           {showtimesByVenue.map(({ key, venueName, slots, venue }) => {
             if (!slots.length) return null;
@@ -689,8 +698,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </div>
 
             <div className="flex flex-wrap gap-3">
-              {theaterShow ? <TheaterShowMoreLink show={theaterShow} variant="hero" /> : null}
-              {isMovie && hasMovieShowtimes ? (
+              {isMovie ? (
                 <a
                   href="#showtimes"
                   className="inline-flex items-center rounded bg-white px-6 py-3 text-base font-semibold text-[#13143E] transition-colors hover:bg-white/90"
@@ -698,7 +706,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   Προβολές & τιμές
                 </a>
               ) : null}
-              {isMovie ? (
+              {isMovie && trailerEmbedUrl ? (
                 <a
                   href="#trailer"
                   className="inline-flex items-center gap-1.5 rounded border border-white/35 bg-white/10 px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-white/20"
@@ -710,6 +718,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               {isMovie && slug ? (
                 <SharePageButton variant="hero" path={`/movies/${slug}`} title={headline.primary} />
               ) : null}
+              {theaterShow ? <TheaterShowMoreLink show={theaterShow} variant="hero" /> : null}
             </div>
             </div>
 
@@ -775,6 +784,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </section>
               </div>
             </section>
+            {movieShowtimesSection}
           </>
         ) : (
           <>
@@ -831,8 +841,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </Button>
           </div>
         ) : null}
-
-        {movieShowtimesSection}
 
         <section>
           <h2 className="font-display text-xl font-semibold mb-4">Μπορεί να σου αρέσει</h2>

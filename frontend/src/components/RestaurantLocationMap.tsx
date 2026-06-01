@@ -1,5 +1,5 @@
-import { ExternalLink, MapPin } from "lucide-react";
-import { restaurantLocationQuery, restaurantMapsEmbedSrc, restaurantMapsHref } from "@/lib/restaurantLinks";
+import { MapPin } from "lucide-react";
+import { restaurantLocationQuery, restaurantMapsEmbedSrc } from "@/lib/restaurantLinks";
 import type { StrapiRestaurant } from "@/lib/api";
 
 type Props = {
@@ -9,11 +9,10 @@ type Props = {
 
 const RestaurantLocationMap = ({ restaurant, className }: Props) => {
   const query = restaurantLocationQuery(restaurant);
-  const mapsHref = restaurantMapsHref(restaurant);
   const embedSrc = restaurantMapsEmbedSrc(restaurant);
   const addressLine = typeof restaurant.address === "string" ? restaurant.address.trim() : "";
 
-  if (!embedSrc && !mapsHref) {
+  if (!embedSrc && !addressLine && !query) {
     return (
       <div
         className={`flex h-64 items-center justify-center rounded-lg border border-border bg-secondary ${className ?? ""}`}
@@ -44,19 +43,8 @@ const RestaurantLocationMap = ({ restaurant, className }: Props) => {
           </div>
         )}
       </div>
-      {(addressLine || query) && mapsHref ? (
-        <p className="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-muted-foreground">
-          {addressLine ? <span>{addressLine}</span> : <span>{query}</span>}
-          <a
-            href={mapsHref}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 font-medium text-primary hover:underline"
-          >
-            Άνοιγμα στο Google Maps
-            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          </a>
-        </p>
+      {addressLine || query ? (
+        <p className="mt-3 text-sm text-muted-foreground">{addressLine || query}</p>
       ) : null}
     </div>
   );

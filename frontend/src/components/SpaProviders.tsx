@@ -13,11 +13,11 @@ export default function SpaProviders({ children, dehydratedState }: SpaProviders
       new QueryClient({
         defaultOptions: {
           queries: {
-            staleTime: 300_000,
+            staleTime: 60_000,
             gcTime: 1_800_000,
-            refetchOnWindowFocus: false,
-            refetchOnReconnect: false,
-            refetchOnMount: false,
+            refetchOnWindowFocus: true,
+            refetchOnReconnect: true,
+            refetchOnMount: true,
           },
         },
       }),

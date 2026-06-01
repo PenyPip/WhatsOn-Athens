@@ -143,7 +143,7 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
     } else if (normalized === "/dining") {
       await Promise.all([
         qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants }),
-        qc.prefetchQuery({ queryKey: ["cuisines"], queryFn: api.getCuisines, staleTime: 600_000 }),
+        qc.prefetchQuery({ queryKey: ["cuisines"], queryFn: api.getCuisines }),
       ]);
     } else if (diningSlug) {
       await Promise.all([

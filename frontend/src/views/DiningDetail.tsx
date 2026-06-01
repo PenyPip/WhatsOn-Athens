@@ -144,11 +144,7 @@ const DiningDetail = () => {
             </section>
 
             {hasGooglePlace ? (
-              <RestaurantGoogleReviewsSection
-                data={googleReviews}
-                isLoading={googleReviewsLoading}
-                fallbackMapsHref={mapsHref}
-              />
+              <RestaurantGoogleReviewsSection data={googleReviews} isLoading={googleReviewsLoading} />
             ) : null}
           </div>
 

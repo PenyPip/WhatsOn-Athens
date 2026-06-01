@@ -7,7 +7,7 @@ const DEFAULT_CUISINE_LABELS = [
   'Μοριακή Γαστρονομία',
 ];
 
-/** Δημιουργία collection Κουζίνα + σύνδεση από παλιό πεδίο κειμένου (cuisine_text). */
+/** Δημιουργία collection Κουζίνα + σύνδεση από legacy στήλη κειμένου (cuisine) αν υπάρχει. */
 async function migrateRestaurantCuisines(strapi) {
   const store = strapi.store({ type: 'plugin', name: 'whatson-cuisines' });
   if (await store.get({ key: 'migrated' })) return;
@@ -42,21 +42,11 @@ async function migrateRestaurantCuisines(strapi) {
     await ensureCuisine(label);
   }
 
-  /** id → παλιό κείμενο κουζίνας (cuisine_text ή legacy στήλη cuisine). */
+  /** id → παλιό κείμενο κουζίνας (legacy στήλη cuisine πριν το relation). */
   const legacyTextById = new Map();
 
   try {
     const knex = strapi.db.connection;
-    if (await knex.schema.hasColumn('restaurants', 'cuisine_text')) {
-      const rows = await knex('restaurants')
-        .select('id', 'cuisine_text')
-        .whereNotNull('cuisine_text')
-        .where('cuisine_text', '!=', '');
-      for (const row of rows) {
-        const text = String(row.cuisine_text).trim();
-        if (text) legacyTextById.set(row.id, text);
-      }
-    }
     if (await knex.schema.hasColumn('restaurants', 'cuisine')) {
       const rows = await knex('restaurants').select('id', 'cuisine');
       for (const row of rows) {
@@ -80,9 +70,7 @@ async function migrateRestaurantCuisines(strapi) {
   let linked = 0;
   for (const rest of list) {
     if (rest.cuisine?.id) continue;
-    const text =
-      legacyTextById.get(rest.id) ||
-      (typeof rest.cuisine_text === 'string' ? rest.cuisine_text.trim() : '');
+    const text = legacyTextById.get(rest.id);
     if (!text) continue;
     const cuisineId = await ensureCuisine(text);
     if (!cuisineId) continue;

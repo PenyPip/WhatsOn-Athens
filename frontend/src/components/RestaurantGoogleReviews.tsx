@@ -1,10 +1,9 @@
-import { ExternalLink, Star } from "lucide-react";
+import { Star } from "lucide-react";
 import type { RestaurantGoogleReviews } from "@/lib/api";
 
 type Props = {
   data: RestaurantGoogleReviews | undefined;
   isLoading: boolean;
-  fallbackMapsHref?: string | null;
 };
 
 function Stars({ rating }: { rating: number }) {
@@ -22,8 +21,7 @@ function Stars({ rating }: { rating: number }) {
   );
 }
 
-const RestaurantGoogleReviewsSection = ({ data, isLoading, fallbackMapsHref }: Props) => {
-  const mapsLink = data?.googleMapsUri || fallbackMapsHref;
+const RestaurantGoogleReviewsSection = ({ data, isLoading }: Props) => {
   const hasReviews = (data?.reviews?.length ?? 0) > 0;
   const hasSummary = data?.rating != null;
 
@@ -31,32 +29,19 @@ const RestaurantGoogleReviewsSection = ({ data, isLoading, fallbackMapsHref }: P
 
   return (
     <section className="animate-fade-in-up">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h2 className="font-display text-xl font-semibold">Κριτικές Google</h2>
-          {hasSummary ? (
-            <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
-              <Stars rating={data!.rating!} />
-              <span className="font-semibold text-foreground">{data!.rating!.toFixed(1)}</span>
-              {data!.userRatingCount != null ? (
-                <span>
-                  ({data!.userRatingCount.toLocaleString("el-GR")}{" "}
-                  {data!.userRatingCount === 1 ? "κριτική" : "κριτικές"})
-                </span>
-              ) : null}
-            </p>
-          ) : null}
-        </div>
-        {mapsLink ? (
-          <a
-            href={mapsLink}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            Όλες στο Google Maps
-            <ExternalLink className="h-3.5 w-3.5 shrink-0" aria-hidden />
-          </a>
+      <div className="mb-4">
+        <h2 className="font-display text-xl font-semibold">Κριτικές Google</h2>
+        {hasSummary ? (
+          <p className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+            <Stars rating={data!.rating!} />
+            <span className="font-semibold text-foreground">{data!.rating!.toFixed(1)}</span>
+            {data!.userRatingCount != null ? (
+              <span>
+                ({data!.userRatingCount.toLocaleString("el-GR")}{" "}
+                {data!.userRatingCount === 1 ? "κριτική" : "κριτικές"})
+              </span>
+            ) : null}
+          </p>
         ) : null}
       </div>
 

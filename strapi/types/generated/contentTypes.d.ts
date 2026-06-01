@@ -641,7 +641,6 @@ export interface ApiRestaurantRestaurant extends Schema.CollectionType {
       'manyToOne',
       'api::cuisine.cuisine'
     >;
-    cuisine_text: Attribute.String;
     editorial_reviews: Attribute.Relation<
       'api::restaurant.restaurant',
       'oneToMany',

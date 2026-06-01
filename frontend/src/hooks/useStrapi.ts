@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { CONTENT_QUERY_OPTIONS } from "@/lib/contentQuery";
 import { PROGRAM_QUERY_OPTIONS } from "@/lib/programQuery";
 import { resolveHomepageLayout } from "@/config/home";
 import { DEFAULT_SITE_NAVIGATION } from "@/config/navigation";
@@ -24,7 +25,7 @@ export const useHomepage = () =>
   useQuery({
     queryKey: ["homepage"],
     queryFn: api.getHomepage,
-    staleTime: 300_000,
+    ...CONTENT_QUERY_OPTIONS,
     retry: 1,
     throwOnError: false,
   });
@@ -38,7 +39,7 @@ export const useMovies = (enabled = true) =>
   useQuery({
     queryKey: ["movies"],
     queryFn: api.getMovies,
-    staleTime: 300_000,
+    ...CONTENT_QUERY_OPTIONS,
     throwOnError: false,
     retry: 1,
     enabled,
@@ -65,13 +66,18 @@ export const useMovieGenreCatalog = (enabled = true) =>
   });
 
 export const useMovieBySlug = (slug: string) =>
-  useQuery({ queryKey: ["movie", slug], queryFn: () => api.getMovieBySlug(slug), enabled: !!slug });
+  useQuery({
+    queryKey: ["movie", slug],
+    queryFn: () => api.getMovieBySlug(slug),
+    ...CONTENT_QUERY_OPTIONS,
+    enabled: !!slug,
+  });
 
 export const useTheaterShows = (enabled = true) =>
   useQuery({
     queryKey: ["theaterShows"],
     queryFn: api.getTheaterShows,
-    staleTime: 300_000,
+    ...CONTENT_QUERY_OPTIONS,
     throwOnError: false,
     retry: 2,
     enabled,
@@ -85,14 +91,21 @@ export const useCuisines = (enabled = true) =>
   useQuery({
     queryKey: ["cuisines"],
     queryFn: api.getCuisines,
-    staleTime: 600_000,
+    ...CONTENT_QUERY_OPTIONS,
     retry: 1,
     throwOnError: false,
     enabled,
   });
 
 export const useRestaurants = (enabled = true) =>
-  useQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants, staleTime: 300_000, retry: 1, throwOnError: false, enabled });
+  useQuery({
+    queryKey: ["restaurants"],
+    queryFn: api.getRestaurants,
+    ...CONTENT_QUERY_OPTIONS,
+    retry: 1,
+    throwOnError: false,
+    enabled,
+  });
 
 export const useRestaurantBySlug = (slug: string) =>
   useQuery({ queryKey: ["restaurant", slug], queryFn: () => api.getRestaurantBySlug(slug), enabled: !!slug });
@@ -108,7 +121,14 @@ export const useRestaurantGoogleReviews = (slug: string, enabled = true) =>
   });
 
 export const useVenues = (enabled = true) =>
-  useQuery({ queryKey: ["venues"], queryFn: api.getVenues, staleTime: 300_000, throwOnError: false, retry: 1, enabled });
+  useQuery({
+    queryKey: ["venues"],
+    queryFn: api.getVenues,
+    ...CONTENT_QUERY_OPTIONS,
+    throwOnError: false,
+    retry: 1,
+    enabled,
+  });
 
 export const useEditorialReviews = () =>
   useQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews, staleTime: 300_000, retry: 1, throwOnError: false });

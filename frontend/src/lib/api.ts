@@ -160,8 +160,6 @@ function cuisineFromRestaurantRaw(r: Record<string, unknown>): { cuisine: string
     const c = mapCuisine(entry);
     if (c.label) return { cuisine: c.label, cuisineSlug: c.slug };
   }
-  const legacy = typeof r.cuisine_text === "string" ? r.cuisine_text.trim() : "";
-  if (legacy) return { cuisine: legacy, cuisineSlug: "" };
   return { cuisine: "", cuisineSlug: "" };
 }
 
