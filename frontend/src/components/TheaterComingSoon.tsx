@@ -93,19 +93,23 @@ export default function TheaterComingSoon({ variant = "page", className }: Theat
           </h2>
           <p
             className={cn(
-              "mt-4 max-w-md font-body leading-relaxed text-white/72",
-              isPage ? "text-base md:text-lg" : "text-sm md:text-[0.9375rem]",
+              "mt-4 max-w-md font-body leading-relaxed text-white/92",
+              isPage ? "text-base md:text-lg" : "text-sm md:text-base",
             )}
           >
             Ετοιμάζουμε παραστάσεις, περιοδείες και χώρους — με πρόγραμμα, αφίσες και όλες τις πληροφορίες που
             χρειάζεσαι για να κλείσεις την επόμενη έξοδο.
           </p>
 
-          <ul className="mt-8 flex flex-wrap justify-center gap-x-6 gap-y-2 font-body text-xs uppercase tracking-[0.18em] text-white/45">
+          <ul className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 font-body text-xs font-medium uppercase tracking-[0.16em] text-white/85 md:text-[13px]">
             <li>Περιοδείες</li>
-            <li aria-hidden>·</li>
+            <li aria-hidden className="text-white/50">
+              ·
+            </li>
             <li>Αθήνα & Θεσσαλονίκη</li>
-            <li aria-hidden>·</li>
+            <li aria-hidden className="text-white/50">
+              ·
+            </li>
             <li>Πρόγραμμα & εισιτήρια</li>
           </ul>
 
