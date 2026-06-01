@@ -29,7 +29,11 @@ function mapHomepageLayoutSections(layoutSections: unknown): HomeSectionId[] {
   return out;
 }
 
-async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): Promise<T> {
+async function fetchAPI<T>(
+  endpoint: string,
+  params?: Record<string, string>,
+  options?: { noStore?: boolean },
+): Promise<T> {
   const url = new URL(`${API_PREFIX}${endpoint}`, apiRequestBaseUrl());
   let hasExplicitPopulate = false;
   if (params) {
@@ -40,7 +44,7 @@ async function fetchAPI<T>(endpoint: string, params?: Record<string, string>): P
   }
   if (!hasExplicitPopulate) url.searchParams.set("populate", "*");
 
-  const res = await fetch(url.toString());
+  const res = await fetch(url.toString(), options?.noStore ? { cache: "no-store" } : undefined);
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);
   const json = await res.json();
   return json.data ?? json;
@@ -55,17 +59,25 @@ function strapiCollectionFirst(data: unknown): unknown {
 }
 
 /** Συγχώνευση όλων των σελίδων (Strapi maxLimit ανά σελίδα · προεπιλογή CMS συχνά 100). */
-async function fetchAPIPagedEntries(endpoint: string, params: Record<string, string>): Promise<any[]> {
+async function fetchAPIPagedEntries(
+  endpoint: string,
+  params: Record<string, string>,
+  options?: { noStore?: boolean },
+): Promise<any[]> {
   const pageSize = 100;
   const aggregated: any[] = [];
   const maxPages = 40;
 
   for (let page = 1; page <= maxPages; page++) {
-    const chunk = await fetchAPI<any[]>(endpoint, {
-      ...params,
-      "pagination[page]": String(page),
-      "pagination[pageSize]": String(pageSize),
-    });
+    const chunk = await fetchAPI<any[]>(
+      endpoint,
+      {
+        ...params,
+        "pagination[page]": String(page),
+        "pagination[pageSize]": String(pageSize),
+      },
+      options,
+    );
     const rows = Array.isArray(chunk) ? chunk : [];
     if (rows.length === 0) break;
     aggregated.push(...rows);
@@ -1273,27 +1285,39 @@ export const api = {
     const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";
     if (venueSlug) {
       const venueFilter = { "filters[venue][slug][$eq]": venueSlug };
-      return fetchAPI<any[]>("/showtimes/venue-calendar", { venue: venueSlug, weeks: "3" })
+      return fetchAPI<any[]>(
+        "/showtimes/venue-calendar",
+        { venue: venueSlug, weeks: "3" },
+        { noStore: true },
+      )
         .then((rows) => (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x)))
         .catch(async () => {
           // Fallback: αν αποτύχει το lightweight endpoint, χρησιμοποιούμε το κλασικό query.
           const [catalog, rows] = await Promise.all([
             fetchMovieGenreCatalog(),
-            fetchAPIPagedEntries("/showtimes", {
-              ...SHOWTIME_POPULATE,
-              ...upcomingShowtimeFilters(),
-              ...venueFilter,
-            }),
+            fetchAPIPagedEntries(
+              "/showtimes",
+              {
+                ...SHOWTIME_POPULATE,
+                ...upcomingShowtimeFilters(),
+                ...venueFilter,
+              },
+              { noStore: true },
+            ),
           ]);
           return rows.flatMap((x) => mapShowtime(x, catalog.hydrate, catalog.linkIndex));
         });
     }
     return Promise.all([
       fetchMovieGenreCatalog(),
-      fetchAPIPagedEntries("/showtimes", {
-        ...SHOWTIME_POPULATE,
-        ...upcomingShowtimeFilters(),
-      }),
+      fetchAPIPagedEntries(
+        "/showtimes",
+        {
+          ...SHOWTIME_POPULATE,
+          ...upcomingShowtimeFilters(),
+        },
+        { noStore: true },
+      ),
     ]).then(([catalog, rows]) => rows.flatMap((x) => mapShowtime(x, catalog.hydrate, catalog.linkIndex)));
   },
 

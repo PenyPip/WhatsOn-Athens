@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { PROGRAM_QUERY_OPTIONS } from "@/lib/programQuery";
 import { resolveHomepageLayout } from "@/config/home";
 import { DEFAULT_SITE_NAVIGATION } from "@/config/navigation";
 
@@ -98,7 +99,7 @@ export const useShowtimes = (enabled = true, venueSlug?: string) =>
   useQuery({
     queryKey: ["showtimes", venueSlug ?? ""],
     queryFn: () => api.getShowtimes({ venueSlug }),
-    staleTime: 300_000,
+    ...PROGRAM_QUERY_OPTIONS,
     throwOnError: false,
     retry: 1,
     enabled,
