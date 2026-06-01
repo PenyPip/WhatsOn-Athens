@@ -1,6 +1,6 @@
 /**
  * Το layout της αρχικής έρχεται από Strapi Single Type «Homepage».
- * Έτοιμα τμήματα: movies_today, summer_cinema, summer_venues, tours,
+ * Έτοιμα τμήματα: hero (πιο συζητημένες ταινίες), movies_today, summer_cinema, summer_venues, tours,
  * new_movies (τελευταίες 10 ημέρες release date), movies_week (ερχόμενη εβδομάδα κινηματογράφου Πέμ–Τετ),
  * coming_soon (κυκλοφορίες μετά από αυτή την εβδομάδα) — διάλεξε ποια εμφανίζονται και με ποια σειρά.
  */
@@ -56,7 +56,7 @@ export interface MappedHomepage {
   heroTheaterSlug: string | null;
   heroMovieSlug: string | null;
   featuredMovieIndex: number;
-  /** Από `populate[priority_movie]=*` — προτεραιότητα hero αν η ταινία έχει `most_talked_about`. */
+  /** Από `populate[priority_movie]=*` — ετικέτα είδους (legacy CMS). */
   priorityMovieGenre: string | null;
   /** Από το συνδεδεμένο priority θεατρικό — εμφάνιση είδους στο Hero. */
   priorityTheaterGenre: string | null;
@@ -94,16 +94,16 @@ export function homeNeedsVenues(sections: readonly HomeSectionId[]): boolean {
 }
 
 export function homeNeedsTheater(sections: readonly HomeSectionId[]): boolean {
-  return sections.includes("tours") || sections.includes("hero");
+  return sections.includes("tours");
 }
 
 export function homeNeedsDining(sections: readonly HomeSectionId[]): boolean {
   return sections.includes("dining");
 }
 
-/** Προβολές για Hero / ταινίες σήμερα / θερινά / εβδομάδα / χώρους θερινών. */
+/** Προβολές για ταινίες σήμερα / θερινά / εβδομάδα / χώρους θερινών (όχι hero — μόνο `most_talked_about`). */
 export function homeNeedsShowtimes(sections: readonly HomeSectionId[]): boolean {
   return sections.some((id) =>
-    ["hero", "movies_today", "summer_cinema", "summer_venues", "movies_week"].includes(id),
+    ["movies_today", "summer_cinema", "summer_venues", "movies_week"].includes(id),
   );
 }

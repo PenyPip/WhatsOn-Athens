@@ -1,71 +1,21 @@
-import { useMemo } from "react";
-import Hero, { HeroShell } from "@/components/Hero";
 import HomeSeoIntro from "@/components/HomeSeoIntro";
 import HomeSectionsSkeleton from "@/components/HomeSectionsSkeleton";
 import MarkLcpDone from "@/components/MarkLcpDone";
 import HomeBody from "@/views/HomeBody";
-import {
-  homeNeedsShowtimes,
-  homeNeedsTheater,
-  layoutShowsHero,
-  type HomeSectionId,
-} from "@/config/home";
-import { useHomeLcpDone } from "@/hooks/useHomeLcpDone";
-import { useIsHydrated } from "@/hooks/useIsHydrated";
 import { usePageSeo } from "@/hooks/usePageSeo";
-import { useMovies, useShowtimes, useTheaterShows, useHomeLayout } from "@/hooks/useStrapi";
-import { enrichMoviesWithShowtimeGenre, moviesFromUpcomingShowtimes } from "@/lib/homeMovieFilters";
+import { useHomeLayout } from "@/hooks/useStrapi";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 const Index = () => {
   usePageSeo(staticPageSeo.home);
 
   const layout = useHomeLayout();
-  const belowHeroSections = useMemo(
-    () => layout.sections.filter((id): id is HomeSectionId => id !== "hero"),
-    [layout.sections],
-  );
-
-  const { data: movies } = useMovies();
-  const { data: showtimes } = useShowtimes(homeNeedsShowtimes(belowHeroSections) || layoutShowsHero(layout));
-  const needsHeroTheater = layoutShowsHero(layout) && Boolean(layout.heroTheaterSlug);
-  const { data: theaterShows } = useTheaterShows(needsHeroTheater || homeNeedsTheater(belowHeroSections));
-
-  const heroMovieList = useMemo(() => {
-    const st = showtimes ?? [];
-    const cat = movies ?? [];
-    if (cat.length) return enrichMoviesWithShowtimeGenre(cat, st);
-    if (st.length) return moviesFromUpcomingShowtimes([], st);
-    return [];
-  }, [movies, showtimes]);
-
-  const hasHero = layout.sections.includes("hero");
-  const heroReady =
-    !hasHero ||
-    (needsHeroTheater
-      ? theaterShows !== undefined
-      : movies !== undefined || showtimes !== undefined);
-
   const homeBodyReady = layout.sections.length > 0;
   const showHomeSkeleton = !homeBodyReady;
 
-  const markLcpDone = useHomeLcpDone();
-  const isHydrated = useIsHydrated();
-  const showHeroContent = isHydrated && heroReady;
-
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      {!hasHero && showtimes !== undefined ? <MarkLcpDone /> : null}
-      {hasHero && !showHeroContent ? <HeroShell /> : null}
-      {hasHero && showHeroContent ? (
-        <Hero
-          layout={layout}
-          movies={heroMovieList}
-          showtimes={showtimes ?? []}
-          theaterShows={theaterShows ?? []}
-          onPosterReady={markLcpDone}
-        />
-      ) : null}
+      <MarkLcpDone />
 
       {showHomeSkeleton ? <HomeSectionsSkeleton /> : <HomeBody layout={layout} />}
 

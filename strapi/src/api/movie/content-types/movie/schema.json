@@ -80,7 +80,7 @@
     "most_talked_about": {
       "type": "boolean",
       "default": false,
-      "description": "Εμφάνιση στην ενότητα hero της αρχικής (πιο συζητημένες)."
+      "description": "Εμφάνιση στην ενότητα «Πιο πολυσυζητημένες» της αρχικής (μπορείς να επιλέξεις πολλές ταινίες)."
     },
     "showtimes": {
       "type": "relation",

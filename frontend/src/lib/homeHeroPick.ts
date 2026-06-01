@@ -16,6 +16,13 @@ export function moviesForHeroPool(movies: StrapiMovie[]): StrapiMovie[] {
   return movies.filter(isMostTalkedAboutMovie);
 }
 
+/** Όλες οι πιο συζητημένες για την ενότητα hero (ίδιο pattern με τις υπόλοιπες σειρές). */
+export function mostTalkedAboutMovies(movies: StrapiMovie[]): StrapiMovie[] {
+  const flagged = moviesForHeroPool(movies);
+  if (flagged.length === 0) return [];
+  return [...flagged].sort((a, b) => (b.criticScore ?? 0) - (a.criticScore ?? 0));
+}
+
 export type HeroPicks = {
   theater: StrapiTheaterShow | null;
   movie: StrapiMovie | null;

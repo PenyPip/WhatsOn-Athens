@@ -54,8 +54,8 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
   }
   const lcp = homeLcpDisplay(path, dehydratedState);
   const preloadPoster = path === "/" ? lcp?.posterHref ?? null : null;
-  /** Πάντα όταν υπάρχει αφίσα — γρήγορο LCP πριν το client Hero (Slow 4G). */
-  const showStaticLcp = path === "/" && Boolean(lcp?.posterHref);
+  /** Hero είναι πλέον horizontal row — χωρίς fullscreen static overlay. */
+  const showStaticLcp = false;
 
   return (
     <>

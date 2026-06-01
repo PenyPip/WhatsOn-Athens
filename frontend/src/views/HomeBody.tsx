@@ -28,6 +28,7 @@ import {
   formatUpcomingCinemaWeekRange,
 } from "@/lib/homeMovieFilters";
 import { resolveImdbRating } from "@/lib/movieImdb";
+import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { siteSeo } from "@/lib/siteMetadata";
@@ -297,7 +298,7 @@ type HomeBodyProps = {
 };
 
 export default function HomeBody({ layout }: HomeBodyProps) {
-  const sections = layout.sections.filter((id): id is HomeSectionId => id !== "hero");
+  const sections = layout.sections;
   const needsVenues = homeNeedsVenues(sections);
   const needsTheater = homeNeedsTheater(sections);
   const needsDining = homeNeedsDining(sections);
@@ -344,6 +345,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     () => moviesComingAfterUpcomingCinemaWeek(movieList, stList, venueList),
     [movieList, stList, venueList],
   );
+  const mostTalkedAboutList = useMemo(() => mostTalkedAboutMovies(movieList), [movieList]);
 
   const sectionEl = (id: HomeSectionId, node: ReactNode) => <Fragment key={id}>{node}</Fragment>;
 
@@ -358,6 +360,22 @@ export default function HomeBody({ layout }: HomeBodyProps) {
       ) : null}
       {sections.map((id) => {
         switch (id) {
+          case "hero":
+            return sectionEl(
+              "hero",
+              <MovieRowScroll
+                loading={awaitingMovies}
+                loadingMessage="Φόρτωση ταινιών..."
+                fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
+                items={mostTalkedAboutList}
+                spotlight
+                eyebrow="Στην επικαιρότητα"
+                title="Πιο πολυσυζητημένες"
+                subtitle="Οι ταινίες που συζητιούνται περισσότερο αυτή την περίοδο"
+                emptyMessage="Δεν έχουν οριστεί ταινίες ως πιο πολυσυζητημένες στο CMS."
+                moviesMoreHref="/movies"
+              />,
+            );
           case "strip":
             return sectionEl(
               "strip",

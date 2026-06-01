@@ -1,7 +1,7 @@
 import type { DehydratedState } from "@tanstack/react-query";
 import { layoutShowsHero, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
-import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
-import { resolveHeroPicks } from "@/lib/homeHeroPick";
+import type { StrapiMovie } from "@/lib/api";
+import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { posterLcpSrc } from "@/lib/posterDelivery";
 import { lcpImageSrc } from "@/lib/lcpImageSrc";
 import { resolvePublicAssetUrl } from "@/lib/siteMetadata";
@@ -27,19 +27,15 @@ export function homeLcpDisplay(path: string, dehydratedState?: DehydratedState):
 
   const layout = resolveHomepageLayout(queryData<MappedHomepage>(dehydratedState, "homepage") ?? null);
   const movies = queryData<StrapiMovie[]>(dehydratedState, "movies") ?? [];
-  const theaterShows = queryData<StrapiTheaterShow[]>(dehydratedState, "theaterShows") ?? [];
   const hasHeroSection = layoutShowsHero(layout);
 
-  const { theater, movie } = resolveHeroPicks(layout, movies, theaterShows);
-  const featured = theater ?? movie;
+  const talked = mostTalkedAboutMovies(movies);
+  const movie = talked[0] ?? movies.find((m) => m.posterUrl?.trim()) ?? null;
 
   let posterPath: string | null = null;
   let title = "";
 
-  if (theater?.posterUrl?.trim()) {
-    posterPath = theater.posterUrl.trim();
-    title = theater.title;
-  } else if (movie) {
+  if (movie) {
     const href = posterLcpSrc(movie.posterUrl, movie.posterSrcSet) ?? movie.posterUrl?.trim();
     if (href) posterPath = href;
     title = movie.title;
