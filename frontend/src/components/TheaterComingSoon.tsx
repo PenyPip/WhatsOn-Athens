@@ -119,7 +119,7 @@ export default function TheaterComingSoon({ variant = "page", className }: Theat
                 to="/movies"
                 className="inline-flex items-center rounded bg-white px-6 py-3 text-sm font-semibold text-[#13143E] transition-colors hover:bg-white/90"
               >
-                Δες ταινίες τώρα
+                Ταινίες τώρα
               </Link>
               <Link
                 to="/"

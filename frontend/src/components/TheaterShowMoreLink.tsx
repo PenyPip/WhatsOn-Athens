@@ -24,7 +24,7 @@ export default function TheaterShowMoreLink({
 
   const isHero = variant === "hero";
   const isButton = variant === "button" || isHero;
-  const text = label ?? (isHero ? "Δες περιοδεία" : isButton ? "Περιοδεία & εισιτήρια" : "Κάνε κράτηση εδώ");
+  const text = label ?? (isHero ? "Περιοδεία" : isButton ? "Περιοδεία & εισιτήρια" : "Κάνε κράτηση εδώ");
 
   return (
     <a

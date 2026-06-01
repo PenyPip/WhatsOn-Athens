@@ -235,7 +235,7 @@ function MovieRowScroll({
                 to={moviesMoreHref}
                 className="inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
               >
-                Δες περισσότερα
+                Περισσότερα
               </Link>
             </div>
           </div>
@@ -293,7 +293,7 @@ function MovieRowScroll({
                   : "inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
               }
             >
-              Δες περισσότερα
+              Περισσότερα
             </Link>
           </div>
         </div>
@@ -519,7 +519,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                           href="/venues"
                           className="inline-flex items-center gap-1 text-sm font-semibold text-amber-200/95 transition-colors hover:text-amber-50"
                         >
-                          Δες όλους τους χώρους
+                          Όλοι οι χώροι
                           <span aria-hidden className="opacity-75">
                             →
                           </span>

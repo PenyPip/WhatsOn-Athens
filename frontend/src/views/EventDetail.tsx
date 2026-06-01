@@ -61,6 +61,7 @@ import CinemaVenueLinks from "@/components/CinemaVenueLinks";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import TheaterShowMoreLink from "@/components/TheaterShowMoreLink";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
+import { formatTheaterRunPeriod } from "@/lib/theaterRunDates";
 import { isTouringTheaterShow } from "@/lib/theaterTours";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
@@ -694,6 +695,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
                   Περιοδεία
                 </span>
+              ) : null}
+              {theaterShow && formatTheaterRunPeriod(theaterShow) ? (
+                <span className="flex items-center gap-1">{formatTheaterRunPeriod(theaterShow)}</span>
               ) : null}
             </div>
 

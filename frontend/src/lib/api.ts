@@ -6,6 +6,7 @@ import { apiRequestBaseUrl } from "@/lib/apiRequestBase";
 import { normalizeMovieOriginalTitle } from "@/lib/movieTitles";
 import { normalizeVenueKind, type VenueKind } from "@/lib/venueType";
 import { mapVenueDayPrices, resolveShowtimePricing, type VenueDayPrice } from "@/lib/venuePricing";
+import { isTheaterShowVisible, parseTheaterRunDate } from "@/lib/theaterRunDates";
 
 const API_PREFIX = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
 
@@ -639,6 +640,8 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     isLastShows: s.is_last_shows,
     onTour: s.on_tour === true,
     moreLink: typeof s.more_link === "string" ? s.more_link.trim() : "",
+    runStart: parseTheaterRunDate(s.run_start) ?? undefined,
+    runEnd: parseTheaterRunDate(s.run_end) ?? undefined,
   };
 }
 
@@ -999,6 +1002,9 @@ export interface StrapiTheaterShow {
   onTour: boolean;
   /** URL περιοδείας / κρατήσεων / site παράστασης. */
   moreLink: string;
+  /** Περίοδος εμφάνισης (YYYY-MM-DD). Κενό = χωρίς όριο. */
+  runStart?: string;
+  runEnd?: string;
 }
 
 export interface StrapiCuisine {
@@ -1287,7 +1293,8 @@ export const api = {
       const out: StrapiTheaterShow[] = [];
       for (const row of rows) {
         try {
-          out.push(mapTheaterShow(row));
+          const mapped = mapTheaterShow(row);
+          if (isTheaterShowVisible(mapped)) out.push(mapped);
         } catch {
           /* skip malformed CMS row */
         }
@@ -1297,7 +1304,9 @@ export const api = {
   getTheaterShowBySlug: (slug: string) =>
     fetchAPI<any[]>(`/theater-shows`, { ...THEATER_SHOW_PUBLIC_QUERY, "filters[slug][$eq]": slug }).then((d) => {
       const row = strapiCollectionFirst(d);
-      return row ? mapTheaterShow(row) : undefined;
+      if (!row) return undefined;
+      const mapped = mapTheaterShow(row);
+      return isTheaterShowVisible(mapped) ? mapped : undefined;
     }),
 
   getCuisines: () =>

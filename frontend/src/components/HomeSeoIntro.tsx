@@ -23,7 +23,7 @@ export default function HomeSeoIntro() {
           <strong className="font-medium text-white/90">τι παίζεται</strong> στα σινεμά και{" "}
           <strong className="font-medium text-white/90">πότε παίζεται</strong> κάθε{" "}
           <strong className="font-medium text-white/90">ταινία</strong> — ανά{" "}
-          <strong className="font-medium text-white/90">κινηματογράφο</strong>, πόλη και είδος. Δες{" "}
+          <strong className="font-medium text-white/90">κινηματογράφο</strong>, πόλη και είδος —{" "}
           <Link
             to={moviesSectionPath("today")}
             className="text-amber-100/95 underline decoration-amber-100/35 underline-offset-2 hover:text-white hover:decoration-white/50"

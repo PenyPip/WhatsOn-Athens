@@ -75,6 +75,21 @@ function pickString(attrs, key) {
   return typeof v === "string" && v.trim() ? v.trim() : "";
 }
 
+/** Ίδια λογική με frontend theaterRunDates — run_start / run_end (ημερολόγιο). */
+function theaterShowVisibleInAttrs(attrs, now = new Date()) {
+  const start = pickString(attrs, "run_start").slice(0, 10);
+  const end = pickString(attrs, "run_end").slice(0, 10);
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  const ymdMs = (ymd) => {
+    const [y, m, d] = ymd.split("-").map(Number);
+    if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return NaN;
+    return new Date(y, m - 1, d).getTime();
+  };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(start) && today < ymdMs(start)) return false;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(end) && today > ymdMs(end)) return false;
+  return true;
+}
+
 function pickDecimal(attrs, key) {
   const v = attrs[key];
   if (v == null || v === "") return undefined;
@@ -212,6 +227,7 @@ async function buildCrawlEnrichment() {
     const theaterShows = theaterRows
       .map((row) => {
         const a = entryAttrs(row);
+        if (!theaterShowVisibleInAttrs(a)) return null;
         const slug = pickSlug(row);
         if (!slug) return null;
         const synopsis = pickString(a, "synopsis");

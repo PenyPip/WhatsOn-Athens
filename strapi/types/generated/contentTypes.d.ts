@@ -794,6 +794,8 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
       'oneToMany',
       'api::user-review.user-review'
     >;
+    run_end: Attribute.Date;
+    run_start: Attribute.Date;
     slug: Attribute.UID<'api::theater-show.theater-show', 'title'> &
       Attribute.Required;
     synopsis: Attribute.Text;

@@ -41,6 +41,14 @@
     "duration": {
       "type": "integer"
     },
+    "run_start": {
+      "type": "date",
+      "description": "Πρώτη ημέρα εμφάνισης στο site (κενό = χωρίς όριο)."
+    },
+    "run_end": {
+      "type": "date",
+      "description": "Τελευταία ημέρα εμφάνισης (μετά δεν φαίνεται στη λίστα / αναζήτηση)."
+    },
     "poster": {
       "type": "media",
       "allowedTypes": [
