@@ -317,10 +317,16 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(
     needsDining && deferSecondary,
   );
-  const { data: theaterShows, isLoading: theaterLoading, isError: theaterError } = useTheaterShows(
-    needsTheater && deferSecondary,
-  );
-  const apiSectionFailed = moviesError || showtimesError || venuesError || restaurantsError || theaterError;
+  const {
+    data: theaterShows,
+    isPending: theaterPending,
+    isFetching: theaterFetching,
+    isError: theaterError,
+    isFetched: theaterFetched,
+  } = useTheaterShows(needsTheater);
+  const theaterAwaiting = needsTheater && !theaterFetched && (theaterPending || theaterFetching);
+  const theaterLoadFailed = needsTheater && theaterFetched && theaterError && theaterShows === undefined;
+  const apiSectionFailed = moviesError || showtimesError || venuesError || restaurantsError;
 
   const stList = useMemo(() => showtimes ?? [], [showtimes]);
   const movieList = useMemo(() => {
@@ -532,7 +538,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                       Περιοδείες & παραστάσεις που ταξιδεύουν
                     </h2>
                   </div>
-                  {theaterShows === undefined && theaterLoading ? (
+                  {theaterAwaiting ? (
                     <div className="mt-10 flex gap-4 overflow-hidden pb-2">
                       {[0, 1, 2, 3].map((i) => (
                         <div
@@ -541,7 +547,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                         />
                       ))}
                     </div>
-                  ) : theaterError ? (
+                  ) : theaterLoadFailed ? (
                     <div className="mt-10 max-w-xl rounded-xl border border-amber-500/20 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
                       <p className="text-sm leading-relaxed text-amber-100/85 font-body">Δεν ήταν δυνατή η φόρτωση.</p>
                     </div>

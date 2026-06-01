@@ -1117,20 +1117,9 @@ const MOVIE_HOME_LIST_POPULATE: Record<string, string> = {
 };
 
 const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
-  "fields[0]": "slug",
-  "fields[1]": "title",
-  "fields[2]": "synopsis",
-  "fields[3]": "director",
-  "fields[4]": "genre",
-  "fields[5]": "duration",
-  "fields[6]": "is_premiere",
-  "fields[7]": "is_last_shows",
-  "fields[8]": "on_tour",
-  "fields[9]": "more_link",
-  "populate[cast]": "*",
+  "populate[poster]": "*",
   "populate[venue][fields][0]": "name",
-  "populate[poster][fields][0]": "url",
-  "populate[poster][fields][1]": "formats",
+  "populate[cast]": "*",
 };
 
 const RESTAURANT_PUBLIC_QUERY: Record<string, string> = {
@@ -1262,9 +1251,18 @@ export const api = {
   getMovieGenres: () => fetchMovieGenreEntities(),
 
   getTheaterShows: () =>
-    fetchAPI<any[]>("/theater-shows", THEATER_SHOW_PUBLIC_QUERY).then((d) =>
-      (Array.isArray(d) ? d : []).map((x) => mapTheaterShow(x)),
-    ),
+    fetchAPI<any[]>("/theater-shows", THEATER_SHOW_PUBLIC_QUERY).then((d) => {
+      const rows = Array.isArray(d) ? d : [];
+      const out: StrapiTheaterShow[] = [];
+      for (const row of rows) {
+        try {
+          out.push(mapTheaterShow(row));
+        } catch {
+          /* skip malformed CMS row */
+        }
+      }
+      return out;
+    }),
   getTheaterShowBySlug: (slug: string) =>
     fetchAPI<any[]>(`/theater-shows`, { ...THEATER_SHOW_PUBLIC_QUERY, "filters[slug][$eq]": slug }).then((d) => {
       const row = strapiCollectionFirst(d);

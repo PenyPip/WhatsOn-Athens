@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { PROGRAM_QUERY_OPTIONS } from "@/lib/programQuery";
 import { resolveHomepageLayout } from "@/config/home";
@@ -73,8 +73,9 @@ export const useTheaterShows = (enabled = true) =>
     queryFn: api.getTheaterShows,
     staleTime: 300_000,
     throwOnError: false,
-    retry: 1,
+    retry: 2,
     enabled,
+    placeholderData: keepPreviousData,
   });
 
 export const useTheaterShowBySlug = (slug: string) =>
