@@ -141,7 +141,17 @@ const EventCard = ({
             </span>
           )}
           {imdbDisplay != null ? (
-            <ImdbRatingBadge rating={imdbDisplay} variant="poster" className={badge ? "top-9" : undefined} />
+            <ImdbRatingBadge
+              rating={imdbDisplay}
+              variant="poster"
+              className={
+                movieListingMeta
+                  ? "bottom-2 left-2 top-auto"
+                  : badge
+                    ? "top-9"
+                    : undefined
+              }
+            />
           ) : null}
           {isDubbed && (
             <span className="absolute top-2 right-2 z-10 rounded bg-amber-600/95 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm">
@@ -171,7 +181,7 @@ const EventCard = ({
           <div
             className={cn(
               "flex shrink-0 flex-col",
-              uniformScrollCard ? "min-h-[7.25rem]" : isMovie ? (movieListingMeta ? "min-h-[4.25rem]" : "min-h-[5.5rem]") : "min-h-[2.75rem]",
+              uniformScrollCard ? "min-h-[7.25rem]" : isMovie ? (movieListingMeta ? "min-h-[3.75rem]" : "min-h-[5.5rem]") : "min-h-[2.75rem]",
             )}
           >
             <h3
@@ -184,11 +194,6 @@ const EventCard = ({
             >
               {title}
             </h3>
-            {isMovie && imdbDisplay != null && movieListingMeta ? (
-              <div className="mt-1">
-                <ImdbRatingBadge rating={imdbDisplay} variant="inline" />
-              </div>
-            ) : null}
             {isMovie ? (
               <p
                 className="mt-0.5 line-clamp-2 min-h-[2.4375rem] text-sm font-medium leading-snug text-muted-foreground"
