@@ -2,6 +2,7 @@ import HomeSeoIntro from "@/components/HomeSeoIntro";
 import HomeSectionsSkeleton from "@/components/HomeSectionsSkeleton";
 import MarkLcpDone from "@/components/MarkLcpDone";
 import HomeBody from "@/views/HomeBody";
+import { layoutShowsHero } from "@/config/home";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useHomeLayout } from "@/hooks/useStrapi";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
@@ -10,12 +11,12 @@ const Index = () => {
   usePageSeo(staticPageSeo.home);
 
   const layout = useHomeLayout();
+  const hasHero = layoutShowsHero(layout);
   const homeBodyReady = layout.sections.length > 0;
   const showHomeSkeleton = !homeBodyReady;
-
   return (
     <div className="min-h-screen pb-20 md:pb-0">
-      <MarkLcpDone />
+      {!hasHero ? <MarkLcpDone /> : null}
 
       {showHomeSkeleton ? <HomeSectionsSkeleton /> : <HomeBody layout={layout} />}
 

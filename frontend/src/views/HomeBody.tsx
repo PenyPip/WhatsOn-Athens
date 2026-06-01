@@ -28,6 +28,7 @@ import {
   formatUpcomingCinemaWeekRange,
 } from "@/lib/homeMovieFilters";
 import { resolveImdbRating } from "@/lib/movieImdb";
+import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
@@ -363,18 +364,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
           case "hero":
             return sectionEl(
               "hero",
-              <MovieRowScroll
-                loading={awaitingMovies}
-                loadingMessage="Φόρτωση ταινιών..."
-                fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
-                items={mostTalkedAboutList}
-                spotlight
-                eyebrow="Στην επικαιρότητα"
-                title="Πιο πολυσυζητημένες"
-                subtitle="Οι ταινίες που συζητιούνται περισσότερο αυτή την περίοδο"
-                emptyMessage="Δεν έχουν οριστεί ταινίες ως πιο πολυσυζητημένες στο CMS."
-                moviesMoreHref="/movies"
-              />,
+              <MostTalkedAboutHero movies={mostTalkedAboutList} loading={awaitingMovies} />,
             );
           case "strip":
             return sectionEl(

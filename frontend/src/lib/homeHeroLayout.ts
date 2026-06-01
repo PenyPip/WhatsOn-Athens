@@ -1,5 +1,6 @@
 /** Κοινές διαστάσεις hero (server critical CSS + React) — αποφυγή CLS. */
 export const HOME_HERO_MIN_HEIGHT_PX = 500;
+export const HOME_HERO_COMPACT_MIN_HEIGHT_PX = 340;
 
 /** Κρίσιμο CSS για `/` — in-flow slot + overlap του main (χωρίς fixed overlay). */
 export function homeHeroCriticalCss(): string {
@@ -19,6 +20,9 @@ export function homeHeroCriticalCss(): string {
   );
 }
 
-/** Tailwind κλάσεις hero section (ίδιο ύψος με #home-hero-slot). */
-export const HOME_HERO_SECTION_CLASS =
-  "relative h-[75vh] min-h-[500px] overflow-hidden bg-[#111111] max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28";
+/** Compact hero — πιο πολυσυζητημένες (μικρότερο από παλιό fullscreen). */
+export const HOME_HERO_COMPACT_SECTION_CLASS =
+  "relative h-[52vh] min-h-[340px] max-h-[480px] overflow-hidden bg-[#13143E] max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28";
+
+/** @deprecated Χρησιμοποίησε HOME_HERO_COMPACT_SECTION_CLASS */
+export const HOME_HERO_SECTION_CLASS = HOME_HERO_COMPACT_SECTION_CLASS;
