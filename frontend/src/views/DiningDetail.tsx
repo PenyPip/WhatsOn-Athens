@@ -23,11 +23,7 @@ const DiningDetail = () => {
   const { data: restaurants, isLoading } = useRestaurants();
 
   const restaurant = restaurants?.find((r) => r.slug === slug);
-  const hasGooglePlace = Boolean(restaurant?.googlePlaceId?.trim());
-  const { data: googleReviews, isLoading: googleReviewsLoading } = useRestaurantGoogleReviews(
-    slug ?? "",
-    hasGooglePlace,
-  );
+  const { data: googleReviews, isLoading: googleReviewsLoading } = useRestaurantGoogleReviews(slug ?? "", !!slug);
 
   usePageSeo(
     useMemo(() => {

@@ -6,26 +6,33 @@ const reviewCache = new Map();
 /** @type {Map<string, { expires: number, id: string }>} */
 const placeIdResolveCache = new Map();
 
+function coerceChijPlaceId(raw) {
+  const s = typeof raw === 'string' ? raw.trim() : '';
+  if (!s) return null;
+  const fromResource = s.match(/^places\/(ChI[a-zA-Z0-9_-]+)$/i);
+  if (fromResource?.[1]) return fromResource[1];
+  if (/^ChI[a-zA-Z0-9_-]+$/.test(s)) return s;
+  const embedded = s.match(/(ChI[a-zA-Z0-9_-]{20,})/);
+  return embedded?.[1] ?? null;
+}
+
 function extractPlaceIdFromMapsUrl(urlString) {
   const s = typeof urlString === 'string' ? urlString : '';
   if (!s) return null;
 
+  const chij = coerceChijPlaceId(s);
+  if (chij) return chij;
+
   try {
     const u = new URL(s);
     const q = u.searchParams.get('place_id');
-    if (q) return decodeURIComponent(q.replace(/\+/g, ' ')).trim();
+    if (q) {
+      const fromQ = coerceChijPlaceId(decodeURIComponent(q.replace(/\+/g, ' ')).trim());
+      if (fromQ) return fromQ;
+    }
   } catch {
     /* όχι απόλυτο URL */
   }
-
-  const chij = s.match(/(ChI[a-zA-Z0-9_-]{20,})/);
-  if (chij?.[1]) return chij[1];
-
-  const fromBang = s.match(/!1s(0x[a-fA-F0-9]+:0x[a-fA-F0-9]+)/);
-  if (fromBang?.[1]) return fromBang[1];
-
-  const hexPair = s.match(/(0x[a-fA-F0-9]+:0x[a-fA-F0-9]+)/);
-  if (hexPair?.[1]) return hexPair[1];
 
   return null;
 }
@@ -45,13 +52,12 @@ function parseMapsUrlHints(urlString) {
   const lat = coords?.[1] ? Number(coords[1]) : null;
   const lng = coords?.[2] ? Number(coords[2]) : null;
 
-  const extractedId = extractPlaceIdFromMapsUrl(s);
-
-  return { name, lat: Number.isFinite(lat) ? lat : null, lng: Number.isFinite(lng) ? lng : null, extractedId };
-}
-
-function isChijPlaceId(id) {
-  return typeof id === 'string' && /^ChI[a-zA-Z0-9_-]+$/.test(id);
+  return {
+    name,
+    lat: Number.isFinite(lat) ? lat : null,
+    lng: Number.isFinite(lng) ? lng : null,
+    extractedId: extractPlaceIdFromMapsUrl(s),
+  };
 }
 
 function isMapsShareLink(s) {
@@ -75,21 +81,23 @@ async function followMapsShareUrl(raw) {
 }
 
 /**
- * Maps share URL / 0x…:0x… → ChIJ… μέσω Text Search (Places API New).
+ * Maps share URL → ChIJ… μέσω redirect + Text Search (Places API New).
  * @param {string} raw
+ * @param {{ restaurantName?: string }} [context]
  * @returns {Promise<string | null>}
  */
-async function resolveGooglePlaceIdInput(raw) {
+async function resolveGooglePlaceIdInput(raw, context = {}) {
   const s = typeof raw === 'string' ? raw.trim() : '';
   if (!s) return null;
 
-  const cacheKey = s.toLowerCase();
+  const cacheKey = `${s.toLowerCase()}|${(context.restaurantName || '').toLowerCase()}`;
   const cached = placeIdResolveCache.get(cacheKey);
   if (cached && cached.expires > Date.now()) return cached.id;
 
-  if (isChijPlaceId(s)) {
-    placeIdResolveCache.set(cacheKey, { expires: Date.now() + CACHE_TTL_MS, id: s });
-    return s;
+  const direct = coerceChijPlaceId(s);
+  if (direct) {
+    placeIdResolveCache.set(cacheKey, { expires: Date.now() + CACHE_TTL_MS, id: direct });
+    return direct;
   }
 
   let mapsUrl = s;
@@ -102,7 +110,7 @@ async function resolveGooglePlaceIdInput(raw) {
   }
 
   const hints = parseMapsUrlHints(mapsUrl);
-  if (hints.extractedId && isChijPlaceId(hints.extractedId)) {
+  if (hints.extractedId) {
     placeIdResolveCache.set(cacheKey, { expires: Date.now() + CACHE_TTL_MS, id: hints.extractedId });
     return hints.extractedId;
   }
@@ -110,23 +118,29 @@ async function resolveGooglePlaceIdInput(raw) {
   const apiKey = process.env.GOOGLE_PLACES_API_KEY?.trim();
   if (!apiKey) return null;
 
-  const chij = await searchTextPlaceId(apiKey, hints);
+  const chij = await searchTextPlaceId(apiKey, hints, context.restaurantName);
   if (chij) {
     placeIdResolveCache.set(cacheKey, { expires: Date.now() + CACHE_TTL_MS, id: chij });
     return chij;
   }
 
-  if (hints.extractedId && isChijPlaceId(hints.extractedId)) {
-    return hints.extractedId;
-  }
-
   return null;
 }
 
-async function searchTextPlaceId(apiKey, hints) {
+async function searchTextPlaceId(apiKey, hints, restaurantName) {
+  const name =
+    (typeof hints.name === 'string' && hints.name.trim()) ||
+    (typeof restaurantName === 'string' && restaurantName.trim()) ||
+    '';
+
   const parts = [];
-  if (hints.name) parts.push(hints.name);
-  parts.push('Αθήνα', 'Ελλάδα');
+  if (name) parts.push(name);
+  if (hints.lat != null && hints.lng != null) {
+    parts.push('Ελλάδα');
+  } else {
+    parts.push('Αθήνα', 'Ελλάδα');
+  }
+
   const textQuery = parts.join(' ').trim();
   if (!textQuery) return null;
 
@@ -135,7 +149,7 @@ async function searchTextPlaceId(apiKey, hints) {
     body.locationBias = {
       circle: {
         center: { latitude: hints.lat, longitude: hints.lng },
-        radius: 250,
+        radius: hints.name ? 400 : 120,
       },
     };
   }
@@ -145,7 +159,7 @@ async function searchTextPlaceId(apiKey, hints) {
     headers: {
       'Content-Type': 'application/json',
       'X-Goog-Api-Key': apiKey,
-      'X-Goog-FieldMask': 'places.id,places.displayName',
+      'X-Goog-FieldMask': 'places.id,places.name,places.displayName',
     },
     body: JSON.stringify(body),
     signal: AbortSignal.timeout(12_000),
@@ -158,21 +172,20 @@ async function searchTextPlaceId(apiKey, hints) {
 
   const json = await res.json();
   const first = Array.isArray(json.places) ? json.places[0] : null;
-  const id = typeof first?.id === 'string' ? first.id.trim() : '';
-  return isChijPlaceId(id) ? id : null;
+  return coerceChijPlaceId(first?.id) || coerceChijPlaceId(first?.name);
 }
 
 function normalizeGooglePlaceId(raw) {
   const s = typeof raw === 'string' ? raw.trim() : '';
   if (!s) return null;
-  if (isChijPlaceId(s)) return s;
-  return extractPlaceIdFromMapsUrl(s);
+  return coerceChijPlaceId(s) || extractPlaceIdFromMapsUrl(s);
 }
 
 /**
- * @param {string} placeIdInput CMS: ChIJ…, goo.gl ή πλήρες Maps URL
+ * @param {string} placeIdInput CMS: share URL (maps.app.goo.gl), Maps URL ή ChIJ…
+ * @param {{ restaurantName?: string }} [context]
  */
-async function fetchGooglePlaceReviews(placeIdInput) {
+async function fetchGooglePlaceReviews(placeIdInput, context = {}) {
   const empty = {
     reviews: [],
     rating: null,
@@ -182,18 +195,23 @@ async function fetchGooglePlaceReviews(placeIdInput) {
   };
 
   const apiKey = process.env.GOOGLE_PLACES_API_KEY?.trim();
-  if (!apiKey) return empty;
+  if (!apiKey) {
+    return { ...empty, status: 'missing_api_key' };
+  }
 
   let id;
   try {
-    id = await resolveGooglePlaceIdInput(placeIdInput);
+    id = await resolveGooglePlaceIdInput(placeIdInput, context);
   } catch (e) {
     throw new Error(`resolve place id: ${e.message || e}`);
   }
-  if (!id || !isChijPlaceId(id)) return empty;
+
+  if (!id) {
+    return { ...empty, status: 'unresolved_place' };
+  }
 
   const cached = reviewCache.get(id);
-  if (cached && cached.expires > Date.now()) return cached.data;
+  if (cached && cached.expires > Date.now()) return { ...cached.data, status: 'ok' };
 
   const url = `https://places.googleapis.com/v1/places/${encodeURIComponent(id)}?languageCode=el`;
   const res = await fetch(url, {
@@ -233,6 +251,7 @@ async function fetchGooglePlaceReviews(placeIdInput) {
           }))
           .filter((r) => r.text || r.rating > 0)
       : [],
+    status: 'ok',
   };
 
   reviewCache.set(id, { expires: Date.now() + CACHE_TTL_MS, data });
@@ -245,4 +264,5 @@ module.exports = {
   extractPlaceIdFromMapsUrl,
   parseMapsUrlHints,
   fetchGooglePlaceReviews,
+  coerceChijPlaceId,
 };

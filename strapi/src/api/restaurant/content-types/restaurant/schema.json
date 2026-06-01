@@ -44,7 +44,7 @@
     },
     "google_place_id": {
       "type": "string",
-      "description": "ChIJ…, ή επικόλλησε το share link (maps.app.goo.gl / Google Maps URL) — το σύστημα επιλύει το Place ID."
+      "description": "Επικόλλησε το share link από Google Maps (maps.app.goo.gl ή «Κοινοποίηση»). Δεν χρειάζεται Place ID — το βρίσκει το σύστημα."
     },
     "phone": {
       "type": "string"

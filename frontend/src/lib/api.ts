@@ -1049,6 +1049,8 @@ export interface RestaurantGoogleReviews {
   userRatingCount?: number | null;
   googleMapsUri?: string | null;
   reviews: GooglePlaceReview[];
+  /** Διαγνωστικό από Strapi — όχι για εμφάνιση στο UI */
+  status?: string | null;
 }
 
 export interface StrapiVenue {
