@@ -4,6 +4,7 @@ import { layoutShowsHero, type ResolvedHomepageLayout } from "@/config/home";
 import type { StrapiMovie, StrapiShowtime, StrapiTheaterShow } from "@/lib/api";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre } from "@/lib/homeMovieFilters";
+import { resolveHeroPicks } from "@/lib/homeHeroPick";
 import PosterPicture from "@/components/PosterPicture";
 import { posterLcpSrc } from "@/lib/posterDelivery";
 import { HOME_HERO_SECTION_CLASS } from "@/lib/homeHeroLayout";
@@ -29,12 +30,6 @@ export function HeroShell() {
   );
 }
 
-function clampIndex(n: number, length: number): number {
-  if (length <= 0) return 0;
-  if (Number.isNaN(n)) return Math.min(2, Math.max(0, length - 1));
-  return Math.max(0, Math.min(length - 1, n));
-}
-
 type HeroProps = {
   layout: ResolvedHomepageLayout;
   movies: StrapiMovie[];
@@ -56,21 +51,7 @@ const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady }: HeroPr
     if (!layoutShowsHero(layout)) {
       return { theater: null as StrapiTheaterShow | null, movie: null as StrapiMovie | null };
     }
-    const theaterSlug = layout.heroTheaterSlug ?? undefined;
-    const movieSlug = layout.heroMovieSlug ?? undefined;
-    let theater: StrapiTheaterShow | null = null;
-    let movie: StrapiMovie | null = null;
-    if (theaterSlug) {
-      theater = theaterShows.find((s) => s.slug === theaterSlug) ?? null;
-    }
-    if (!theater && movieSlug) {
-      movie = moviesForPick.find((m) => m.slug === movieSlug) ?? null;
-    }
-    if (!theater && !movie && moviesForPick.length) {
-      const idx = clampIndex(layout.featuredMovieIndex, moviesForPick.length);
-      movie = moviesForPick[idx] ?? moviesForPick[0] ?? null;
-    }
-    return { theater, movie };
+    return resolveHeroPicks(layout, moviesForPick, theaterShows);
   }, [layout, moviesForPick, theaterShows]);
 
   const featured = picks.theater ?? picks.movie;
@@ -122,7 +103,11 @@ const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady }: HeroPr
 
   const to = isTheater ? `/theater/${featured.slug}` : `/movies/${featured.slug}`;
   const eyebrow = isTheater ? "Καλοκαίρι · παραστάσεις που ταξιδεύουν" : "Καλοκαίρι · θερινά σινεμά & θέατρο που ταξιδεύει";
-  const kicker = isTheater ? "Προτεινόμενη παράσταση" : "Προτεινόμενη ταινία";
+  const kicker = isTheater
+    ? "Προτεινόμενη παράσταση"
+    : picks.movie?.mostTalkedAbout
+      ? "Πιο συζητημένη"
+      : "Προτεινόμενη ταινία";
 
   return (
     <section className={HERO_SECTION_CLASS}>

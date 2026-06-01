@@ -645,6 +645,7 @@ function mapMovie(
     synopsis: m.synopsis,
     criticScore: m.critic_score,
     imdbRating: parseOptionalDecimal(m.imdb_rating) ?? parseOptionalDecimal(m.critic_score),
+    mostTalkedAbout: m.most_talked_about === true,
     releaseDate: m.release_date,
     trailerUrl: m.trailer_url,
     ...(() => {
@@ -1019,6 +1020,8 @@ export interface StrapiMovie {
   synopsis: string;
   criticScore: number;
   imdbRating?: number;
+  /** CMS `most_talked_about` — pool για hero αρχικής. */
+  mostTalkedAbout: boolean;
   releaseDate: string;
   trailerUrl?: string;
   posterUrl?: string;

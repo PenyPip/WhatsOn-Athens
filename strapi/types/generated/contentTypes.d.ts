@@ -565,6 +565,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
     imdb_rating: Attribute.Decimal;
     is_dubbed: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
+    most_talked_about: Attribute.Boolean & Attribute.DefaultTo<false>;
     movie_genres: Attribute.Relation<
       'api::movie.movie',
       'manyToMany',

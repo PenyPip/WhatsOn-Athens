@@ -56,7 +56,7 @@ export interface MappedHomepage {
   heroTheaterSlug: string | null;
   heroMovieSlug: string | null;
   featuredMovieIndex: number;
-  /** Από `populate[priority_movie]=*` στο /homepage — για Hero όταν η λίστα ταινιών δεν φέρει είδη. */
+  /** Από `populate[priority_movie]=*` — προτεραιότητα hero αν η ταινία έχει `most_talked_about`. */
   priorityMovieGenre: string | null;
   /** Από το συνδεδεμένο priority θεατρικό — εμφάνιση είδους στο Hero. */
   priorityTheaterGenre: string | null;

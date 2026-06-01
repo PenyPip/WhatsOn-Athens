@@ -55,6 +55,7 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         duration: m.duration,
         isDubbed: m.isDubbed,
         criticScore: m.criticScore,
+        mostTalkedAbout: m.mostTalkedAbout,
         releaseDate: m.releaseDate,
         posterUrl: m.posterUrl,
         posterSrcSet: m.posterSrcSet,
@@ -184,6 +185,12 @@ export function trimMoviesForHomeBootstrap(qc: QueryClient): void {
   const keepSlugs = new Set<string>();
   const heroSlug = homepage?.heroMovieSlug?.trim();
   if (heroSlug) keepSlugs.add(heroSlug);
+  for (const m of movies) {
+    if (m.mostTalkedAbout) {
+      keepIds.add(m.id);
+      if (m.slug?.trim()) keepSlugs.add(m.slug.trim());
+    }
+  }
   for (const st of showtimes ?? []) {
     if (st.movieId != null) keepIds.add(Number(st.movieId));
     const slug = typeof st.movieSlug === "string" ? st.movieSlug.trim() : "";

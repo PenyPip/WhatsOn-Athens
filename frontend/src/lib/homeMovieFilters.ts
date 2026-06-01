@@ -82,6 +82,7 @@ export function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefin
     ageRating: "",
     synopsis: "",
     criticScore: 0,
+    mostTalkedAbout: false,
     releaseDate: "",
     posterUrl: st.moviePosterUrl ?? undefined,
     posterSrcSet: st.moviePosterSrcSet,

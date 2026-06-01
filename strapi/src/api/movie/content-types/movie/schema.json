@@ -77,6 +77,11 @@
       "type": "decimal",
       "description": "Βαθμολογία IMDb (π.χ. 7.8). Εμφανίζεται στις κάρτες και στη σελίδα ταινίας."
     },
+    "most_talked_about": {
+      "type": "boolean",
+      "default": false,
+      "description": "Εμφάνιση στην ενότητα hero της αρχικής (πιο συζητημένες)."
+    },
     "showtimes": {
       "type": "relation",
       "relation": "oneToMany",
