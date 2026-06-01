@@ -10,23 +10,8 @@ import { HOME_HERO_SECTION_CLASS } from "@/lib/homeHeroLayout";
 
 export const HERO_SECTION_CLASS = HOME_HERO_SECTION_CLASS;
 
-/** Κράτα ύψος hero χωρίς αφίσα — μέχρι να έρθουν δεδομένα (mobile: static LCP overlay). */
+/** Κράτα ύψος hero — ίδιο DOM σε SSR, pre-hydrate και loading (αποφυγή hydration mismatch). */
 export function HeroShell() {
-  return (
-    <section className={HERO_SECTION_CLASS} aria-hidden="true">
-      <div className="absolute inset-0 bg-[#13143E]" />
-      <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-[#111111]/40 to-transparent" />
-    </section>
-  );
-}
-
-function clampIndex(n: number, length: number): number {
-  if (length <= 0) return 0;
-  if (Number.isNaN(n)) return Math.min(2, Math.max(0, length - 1));
-  return Math.max(0, Math.min(length - 1, n));
-}
-
-function HeroSkeleton() {
   return (
     <section className={HERO_SECTION_CLASS} aria-hidden="true">
       <div className="absolute inset-0 bg-[#13143E]" />
@@ -42,6 +27,12 @@ function HeroSkeleton() {
       </div>
     </section>
   );
+}
+
+function clampIndex(n: number, length: number): number {
+  if (length <= 0) return 0;
+  if (Number.isNaN(n)) return Math.min(2, Math.max(0, length - 1));
+  return Math.max(0, Math.min(length - 1, n));
 }
 
 type HeroProps = {
@@ -98,7 +89,7 @@ const Hero = ({ layout, movies, showtimes, theaterShows, onPosterReady }: HeroPr
 
   if (!showsHero) return null;
   if (!featured) {
-    return <HeroSkeleton />;
+    return <HeroShell />;
   }
 
   const notifyPosterReady = () => onPosterReady?.();

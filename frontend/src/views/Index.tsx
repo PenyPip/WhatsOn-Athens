@@ -11,6 +11,7 @@ import {
   type HomeSectionId,
 } from "@/config/home";
 import { useHomeLcpDone } from "@/hooks/useHomeLcpDone";
+import { useIsHydrated } from "@/hooks/useIsHydrated";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useMovies, useShowtimes, useTheaterShows, useHomeLayout } from "@/hooks/useStrapi";
 import { enrichMoviesWithShowtimeGenre, moviesFromUpcomingShowtimes } from "@/lib/homeMovieFilters";
@@ -49,12 +50,14 @@ const Index = () => {
   const showHomeSkeleton = !homeBodyReady;
 
   const markLcpDone = useHomeLcpDone();
+  const isHydrated = useIsHydrated();
+  const showHeroContent = isHydrated && heroReady;
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
       {!hasHero && showtimes !== undefined ? <MarkLcpDone /> : null}
-      {hasHero && !heroReady ? <HeroShell /> : null}
-      {hasHero && heroReady ? (
+      {hasHero && !showHeroContent ? <HeroShell /> : null}
+      {hasHero && showHeroContent ? (
         <Hero
           layout={layout}
           movies={heroMovieList}
