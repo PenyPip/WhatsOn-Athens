@@ -8,6 +8,7 @@ import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { filterVisibleTheaterShows } from "@/lib/theaterRunDates";
+import { cn } from "@/lib/utils";
 
 function ymdToMs(ymd: string): number {
   const [y, m, d] = ymd.split("-").map((x) => Number(x));
@@ -91,7 +92,10 @@ const TheaterPage = () => {
                         const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
                         input.showPicker?.();
                       }}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                      className={cn(
+                        "theater-filter-date h-10 w-full min-w-[9.5rem] rounded-md border border-border bg-background px-3 text-sm",
+                        !dateFrom && "theater-filter-date--empty",
+                      )}
                     />
                     {!dateFrom ? (
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground/80">
@@ -113,7 +117,10 @@ const TheaterPage = () => {
                         const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
                         input.showPicker?.();
                       }}
-                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                      className={cn(
+                        "theater-filter-date h-10 w-full min-w-[9.5rem] rounded-md border border-border bg-background px-3 text-sm",
+                        !dateTo && "theater-filter-date--empty",
+                      )}
                     />
                     {!dateTo ? (
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground/80">

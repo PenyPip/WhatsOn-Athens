@@ -217,4 +217,28 @@
     border-top: 1px solid rgba(141, 47, 143, 0.35);
     overflow: hidden;
   }
+
+  /** Φίλτρα θεάτρου: custom «Από..» / «Μέχρι..» χωρίς επικάλυψη με dd/mm/yyyy */
+  .theater-filter-date--empty {
+    color: transparent;
+  }
+
+  .theater-filter-date--empty::-webkit-datetime-edit,
+  .theater-filter-date--empty::-webkit-datetime-edit-fields-wrapper,
+  .theater-filter-date--empty::-webkit-datetime-edit-text,
+  .theater-filter-date--empty::-webkit-datetime-edit-month-field,
+  .theater-filter-date--empty::-webkit-datetime-edit-day-field,
+  .theater-filter-date--empty::-webkit-datetime-edit-year-field {
+    color: transparent;
+    opacity: 0;
+  }
+
+  .theater-filter-date--empty::-webkit-calendar-picker-indicator {
+    opacity: 1;
+    cursor: pointer;
+  }
+
+  .theater-filter-date:not(.theater-filter-date--empty) {
+    color: inherit;
+  }
 }
