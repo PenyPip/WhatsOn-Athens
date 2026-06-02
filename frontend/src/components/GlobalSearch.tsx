@@ -244,6 +244,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                           <button
                             type="button"
                             role="option"
+                            aria-selected="false"
                             className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
                             onMouseDown={(e) => e.preventDefault()}
                             onClick={() => runMovie(m.slug ?? "")}
@@ -276,6 +277,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                         <button
                           type="button"
                           role="option"
+                          aria-selected="false"
                           className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => runTheaterShow(s.slug ?? "")}
@@ -306,6 +308,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                         <button
                           type="button"
                           role="option"
+                          aria-selected="false"
                           className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
                           onMouseDown={(e) => e.preventDefault()}
                           onClick={() => runVenue(v.slug ?? "")}

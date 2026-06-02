@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { splitPosterSources } from "@/lib/posterPicture";
 
 type PosterPictureProps = {
@@ -45,10 +46,10 @@ export default function PosterPicture({
     return (
       <picture className="block h-full w-full">
         <source type="image/webp" srcSet={webpSrcSet ?? webpSrc} sizes={sizes} />
-        <img src={fallbackSrc} srcSet={fallbackSrcSet} {...imgProps} />
+        <img alt={alt} src={fallbackSrc} srcSet={fallbackSrcSet} {...imgProps} />
       </picture>
     );
   }
 
-  return <img src={fallbackSrc} srcSet={fallbackSrcSet ?? srcSet ?? undefined} {...imgProps} />;
+  return <img alt={alt} src={fallbackSrc} srcSet={fallbackSrcSet ?? srcSet ?? undefined} {...imgProps} />;
 }

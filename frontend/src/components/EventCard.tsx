@@ -116,7 +116,7 @@ const EventCard = ({
       <Link
         to={`/${type === "movie" ? "movies" : "theater"}/${slug}`}
         className={cn(
-          "group flex min-h-0 flex-col overflow-hidden transition-all duration-[250ms] ease-[cubic-bezier(0.4,0,0.2,1)]",
+          "group flex min-h-0 flex-col overflow-hidden transition-all duration-200 ease-in-out",
           attachShowtimes
             ? "w-full shrink-0 rounded-b-none rounded-t-lg bg-transparent shadow-none ring-0 hover:translate-y-0 hover:shadow-none hover:ring-0"
             : cn(

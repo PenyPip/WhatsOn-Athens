@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-img-element */
 import { lcpImageSrc } from "@/lib/lcpImageSrc";
 import { homeHeroCriticalCss } from "@/lib/homeHeroLayout";
 
@@ -28,7 +29,6 @@ export default function HomeStaticLcp({ posterHref, title, synopsis }: HomeStati
               <p className="home-static-lcp__title">{displayTitle}</p>
               {displaySynopsis ? <p className="home-static-lcp__synopsis">{displaySynopsis}</p> : null}
             </div>
-            {/* eslint-disable-next-line @next/next/no-img-element -- LCP: πρέπει στο αρχικό HTML */}
             <div className="home-static-lcp__poster-wrap">
               <img
                 className="home-static-lcp__poster"
