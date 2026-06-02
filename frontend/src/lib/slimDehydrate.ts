@@ -73,14 +73,11 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         slug: s.slug,
         title: s.title,
         genre: s.genre,
-        synopsis: s.synopsis,
         duration: s.duration,
         director: s.director,
-        cast: s.cast,
         venue: s.venue,
         posterUrl: s.posterUrl,
         onTour: s.onTour,
-        moreLink: s.moreLink,
       })),
     );
   }
@@ -146,7 +143,7 @@ export function slimListQueryCache(qc: QueryClient): void {
 }
 
 /** Bootstrap αρχικής: μόνο κοντινές προβολές (μικρότερο JSON.parse). */
-const HOME_SHOWTIME_HORIZON_MS = 4 * 24 * 60 * 60 * 1000;
+const HOME_SHOWTIME_HORIZON_MS = 2 * 24 * 60 * 60 * 1000;
 
 /** Μικρότερο `#__RQ_STATE__` — λιγότερο JSON.parse στην αρχική (TBT). */
 export function minifyDehydratedState(state: DehydratedState): DehydratedState {

@@ -328,7 +328,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     isFetching: theaterFetching,
     isError: theaterError,
     isFetched: theaterFetched,
-  } = useTheaterShows(needsTheater);
+  } = useTheaterShows(needsTheater && deferSecondary);
   const theaterAwaiting = needsTheater && !theaterFetched && (theaterPending || theaterFetching);
   const theaterLoadFailed = needsTheater && theaterFetched && theaterError && theaterShows === undefined;
   const apiSectionFailed = moviesError || showtimesError || venuesError || restaurantsError;
