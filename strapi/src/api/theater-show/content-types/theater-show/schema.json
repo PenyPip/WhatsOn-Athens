@@ -49,6 +49,12 @@
       "type": "date",
       "description": "Τελευταία ημέρα εμφάνισης (μετά δεν φαίνεται στη λίστα / αναζήτηση)."
     },
+    "weekly_schedule": {
+      "type": "component",
+      "repeatable": true,
+      "component": "theater.weekly-slot",
+      "description": "Εβδομαδιαίες μέρες/ώρες και τιμές (κανονικό/μειωμένο)."
+    },
     "poster": {
       "type": "media",
       "allowedTypes": [

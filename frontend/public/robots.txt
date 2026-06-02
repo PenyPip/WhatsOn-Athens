@@ -1,5 +1,11 @@
 # https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
+Disallow: /*?district=
+Disallow: /*?area=
+Disallow: /*?genre=
+Disallow: /*?summer=
+Disallow: /*?today=
+Disallow: /*?week=
 
 Sitemap: https://the37n.gr/sitemap.xml

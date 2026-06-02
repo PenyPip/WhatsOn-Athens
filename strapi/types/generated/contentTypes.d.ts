@@ -812,6 +812,7 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
       'manyToOne',
       'api::venue.venue'
     >;
+    weekly_schedule: Attribute.Component<'theater.weekly-slot', true>;
   };
 }
 
