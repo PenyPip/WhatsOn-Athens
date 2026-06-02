@@ -89,9 +89,11 @@ const TheaterPage = () => {
                     Από
                   </label>
                   <input
-                    type="date"
+                    type="text"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
+                    placeholder="YYYY-MM-DD"
+                    inputMode="numeric"
                     className="h-10 rounded-md border border-border bg-background px-3 text-sm"
                   />
                 </div>
@@ -100,9 +102,11 @@ const TheaterPage = () => {
                     Έως
                   </label>
                   <input
-                    type="date"
+                    type="text"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
+                    placeholder="YYYY-MM-DD"
+                    inputMode="numeric"
                     className="h-10 rounded-md border border-border bg-background px-3 text-sm"
                   />
                 </div>
@@ -111,7 +115,7 @@ const TheaterPage = () => {
             {filteredShows.length === 0 ? (
               <p className="mb-6 text-sm text-muted-foreground">Δεν βρέθηκαν παραστάσεις με αυτά τα φίλτρα.</p>
             ) : null}
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
               {filteredShows.map((show, i) => (
                 <EventCard
                   key={show.id}
