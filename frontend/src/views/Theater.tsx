@@ -67,6 +67,10 @@ const TheaterPage = () => {
         ) : (
           <>
             <div className="mb-6 rounded-xl border border-border/70 bg-card/45 p-3 md:p-4">
+              <div className="mb-1 hidden text-xs font-semibold uppercase tracking-wider text-muted-foreground md:flex md:items-center md:gap-3">
+                <span className="md:min-w-[11rem]">Από</span>
+                <span className="md:min-w-[11rem]">Έως</span>
+              </div>
               <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
                 <div>
                   <label className="flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm">
@@ -80,9 +84,6 @@ const TheaterPage = () => {
                   </label>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Από
-                  </label>
                   <div className="relative">
                     <input
                       type="date"
@@ -105,9 +106,6 @@ const TheaterPage = () => {
                   </div>
                 </div>
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Έως
-                  </label>
                   <div className="relative">
                     <input
                       type="date"
@@ -124,7 +122,7 @@ const TheaterPage = () => {
                     />
                     {!dateTo ? (
                       <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground/80">
-                        Μέχρι..
+                        Έως..
                       </span>
                     ) : null}
                   </div>

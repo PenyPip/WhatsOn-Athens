@@ -1418,8 +1418,7 @@ export const api = {
   getMovieGenres: () => fetchMovieGenreEntities(),
 
   getTheaterShows: () =>
-    fetchAPI<any[]>("/theater-shows", THEATER_SHOW_PUBLIC_QUERY).then((d) => {
-      const rows = Array.isArray(d) ? d : [];
+    fetchAPIPagedEntries("/theater-shows", THEATER_SHOW_PUBLIC_QUERY).then((rows) => {
       const out: StrapiTheaterShow[] = [];
       for (const row of rows) {
         try {
