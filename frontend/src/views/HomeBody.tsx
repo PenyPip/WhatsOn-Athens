@@ -689,11 +689,14 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                     <ul className="mt-6 grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Νέα άρθρα">
                       {latestArticles.map((article) => (
                         <li key={`${article.id}-${article.slug}`}>
-                          <article className="h-full rounded-xl border border-border/70 bg-background/85 p-4">
+                          <Link
+                            to={`/articles/${article.slug}`}
+                            className="group block h-full rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background"
+                          >
                             <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/80">
                               {articleTypeLabel[article.articleType] ?? "Άρθρο"}
                             </p>
-                            <h3 className="mt-2 font-display text-lg font-semibold leading-tight text-foreground">
+                            <h3 className="mt-2 font-display text-lg font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
                               {article.title}
                             </h3>
                             {article.metaDescription ? (
@@ -701,7 +704,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                                 {article.metaDescription}
                               </p>
                             ) : null}
-                          </article>
+                          </Link>
                         </li>
                       ))}
                     </ul>

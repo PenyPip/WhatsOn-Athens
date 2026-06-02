@@ -6,7 +6,7 @@ import { apiRequestBaseUrl } from "@/lib/apiRequestBase";
 import { normalizeMovieOriginalTitle } from "@/lib/movieTitles";
 import { normalizeVenueKind, type VenueKind } from "@/lib/venueType";
 import { mapVenueDayPrices, resolveShowtimePricing, type VenueDayPrice } from "@/lib/venuePricing";
-import { isTheaterShowVisible, parseTheaterRunDate } from "@/lib/theaterRunDates";
+import { parseTheaterRunDate } from "@/lib/theaterRunDates";
 
 const API_PREFIX = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
 
@@ -1422,8 +1422,7 @@ export const api = {
       const out: StrapiTheaterShow[] = [];
       for (const row of rows) {
         try {
-          const mapped = mapTheaterShow(row);
-          if (isTheaterShowVisible(mapped)) out.push(mapped);
+          out.push(mapTheaterShow(row));
         } catch {
           /* skip malformed CMS row */
         }
@@ -1434,8 +1433,7 @@ export const api = {
     fetchAPI<any[]>(`/theater-shows`, { ...THEATER_SHOW_PUBLIC_QUERY, "filters[slug][$eq]": slug }).then((d) => {
       const row = strapiCollectionFirst(d);
       if (!row) return undefined;
-      const mapped = mapTheaterShow(row);
-      return isTheaterShowVisible(mapped) ? mapped : undefined;
+      return mapTheaterShow(row);
     }),
 
   getCuisines: () =>

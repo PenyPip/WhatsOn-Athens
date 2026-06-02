@@ -7,7 +7,6 @@ import { useTheaterShows } from "@/hooks/useStrapi";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
-import { filterVisibleTheaterShows } from "@/lib/theaterRunDates";
 import { cn } from "@/lib/utils";
 
 function ymdToMs(ymd: string): number {
@@ -37,7 +36,7 @@ const TheaterPage = () => {
   const [onlyTour, setOnlyTour] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const allShows = useMemo(() => filterVisibleTheaterShows(theaterShows ?? []), [theaterShows]);
+  const allShows = useMemo(() => theaterShows ?? [], [theaterShows]);
   const filteredShows = useMemo(() => {
     return allShows.filter((show) => {
       if (onlyTour && !show.onTour) return false;
