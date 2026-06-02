@@ -15,9 +15,9 @@ export default function SpaProviders({ children, dehydratedState }: SpaProviders
           queries: {
             staleTime: 60_000,
             gcTime: 1_800_000,
-            refetchOnWindowFocus: true,
+            refetchOnWindowFocus: false,
             refetchOnReconnect: true,
-            refetchOnMount: true,
+            refetchOnMount: false,
           },
         },
       }),

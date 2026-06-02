@@ -96,6 +96,8 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
 
   useEffect(() => {
     if (movies.length <= 1) return;
+    if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
+    if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
     const timer = window.setInterval(() => goTo(activeIndex + 1), AUTO_ADVANCE_MS);
     return () => window.clearInterval(timer);
   }, [activeIndex, movies.length, goTo]);
@@ -118,6 +120,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
 
   const hasStaticLcp =
     typeof document !== "undefined" && Boolean(document.getElementById("home-static-lcp"));
+  const prioritizePoster = !hasStaticLcp && activeIndex === 0;
 
   if (loading && movies.length === 0) {
     if (hasStaticLcp) return null;
@@ -224,8 +227,9 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
                   alt={posterAltForMovie(active)}
                   width={512}
                   height={768}
-                  fetchPriority="auto"
-                  loading="lazy"
+                  fetchPriority={prioritizePoster ? "high" : "auto"}
+                  loading={prioritizePoster ? "eager" : "lazy"}
+                  decoding={prioritizePoster ? "sync" : "async"}
                   sizes="(max-width: 768px) 192px, 256px"
                   className="h-full w-full object-contain object-center"
                 />

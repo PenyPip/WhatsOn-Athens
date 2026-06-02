@@ -59,6 +59,15 @@ function pickSlug(row) {
   return slug || null;
 }
 
+function isIndexableSlug(slug) {
+  if (!slug) return false;
+  const s = slug.trim().toLowerCase();
+  if (!s) return false;
+  if (s === "venue" || s === "movie" || s === "restaurant" || s === "theater") return false;
+  if (s.length < 2) return false;
+  return /^[a-z0-9][a-z0-9-]*[a-z0-9]$/.test(s);
+}
+
 function pickLastmod(row) {
   const a = entryAttrs(row);
   const raw = a.updatedAt || a.publishedAt || a.createdAt;
@@ -306,14 +315,20 @@ async function fetchCollection(pluralApi, opts = {}) {
   return out;
 }
 
+async function fetchCollectionOrThrow(pluralApi, opts = {}) {
+  const rows = await fetchCollection(pluralApi, opts);
+  if (!rows.length) throw new Error(`${pluralApi}: empty response`);
+  return rows;
+}
+
 async function slugsFromApi(pluralApi, pathPrefix) {
   try {
-    const rows = await fetchCollection(pluralApi);
+    const rows = await fetchCollectionOrThrow(pluralApi);
     const seen = new Set();
     const urls = [];
     for (const row of rows) {
       const slug = pickSlug(row);
-      if (!slug || seen.has(slug)) continue;
+      if (!isIndexableSlug(slug) || seen.has(slug)) continue;
       seen.add(slug);
       urls.push({
         path: `${pathPrefix}/${encodeURIComponent(slug)}`,
@@ -353,6 +368,12 @@ function buildRobots() {
   return `# https://www.robotstxt.org/robotstxt.html
 User-agent: *
 Allow: /
+Disallow: /*?district=
+Disallow: /*?area=
+Disallow: /*?genre=
+Disallow: /*?summer=
+Disallow: /*?today=
+Disallow: /*?week=
 
 Sitemap: ${SITE_URL}/sitemap.xml
 `;
@@ -367,12 +388,14 @@ async function main() {
   ];
 
   const crawlEnrichmentForSitemap = await buildCrawlEnrichment();
-  const venueProgramUrls = (crawlEnrichmentForSitemap.venues ?? []).map((v) => ({
+  const venueProgramUrls = (crawlEnrichmentForSitemap.venues ?? [])
+    .filter((v) => isIndexableSlug(v.slug))
+    .map((v) => ({
     path: `/movies/venue/${encodeURIComponent(v.slug)}`,
     lastmod: new Date().toISOString().slice(0, 10),
     priority: "0.85",
     changefreq: "daily",
-  }));
+    }));
 
   const staticWithDates = STATIC_ROUTES.map((r) => ({
     ...r,
@@ -387,6 +410,10 @@ async function main() {
   }));
 
   const all = [...staticWithDates, ...dynamic, ...venueProgramUrls, ...genreUrls];
+  const criticalDynamicCount = dynamic.length + venueProgramUrls.length;
+  if (criticalDynamicCount < 20) {
+    throw new Error(`[sitemap] suspiciously low dynamic URL count: ${criticalDynamicCount}`);
+  }
   const xml = buildXml(all);
   const robots = buildRobots();
 
