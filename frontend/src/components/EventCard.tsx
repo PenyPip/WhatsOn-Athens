@@ -89,6 +89,7 @@ const EventCard = ({
   const genreTrimmed = typeof genre === "string" ? genre.trim() : "";
   const isMovie = type === "movie";
   const isTheater = type === "theater";
+  const soldOutBadge = typeof badge === "string" && badge.trim().toUpperCase() === "SOLD OUT";
   /** Οριζόντια αφίσα θεάτρου — ολόκληρη, χωρίς crop σε 2:3. */
   const landscapePoster = isTheater;
   /** Αρχική περιοδείες: μόνο τίτλος κάτω από την αφίσα. */
@@ -175,6 +176,12 @@ const EventCard = ({
               }}
               badge={badge}
             />
+          ) : soldOutBadge ? (
+            <div className="pointer-events-none absolute inset-x-0 top-1/2 z-[2] -translate-y-1/2">
+              <div className="mx-auto w-[92%] -rotate-6 rounded bg-[#B00020]/92 px-3 py-2 text-center shadow-lg ring-1 ring-white/35">
+                <span className="font-display text-base font-bold tracking-[0.08em] text-white md:text-lg">SOLD OUT</span>
+              </div>
+            </div>
           ) : badge ? (
             <span
               className={`home-tour-card-badge ${POSTER_BADGE_CORNER_TOP_LEFT} ${POSTER_BADGE_TOP_LEFT} text-xs`}

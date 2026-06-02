@@ -82,31 +82,45 @@ const TheaterPage = () => {
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Από
                   </label>
-                  <input
-                    type="date"
-                    value={dateFrom}
-                    onChange={(e) => setDateFrom(e.target.value)}
-                    onFocus={(e) => {
-                      const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
-                      input.showPicker?.();
-                    }}
-                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={dateFrom}
+                      onChange={(e) => setDateFrom(e.target.value)}
+                      onFocus={(e) => {
+                        const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
+                        input.showPicker?.();
+                      }}
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                    />
+                    {!dateFrom ? (
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground/80">
+                        Από..
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                     Έως
                   </label>
-                  <input
-                    type="date"
-                    value={dateTo}
-                    onChange={(e) => setDateTo(e.target.value)}
-                    onFocus={(e) => {
-                      const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
-                      input.showPicker?.();
-                    }}
-                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-                  />
+                  <div className="relative">
+                    <input
+                      type="date"
+                      value={dateTo}
+                      onChange={(e) => setDateTo(e.target.value)}
+                      onFocus={(e) => {
+                        const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
+                        input.showPicker?.();
+                      }}
+                      className="h-10 w-full rounded-md border border-border bg-background px-3 text-sm"
+                    />
+                    {!dateTo ? (
+                      <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground/80">
+                        Μέχρι..
+                      </span>
+                    ) : null}
+                  </div>
                 </div>
               </div>
             </div>

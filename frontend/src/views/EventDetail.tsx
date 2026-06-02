@@ -804,21 +804,23 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             {theaterShow?.weeklySchedule?.length ? (
               <section className="max-w-2xl rounded-xl border border-border/80 bg-card/50 p-4 md:p-5">
                 <h2 className="font-display text-lg font-semibold text-foreground md:text-xl">Μέρες, ώρες και τιμές</h2>
+                {theaterShow.ticketPrice != null || theaterShow.ticketPriceStudent != null ? (
+                  <div className="mt-2 rounded-md border border-border/70 bg-background/70 px-3 py-2 text-sm">
+                    {theaterShow.ticketPrice != null ? (
+                      <p className="font-medium text-foreground">Κανονικό: {formatEuroPrice(theaterShow.ticketPrice)}</p>
+                    ) : null}
+                    {theaterShow.ticketPriceStudent != null ? (
+                      <p className="text-muted-foreground">Μειωμένο: {formatEuroPrice(theaterShow.ticketPriceStudent)}</p>
+                    ) : null}
+                  </div>
+                ) : null}
                 <ul className="mt-3 divide-y divide-border/70" role="list">
                   {theaterShow.weeklySchedule.map((slot, idx) => (
-                    <li key={`${slot.weekday}-${slot.time}-${idx}`} className="flex items-start justify-between gap-3 py-2.5">
+                    <li key={`${slot.weekday}-${slot.time}-${idx}`} className="flex items-start gap-3 py-2.5">
                       <div className="min-w-0">
                         <p className="font-medium text-foreground">
                           {venueWeekdayLabel(slot.weekday)} στις {slot.time.slice(0, 5)}
                         </p>
-                      </div>
-                      <div className="shrink-0 text-right text-sm text-muted-foreground">
-                        {slot.price != null ? (
-                          <p className="font-medium text-foreground">Κανονικό: {formatEuroPrice(slot.price)}</p>
-                        ) : null}
-                        {slot.priceStudent != null ? (
-                          <p>Μειωμένο: {formatEuroPrice(slot.priceStudent)}</p>
-                        ) : null}
                       </div>
                     </li>
                   ))}

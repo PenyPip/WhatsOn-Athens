@@ -2,7 +2,7 @@
   "collectionName": "components_theater_weekly_slots",
   "info": {
     "displayName": "Εβδομαδιαία ώρα παράστασης",
-    "description": "Σταθερή ημέρα/ώρα και τιμές εισιτηρίων για επαναλαμβανόμενες παραστάσεις."
+    "description": "Σταθερή ημέρα/ώρα για επαναλαμβανόμενες παραστάσεις."
   },
   "attributes": {
     "weekday": {
@@ -22,14 +22,6 @@
       "type": "time",
       "required": true,
       "description": "Ώρα έναρξης (π.χ. 19:00)."
-    },
-    "price": {
-      "type": "decimal",
-      "description": "Κανονικό εισιτήριο (€)."
-    },
-    "price_student": {
-      "type": "decimal",
-      "description": "Μειωμένο / φοιτητικό (€)."
     }
   }
 }

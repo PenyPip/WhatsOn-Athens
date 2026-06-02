@@ -581,8 +581,6 @@ function mapTheaterWeeklySchedule(raw: unknown): TheaterWeeklySlot[] {
     out.push({
       weekday: weekdayRaw,
       time: timeRaw,
-      price: parseOptionalDecimal(attrs.price),
-      priceStudent: parseOptionalDecimal(attrs.price_student),
     });
   }
   return out.sort((a, b) => {
@@ -688,6 +686,8 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     runStart: parseTheaterRunDate(s.run_start) ?? undefined,
     runEnd: parseTheaterRunDate(s.run_end) ?? undefined,
     weeklySchedule: mapTheaterWeeklySchedule(s.weekly_schedule),
+    ticketPrice: parseOptionalDecimal(s.ticket_price),
+    ticketPriceStudent: parseOptionalDecimal(s.ticket_price_student),
   };
 }
 
@@ -1054,13 +1054,14 @@ export interface StrapiTheaterShow {
   runEnd?: string;
   /** Εβδομαδιαίο πρόγραμμα: μέρες/ώρες + τιμές από CMS. */
   weeklySchedule: TheaterWeeklySlot[];
+  /** Ενιαίες τιμές παράστασης (όχι ανά ημέρα). */
+  ticketPrice?: number;
+  ticketPriceStudent?: number;
 }
 
 export interface TheaterWeeklySlot {
   weekday: TheaterWeekday;
   time: string;
-  price?: number;
-  priceStudent?: number;
 }
 
 export interface StrapiCuisine {
@@ -1203,8 +1204,6 @@ const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
   "populate[cast]": "*",
   "populate[weekly_schedule][fields][0]": "weekday",
   "populate[weekly_schedule][fields][1]": "time",
-  "populate[weekly_schedule][fields][2]": "price",
-  "populate[weekly_schedule][fields][3]": "price_student",
 };
 
 /** Χωρίς fields[] — μόνο έγκυρα πεδία schema (όχι editorial_review/author: δεν υπάρχουν στο Restaurant). */

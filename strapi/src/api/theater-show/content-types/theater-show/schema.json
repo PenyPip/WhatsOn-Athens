@@ -53,7 +53,15 @@
       "type": "component",
       "repeatable": true,
       "component": "theater.weekly-slot",
-      "description": "Εβδομαδιαίες μέρες/ώρες και τιμές (κανονικό/μειωμένο)."
+      "description": "Εβδομαδιαίες μέρες/ώρες."
+    },
+    "ticket_price": {
+      "type": "decimal",
+      "description": "Κανονικό εισιτήριο (€) για όλη την παράσταση."
+    },
+    "ticket_price_student": {
+      "type": "decimal",
+      "description": "Μειωμένο / φοιτητικό εισιτήριο (€) για όλη την παράσταση."
     },
     "poster": {
       "type": "media",
