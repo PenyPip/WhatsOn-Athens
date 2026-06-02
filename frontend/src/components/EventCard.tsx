@@ -178,8 +178,10 @@ const EventCard = ({
             />
           ) : soldOutBadge ? (
             <div className="pointer-events-none absolute inset-x-0 top-1/2 z-[2] -translate-y-1/2">
-              <div className="mx-auto w-[92%] -rotate-6 rounded bg-[#B00020]/92 px-3 py-2 text-center shadow-lg ring-1 ring-white/35">
-                <span className="font-display text-base font-bold tracking-[0.08em] text-white md:text-lg">SOLD OUT</span>
+              <div className="mx-auto w-[94%] -rotate-[5deg] rounded-sm bg-gradient-to-r from-[#8E0019] via-[#C10022] to-[#8E0019] px-3 py-2.5 text-center shadow-[0_10px_24px_rgba(0,0,0,0.35)] ring-1 ring-[#ffd3db]/50">
+                <span className="absolute -left-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-white/35 blur-[0.5px]" />
+                <span className="absolute -right-1 top-1/2 h-3 w-3 -translate-y-1/2 rounded-full bg-white/35 blur-[0.5px]" />
+                <span className="font-display text-base font-bold tracking-[0.14em] text-white md:text-lg">SOLD OUT</span>
               </div>
             </div>
           ) : badge ? (
