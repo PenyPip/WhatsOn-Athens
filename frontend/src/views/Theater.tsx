@@ -9,8 +9,6 @@ import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { filterVisibleTheaterShows } from "@/lib/theaterRunDates";
 
-type TourFilter = "all" | "tour" | "resident";
-
 function ymdToMs(ymd: string): number {
   const [y, m, d] = ymd.split("-").map((x) => Number(x));
   if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return NaN;
@@ -35,17 +33,16 @@ const TheaterPage = () => {
   usePageSeo(staticPageSeo.theater);
 
   const { data: theaterShows, isLoading } = useTheaterShows();
-  const [tourFilter, setTourFilter] = useState<TourFilter>("all");
+  const [onlyTour, setOnlyTour] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const allShows = useMemo(() => filterVisibleTheaterShows(theaterShows ?? []), [theaterShows]);
   const filteredShows = useMemo(() => {
     return allShows.filter((show) => {
-      if (tourFilter === "tour" && !show.onTour) return false;
-      if (tourFilter === "resident" && show.onTour) return false;
+      if (onlyTour && !show.onTour) return false;
       return dateFilterMatch(show, dateFrom, dateTo);
     });
-  }, [allShows, tourFilter, dateFrom, dateTo]);
+  }, [allShows, onlyTour, dateFrom, dateTo]);
   const hasShows = allShows.length > 0;
 
   return (
@@ -71,18 +68,15 @@ const TheaterPage = () => {
             <div className="mb-6 rounded-xl border border-border/70 bg-card/45 p-3 md:p-4">
               <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
                 <div>
-                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                    Περιοδεία
+                  <label className="flex h-10 items-center gap-2 rounded-md border border-border bg-background px-3 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={onlyTour}
+                      onChange={(e) => setOnlyTour(e.target.checked)}
+                      className="h-4 w-4"
+                    />
+                    <span>Μόνο περιοδείες</span>
                   </label>
-                  <select
-                    value={tourFilter}
-                    onChange={(e) => setTourFilter(e.target.value as TourFilter)}
-                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
-                  >
-                    <option value="all">Όλα</option>
-                    <option value="tour">Μόνο περιοδείες</option>
-                    <option value="resident">Χωρίς περιοδεία</option>
-                  </select>
                 </div>
                 <div>
                   <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
