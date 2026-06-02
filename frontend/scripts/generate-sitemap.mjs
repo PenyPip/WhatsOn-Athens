@@ -38,6 +38,7 @@ const STATIC_ROUTES = [
   { path: "/venues", priority: "0.7", changefreq: "weekly" },
   { path: "/dining", priority: "0.6", changefreq: "weekly" },
   { path: "/reviews", priority: "0.6", changefreq: "weekly" },
+  { path: "/articles", priority: "0.6", changefreq: "weekly" },
   { path: "/privacy", priority: "0.3", changefreq: "yearly" },
 ];
 
@@ -142,10 +143,10 @@ const POSTER_POPULATE = "populate[poster][fields][0]=url";
 
 /** Δεδομένα build-time για metadata, JSON-LD και SSR SEO. */
 async function buildCrawlEnrichment() {
-  const empty = { genres: [], venues: [], movies: [], theaterShows: [], restaurants: [], reviews: [] };
+  const empty = { genres: [], venues: [], movies: [], theaterShows: [], restaurants: [], reviews: [], articles: [] };
 
   try {
-    const [genreRows, venueRows, movieRows, theaterRows, restaurantRows, reviewRows] = await Promise.all([
+    const [genreRows, venueRows, movieRows, theaterRows, restaurantRows, reviewRows, articleRows] = await Promise.all([
       fetchCollection("movie-genres", {
         extraFields: ["label", "sort_order"],
         sort: "sort_order:asc",
@@ -168,6 +169,9 @@ async function buildCrawlEnrichment() {
       fetchCollection("editorial-reviews", {
         extraFields: ["title"],
         populate: POSTER_POPULATE,
+      }),
+      fetchCollection("articles", {
+        extraFields: ["title"],
       }),
     ]);
 
@@ -279,7 +283,20 @@ async function buildCrawlEnrichment() {
       })
       .filter(Boolean);
 
-    return { genres, venues, movies, theaterShows, restaurants, reviews };
+    const articles = articleRows
+      .map((row) => {
+        const a = entryAttrs(row);
+        const slug = pickSlug(row);
+        if (!slug) return null;
+        return {
+          path: `/articles/${encodeURIComponent(slug)}`,
+          slug,
+          title: pickString(a, "title") || slug,
+        };
+      })
+      .filter(Boolean);
+
+    return { genres, venues, movies, theaterShows, restaurants, reviews, articles };
   } catch (err) {
     console.log(`[sitemap] crawl enrichment: skip (${err.message})`);
     return empty;
@@ -386,6 +403,7 @@ async function main() {
     ...(await slugsFromApi("theater-shows", "/theater")),
     ...(await slugsFromApi("restaurants", "/dining")),
     ...(await slugsFromApi("editorial-reviews", "/reviews")),
+    ...(await slugsFromApi("articles", "/articles")),
   ];
 
   const crawlEnrichmentForSitemap = await buildCrawlEnrichment();
@@ -443,7 +461,7 @@ async function main() {
   console.log(`[sitemap] Wrote ${all.length} URLs → public/sitemap.xml`);
   console.log(`[sitemap] ${spaSlugParams.length} SPA paths → src/generated/spa-static-paths.json`);
   console.log(
-    `[sitemap] crawl: ${crawlEnrichment.genres.length} genres, ${crawlEnrichment.venues.length} venues, ${crawlEnrichment.movies.length} movies, ${crawlEnrichment.theaterShows?.length ?? 0} theater, ${crawlEnrichment.restaurants?.length ?? 0} dining, ${crawlEnrichment.reviews?.length ?? 0} reviews → spa-crawl-enrichment.json`,
+    `[sitemap] crawl: ${crawlEnrichment.genres.length} genres, ${crawlEnrichment.venues.length} venues, ${crawlEnrichment.movies.length} movies, ${crawlEnrichment.theaterShows?.length ?? 0} theater, ${crawlEnrichment.restaurants?.length ?? 0} dining, ${crawlEnrichment.reviews?.length ?? 0} reviews, ${crawlEnrichment.articles?.length ?? 0} articles → spa-crawl-enrichment.json`,
   );
   console.log(`[sitemap] robots.txt → Sitemap: ${SITE_URL}/sitemap.xml`);
 }

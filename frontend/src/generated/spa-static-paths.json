@@ -77,6 +77,11 @@
   },
   {
     "slug": [
+      "articles"
+    ]
+  },
+  {
+    "slug": [
       "privacy"
     ]
   },
@@ -144,55 +149,6 @@
     "slug": [
       "reviews",
       "nolan-review"
-    ]
-  },
-  {
-    "slug": [
-      "movies",
-      "venue",
-      "ethniko-theatro"
-    ]
-  },
-  {
-    "slug": [
-      "movies",
-      "venue",
-      "megaro-mousikis"
-    ]
-  },
-  {
-    "slug": [
-      "movies",
-      "venue",
-      "olympion"
-    ]
-  },
-  {
-    "slug": [
-      "movies",
-      "venue",
-      "theatro-pallas"
-    ]
-  },
-  {
-    "slug": [
-      "movies",
-      "venue",
-      "village-the-mall"
-    ]
-  },
-  {
-    "slug": [
-      "movies",
-      "venue",
-      "snfcc"
-    ]
-  },
-  {
-    "slug": [
-      "movies",
-      "genre",
-      "aisthimatiki"
     ]
   }
 ]
