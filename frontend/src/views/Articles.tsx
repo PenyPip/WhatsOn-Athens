@@ -86,6 +86,14 @@ export default function Articles() {
                 style={{ ["--stagger" as string]: Math.min(i, 8) }}
               >
                 <Link to={`/articles/${article.slug}`} className="group block p-5">
+                  {article.featuredImageUrl ? (
+                    <img
+                      src={article.featuredImageUrl}
+                      alt={article.featuredImageAlt || article.title}
+                      className="mb-4 h-44 w-full rounded-lg object-cover"
+                      loading="lazy"
+                    />
+                  ) : null}
                   <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                     {articleTypeLabels[article.articleType] ?? "Άρθρο"}
                   </span>

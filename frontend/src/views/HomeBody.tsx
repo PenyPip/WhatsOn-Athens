@@ -6,10 +6,11 @@ import VenueCard from "@/components/VenueCard";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
-import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows, useArticles } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
 import {
   homeNeedsArticles,
   homeNeedsDining,
+  homeNeedsEvents,
   homeNeedsShowtimes,
   homeNeedsTheater,
   homeNeedsVenues,
@@ -321,6 +322,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsTheater = homeNeedsTheater(sections);
   const needsDining = homeNeedsDining(sections);
   const needsArticles = homeNeedsArticles(sections);
+  const needsEvents = homeNeedsEvents(sections);
   const needsShowtimes = homeNeedsShowtimes(sections);
   const deferSecondary = useDeferUntilLcpDone();
 
@@ -336,6 +338,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     needsArticles && deferSecondary,
     6,
   );
+  const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(needsEvents && deferSecondary, 6);
   const {
     data: theaterShows,
     isPending: theaterPending,
@@ -361,6 +364,13 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     return flagged.length > 0 ? flagged : all.slice(0, 12);
   }, [restaurants]);
   const latestArticles = useMemo(() => articles ?? [], [articles]);
+  const latestEvents = useMemo(() => events ?? [], [events]);
+
+  const formatEventDate = (raw: string): string => {
+    const d = new Date(raw);
+    if (!Number.isFinite(d.getTime())) return "Χωρίς ημερομηνία";
+    return d.toLocaleDateString("el-GR", { day: "numeric", month: "short" });
+  };
   const summerVenuesForHome = useMemo(
     () => summerVenuesWithShowtimesOrAll(venueList, stList),
     [venueList, stList],
@@ -716,6 +726,78 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                         Περισσότερα
                       </Link>
                     </div>
+                  </div>
+                </section>
+              ),
+            );
+          case "events":
+            return sectionEl(
+              "events",
+              eventsLoading && latestEvents.length === 0 ? (
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+                  <div className="container max-w-7xl">
+                    <div className="mb-2 h-3 w-20 animate-pulse rounded bg-[#1C1D62]/10" />
+                    <div className="h-8 w-56 animate-pulse rounded bg-[#1C1D62]/10" />
+                    <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {[0, 1, 2].map((i) => (
+                        <li key={i} className="h-36 animate-pulse rounded-xl border border-border/60 bg-background/70" />
+                      ))}
+                    </ul>
+                  </div>
+                </section>
+              ) : eventsError ? (
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+                  <div className="container max-w-7xl">
+                    <div className="max-w-xl rounded-xl border border-amber-500/25 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
+                      <p className="font-display text-lg tracking-tight text-amber-100">Events</p>
+                      <p className="mt-3 text-sm leading-relaxed text-amber-100/80 font-body">Δεν ήταν δυνατή η φόρτωση.</p>
+                    </div>
+                  </div>
+                </section>
+              ) : latestEvents.length === 0 ? (
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+                  <div className="container max-w-7xl">
+                    <div className="max-w-xl rounded-xl border border-border/80 bg-background/80 px-5 py-5 md:px-6 md:py-6">
+                      <p className="font-display text-lg tracking-tight text-foreground">Events</p>
+                      <p className="mt-3 text-sm leading-relaxed text-muted-foreground font-body">Δεν υπάρχουν events ακόμα.</p>
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+                  <div className="container max-w-7xl">
+                    <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-muted-foreground opacity-75">
+                      Πολιτισμός
+                    </span>
+                    <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Events</h2>
+                    <ul className="mt-6 grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Events">
+                      {latestEvents.map((event) => (
+                        <li key={`${event.id}-${event.slug}`}>
+                          <article className="h-full rounded-xl border border-border/70 bg-background/85 p-4">
+                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/80">
+                              {formatEventDate(event.startDate)}
+                              {event.endDate ? ` — ${formatEventDate(event.endDate)}` : ""}
+                            </p>
+                            <h3 className="mt-2 font-display text-lg font-semibold leading-tight text-foreground">
+                              {event.name}
+                            </h3>
+                            {event.venueName ? (
+                              <p className="mt-2 line-clamp-1 text-sm leading-relaxed text-muted-foreground">{event.venueName}</p>
+                            ) : null}
+                            {event.ticketUrl ? (
+                              <a
+                                href={event.ticketUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="mt-3 inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
+                              >
+                                Εισιτήρια
+                              </a>
+                            ) : null}
+                          </article>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
                 </section>
               ),

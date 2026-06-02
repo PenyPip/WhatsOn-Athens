@@ -21,6 +21,10 @@ const PUBLIC_COLLECTION_READ_ACTIONS = [
   'api::restaurant.restaurant.findOne',
   'api::editorial-review.editorial-review.find',
   'api::editorial-review.editorial-review.findOne',
+  'api::article.article.find',
+  'api::article.article.findOne',
+  'api::event.event.find',
+  'api::event.event.findOne',
   'api::user-review.user-review.find',
   'api::user-review.user-review.findOne',
 ];

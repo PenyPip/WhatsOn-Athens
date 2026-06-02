@@ -44,6 +44,12 @@
     "featured_image_alt": {
       "type": "string"
     },
+    "featured_image": {
+      "type": "media",
+      "allowedTypes": [
+        "images"
+      ]
+    },
     "related_event": {
       "type": "relation",
       "relation": "manyToOne",

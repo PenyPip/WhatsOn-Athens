@@ -762,6 +762,7 @@ function mapArticle(raw: unknown): StrapiArticle {
     content: typeof r.content === "string" ? r.content : "",
     articleType,
     featuredImageAlt: typeof r.featured_image_alt === "string" ? r.featured_image_alt : "",
+    featuredImageUrl: strapiMediaUrl(r.featured_image, "medium") ?? undefined,
     relatedEvent:
       r.related_event && typeof r.related_event === "object"
         ? {
@@ -776,6 +777,22 @@ function mapArticle(raw: unknown): StrapiArticle {
           }
         : undefined,
     publishedAt: typeof r.publishedAt === "string" ? r.publishedAt : "",
+  };
+}
+
+function mapEvent(raw: unknown): StrapiEvent {
+  const r = unwrapStrapiEntry(raw);
+  return {
+    id: r.id,
+    documentId: r.documentId,
+    name: typeof r.name === "string" ? r.name : "",
+    slug: typeof r.slug === "string" ? r.slug : "",
+    startDate: typeof r.start_date === "string" ? r.start_date : "",
+    endDate: typeof r.end_date === "string" ? r.end_date : "",
+    venueName: typeof r.venue_name === "string" ? r.venue_name : "",
+    venueAddress: typeof r.venue_address === "string" ? r.venue_address : "",
+    ticketUrl: typeof r.ticket_url === "string" ? r.ticket_url : "",
+    organizer: typeof r.organizer === "string" ? r.organizer : "",
   };
 }
 
@@ -1188,6 +1205,7 @@ export interface StrapiArticle {
     | "giati_na_deis"
     | "politistiko_keimeno";
   featuredImageAlt: string;
+  featuredImageUrl?: string;
   relatedEvent?: {
     name: string;
     slug: string;
@@ -1228,6 +1246,19 @@ export interface StrapiShowtime {
   moviePosterSrcSet?: string;
   hallId?: number;
   hallName?: string;
+}
+
+export interface StrapiEvent {
+  id: number;
+  documentId: string;
+  name: string;
+  slug: string;
+  startDate: string;
+  endDate: string;
+  venueName: string;
+  venueAddress: string;
+  ticketUrl: string;
+  organizer: string;
 }
 
 export interface StrapiUserReview {
@@ -1312,8 +1343,13 @@ const EDITORIAL_REVIEW_PUBLIC_QUERY: Record<string, string> = {
 
 const ARTICLE_PUBLIC_QUERY: Record<string, string> = {
   "sort[0]": "publishedAt:desc",
+  "populate[featured_image]": "*",
   "populate[related_event][fields][0]": "name",
   "populate[related_event][fields][1]": "slug",
+};
+
+const EVENT_PUBLIC_QUERY: Record<string, string> = {
+  "sort[0]": "start_date:asc",
 };
 
 const SHOWTIME_POPULATE: Record<string, string> = {
@@ -1476,6 +1512,12 @@ export const api = {
       const row = Array.isArray(d) ? d[0] : undefined;
       return row ? mapArticle(row) : undefined;
     }),
+
+  getEvents: (limit = 6) =>
+    fetchAPI<any[]>("/events", {
+      ...EVENT_PUBLIC_QUERY,
+      "pagination[pageSize]": String(Math.max(1, limit)),
+    }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapEvent(x))),
 
   getShowtimes: (options?: { venueSlug?: string }) => {
     const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";

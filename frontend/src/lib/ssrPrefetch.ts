@@ -2,6 +2,7 @@ import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-qu
 import { api } from "@/lib/api";
 import {
   homeNeedsArticles,
+  homeNeedsEvents,
   homeNeedsShowtimes,
   homeNeedsFullMovieCatalog,
   resolveHomepageLayout,
@@ -57,6 +58,9 @@ async function prefetchHomeBundle(qc: QueryClient) {
   }
   if (homeNeedsArticles(layout.sections)) {
     tasks.push(qc.prefetchQuery({ queryKey: ["articles", 6], queryFn: () => api.getArticles(6), ...queryDefaults }));
+  }
+  if (homeNeedsEvents(layout.sections)) {
+    tasks.push(qc.prefetchQuery({ queryKey: ["events", 6], queryFn: () => api.getEvents(6), ...queryDefaults }));
   }
   await Promise.all(tasks);
   finalizeBootstrapCache(qc, {

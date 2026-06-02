@@ -85,6 +85,15 @@ export default function ArticleDetail() {
 
           <h1 className="font-display text-3xl md:text-4xl font-bold mb-3">{article.title}</h1>
 
+          {article.featuredImageUrl ? (
+            <img
+              src={article.featuredImageUrl}
+              alt={article.featuredImageAlt || article.title}
+              className="mb-6 w-full rounded-xl object-cover"
+              loading="eager"
+            />
+          ) : null}
+
           {article.metaDescription ? (
             <p className="text-base text-muted-foreground leading-relaxed mb-8">{article.metaDescription}</p>
           ) : null}

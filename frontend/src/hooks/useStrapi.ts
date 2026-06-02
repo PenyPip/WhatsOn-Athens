@@ -77,11 +77,13 @@ export const useTheaterShows = (enabled = true) =>
   useQuery({
     queryKey: ["theaterShows"],
     queryFn: api.getTheaterShows,
-    ...CONTENT_QUERY_OPTIONS,
+    ...PROGRAM_QUERY_OPTIONS,
     throwOnError: false,
     retry: 2,
     enabled,
     placeholderData: keepPreviousData,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
 export const useTheaterShowBySlug = (slug: string) =>
@@ -139,6 +141,16 @@ export const useArticles = (enabled = true, limit = 6) =>
 export const useArticleBySlug = (slug: string) =>
   useQuery({ queryKey: ["article", slug], queryFn: () => api.getArticleBySlug(slug), enabled: !!slug });
 
+export const useEvents = (enabled = true, limit = 6) =>
+  useQuery({
+    queryKey: ["events", limit],
+    queryFn: () => api.getEvents(limit),
+    ...CONTENT_QUERY_OPTIONS,
+    retry: 1,
+    throwOnError: false,
+    enabled,
+  });
+
 export const useShowtimes = (enabled = true, venueSlug?: string) =>
   useQuery({
     queryKey: ["showtimes", venueSlug ?? ""],
@@ -147,6 +159,8 @@ export const useShowtimes = (enabled = true, venueSlug?: string) =>
     throwOnError: false,
     retry: 1,
     enabled,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
   });
 
 export const useUserReviews = () =>
