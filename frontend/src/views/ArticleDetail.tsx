@@ -16,19 +16,6 @@ const articleTypeLabels: Record<string, string> = {
   politistiko_keimeno: "Πολιτιστικό",
 };
 
-function contentToHtml(content: string): string {
-  const raw = (content ?? "").trim();
-  if (!raw) return "";
-  // Strapi Rich Text επιστρέφει HTML. Αν έρθει plain text, το κρατάμε με αλλαγές γραμμής.
-  if (/<[a-z][\s\S]*>/i.test(raw)) return raw;
-  return raw
-    .split("\n")
-    .map((line) => line.trim())
-    .filter(Boolean)
-    .map((line) => `<p>${line}</p>`)
-    .join("");
-}
-
 export default function ArticleDetail() {
   const { slug } = useParams();
   const { data: article, isLoading } = useArticleBySlug(slug ?? "");
@@ -75,7 +62,6 @@ export default function ArticleDetail() {
       year: "numeric",
     });
   })();
-  const articleHtml = contentToHtml(article.content);
 
   return (
     <div className="min-h-screen pb-20 md:pb-0">
@@ -104,8 +90,8 @@ export default function ArticleDetail() {
           ) : null}
 
           <article
-            className="prose prose-sm md:prose-base max-w-none prose-headings:font-display prose-p:leading-relaxed prose-strong:text-foreground prose-a:text-primary hover:prose-a:text-primary/80"
-            dangerouslySetInnerHTML={{ __html: articleHtml }}
+            className="prose prose-lg max-w-none prose-headings:font-display prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-2xl prose-h2:font-bold prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-h3:font-semibold prose-p:my-5 prose-p:leading-relaxed prose-strong:font-semibold prose-em:italic prose-a:text-primary hover:prose-a:text-primary/80"
+            dangerouslySetInnerHTML={{ __html: article.content }}
           />
 
           {article.relatedEvent?.name ? (
