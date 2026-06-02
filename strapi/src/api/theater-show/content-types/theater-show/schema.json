@@ -69,6 +69,11 @@
       "type": "boolean",
       "default": false
     },
+    "sold_out": {
+      "type": "boolean",
+      "default": false,
+      "description": "Εμφάνιση ετικέτας SOLD OUT στις κάρτες παράστασης."
+    },
     "on_tour": {
       "type": "boolean",
       "default": false,

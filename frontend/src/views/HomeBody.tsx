@@ -592,7 +592,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               duration={show.duration ?? 0}
                               posterUrl={show.posterUrl}
                               type="theater"
-                              badge="Περιοδεία"
+                              badge={show.soldOut ? "SOLD OUT" : "Περιοδεία"}
                               compactMovieMeta
                               darkSectionCard
                               className="w-[17rem] md:w-[19rem]"

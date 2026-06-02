@@ -786,6 +786,7 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     >;
     is_last_shows: Attribute.Boolean & Attribute.DefaultTo<false>;
     is_premiere: Attribute.Boolean & Attribute.DefaultTo<false>;
+    sold_out: Attribute.Boolean & Attribute.DefaultTo<false>;
     more_link: Attribute.String;
     on_tour: Attribute.Boolean & Attribute.DefaultTo<false>;
     poster: Attribute.Media<'images'>;
@@ -798,6 +799,7 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     run_start: Attribute.Date;
     slug: Attribute.UID<'api::theater-show.theater-show', 'title'> &
       Attribute.Required;
+    sold_out: Attribute.Boolean & Attribute.DefaultTo<false>;
     synopsis: Attribute.Text;
     title: Attribute.String & Attribute.Required;
     updatedAt: Attribute.DateTime;

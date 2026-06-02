@@ -682,6 +682,7 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     posterUrl: strapiMediaUrl(s.poster, "medium") ?? undefined,
     isPremiere: s.is_premiere,
     isLastShows: s.is_last_shows,
+    soldOut: s.sold_out === true,
     onTour: s.on_tour === true,
     moreLink: typeof s.more_link === "string" ? s.more_link.trim() : "",
     runStart: parseTheaterRunDate(s.run_start) ?? undefined,
@@ -1043,6 +1044,7 @@ export interface StrapiTheaterShow {
   posterUrl?: string;
   isPremiere?: boolean;
   isLastShows?: boolean;
+  soldOut?: boolean;
   /** Περιοδεία — τμήμα tours στην αρχική. */
   onTour: boolean;
   /** URL περιοδείας / κρατήσεων / site παράστασης. */

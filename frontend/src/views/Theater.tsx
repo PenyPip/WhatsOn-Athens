@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import EventCard from "@/components/EventCard";
 import PageHeaderReveal from "@/components/PageHeaderReveal";
 import LoadingState from "@/components/LoadingState";
@@ -7,12 +7,45 @@ import { useTheaterShows } from "@/hooks/useStrapi";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+import { filterVisibleTheaterShows } from "@/lib/theaterRunDates";
+
+type TourFilter = "all" | "tour" | "resident";
+
+function ymdToMs(ymd: string): number {
+  const [y, m, d] = ymd.split("-").map((x) => Number(x));
+  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return NaN;
+  return new Date(y, m - 1, d).getTime();
+}
+
+function dateFilterMatch(show: { runStart?: string; runEnd?: string }, fromYmd: string, toYmd: string): boolean {
+  if (!fromYmd && !toYmd) return true;
+  const fromMs = fromYmd ? ymdToMs(fromYmd) : null;
+  const toMs = toYmd ? ymdToMs(toYmd) : null;
+  if ((fromMs != null && !Number.isFinite(fromMs)) || (toMs != null && !Number.isFinite(toMs))) return true;
+  const showStart = show.runStart ? ymdToMs(show.runStart) : null;
+  const showEnd = show.runEnd ? ymdToMs(show.runEnd) : null;
+  const overlapStart = showStart ?? Number.NEGATIVE_INFINITY;
+  const overlapEnd = showEnd ?? Number.POSITIVE_INFINITY;
+  const filterStart = fromMs ?? Number.NEGATIVE_INFINITY;
+  const filterEnd = toMs ?? Number.POSITIVE_INFINITY;
+  return overlapStart <= filterEnd && overlapEnd >= filterStart;
+}
 
 const TheaterPage = () => {
   usePageSeo(staticPageSeo.theater);
 
   const { data: theaterShows, isLoading } = useTheaterShows();
-  const allShows = useMemo(() => theaterShows ?? [], [theaterShows]);
+  const [tourFilter, setTourFilter] = useState<TourFilter>("all");
+  const [dateFrom, setDateFrom] = useState("");
+  const [dateTo, setDateTo] = useState("");
+  const allShows = useMemo(() => filterVisibleTheaterShows(theaterShows ?? []), [theaterShows]);
+  const filteredShows = useMemo(() => {
+    return allShows.filter((show) => {
+      if (tourFilter === "tour" && !show.onTour) return false;
+      if (tourFilter === "resident" && show.onTour) return false;
+      return dateFilterMatch(show, dateFrom, dateTo);
+    });
+  }, [allShows, tourFilter, dateFrom, dateTo]);
   const hasShows = allShows.length > 0;
 
   return (
@@ -21,7 +54,7 @@ const TheaterPage = () => {
         <div className="container">
           <PageHeaderReveal>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Θέατρο</h1>
-            <p className="text-white/60 text-base">Στη σκηνή σε Αθήνα & Θεσσαλονίκη</p>
+            <p className="text-white/60 text-base">Παραστάσεις, περιοδείες, πρόγραμμα και ημερομηνίες ανά παραγωγή.</p>
           </PageHeaderReveal>
         </div>
       </div>
@@ -35,8 +68,51 @@ const TheaterPage = () => {
           </p>
         ) : (
           <>
+            <div className="mb-6 rounded-xl border border-border/70 bg-card/45 p-3 md:p-4">
+              <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-end">
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Περιοδεία
+                  </label>
+                  <select
+                    value={tourFilter}
+                    onChange={(e) => setTourFilter(e.target.value as TourFilter)}
+                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  >
+                    <option value="all">Όλα</option>
+                    <option value="tour">Μόνο περιοδείες</option>
+                    <option value="resident">Χωρίς περιοδεία</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Από
+                  </label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  />
+                </div>
+                <div>
+                  <label className="mb-1 block text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                    Έως
+                  </label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="h-10 rounded-md border border-border bg-background px-3 text-sm"
+                  />
+                </div>
+              </div>
+            </div>
+            {filteredShows.length === 0 ? (
+              <p className="mb-6 text-sm text-muted-foreground">Δεν βρέθηκαν παραστάσεις με αυτά τα φίλτρα.</p>
+            ) : null}
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
-              {allShows.map((show, i) => (
+              {filteredShows.map((show, i) => (
                 <EventCard
                   key={show.id}
                   slug={show.slug}
@@ -47,7 +123,15 @@ const TheaterPage = () => {
                   posterUrl={show.posterUrl}
                   type="theater"
                   index={i}
-                  badge={show.isPremiere ? "Πρεμιέρα" : show.isLastShows ? "Τελευταίες" : undefined}
+                  badge={
+                    show.soldOut
+                      ? "SOLD OUT"
+                      : show.isPremiere
+                        ? "Πρεμιέρα"
+                        : show.isLastShows
+                          ? "Τελευταίες"
+                          : undefined
+                  }
                 />
               ))}
             </div>

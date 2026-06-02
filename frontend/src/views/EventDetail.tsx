@@ -723,7 +723,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               {isMovie && slug ? (
                 <SharePageButton variant="hero" path={`/movies/${slug}`} title={headline.primary} />
               ) : null}
-              {theaterShow ? <TheaterShowMoreLink show={theaterShow} variant="hero" /> : null}
             </div>
             </div>
 
@@ -873,7 +872,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
         <section>
           <h2 className="font-display text-xl font-semibold mb-4">Μπορεί να σου αρέσει</h2>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 items-stretch">
+          <div
+            className={cn(
+              "grid gap-4 items-stretch",
+              isMovie ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-3",
+            )}
+          >
             {related.map((item, i) => {
               const itemTl = isMovie ? movieTitleLines(item as StrapiMovie) : { primary: item.title, secondary: undefined as string | undefined };
               return (
@@ -890,6 +894,17 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   posterSrcSet={isMovie ? (item as StrapiMovie).posterSrcSet : undefined}
                   isDubbed={isMovie ? (item as StrapiMovie).isDubbed : false}
                   type={type}
+                  badge={
+                    !isMovie
+                      ? (item as StrapiTheaterShow).soldOut
+                        ? "SOLD OUT"
+                        : (item as StrapiTheaterShow).isPremiere
+                          ? "Πρεμιέρα"
+                          : (item as StrapiTheaterShow).isLastShows
+                            ? "Τελευταίες"
+                            : undefined
+                      : undefined
+                  }
                   uniformMovieSizing={isMovie}
                   compactMovieMeta={isMovie}
                   index={i}
