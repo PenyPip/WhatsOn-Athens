@@ -83,11 +83,13 @@ const TheaterPage = () => {
                     Από
                   </label>
                   <input
-                    type="text"
+                    type="date"
                     value={dateFrom}
                     onChange={(e) => setDateFrom(e.target.value)}
-                    placeholder="YYYY-MM-DD"
-                    inputMode="numeric"
+                    onFocus={(e) => {
+                      const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
+                      input.showPicker?.();
+                    }}
                     className="h-10 rounded-md border border-border bg-background px-3 text-sm"
                   />
                 </div>
@@ -96,11 +98,13 @@ const TheaterPage = () => {
                     Έως
                   </label>
                   <input
-                    type="text"
+                    type="date"
                     value={dateTo}
                     onChange={(e) => setDateTo(e.target.value)}
-                    placeholder="YYYY-MM-DD"
-                    inputMode="numeric"
+                    onFocus={(e) => {
+                      const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
+                      input.showPicker?.();
+                    }}
                     className="h-10 rounded-md border border-border bg-background px-3 text-sm"
                   />
                 </div>
