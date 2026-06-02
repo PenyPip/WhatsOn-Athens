@@ -362,6 +362,56 @@ export interface AdminUser extends Schema.CollectionType {
   };
 }
 
+export interface ApiArticleArticle extends Schema.CollectionType {
+  collectionName: 'articles';
+  info: {
+    displayName: 'Article';
+    pluralName: 'articles';
+    singularName: 'article';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    article_type: Attribute.Enumeration<
+      [
+        'kritiki_parastasis',
+        'kritiki_tainias',
+        'sigkrisi',
+        'giati_na_deis',
+        'politistiko_keimeno'
+      ]
+    >;
+    content: Attribute.RichText;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::article.article',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    featured_image_alt: Attribute.String;
+    focus_keyword: Attribute.String;
+    meta_description: Attribute.String;
+    publishedAt: Attribute.DateTime;
+    related_event: Attribute.Relation<
+      'api::article.article',
+      'manyToOne',
+      'api::event.event'
+    >;
+    secondary_keywords: Attribute.String;
+    slug: Attribute.UID<'api::article.article', 'title'> & Attribute.Required;
+    title: Attribute.String & Attribute.Required;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::article.article',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiCuisineCuisine extends Schema.CollectionType {
   collectionName: 'cuisines';
   info: {
@@ -451,6 +501,48 @@ export interface ApiEditorialReviewEditorialReview
       'admin::user'
     > &
       Attribute.Private;
+  };
+}
+
+export interface ApiEventEvent extends Schema.CollectionType {
+  collectionName: 'events';
+  info: {
+    displayName: 'Event';
+    pluralName: 'events';
+    singularName: 'event';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    articles: Attribute.Relation<
+      'api::event.event',
+      'oneToMany',
+      'api::article.article'
+    >;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::event.event',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    end_date: Attribute.Date;
+    name: Attribute.String & Attribute.Required;
+    organizer: Attribute.String;
+    publishedAt: Attribute.DateTime;
+    slug: Attribute.UID<'api::event.event', 'name'> & Attribute.Required;
+    start_date: Attribute.Date;
+    ticket_url: Attribute.String;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::event.event',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    venue_address: Attribute.String;
+    venue_name: Attribute.String;
   };
 }
 
@@ -1364,8 +1456,10 @@ declare module '@strapi/types' {
       'admin::transfer-token': AdminTransferToken;
       'admin::transfer-token-permission': AdminTransferTokenPermission;
       'admin::user': AdminUser;
+      'api::article.article': ApiArticleArticle;
       'api::cuisine.cuisine': ApiCuisineCuisine;
       'api::editorial-review.editorial-review': ApiEditorialReviewEditorialReview;
+      'api::event.event': ApiEventEvent;
       'api::hall.hall': ApiHallHall;
       'api::homepage.homepage': ApiHomepageHomepage;
       'api::movie-genre.movie-genre': ApiMovieGenreMovieGenre;

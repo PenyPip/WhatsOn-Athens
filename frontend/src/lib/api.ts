@@ -737,6 +737,48 @@ function mapEditorialReview(raw: unknown): StrapiEditorialReview {
   };
 }
 
+function mapArticle(raw: unknown): StrapiArticle {
+  const r = unwrapStrapiEntry(raw);
+  const articleTypeRaw = typeof r.article_type === "string" ? r.article_type : "";
+  const articleType: StrapiArticle["articleType"] = (
+    [
+      "kritiki_parastasis",
+      "kritiki_tainias",
+      "sigkrisi",
+      "giati_na_deis",
+      "politistiko_keimeno",
+    ] as const
+  ).includes(articleTypeRaw as StrapiArticle["articleType"])
+    ? (articleTypeRaw as StrapiArticle["articleType"])
+    : "politistiko_keimeno";
+  return {
+    id: r.id,
+    documentId: r.documentId,
+    title: typeof r.title === "string" ? r.title : "",
+    slug: typeof r.slug === "string" ? r.slug : "",
+    metaDescription: typeof r.meta_description === "string" ? r.meta_description : "",
+    focusKeyword: typeof r.focus_keyword === "string" ? r.focus_keyword : "",
+    secondaryKeywords: typeof r.secondary_keywords === "string" ? r.secondary_keywords : "",
+    content: typeof r.content === "string" ? r.content : "",
+    articleType,
+    featuredImageAlt: typeof r.featured_image_alt === "string" ? r.featured_image_alt : "",
+    relatedEvent:
+      r.related_event && typeof r.related_event === "object"
+        ? {
+            name:
+              typeof (r.related_event as Record<string, unknown>).name === "string"
+                ? ((r.related_event as Record<string, unknown>).name as string)
+                : "",
+            slug:
+              typeof (r.related_event as Record<string, unknown>).slug === "string"
+                ? ((r.related_event as Record<string, unknown>).slug as string)
+                : "",
+          }
+        : undefined,
+    publishedAt: typeof r.publishedAt === "string" ? r.publishedAt : "",
+  };
+}
+
 /** Strapi REST v4: σχέση ως επίπεδο αντικείμενο ή ως `{ data: { attributes } }` */
 function strapiRelationAttrs(rel: unknown): Record<string, unknown> | null {
   if (rel == null || typeof rel !== "object") return null;
@@ -1130,6 +1172,29 @@ export interface StrapiEditorialReview {
   publishedAt: string;
 }
 
+export interface StrapiArticle {
+  id: number;
+  documentId: string;
+  title: string;
+  slug: string;
+  metaDescription: string;
+  focusKeyword: string;
+  secondaryKeywords: string;
+  content: string;
+  articleType:
+    | "kritiki_parastasis"
+    | "kritiki_tainias"
+    | "sigkrisi"
+    | "giati_na_deis"
+    | "politistiko_keimeno";
+  featuredImageAlt: string;
+  relatedEvent?: {
+    name: string;
+    slug: string;
+  };
+  publishedAt: string;
+}
+
 export interface StrapiShowtime {
   id: string;
   documentId: string;
@@ -1243,6 +1308,12 @@ const EDITORIAL_REVIEW_PUBLIC_QUERY: Record<string, string> = {
   "populate[movie][fields][0]": "title",
   "populate[theater_show][fields][0]": "title",
   "populate[restaurant][fields][0]": "name",
+};
+
+const ARTICLE_PUBLIC_QUERY: Record<string, string> = {
+  "sort[0]": "publishedAt:desc",
+  "populate[related_event][fields][0]": "name",
+  "populate[related_event][fields][1]": "slug",
 };
 
 const SHOWTIME_POPULATE: Record<string, string> = {
@@ -1392,6 +1463,21 @@ export const api = {
     fetchAPI<any[]>(`/editorial-reviews`, { ...EDITORIAL_REVIEW_PUBLIC_QUERY, "filters[slug][$eq]": slug }).then((d) => {
       const row = Array.isArray(d) ? d[0] : undefined;
       return row ? mapEditorialReview(row) : undefined;
+    }),
+
+  getArticles: (limit = 6) =>
+    fetchAPI<any[]>("/articles", {
+      ...ARTICLE_PUBLIC_QUERY,
+      "pagination[pageSize]": String(Math.max(1, limit)),
+    }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapArticle(x))),
+  getArticleBySlug: (slug: string) =>
+    fetchAPI<any[]>(`/articles`, {
+      ...ARTICLE_PUBLIC_QUERY,
+      "filters[slug][$eq]": slug,
+      "pagination[pageSize]": "1",
+    }).then((d) => {
+      const row = Array.isArray(d) ? d[0] : undefined;
+      return row ? mapArticle(row) : undefined;
     }),
 
   getShowtimes: (options?: { venueSlug?: string }) => {

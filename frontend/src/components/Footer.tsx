@@ -26,6 +26,9 @@ const Footer = () => {
               <a href="/venues" className="block text-white/60 hover:text-white transition-colors">
                 Χώροι
               </a>
+              <a href="/articles" className="block text-white/60 hover:text-white transition-colors">
+                Άρθρα
+              </a>
               {SHOW_PROFILE_IN_NAV ? (
                 <a href="/profile" className="block text-white/60 hover:text-white transition-colors">
                   Προφίλ

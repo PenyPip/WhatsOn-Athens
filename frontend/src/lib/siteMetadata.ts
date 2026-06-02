@@ -94,7 +94,7 @@ export function inferOgType(path?: string): OgPageType {
   const p = (path ?? "").trim();
   if (/^\/movies\/venue\//.test(p)) return "website";
   if (p.startsWith("/movies/") && p.length > "/movies/".length) return "video.movie";
-  if (/^\/(theater|dining|reviews)\/[^/]+/.test(p)) return "article";
+  if (/^\/(theater|dining|reviews|articles)\/[^/]+/.test(p)) return "article";
   return "website";
 }
 

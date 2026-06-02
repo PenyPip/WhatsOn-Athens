@@ -13,6 +13,7 @@ export const HOME_SECTION_IDS = [
   "summer_venues",
   "tours",
   "new_movies",
+  "new_articles",
   "movies_week",
   "coming_soon",
   "dining",
@@ -37,6 +38,7 @@ export const FALLBACK_SECTIONS: HomeSectionId[] = [
 const LEGACY_SECTION_MAP: Record<string, HomeSectionId> = {
   movies: "summer_cinema",
   theater: "tours",
+  new: "new_articles",
 };
 
 export function isHomeSectionId(id: string): id is HomeSectionId {
@@ -79,6 +81,10 @@ export function homeNeedsTheater(sections: readonly HomeSectionId[]): boolean {
 
 export function homeNeedsDining(sections: readonly HomeSectionId[]): boolean {
   return sections.includes("dining");
+}
+
+export function homeNeedsArticles(sections: readonly HomeSectionId[]): boolean {
+  return sections.includes("new_articles");
 }
 
 /** Προβολές για ταινίες σήμερα / θερινά / εβδομάδα / χώρους θερινών (όχι hero — μόνο `most_talked_about`). */

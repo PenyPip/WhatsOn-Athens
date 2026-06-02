@@ -17,6 +17,8 @@ const Dining = lazy(() => import(/* webpackChunkName: "dining" */ "./views/Dinin
 const DiningDetail = lazy(() => import(/* webpackChunkName: "dining-detail" */ "./views/DiningDetail"));
 const Reviews = lazy(() => import(/* webpackChunkName: "reviews" */ "./views/Reviews"));
 const ReviewDetail = lazy(() => import(/* webpackChunkName: "review-detail" */ "./views/ReviewDetail"));
+const Articles = lazy(() => import(/* webpackChunkName: "articles" */ "./views/Articles"));
+const ArticleDetail = lazy(() => import(/* webpackChunkName: "article-detail" */ "./views/ArticleDetail"));
 const Privacy = lazy(() => import(/* webpackChunkName: "privacy" */ "./views/Privacy"));
 const Profile = lazy(() => import(/* webpackChunkName: "profile" */ "./views/Profile"));
 const NotFound = lazy(() => import(/* webpackChunkName: "not-found" */ "./views/NotFound"));
@@ -47,6 +49,8 @@ function AppRoutes() {
       <Route path="/dining/:slug" element={<LazyPage><DiningDetail /></LazyPage>} />
       <Route path="/reviews" element={<LazyPage><Reviews /></LazyPage>} />
       <Route path="/reviews/:slug" element={<LazyPage><ReviewDetail /></LazyPage>} />
+      <Route path="/articles" element={<LazyPage><Articles /></LazyPage>} />
+      <Route path="/articles/:slug" element={<LazyPage><ArticleDetail /></LazyPage>} />
       <Route path="/profile" element={<LazyPage><Profile /></LazyPage>} />
       <Route path="/privacy" element={<LazyPage><Privacy /></LazyPage>} />
       <Route path="*" element={<LazyPage><NotFound /></LazyPage>} />

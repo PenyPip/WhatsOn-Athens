@@ -1,6 +1,7 @@
 import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import {
+  homeNeedsArticles,
   homeNeedsShowtimes,
   homeNeedsFullMovieCatalog,
   resolveHomepageLayout,
@@ -34,6 +35,11 @@ function matchReviewSlug(path: string): string | null {
   return m?.[1] ?? null;
 }
 
+function matchArticleSlug(path: string): string | null {
+  const m = path.match(/^\/articles\/([^/]+)$/);
+  return m?.[1] ?? null;
+}
+
 function matchMoviesVenueSlug(path: string): string | null {
   const m = path.match(/^\/movies\/venue\/([^/]+)$/);
   return m?.[1] ?? null;
@@ -48,6 +54,9 @@ async function prefetchHomeBundle(qc: QueryClient) {
   ];
   if (homeNeedsShowtimes(layout.sections)) {
     tasks.push(qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }));
+  }
+  if (homeNeedsArticles(layout.sections)) {
+    tasks.push(qc.prefetchQuery({ queryKey: ["articles", 6], queryFn: () => api.getArticles(6), ...queryDefaults }));
   }
   await Promise.all(tasks);
   finalizeBootstrapCache(qc, {
@@ -115,6 +124,7 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
     const theaterSlug = matchTheaterSlug(normalized);
     const diningSlug = matchDiningSlug(normalized);
     const reviewSlug = matchReviewSlug(normalized);
+    const articleSlug = matchArticleSlug(normalized);
 
     if (normalized === "/") {
       await prefetchHomeBundle(qc);
@@ -153,6 +163,16 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
           queryFn: () => api.getEditorialReviewBySlug(reviewSlug),
         }),
         qc.prefetchQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews }),
+      ]);
+    } else if (normalized === "/articles") {
+      await qc.prefetchQuery({ queryKey: ["articles", 100], queryFn: () => api.getArticles(100) });
+    } else if (articleSlug) {
+      await Promise.all([
+        qc.prefetchQuery({
+          queryKey: ["article", articleSlug],
+          queryFn: () => api.getArticleBySlug(articleSlug),
+        }),
+        qc.prefetchQuery({ queryKey: ["articles", 100], queryFn: () => api.getArticles(100) }),
       ]);
     } else if (normalized === "/privacy") {
       /* στατική σελίδα — χωρίς API */

@@ -40,6 +40,7 @@ const SECTION_LABELS: Record<string, string> = {
   venues: staticPageSeo.venues.title,
   dining: staticPageSeo.dining.title,
   reviews: staticPageSeo.reviews.title,
+  articles: staticPageSeo.articles.title,
   privacy: staticPageSeo.privacy.title,
 };
 
@@ -56,6 +57,7 @@ export function seoCopyForPath(path: string): { title: string; description: stri
     "/venues": staticPageSeo.venues,
     "/dining": staticPageSeo.dining,
     "/reviews": staticPageSeo.reviews,
+    "/articles": staticPageSeo.articles,
     "/privacy": staticPageSeo.privacy,
   };
   if (staticByPath[normalized]) {
@@ -91,6 +93,12 @@ export function seoCopyForPath(path: string): { title: string; description: stri
       return {
         title: name,
         description: truncateDescription(`Κριτική: ${name} — ${siteSeo.siteName}.`),
+      };
+    }
+    if (section === "articles") {
+      return {
+        title: name,
+        description: truncateDescription(`Άρθρο: ${name} — ${siteSeo.siteName}.`),
       };
     }
     return {
@@ -193,6 +201,28 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
     });
   }
   if (parts[0] === "reviews" && parts.length >= 2) {
+    const authorPerson = stripEmpty({
+      "@type": "Person",
+      "@id": `${pageUrl}#author`,
+      name: `${siteSeo.siteName} — Συντακτική ομάδα`,
+      worksFor: { "@id": `${absolutePageUrl("/")}#organization` },
+    });
+    return [
+      authorPerson,
+      stripEmpty({
+        "@type": "Article",
+        "@id": `${pageUrl}#article`,
+        headline: pageName,
+        name: pageName,
+        url: pageUrl,
+        inLanguage: "el-GR",
+        author: { "@id": `${pageUrl}#author` },
+        publisher: { "@id": `${absolutePageUrl("/")}#organization` },
+        mainEntityOfPage: { "@id": `${pageUrl}#webpage` },
+      }),
+    ];
+  }
+  if (parts[0] === "articles" && parts.length >= 2) {
     const authorPerson = stripEmpty({
       "@type": "Person",
       "@id": `${pageUrl}#author`,

@@ -6,8 +6,9 @@ import VenueCard from "@/components/VenueCard";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
-import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows, useArticles } from "@/hooks/useStrapi";
 import {
+  homeNeedsArticles,
   homeNeedsDining,
   homeNeedsShowtimes,
   homeNeedsTheater,
@@ -53,6 +54,14 @@ const summerStrip = [
   "Θέατρο καλοκαιριού",
   "Ξανά στη σκηνή",
 ];
+
+const articleTypeLabel: Record<string, string> = {
+  kritiki_parastasis: "Κριτική θεάτρου",
+  kritiki_tainias: "Κριτική ταινίας",
+  sigkrisi: "Σύγκριση",
+  giati_na_deis: "Γιατί να δεις",
+  politistiko_keimeno: "Πολιτιστικό",
+};
 
 function HomeMovieCardsSkeleton({ layout = "scroll" }: { layout?: "scroll" | "grid" }) {
   const cards = Array.from({ length: layout === "grid" ? 5 : 4 }, (_, i) => i);
@@ -311,6 +320,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsVenues = homeNeedsVenues(sections);
   const needsTheater = homeNeedsTheater(sections);
   const needsDining = homeNeedsDining(sections);
+  const needsArticles = homeNeedsArticles(sections);
   const needsShowtimes = homeNeedsShowtimes(sections);
   const deferSecondary = useDeferUntilLcpDone();
 
@@ -321,6 +331,10 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues && deferSecondary);
   const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(
     needsDining && deferSecondary,
+  );
+  const { data: articles, isLoading: articlesLoading, isError: articlesError } = useArticles(
+    needsArticles && deferSecondary,
+    6,
   );
   const {
     data: theaterShows,
@@ -346,6 +360,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     const flagged = all.filter((r) => r.isNew);
     return flagged.length > 0 ? flagged : all.slice(0, 12);
   }, [restaurants]);
+  const latestArticles = useMemo(() => articles ?? [], [articles]);
   const summerVenuesForHome = useMemo(
     () => summerVenuesWithShowtimesOrAll(venueList, stList),
     [venueList, stList],
@@ -630,6 +645,77 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 title="Νέες ταινίες"
                 moviesMoreHref={moviesSectionPath("new")}
               />,
+            );
+          case "new_articles":
+            return sectionEl(
+              "new_articles",
+              articlesLoading && latestArticles.length === 0 ? (
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+                  <div className="container max-w-7xl">
+                    <div className="mb-2 h-3 w-20 animate-pulse rounded bg-[#1C1D62]/10" />
+                    <div className="h-8 w-56 animate-pulse rounded bg-[#1C1D62]/10" />
+                    <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {[0, 1, 2].map((i) => (
+                        <li key={i} className="h-36 animate-pulse rounded-xl border border-border/60 bg-background/70" />
+                      ))}
+                    </ul>
+                  </div>
+                </section>
+              ) : articlesError ? (
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+                  <div className="container max-w-7xl">
+                    <div className="max-w-xl rounded-xl border border-amber-500/25 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
+                      <p className="font-display text-lg tracking-tight text-amber-100">Νέα άρθρα</p>
+                      <p className="mt-3 text-sm leading-relaxed text-amber-100/80 font-body">Δεν ήταν δυνατή η φόρτωση.</p>
+                    </div>
+                  </div>
+                </section>
+              ) : latestArticles.length === 0 ? (
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+                  <div className="container max-w-7xl">
+                    <div className="max-w-xl rounded-xl border border-border/80 bg-background/80 px-5 py-5 md:px-6 md:py-6">
+                      <p className="font-display text-lg tracking-tight text-foreground">Νέα άρθρα</p>
+                      <p className="mt-3 text-sm leading-relaxed text-muted-foreground font-body">Δεν υπάρχουν ακόμα άρθρα.</p>
+                    </div>
+                  </div>
+                </section>
+              ) : (
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+                  <div className="container max-w-7xl">
+                    <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-muted-foreground opacity-75">
+                      Περιεχόμενο
+                    </span>
+                    <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Νέα άρθρα</h2>
+                    <ul className="mt-6 grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Νέα άρθρα">
+                      {latestArticles.map((article) => (
+                        <li key={`${article.id}-${article.slug}`}>
+                          <article className="h-full rounded-xl border border-border/70 bg-background/85 p-4">
+                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/80">
+                              {articleTypeLabel[article.articleType] ?? "Άρθρο"}
+                            </p>
+                            <h3 className="mt-2 font-display text-lg font-semibold leading-tight text-foreground">
+                              {article.title}
+                            </h3>
+                            {article.metaDescription ? (
+                              <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+                                {article.metaDescription}
+                              </p>
+                            ) : null}
+                          </article>
+                        </li>
+                      ))}
+                    </ul>
+                    <div className="mt-5 text-center">
+                      <Link
+                        to="/articles"
+                        className="inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
+                      >
+                        Περισσότερα
+                      </Link>
+                    </div>
+                  </div>
+                </section>
+              ),
             );
           case "movies_week":
             return sectionEl(

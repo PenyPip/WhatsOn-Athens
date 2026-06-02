@@ -126,6 +126,19 @@ export const useEditorialReviews = () =>
 export const useEditorialReviewBySlug = (slug: string) =>
   useQuery({ queryKey: ["editorialReview", slug], queryFn: () => api.getEditorialReviewBySlug(slug), enabled: !!slug });
 
+export const useArticles = (enabled = true, limit = 6) =>
+  useQuery({
+    queryKey: ["articles", limit],
+    queryFn: () => api.getArticles(limit),
+    ...CONTENT_QUERY_OPTIONS,
+    retry: 1,
+    throwOnError: false,
+    enabled,
+  });
+
+export const useArticleBySlug = (slug: string) =>
+  useQuery({ queryKey: ["article", slug], queryFn: () => api.getArticleBySlug(slug), enabled: !!slug });
+
 export const useShowtimes = (enabled = true, venueSlug?: string) =>
   useQuery({
     queryKey: ["showtimes", venueSlug ?? ""],

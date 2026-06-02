@@ -74,6 +74,11 @@ export const staticPageSeo = {
     description: "Κριτικές συντακτών και χρηστών για ταινίες και παραστάσεις.",
     path: "/reviews",
   },
+  articles: {
+    title: "Άρθρα",
+    description: "Όλα τα άρθρα, συγκρίσεις και πολιτιστικά κείμενα του 37Ν.",
+    path: "/articles",
+  },
   privacy: {
     title: "Απόρρητο & cookies",
     description: "Πολιτική απορρήτου, cookies και διαφημίσεων του 37Ν.",

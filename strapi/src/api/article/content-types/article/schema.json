@@ -1,0 +1,54 @@
+{
+  "kind": "collectionType",
+  "collectionName": "articles",
+  "info": {
+    "singularName": "article",
+    "pluralName": "articles",
+    "displayName": "Article"
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "title",
+      "required": true
+    },
+    "meta_description": {
+      "type": "string"
+    },
+    "focus_keyword": {
+      "type": "string"
+    },
+    "secondary_keywords": {
+      "type": "string"
+    },
+    "content": {
+      "type": "richtext"
+    },
+    "article_type": {
+      "type": "enumeration",
+      "enum": [
+        "kritiki_parastasis",
+        "kritiki_tainias",
+        "sigkrisi",
+        "giati_na_deis",
+        "politistiko_keimeno"
+      ]
+    },
+    "featured_image_alt": {
+      "type": "string"
+    },
+    "related_event": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::event.event",
+      "inversedBy": "articles"
+    }
+  }
+}
