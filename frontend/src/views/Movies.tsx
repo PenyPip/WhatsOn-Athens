@@ -535,7 +535,11 @@ const Movies = () => {
     };
 
     const baseSt = showtimes
-      .filter((st) => st.movieId != null)
+      .filter((st) => {
+        if (st.movieId != null) return true;
+        const slug = typeof st.movieSlug === "string" ? st.movieSlug.trim() : "";
+        return slug.length > 0;
+      })
       .filter((st) => !summerOutdoorOnly || showtimeIsSummerOutdoor(st, venues))
       .filter((st) => !venueFilter || showtimeMatchesVenue(st, venueFilter))
       .filter((st) => !effectiveAreaFilter || showtimeMatchesArea(st, effectiveAreaFilter, venues))
