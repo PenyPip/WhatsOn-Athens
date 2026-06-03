@@ -1,0 +1,9 @@
+node_modules
+.cache
+build
+.tmp
+.strapi
+.env
+.env.*
+*.log
+public/uploads

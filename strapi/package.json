@@ -21,6 +21,10 @@
     "react-router-dom": "5.3.4",
     "styled-components": "5.3.3"
   },
+  "optionalDependencies": {
+    "@swc/core-linux-arm64-gnu": "1.15.32",
+    "@swc/core-linux-x64-gnu": "1.15.32"
+  },
   "author": {
     "name": "A Strapi developer"
   },

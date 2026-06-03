@@ -17,6 +17,7 @@ if [ "$needs_ci" -eq 1 ]; then
   echo "[strapi-dev] Εγκατάσταση dependencies για Linux (npm ci)…"
   rm -rf node_modules
   npm ci --no-audit --no-fund --include=optional
+  sh scripts/install-swc-native.sh
 fi
 
 exec "$@"
