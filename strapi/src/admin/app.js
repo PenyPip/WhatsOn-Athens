@@ -1,6 +1,8 @@
 import React from 'react';
 
-const config = {};
+const config = {
+  locales: ["en"],
+};
 
 const bootstrap = () => {};
 

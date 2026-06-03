@@ -708,7 +708,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               <TheaterScheduleHeroPreview show={theaterShow} />
             ) : null}
 
-            <div className="flex flex-wrap gap-3">
+            <div
+              className={cn(
+                "flex flex-wrap gap-3",
+                theaterShow?.weeklySchedule?.length ? "mt-6" : "mt-0",
+              )}
+            >
               {isMovie ? (
                 <a
                   href="#showtimes"

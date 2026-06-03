@@ -57,9 +57,6 @@ export default function TheaterWeeklySchedule({
             role="listitem"
             className="flex flex-col rounded-lg border border-border/70 bg-background/80 px-3 py-2.5 shadow-sm"
           >
-            <p className="text-[10px] font-bold uppercase tracking-[0.12em] text-[#13143E]/70">
-              {day.shortLabel}
-            </p>
             <p className="font-display text-sm font-semibold leading-tight text-foreground">{day.label}</p>
             <ul className="mt-2 flex flex-col gap-1.5" aria-label={`Ώρες ${day.label}`}>
               {day.times.map((time) => (
@@ -96,7 +93,7 @@ export function TheaterScheduleHeroPreview({
     <div className={cn("mt-4 space-y-3", className)}>
       <TheaterTicketPrices show={show} variant="hero" />
       {hasSchedule ? (
-        <div className="flex flex-wrap gap-1.5">
+        <div className="flex flex-wrap gap-2 pb-1">
           {days.map((day) =>
             day.times.map((time) => (
               <span

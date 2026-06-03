@@ -6,6 +6,7 @@ import LoadingState from "@/components/LoadingState";
 import { useArticleBySlug } from "@/hooks/useStrapi";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+import { articleContentToHtml } from "@/lib/articleContent";
 import { truncateDescription } from "@/lib/siteMetadata";
 
 const articleTypeLabels: Record<string, string> = {
@@ -53,6 +54,11 @@ export default function ArticleDetail() {
     );
   }
 
+  const contentHtml = useMemo(
+    () => (article ? articleContentToHtml(article.content) : ""),
+    [article],
+  );
+
   const publishedLabel = (() => {
     const d = new Date(article.publishedAt);
     if (!Number.isFinite(d.getTime())) return "Χωρίς ημερομηνία";
@@ -99,8 +105,8 @@ export default function ArticleDetail() {
           ) : null}
 
           <article
-            className="prose prose-lg max-w-none prose-headings:font-display prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-2xl prose-h2:font-bold prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-h3:font-semibold prose-p:my-5 prose-p:leading-relaxed prose-strong:font-semibold prose-em:italic prose-a:text-primary hover:prose-a:text-primary/80"
-            dangerouslySetInnerHTML={{ __html: article.content }}
+            className="article-prose prose prose-lg max-w-none prose-headings:font-display prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-2xl prose-h2:font-bold prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-h3:font-semibold prose-p:my-5 prose-p:leading-relaxed prose-strong:font-bold prose-em:italic prose-a:text-[#7C2B76] prose-a:font-medium prose-a:underline hover:prose-a:text-[#13143E]"
+            dangerouslySetInnerHTML={{ __html: contentHtml }}
           />
 
           {article.relatedEvent?.name ? (
