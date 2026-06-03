@@ -22,11 +22,13 @@ services:
     build:
       context: ./strapi
       dockerfile: Dockerfile
+      # Production stage (τελευταίο stage — όχι target: dev όπως στο docker-compose.dev.yml)
     ports:
       - "1337:1337"
     depends_on:
       mysql:
         condition: service_healthy
+    command: ["npm", "run", "start"]
     environment:
       DATABASE_CLIENT: mysql2
       DATABASE_HOST: mysql
@@ -56,8 +58,8 @@ services:
         ]
       interval: 15s
       timeout: 10s
-      retries: 10
-      start_period: 120s
+      retries: 30
+      start_period: 180s
     restart: unless-stopped
 
   frontend:
@@ -67,10 +69,12 @@ services:
       args:
         NEXT_PUBLIC_API_URL: /api
         NEXT_PUBLIC_SITE_URL: https://the37n.gr
+        SITEMAP_STRAPI_URL: http://strapi:1337
     ports:
       - "3000:80"
     depends_on:
-      - strapi
+      strapi:
+        condition: service_healthy
     restart: unless-stopped
 
   nginx:
@@ -85,8 +89,10 @@ services:
       - strapi_uploads:/app/public/uploads:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
-      - frontend
-      - strapi
+      frontend:
+        condition: service_started
+      strapi:
+        condition: service_healthy
     restart: unless-stopped
 
 volumes:

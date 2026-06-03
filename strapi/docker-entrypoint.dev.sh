@@ -1,6 +1,19 @@
 #!/bin/sh
 set -e
 cd /cms
-# Συγχρονισμός deps όταν αλλάζει package.json (το /cms/node_modules είναι ξεχωριστό volume).
-npm install --no-audit --no-fund
+
+needs_ci=0
+if [ ! -d node_modules/@swc/core-linux-arm64-musl ] && [ ! -d node_modules/@swc/core-linux-x64-musl ]; then
+  needs_ci=1
+fi
+if [ -d node_modules/@swc/core-darwin-arm64 ] || [ -d node_modules/@swc/core-darwin-x64 ]; then
+  needs_ci=1
+fi
+
+if [ "$needs_ci" -eq 1 ]; then
+  echo "[strapi-dev] Εγκατάσταση dependencies για Linux (npm ci)…"
+  rm -rf node_modules
+  npm ci --no-audit --no-fund --include=optional
+fi
+
 exec "$@"

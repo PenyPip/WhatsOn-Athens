@@ -17,6 +17,8 @@ services:
       - ./strapi:/cms
       - /cms/node_modules
       - whatson-uploads:/cms/public/uploads
+    entrypoint: ["/usr/local/bin/docker-entrypoint.dev.sh"]
+    command: ["npm", "run", "develop"]
     environment:
       NODE_ENV: development
       # Admin + Content Manager API από browser — ίδιο origin με Next proxy (:3000).
