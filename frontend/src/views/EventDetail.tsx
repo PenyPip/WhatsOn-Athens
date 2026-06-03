@@ -33,6 +33,7 @@ import { resolvePricingForShowtime } from "@/lib/venuePricing";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import {
   endOfCinemaWeek,
+  getUpcomingCinemaWeekBounds,
   showtimeIsUpcoming,
   showtimeShowsOutdoorLabel,
   enrichMoviesWithShowtimeGenre,
@@ -43,6 +44,7 @@ import {
   formatShowtimeWeekRangeLabel,
   showtimeIsWeekBlock,
   showtimeOverlapsRange,
+  showtimeStartsAfterRange,
 } from "@/lib/showtimeSchedule";
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
@@ -228,15 +230,24 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     return [...filtered].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
   }, [showtimes, slug, type]);
 
-  const cinemaWeekShowtimes = useMemo(() => {
+  const { cinemaWeekShowtimes, soonShowtimes } = useMemo(() => {
     const now = new Date();
     const currentStart = startOfCinemaWeek(now);
     const currentEnd = endOfCinemaWeek(now);
-    return eventShowtimes.filter(
-      (st) =>
-        !showtimeIsWeekBlock(st) &&
-        showtimeOverlapsRange(st, currentStart, currentEnd, now),
-    );
+    const { start: upcomingStart, end: upcomingEnd } = getUpcomingCinemaWeekBounds(now);
+    const cinema: StrapiShowtime[] = [];
+    const soon: StrapiShowtime[] = [];
+    for (const st of eventShowtimes) {
+      if (showtimeIsWeekBlock(st)) continue;
+      const inCurrentWeek = showtimeOverlapsRange(st, currentStart, currentEnd, now);
+      const inUpcomingWeek = showtimeOverlapsRange(st, upcomingStart, upcomingEnd, now);
+      if (inCurrentWeek) {
+        cinema.push(st);
+      } else if (inUpcomingWeek || showtimeStartsAfterRange(st, upcomingEnd, now)) {
+        soon.push(st);
+      }
+    }
+    return { cinemaWeekShowtimes: cinema, soonShowtimes: soon };
   }, [eventShowtimes]);
 
   const groupShowtimesByVenue = useCallback(
@@ -263,6 +274,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const showtimesByVenue = useMemo(
     () => groupShowtimesByVenue(cinemaWeekShowtimes),
     [cinemaWeekShowtimes, groupShowtimesByVenue],
+  );
+
+  const soonShowtimesByVenue = useMemo(
+    () => groupShowtimesByVenue(soonShowtimes),
+    [soonShowtimes, groupShowtimesByVenue],
   );
 
   const genreLabel = useMemo(() => {
@@ -460,7 +476,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     </aside>
   ) : null;
 
-  const hasMovieShowtimes = cinemaWeekShowtimes.length > 0;
+  const hasMovieShowtimes = cinemaWeekShowtimes.length > 0 || soonShowtimes.length > 0;
 
   const movieShowtimesSection = isMovie ? (
     <section
@@ -518,6 +534,46 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               </div>
             );
           })}
+        </div>
+      ) : null}
+
+      {soonShowtimes.length > 0 ? (
+        <div className="mt-8 border-t border-border/60 pt-6 md:mt-10">
+          <h3 className="font-display text-base font-semibold text-foreground md:text-lg">Προσεχώς</h3>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Επόμενη εβδομάδα κινηματογράφου και αργότερα
+          </p>
+          <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
+            {soonShowtimesByVenue.map(({ key, venueName, slots, venue }) => {
+              if (!slots.length) return null;
+              return (
+                <div
+                  key={`soon-${key}`}
+                  className="flex min-h-0 flex-col rounded-lg border border-border/80 bg-card/50 p-3 sm:p-4"
+                >
+                  <div className="mb-2 border-b border-border/60 pb-2">
+                    <CinemaVenueLinks
+                      venueName={venueName}
+                      venue={venue}
+                      programHref={moviesHrefForShowtimes(slots, venues, key)}
+                      showProgramButton
+                      compact
+                    />
+                  </div>
+                  <ShowtimesExpandable listClassName="min-h-0 flex-1">
+                    {slots.map((st) => (
+                      <ShowtimeCompactRow key={st.id} st={st} venue={venue} emphasized />
+                    ))}
+                  </ShowtimesExpandable>
+                  {isValidExternalUrl(venue?.moreLink) ? (
+                    <div className="mt-2 border-t border-border/50 pt-2">
+                      <VenueBookingLink venue={venue} compact />
+                    </div>
+                  ) : null}
+                </div>
+              );
+            })}
+          </div>
         </div>
       ) : null}
     </section>
