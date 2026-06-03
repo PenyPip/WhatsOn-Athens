@@ -1,5 +1,10 @@
 import type { StrapiShowtime, StrapiVenue } from "@/lib/api";
-import { showtimeIsUpcoming, showtimeWeekRange } from "@/lib/showtimeSchedule";
+import { endOfCinemaWeek, startOfCinemaWeek } from "@/lib/homeMovieFilters";
+import {
+  showtimeIsUpcoming,
+  showtimeIsWeekBlock,
+  showtimeOverlapsRange,
+} from "@/lib/showtimeSchedule";
 import { findVenueForShowtime, normalizeCinemaGroupName } from "@/lib/venueResolve";
 
 export type VenueShowtimeRange = {
@@ -28,23 +33,37 @@ export function showtimesForVenue(
   return showtimes.filter((st) => showtimeMatchesVenue(venue, st, venues));
 }
 
+/**
+ * Μόνο exact προβολές τρέχουσας εβδομάδας κινηματογράφου (με ώρα).
+ * Εξαιρούνται week_block και «Προσεχώς» (επόμενες εβδομάδες).
+ */
+export function showtimesForVenueProgramLabel(
+  venue: StrapiVenue,
+  showtimes: StrapiShowtime[],
+  venues: StrapiVenue[],
+  now = new Date(),
+): StrapiShowtime[] {
+  const currentStart = startOfCinemaWeek(now);
+  const currentEnd = endOfCinemaWeek(now);
+  return showtimesForVenue(venue, showtimes, venues).filter(
+    (st) =>
+      !showtimeIsWeekBlock(st) &&
+      showtimeOverlapsRange(st, currentStart, currentEnd, now),
+  );
+}
+
 export function venueUpcomingShowtimeRange(
   venue: StrapiVenue,
   showtimes: StrapiShowtime[],
   venues: StrapiVenue[],
+  now = new Date(),
 ): VenueShowtimeRange | null {
-  const slots = showtimesForVenue(venue, showtimes, venues);
+  const slots = showtimesForVenueProgramLabel(venue, showtimes, venues, now);
   if (!slots.length) return null;
 
   let fromMs = Infinity;
   let toMs = -Infinity;
   for (const st of slots) {
-    const wr = showtimeWeekRange(st);
-    if (wr) {
-      fromMs = Math.min(fromMs, wr.start.getTime());
-      toMs = Math.max(toMs, wr.end.getTime());
-      continue;
-    }
     const dt = new Date(st.datetime);
     if (Number.isNaN(dt.getTime())) continue;
     fromMs = Math.min(fromMs, dt.getTime());
@@ -68,7 +87,7 @@ function formatRangeDate(d: Date, withYear: boolean): string {
   });
 }
 
-/** Κείμενο για κάρτα χώρου — «Προβολές: 28 Μαΐ – 4 Ιουν 2026». */
+/** Κείμενο για κάρτα χώρου — «Προβολές: 28 Μαΐ – 4 Ιουν 2026» (μόνο exact, τρέχουσα εβδομάδα). */
 export function formatVenueShowtimeRangeLabel(range: VenueShowtimeRange | null | undefined): string | null {
   if (!range) return null;
   const sameDay =
