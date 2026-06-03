@@ -65,7 +65,7 @@ import { formatTheaterRunPeriod } from "@/lib/theaterRunDates";
 import { isTouringTheaterShow } from "@/lib/theaterTours";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
-import { formatEuroPrice, venueWeekdayLabel } from "@/lib/venuePricing";
+import TheaterWeeklySchedule, { TheaterScheduleHeroPreview } from "@/components/TheaterWeeklySchedule";
 import {
   cinemaGroupKey,
   isValidExternalUrl,
@@ -700,6 +700,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               ) : null}
             </div>
 
+            {theaterShow &&
+            (theaterShow.weeklySchedule?.length ||
+              theaterShow.ticketPrice != null ||
+              theaterShow.ticketPriceFrom != null ||
+              theaterShow.ticketPriceTo != null) ? (
+              <TheaterScheduleHeroPreview show={theaterShow} />
+            ) : null}
+
             <div className="flex flex-wrap gap-3">
               {isMovie ? (
                 <a
@@ -707,6 +715,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   className="inline-flex items-center rounded bg-white px-6 py-3 text-base font-semibold text-[#13143E] transition-colors hover:bg-white/90"
                 >
                   Προβολές & τιμές
+                </a>
+              ) : theaterShow?.weeklySchedule?.length ? (
+                <a
+                  href="#theater-schedule"
+                  className="inline-flex items-center rounded bg-white px-6 py-3 text-base font-semibold text-[#13143E] transition-colors hover:bg-white/90"
+                >
+                  Πρόγραμμα & τιμές
                 </a>
               ) : null}
               {isMovie && trailerEmbedUrl ? (
@@ -800,30 +815,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               ) : null}
             </section>
             {theaterShow?.weeklySchedule?.length ? (
-              <section className="max-w-2xl rounded-xl border border-border/80 bg-card/50 p-4 md:p-5">
-                <h2 className="font-display text-lg font-semibold text-foreground md:text-xl">Μέρες, ώρες και τιμές</h2>
-                {theaterShow.ticketPrice != null || theaterShow.ticketPriceStudent != null ? (
-                  <div className="mt-2 rounded-md border border-border/70 bg-background/70 px-3 py-2 text-sm">
-                    {theaterShow.ticketPrice != null ? (
-                      <p className="font-medium text-foreground">Κανονικό: {formatEuroPrice(theaterShow.ticketPrice)}</p>
-                    ) : null}
-                    {theaterShow.ticketPriceStudent != null ? (
-                      <p className="text-muted-foreground">Μειωμένο: {formatEuroPrice(theaterShow.ticketPriceStudent)}</p>
-                    ) : null}
-                  </div>
-                ) : null}
-                <ul className="mt-3 divide-y divide-border/70" role="list">
-                  {theaterShow.weeklySchedule.map((slot, idx) => (
-                    <li key={`${slot.weekday}-${slot.time}-${idx}`} className="flex items-start gap-3 py-2.5">
-                      <div className="min-w-0">
-                        <p className="font-medium text-foreground">
-                          {venueWeekdayLabel(slot.weekday)} στις {slot.time.slice(0, 5)}
-                        </p>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              </section>
+              <TheaterWeeklySchedule show={theaterShow} id="theater-schedule" className="max-w-3xl" />
             ) : null}
             {movieInfoAside}
           </>

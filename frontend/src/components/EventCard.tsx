@@ -44,6 +44,10 @@ interface EventCardProps {
   darkSectionCard?: boolean;
   /** Πρώτες ορατές αφίσες — LCP / image delivery */
   posterPriority?: boolean;
+  /** Θέατρο: εύρος τιμών (π.χ. «12 – 18 €»). */
+  theaterPriceLine?: string;
+  /** Θέατρο: σύντομο πρόγραμμα (π.χ. «Τετ 19:00 · Πέμ 20:30»). */
+  theaterScheduleLine?: string;
   className?: string;
   index?: number;
 }
@@ -72,6 +76,8 @@ const EventCard = ({
   compactMovieMeta = false,
   darkSectionCard = false,
   posterPriority = false,
+  theaterPriceLine,
+  theaterScheduleLine,
   className = "",
   index: _index = 0,
 }: EventCardProps) => {
@@ -299,6 +305,30 @@ const EventCard = ({
                   </div>
                 ) : null}
               </div>
+              {isTheater && (theaterPriceLine || theaterScheduleLine) ? (
+                <div className="mt-2 space-y-0.5 border-t border-border/50 pt-2 text-xs leading-snug">
+                  {theaterPriceLine ? (
+                    <p
+                      className={cn(
+                        "font-semibold tabular-nums",
+                        darkSectionCard ? "text-[#13143E]" : "text-foreground",
+                      )}
+                    >
+                      {theaterPriceLine}
+                    </p>
+                  ) : null}
+                  {theaterScheduleLine ? (
+                    <p
+                      className={cn(
+                        "line-clamp-2",
+                        darkSectionCard ? "text-[#13143E]/75" : "text-muted-foreground",
+                      )}
+                    >
+                      {theaterScheduleLine}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </>
           )}
         </div>

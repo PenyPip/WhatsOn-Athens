@@ -55,13 +55,17 @@
       "component": "theater.weekly-slot",
       "description": "Εβδομαδιαίες μέρες/ώρες."
     },
+    "ticket_price_from": {
+      "type": "decimal",
+      "description": "Τιμή από (€)."
+    },
+    "ticket_price_to": {
+      "type": "decimal",
+      "description": "Τιμή έως (€). Ίδια με «από» = μία τιμή στο site."
+    },
     "ticket_price": {
       "type": "decimal",
-      "description": "Κανονικό εισιτήριο (€) για όλη την παράσταση."
-    },
-    "ticket_price_student": {
-      "type": "decimal",
-      "description": "Μειωμένο / φοιτητικό εισιτήριο (€) για όλη την παράσταση."
+      "description": "(Παλιό) Μοναδική τιμή — προτιμήστε από/έως."
     },
     "poster": {
       "type": "media",

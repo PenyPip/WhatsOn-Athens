@@ -687,7 +687,8 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     runEnd: parseTheaterRunDate(s.run_end) ?? undefined,
     weeklySchedule: mapTheaterWeeklySchedule(s.weekly_schedule),
     ticketPrice: parseOptionalDecimal(s.ticket_price),
-    ticketPriceStudent: parseOptionalDecimal(s.ticket_price_student),
+    ticketPriceFrom: parseOptionalDecimal(s.ticket_price_from),
+    ticketPriceTo: parseOptionalDecimal(s.ticket_price_to),
   };
 }
 
@@ -1113,9 +1114,11 @@ export interface StrapiTheaterShow {
   runEnd?: string;
   /** Εβδομαδιαίο πρόγραμμα: μέρες/ώρες + τιμές από CMS. */
   weeklySchedule: TheaterWeeklySlot[];
-  /** Ενιαίες τιμές παράστασης (όχι ανά ημέρα). */
+  /** (Παλιό) μοναδική τιμή. */
   ticketPrice?: number;
-  ticketPriceStudent?: number;
+  /** Τιμή από–έως (€). */
+  ticketPriceFrom?: number;
+  ticketPriceTo?: number;
 }
 
 export interface TheaterWeeklySlot {

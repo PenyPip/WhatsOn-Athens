@@ -390,6 +390,7 @@ export interface ApiArticleArticle extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    featured_image: Attribute.Media<'images'>;
     featured_image_alt: Attribute.String;
     focus_keyword: Attribute.String;
     meta_description: Attribute.String;
@@ -893,7 +894,8 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     sold_out: Attribute.Boolean & Attribute.DefaultTo<false>;
     synopsis: Attribute.Text;
     ticket_price: Attribute.Decimal;
-    ticket_price_student: Attribute.Decimal;
+    ticket_price_from: Attribute.Decimal;
+    ticket_price_to: Attribute.Decimal;
     title: Attribute.String & Attribute.Required;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<

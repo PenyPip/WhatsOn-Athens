@@ -8,6 +8,8 @@ import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { cn } from "@/lib/utils";
+import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
+import { theaterScheduleSummary } from "@/lib/theaterSchedule";
 
 function ymdToMs(ymd: string): number {
   const [y, m, d] = ymd.split("-").map((x) => Number(x));
@@ -132,7 +134,10 @@ const TheaterPage = () => {
               <p className="mb-6 text-sm text-muted-foreground">Δεν βρέθηκαν παραστάσεις με αυτά τα φίλτρα.</p>
             ) : null}
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4">
-              {filteredShows.map((show, i) => (
+              {filteredShows.map((show, i) => {
+                const priceLine = theaterPriceLabel(resolveTheaterTicketPrices(show));
+                const scheduleLine = theaterScheduleSummary(show.weeklySchedule, 3);
+                return (
                 <EventCard
                   key={show.id}
                   slug={show.slug}
@@ -142,6 +147,8 @@ const TheaterPage = () => {
                   duration={show.duration}
                   posterUrl={show.posterUrl}
                   type="theater"
+                  theaterPriceLine={priceLine ?? undefined}
+                  theaterScheduleLine={scheduleLine ?? undefined}
                   index={i}
                   badge={
                     show.soldOut
@@ -153,7 +160,8 @@ const TheaterPage = () => {
                           : undefined
                   }
                 />
-              ))}
+              );
+              })}
             </div>
           </>
         )}
