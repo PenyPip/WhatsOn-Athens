@@ -19,6 +19,7 @@ services:
     restart: unless-stopped
 
   strapi:
+    platform: linux/amd64
     build:
       context: ./strapi
       dockerfile: Dockerfile
