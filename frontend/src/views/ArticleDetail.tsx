@@ -33,6 +33,11 @@ export default function ArticleDetail() {
     }, [isLoading, article, slug]),
   );
 
+  const contentHtml = useMemo(
+    () => (article ? articleContentToHtml(article.content) : ""),
+    [article],
+  );
+
   if (isLoading) {
     return (
       <div className="min-h-screen pt-36">
@@ -53,11 +58,6 @@ export default function ArticleDetail() {
       </div>
     );
   }
-
-  const contentHtml = useMemo(
-    () => (article ? articleContentToHtml(article.content) : ""),
-    [article],
-  );
 
   const publishedLabel = (() => {
     const d = new Date(article.publishedAt);
