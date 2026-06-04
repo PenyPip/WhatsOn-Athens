@@ -37,12 +37,12 @@ const Dining = () => {
   }, [restaurants, cuisineSlug, price, showNewOnly]);
 
   return (
-    <div className="min-h-screen pt-36 pb-20 md:pb-8">
-      <div className="section-black py-10 -mt-28 pt-36 mb-8">
+    <div className="min-h-screen pb-20 md:pb-8">
+      <div className="section-black mb-6 max-md:-mt-16 max-md:py-5 max-md:pt-20 md:-mt-28 md:mb-8 md:py-10 md:pt-36">
         <div className="container">
           <PageHeaderReveal>
-            <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Φαγητό</h1>
-            <p className="text-white/60 text-base">Εστιατόρια & γαστρονομικές εμπειρίες</p>
+            <h1 className="font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl">Φαγητό</h1>
+            <p className="text-sm text-white/60 md:text-base">Εστιατόρια & γαστρονομικές εμπειρίες</p>
           </PageHeaderReveal>
         </div>
       </div>

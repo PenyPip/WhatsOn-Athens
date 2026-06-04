@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react";
 import { Link } from "react-router-dom";
 import { useHomeStaticLcpOnPage } from "@/contexts/HomeStaticLcpContext";
 import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
@@ -14,6 +14,40 @@ import { cn } from "@/lib/utils";
 
 const AUTO_ADVANCE_MS = 8000;
 const HERO_SYNOPSIS_MAX = 280;
+const HERO_SWIPE_MIN_PX = 48;
+
+function useHeroSwipe(
+  enabled: boolean,
+  activeIndex: number,
+  goTo: (index: number) => void,
+): { onTouchStart: (e: TouchEvent) => void; onTouchEnd: (e: TouchEvent) => void } {
+  const touchStart = useRef<{ x: number; y: number } | null>(null);
+
+  const onTouchStart = useCallback(
+    (e: TouchEvent) => {
+      if (!enabled) return;
+      const t = e.changedTouches[0];
+      touchStart.current = { x: t.clientX, y: t.clientY };
+    },
+    [enabled],
+  );
+
+  const onTouchEnd = useCallback(
+    (e: TouchEvent) => {
+      if (!enabled || !touchStart.current) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - touchStart.current.x;
+      const dy = t.clientY - touchStart.current.y;
+      touchStart.current = null;
+      if (Math.abs(dx) < HERO_SWIPE_MIN_PX || Math.abs(dx) < Math.abs(dy)) return;
+      if (dx < 0) goTo(activeIndex + 1);
+      else goTo(activeIndex - 1);
+    },
+    [enabled, activeIndex, goTo],
+  );
+
+  return { onTouchStart, onTouchEnd };
+}
 
 const navBtnClass =
   "flex h-11 w-11 items-center justify-center rounded-full border border-white/30 bg-[#13143E]/85 text-white shadow-lg shadow-black/30 backdrop-blur-sm transition-colors hover:border-amber-200/50 hover:bg-[#1e1c4a] focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-300/80";
@@ -124,6 +158,8 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
     typeof document !== "undefined" && Boolean(document.getElementById("home-static-lcp"));
   const hasStaticLcp = staticLcpOnPage || hasStaticLcpDom;
   const prioritizePoster = !hasStaticLcp && activeIndex === 0;
+  const hasCarousel = movies.length > 1;
+  const heroSwipe = useHeroSwipe(hasCarousel, activeIndex, goTo);
 
   if (loading && movies.length === 0) {
     if (hasStaticLcp) return null;
@@ -140,14 +176,14 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
   const schedule = resolveHeroScheduleDisplay(active, showtimes);
   const cta = heroMovieCta(active.slug);
   const meta = heroMetaLine(active);
-  const hasCarousel = movies.length > 1;
-
   return (
     <section
-      className={HOME_HERO_COMPACT_SECTION_CLASS}
+      className={cn(HOME_HERO_COMPACT_SECTION_CLASS, hasCarousel && "touch-pan-y")}
       data-home-hero-live
       aria-roledescription="carousel"
       aria-label="Πολυσυζητημένες ταινίες"
+      onTouchStart={heroSwipe.onTouchStart}
+      onTouchEnd={heroSwipe.onTouchEnd}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-[#1c1a52] via-[#13143E] to-[#0d0c24]" />
       <div
@@ -217,13 +253,6 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
                 </span>
               ) : null}
             </div>
-
-            {hasCarousel ? (
-              <div className="mt-5 flex items-center justify-center gap-4 md:hidden">
-                <HeroNavButton direction="prev" onClick={() => goTo(activeIndex - 1)} />
-                <HeroNavButton direction="next" onClick={() => goTo(activeIndex + 1)} />
-              </div>
-            ) : null}
           </div>
 
           <figure className="relative mx-auto w-40 shrink-0 sm:w-44 md:mx-0 md:w-60 lg:w-64">

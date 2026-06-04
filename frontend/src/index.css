@@ -193,28 +193,26 @@
     transform: translate(-50%, -50%);
   }
 
-  /** Κάτω tab bar — σταθερό ύψος, χωρίς «μεγάλωμα» στο scroll (iOS viewport). */
+  /** Κάτω tab bar — κολλημένο στο κάτω άκρο οθόνης (συν + visualViewport στο Navbar). */
   .mobile-bottom-nav {
     position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 50;
+    z-index: 70;
     width: 100%;
     max-width: 100vw;
-    pointer-events: none;
-    transform: translateZ(0);
-    -webkit-transform: translateZ(0);
-    backface-visibility: hidden;
+    box-sizing: border-box;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    border-top: 1px solid rgba(141, 47, 143, 0.35);
+    pointer-events: auto;
     -webkit-backface-visibility: hidden;
+    backface-visibility: hidden;
   }
 
   .mobile-bottom-nav__inner {
-    pointer-events: auto;
     box-sizing: border-box;
     height: 3.5rem;
-    margin-bottom: env(safe-area-inset-bottom, 0px);
-    border-top: 1px solid rgba(141, 47, 143, 0.35);
     overflow: hidden;
   }
 
