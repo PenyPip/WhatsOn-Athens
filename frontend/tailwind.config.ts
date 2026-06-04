@@ -40,6 +40,7 @@ export default {
         display: ["Georgia", "Times New Roman", "serif"],
         body: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "Helvetica Neue", "Arial", "sans-serif"],
         brand: ["system-ui", "-apple-system", "Segoe UI", "Roboto", "sans-serif"],
+        article: ["var(--font-article)", "Georgia", "Times New Roman", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",

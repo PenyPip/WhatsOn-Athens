@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { cn } from "@/lib/utils";
 import PageHeaderReveal from "@/components/PageHeaderReveal";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
@@ -9,6 +10,7 @@ import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 import ArticleTags from "@/components/ArticleTags";
 import { articleTypeLabels, formatArticleDate } from "@/lib/articleLabels";
+import { ARTICLE_PAGE_CLASS } from "@/lib/articleTypography";
 
 const articleTypes = [
   "all",
@@ -43,8 +45,8 @@ export default function Articles() {
         </div>
       </div>
 
-      <div className="container">
-        <div className="flex flex-wrap items-center gap-2 mb-8">
+      <div className={cn("container", ARTICLE_PAGE_CLASS)}>
+        <div className="font-article-ui mb-8 flex flex-wrap items-center gap-2">
           {articleTypes.map((type) => {
             const active = filter === type;
             const label = type === "all" ? "Όλα" : articleTypeLabels[type];
@@ -83,14 +85,16 @@ export default function Articles() {
                       loading="lazy"
                     />
                   ) : null}
-                  <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
+                  <span className="font-article-ui text-left text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
                     {articleTypeLabels[article.articleType] ?? "Άρθρο"}
                   </span>
-                  <h2 className="mt-2 font-display text-xl font-semibold leading-snug group-hover:text-primary transition-colors">
+                  <h2 className="mt-2 text-left font-article text-xl font-semibold leading-snug group-hover:text-primary transition-colors">
                     {article.title}
                   </h2>
                   {article.metaDescription ? (
-                    <p className="mt-3 text-sm text-muted-foreground line-clamp-3">{article.metaDescription}</p>
+                    <p className="font-article mt-3 text-left text-sm leading-relaxed text-muted-foreground line-clamp-3">
+                      {article.metaDescription}
+                    </p>
                   ) : null}
                   {article.tags.length > 0 ? (
                     <ArticleTags tags={article.tags.slice(0, 4)} className="mt-4" showLabel={false} />

@@ -22,7 +22,7 @@ export function MostTalkedAboutHeroShell() {
   return (
     <section className={HOME_HERO_COMPACT_SECTION_CLASS} aria-hidden="true">
       <div className="absolute inset-0 bg-gradient-to-br from-[#1c1a52] via-[#13143E] to-[#0d0c24]" />
-      <div className="relative z-10 container flex min-h-[520px] max-w-7xl items-center px-12 py-12 md:min-h-[580px] md:px-14 md:py-14">
+      <div className="relative z-10 container flex max-w-7xl items-center px-4 py-8 md:min-h-[580px] md:px-14 md:py-14">
         <div className="grid w-full grid-cols-1 items-center gap-10 md:grid-cols-[1fr_auto] md:gap-12">
           <div className="space-y-4">
             <div className="h-9 w-56 rounded-full bg-white/10" />
@@ -160,24 +160,24 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
           <HeroNavButton
             direction="prev"
             onClick={() => goTo(activeIndex - 1)}
-            className="absolute left-2 top-[52%] z-20 -translate-y-1/2 md:left-5 md:top-1/2"
+            className="absolute left-5 top-1/2 z-20 hidden -translate-y-1/2 md:flex"
           />
           <HeroNavButton
             direction="next"
             onClick={() => goTo(activeIndex + 1)}
-            className="absolute right-2 top-[52%] z-20 -translate-y-1/2 md:right-5 md:top-1/2"
+            className="absolute right-5 top-1/2 z-20 hidden -translate-y-1/2 md:flex"
           />
         </>
       ) : null}
 
       <div
         className={cn(
-          "relative z-10 container flex max-w-7xl items-center py-10 md:py-14",
-          hasCarousel ? "px-12 md:px-16" : "px-4 md:px-8",
+          "relative z-10 container flex max-w-7xl items-center py-6 md:py-14",
+          hasCarousel ? "px-4 md:px-16" : "px-4 md:px-8",
         )}
       >
-        <div className="grid w-full grid-cols-1 items-center gap-10 md:grid-cols-[minmax(0,1fr)_auto] md:gap-12 lg:gap-16">
-          <div className="min-w-0 max-w-2xl lg:max-w-3xl">
+        <div className="grid w-full grid-cols-1 items-center gap-6 max-md:[&>*:first-child]:order-2 max-md:[&>*:last-child]:order-1 md:grid-cols-[minmax(0,1fr)_auto] md:gap-12 lg:gap-16">
+          <div className="min-w-0 max-w-2xl lg:max-w-3xl max-md:text-center">
             <div className="mb-5">
               <span className="inline-flex items-center rounded-full border border-amber-300/55 bg-gradient-to-r from-amber-400/30 via-amber-500/20 to-amber-600/10 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.22em] text-amber-50 shadow-[0_4px_28px_rgba(251,191,36,0.22)] ring-1 ring-amber-100/25 md:px-5 md:text-xs md:tracking-[0.24em]">
                 Πολυσυζητημένες
@@ -195,7 +195,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
             <p
               className={cn(
                 "mt-4 font-body text-base leading-relaxed text-white md:mt-5 md:text-lg md:leading-[1.7]",
-                synopsis ? "line-clamp-5 md:line-clamp-6" : "italic text-white/90",
+                synopsis ? "line-clamp-3 md:line-clamp-6" : "italic text-white/90",
               )}
             >
               {synopsis || "Δεν υπάρχει σύνοψη για αυτή την ταινία."}
@@ -204,7 +204,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
               <p className="mt-3 font-body text-sm font-medium text-white md:text-base">{schedule.label}</p>
             ) : null}
             {meta ? <p className="mt-3 font-body text-sm text-white/55">{meta}</p> : null}
-            <div className="mt-6 flex flex-wrap items-center gap-4 md:mt-8">
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-4 md:mt-8 md:justify-start">
               <Link
                 to={cta.to}
                 className="inline-flex items-center rounded bg-white px-6 py-3 text-sm font-semibold text-[#13143E] transition-colors hover:bg-white/90"
@@ -217,9 +217,16 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
                 </span>
               ) : null}
             </div>
+
+            {hasCarousel ? (
+              <div className="mt-5 flex items-center justify-center gap-4 md:hidden">
+                <HeroNavButton direction="prev" onClick={() => goTo(activeIndex - 1)} />
+                <HeroNavButton direction="next" onClick={() => goTo(activeIndex + 1)} />
+              </div>
+            ) : null}
           </div>
 
-          <figure className="relative mx-auto w-48 shrink-0 sm:w-52 md:mx-0 md:w-60 lg:w-64">
+          <figure className="relative mx-auto w-40 shrink-0 sm:w-44 md:mx-0 md:w-60 lg:w-64">
             <div className="pointer-events-none absolute -inset-4 rounded-2xl bg-amber-400/18 blur-2xl" aria-hidden />
             <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-[#1a1844]/80 shadow-2xl shadow-black/45 ring-1 ring-white/20">
               {active.posterUrl ? (
@@ -246,7 +253,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
       </div>
 
       {hasCarousel ? (
-        <div className="absolute bottom-5 left-0 right-0 z-20 flex justify-center gap-2 md:bottom-7">
+        <div className="relative z-10 flex justify-center gap-2 pb-5 pt-2 md:absolute md:bottom-7 md:left-0 md:right-0 md:pb-0 md:pt-0">
           {movies.map((m, i) => (
             <button
               key={m.id}

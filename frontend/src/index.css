@@ -242,13 +242,33 @@
     color: inherit;
   }
 
+  .article-page {
+    font-family: var(--font-article), Georgia, "Times New Roman", serif;
+    font-feature-settings: "kern" 1, "liga" 1;
+    text-align: left;
+  }
+
+  .article-page .font-article-ui {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  }
+
   /** Σελίδα άρθρου — editorial typography (CKEditor / Markdown HTML). */
   .article-detail-prose {
-    @apply text-[#13143E];
-    font-family: Georgia, "Times New Roman", serif;
+    @apply w-full max-w-none text-left text-[#13143E];
+    font-family: var(--font-article), Georgia, "Times New Roman", serif;
     font-size: 1.125rem;
     line-height: 1.85;
     letter-spacing: 0.01em;
+    hyphens: auto;
+  }
+
+  .article-detail-prose > * {
+    @apply max-w-full text-left;
+    margin-inline: 0;
+  }
+
+  .article-detail-prose [style*="text-align"] {
+    text-align: left !important;
   }
 
   .article-detail-prose > *:first-child {
@@ -260,11 +280,13 @@
   }
 
   .article-detail-prose h2 {
-    @apply font-display mt-12 mb-4 text-[1.65rem] font-bold tracking-tight text-[#13143E];
+    @apply mt-12 mb-4 text-left text-[1.65rem] font-bold tracking-tight text-[#13143E];
+    font-family: var(--font-article), Georgia, "Times New Roman", serif;
   }
 
   .article-detail-prose h3 {
-    @apply font-display mt-9 mb-3 text-xl font-semibold text-[#13143E];
+    @apply mt-9 mb-3 text-left text-xl font-semibold text-[#13143E];
+    font-family: var(--font-article), Georgia, "Times New Roman", serif;
   }
 
   .article-detail-prose p {
@@ -302,19 +324,23 @@
   }
 
   .article-detail-prose blockquote {
-    @apply my-8 border-l-4 border-[#7C2B76]/60 bg-[#F0EDF8]/80 py-4 pl-6 pr-4 font-display text-lg italic text-[#13143E]/90;
+    @apply my-8 border-l-4 border-[#7C2B76]/60 bg-[#F0EDF8]/80 py-4 pl-6 pr-4 text-left text-lg italic text-[#13143E]/90;
+    font-family: var(--font-article), Georgia, "Times New Roman", serif;
   }
 
   .article-detail-prose img {
-    @apply my-8 w-full rounded-xl shadow-md ring-1 ring-[#1C1D62]/10;
+    @apply my-8 block w-full max-w-full rounded-xl shadow-md ring-1 ring-[#1C1D62]/10;
+    margin-inline: 0;
   }
 
   .article-detail-prose figure {
-    @apply my-8;
+    @apply my-8 w-full max-w-full text-left;
+    margin-inline: 0;
   }
 
   .article-detail-prose figcaption {
-    @apply mt-2 text-center text-xs text-muted-foreground;
+    @apply mt-2 text-left text-xs text-[#1C1D62]/50;
+    font-family: system-ui, -apple-system, sans-serif;
   }
 
   .article-detail-prose hr {

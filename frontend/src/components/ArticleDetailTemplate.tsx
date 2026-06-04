@@ -8,6 +8,7 @@ import {
   estimateReadingMinutes,
   formatArticleDateUppercase,
 } from "@/lib/articleLabels";
+import { ARTICLE_COLUMN_CLASS, ARTICLE_PAGE_CLASS } from "@/lib/articleTypography";
 import type { StrapiArticle } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -39,30 +40,29 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
     : typeUpper;
 
   return (
-    <div className="min-h-screen bg-white pb-20 md:pb-0">
-      <div className="container max-w-3xl px-4 pt-32 pb-16 md:px-6 md:pt-36 md:pb-24">
-        <div className="animate-fade-in-up">
+    <div className={cn(ARTICLE_PAGE_CLASS, "min-h-screen bg-white pb-20 md:pb-0")}>
+      <div className="container pt-32 pb-16 md:pt-36 md:pb-24">
+        <div className={cn(ARTICLE_COLUMN_CLASS, "animate-fade-in-up px-0")}>
           <Link
             to="/articles"
-            className="mb-10 inline-flex items-center gap-1.5 font-body text-xs font-medium text-[#1C1D62]/55 transition-colors hover:text-[#7C2B76]"
+            className="font-article-ui mb-10 inline-flex items-center gap-1.5 text-xs font-medium text-[#1C1D62]/55 transition-colors hover:text-[#7C2B76]"
           >
             <ArrowLeft className="h-3.5 w-3.5" aria-hidden />
             Πίσω στα άρθρα
           </Link>
 
-          {/* Kicker — γραμμή + κατηγορία (όπως στο reference, με magenta 37Ν) */}
-          <div className="flex items-center gap-3">
+          <div className="flex w-full items-center gap-3 text-left">
             <span className="h-px w-10 shrink-0 bg-[#7C2B76]" aria-hidden />
-            <p className="font-body text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7C2B76]">
+            <p className="font-article-ui text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7C2B76]">
               {kickerLine}
             </p>
           </div>
 
-          <h1 className="mt-6 font-display text-[2rem] font-bold leading-[1.12] tracking-tight text-[#13143E] md:text-[2.75rem] md:leading-[1.1] lg:text-[3rem]">
+          <h1 className="mt-6 w-full text-left font-article text-[2rem] font-bold leading-[1.12] tracking-tight text-[#13143E] md:text-[2.75rem] md:leading-[1.1] lg:text-[3rem]">
             {article.title}
           </h1>
 
-          <p className="mt-5 font-body text-[11px] font-medium uppercase tracking-[0.14em] text-[#1C1D62]/50">
+          <p className="font-article-ui mt-5 w-full text-left text-[11px] font-medium uppercase tracking-[0.14em] text-[#1C1D62]/50">
             {dateUpper}
             <MetaDot />
             {typeUpper}
@@ -70,16 +70,16 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
             <span>Ανάγνωση ~{readingMin} λεπτά</span>
           </p>
 
-          <hr className="mt-8 border-0 border-t-2 border-[#13143E]" />
+          <hr className="mt-8 w-full border-0 border-t-2 border-[#13143E]" />
 
           {hasDeck ? (
-            <p className="mt-8 font-display text-xl font-medium leading-snug text-[#13143E]/90 md:text-2xl md:leading-snug">
+            <p className="mt-8 w-full text-left font-article text-xl font-medium leading-snug text-[#13143E]/90 md:text-2xl md:leading-snug">
               {article.metaDescription}
             </p>
           ) : null}
 
           {hasImage ? (
-            <figure className={cn("overflow-hidden", hasDeck ? "mt-8" : "mt-8")}>
+            <figure className="mt-8 w-full overflow-hidden text-left">
               <div className="aspect-[2/1] max-h-[11.5rem] w-full sm:max-h-[12.5rem] md:max-h-[13.5rem]">
                 <img
                   src={article.featuredImageUrl}
@@ -89,52 +89,52 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
                 />
               </div>
               {article.featuredImageAlt ? (
-                <figcaption className="mt-1.5 font-body text-[11px] text-[#1C1D62]/45">
+                <figcaption className="font-article-ui mt-1.5 text-left text-[11px] text-[#1C1D62]/45">
                   {article.featuredImageAlt}
                 </figcaption>
               ) : null}
             </figure>
           ) : null}
 
-          <div className="mt-8">
+          <div className="mt-8 w-full text-left">
             {contentHtml ? (
               <article
                 className="article-detail-prose"
                 dangerouslySetInnerHTML={{ __html: contentHtml }}
               />
             ) : (
-              <p className="font-body text-sm italic text-[#1C1D62]/50">Δεν υπάρχει κείμενο για αυτό το άρθρο.</p>
+              <p className="font-article-ui text-left text-sm italic text-[#1C1D62]/50">
+                Δεν υπάρχει κείμενο για αυτό το άρθρο.
+              </p>
             )}
           </div>
 
           {hasTags ? (
             <ArticleTags
               tags={article.tags}
-              className="mt-12 border-t border-[#1C1D62]/10 pt-8"
+              className="mt-12 w-full border-t border-[#1C1D62]/10 pt-8 text-left"
               variant="editorial"
             />
           ) : null}
 
           {hasRelated ? (
-            <aside className="mt-12 rounded-lg border border-[#1C1D62]/10 bg-[#F0EDF8]/50 px-5 py-5 md:px-6">
-              <p className="font-body text-[10px] font-bold uppercase tracking-[0.18em] text-[#7C2B76]">
+            <aside className="mt-12 w-full rounded-lg border border-[#1C1D62]/10 bg-[#F0EDF8]/50 px-5 py-5 text-left md:px-6">
+              <p className="font-article-ui text-[10px] font-bold uppercase tracking-[0.18em] text-[#7C2B76]">
                 Σχετική εκδήλωση
               </p>
-              <p className="mt-2 font-display text-lg font-semibold text-[#13143E]">{article.relatedEvent!.name}</p>
+              <p className="mt-2 font-article text-lg font-semibold text-[#13143E]">{article.relatedEvent!.name}</p>
             </aside>
           ) : null}
 
-          <footer className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-[#1C1D62]/10 pt-8">
+          <footer className="mt-14 flex w-full flex-wrap items-center justify-between gap-4 border-t border-[#1C1D62]/10 pt-8 text-left">
             <Link
               to="/articles"
-              className="inline-flex items-center gap-1.5 font-body text-sm font-semibold text-[#7C2B76] transition-colors hover:text-[#13143E]"
+              className="font-article-ui inline-flex items-center gap-1.5 text-sm font-semibold text-[#7C2B76] transition-colors hover:text-[#13143E]"
             >
               <ArrowLeft className="h-4 w-4" aria-hidden />
               Όλα τα άρθρα
             </Link>
-            <p className="font-body text-[11px] uppercase tracking-[0.1em] text-[#1C1D62]/45">
-              {typeLabel}
-            </p>
+            <p className="font-article-ui text-[11px] uppercase tracking-[0.1em] text-[#1C1D62]/45">{typeLabel}</p>
           </footer>
         </div>
       </div>

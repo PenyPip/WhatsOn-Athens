@@ -21,12 +21,12 @@ export default function ArticleTags({
   return (
     <div className={className}>
       {showLabel && !editorial ? (
-        <p className="mb-3 font-body text-[10px] font-bold uppercase tracking-[0.18em] text-[#7C2B76]">
+        <p className="mb-3 font-article-ui text-[10px] font-bold uppercase tracking-[0.18em] text-[#7C2B76]">
           Ετικέτες
         </p>
       ) : null}
       {showLabel && editorial ? (
-        <p className="mb-4 font-body text-[10px] font-bold uppercase tracking-[0.18em] text-[#1C1D62]/45">
+        <p className="mb-4 font-article-ui text-left text-[10px] font-bold uppercase tracking-[0.18em] text-[#1C1D62]/45">
           Ετικέτες
         </p>
       ) : null}
@@ -34,11 +34,11 @@ export default function ArticleTags({
         {tags.map((tag) => (
           <li key={tag}>
             {editorial ? (
-              <span className="font-body text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7C2B76]">
+              <span className="font-article-ui text-[11px] font-semibold uppercase tracking-[0.12em] text-[#7C2B76]">
                 {tag}
               </span>
             ) : (
-              <span className="inline-flex rounded-full border border-[#1C1D62]/12 bg-[#F0EDF8] px-3 py-1.5 font-body text-xs font-medium text-[#13143E]">
+              <span className="inline-flex rounded-full border border-[#1C1D62]/12 bg-[#F0EDF8] px-3 py-1.5 font-article-ui text-xs font-medium text-[#13143E]">
                 {tag}
               </span>
             )}
