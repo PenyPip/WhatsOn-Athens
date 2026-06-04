@@ -2,7 +2,6 @@ import { lazy, Suspense, useRef } from "react";
 import { createPortal } from "react-dom";
 import { useIdleMount } from "@/hooks/useIdleMount";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
-import { useVisualViewportBottom } from "@/hooks/useVisualViewportBottom";
 import { Link, useLocation } from "react-router-dom";
 import { User } from "lucide-react";
 import { useSiteNavigationData } from "@/hooks/useStrapi";
@@ -77,20 +76,11 @@ const Navbar = () => {
   const desktopLinks = nav.desktopLinks;
   const mobileTabLinks = nav.mobileTabLinks;
   const mobileTabCount = mobileTabLinks.length + (SHOW_PROFILE_IN_NAV ? 1 : 0);
-  const viewportBottomInset = useVisualViewportBottom();
-
   const mobileBottomNav = (
-    <nav
-      className="mobile-bottom-nav md:hidden"
-      aria-label="Κύρια πλοήγηση κινητού"
-      style={{ bottom: viewportBottomInset, background: NAV_GRADIENT }}
-    >
+    <nav className="mobile-bottom-nav md:hidden" aria-label="Κύρια πλοήγηση κινητού">
       <div
-        className="mobile-bottom-nav__inner mx-auto grid w-full max-w-full items-stretch px-1"
-        style={{
-          background: NAV_GRADIENT,
-          gridTemplateColumns: `repeat(${mobileTabCount}, minmax(0, 1fr))`,
-        }}
+        className="mobile-bottom-nav__inner mx-auto w-full max-w-full px-1"
+        style={{ gridTemplateColumns: `repeat(${mobileTabCount}, minmax(0, 1fr))` }}
       >
         {mobileTabLinks.map((link) => {
           const Icon = navIconComponent(link.icon);
@@ -99,28 +89,24 @@ const Navbar = () => {
             <Link
               key={link.path}
               to={link.path}
-              className="flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-center transition-colors"
-              style={{
-                color: isActive ? "#B47EC8" : "rgba(240,237,248,0.72)",
-                fontFamily: "DM Sans, sans-serif",
-              }}
+              className="mobile-bottom-nav__tab transition-colors"
+              style={{ color: isActive ? "#B47EC8" : "rgba(240,237,248,0.72)" }}
             >
-              <Icon className="h-5 w-5 shrink-0" strokeWidth={isActive ? 2.25 : 2} />
-              <span className="w-full truncate text-[10px] leading-none">{link.label}</span>
+              <Icon strokeWidth={isActive ? 2.25 : 2} aria-hidden />
+              <span>{link.label}</span>
             </Link>
           );
         })}
         {SHOW_PROFILE_IN_NAV ? (
           <Link
             to="/profile"
-            className="flex min-w-0 flex-col items-center justify-center gap-0.5 px-0.5 py-1.5 text-center transition-colors"
+            className="mobile-bottom-nav__tab transition-colors"
             style={{
               color: location.pathname === "/profile" ? "#B47EC8" : "rgba(240,237,248,0.5)",
-              fontFamily: "DM Sans, sans-serif",
             }}
           >
-            <User className="h-5 w-5 shrink-0" strokeWidth={location.pathname === "/profile" ? 2.25 : 2} />
-            <span className="w-full truncate text-[10px] leading-none">Προφίλ</span>
+            <User strokeWidth={location.pathname === "/profile" ? 2.25 : 2} aria-hidden />
+            <span>Προφίλ</span>
           </Link>
         ) : null}
       </div>

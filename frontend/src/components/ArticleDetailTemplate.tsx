@@ -8,6 +8,7 @@ import {
   estimateReadingMinutes,
   formatArticleDateUppercase,
 } from "@/lib/articleLabels";
+import { resolveArticleRelated } from "@/lib/articleRelated";
 import { ARTICLE_COLUMN_CLASS, ARTICLE_PAGE_CLASS } from "@/lib/articleTypography";
 import type { StrapiArticle } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -31,7 +32,8 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
   const dateUpper = formatArticleDateUppercase(article.publishedAt);
   const readingMin = estimateReadingMinutes(contentHtml || article.content);
   const hasDeck = Boolean(article.metaDescription?.trim());
-  const hasRelated = Boolean(article.relatedEvent?.name?.trim());
+  const related = resolveArticleRelated(article);
+  const hasRelated = Boolean(related);
   const hasTags = article.tags.length > 0;
   const hasImage = Boolean(article.featuredImageUrl);
   const kickerTag = article.tags[0]?.trim();
@@ -116,12 +118,21 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
             />
           ) : null}
 
-          {hasRelated ? (
+          {related ? (
             <aside className="mt-12 w-full rounded-lg border border-[#1C1D62]/10 bg-[#F0EDF8]/50 px-5 py-5 text-left md:px-6">
               <p className="font-article-ui text-[10px] font-bold uppercase tracking-[0.18em] text-[#7C2B76]">
-                Σχετική εκδήλωση
+                {related.sectionLabel}
               </p>
-              <p className="mt-2 font-article text-lg font-semibold text-[#13143E]">{article.relatedEvent!.name}</p>
+              {related.href ? (
+                <Link
+                  to={related.href}
+                  className="mt-2 block font-article text-lg font-semibold text-[#13143E] transition-colors hover:text-[#7C2B76]"
+                >
+                  {related.title}
+                </Link>
+              ) : (
+                <p className="mt-2 font-article text-lg font-semibold text-[#13143E]">{related.title}</p>
+              )}
             </aside>
           ) : null}
 

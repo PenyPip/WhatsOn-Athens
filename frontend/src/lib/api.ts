@@ -774,6 +774,19 @@ function mapEditorialReview(raw: unknown): StrapiEditorialReview {
   };
 }
 
+function mapArticleTitleSlugRef(
+  rel: unknown,
+  titleField: "title" | "name",
+): { title: string; slug: string } | undefined {
+  const attrs = strapiRelationAttrs(rel);
+  if (!attrs) return undefined;
+  const titleRaw = attrs[titleField];
+  const title = typeof titleRaw === "string" ? titleRaw.trim() : "";
+  const slug = typeof attrs.slug === "string" ? attrs.slug.trim() : "";
+  if (!title && !slug) return undefined;
+  return { title, slug };
+}
+
 function mapArticle(raw: unknown): StrapiArticle {
   const r = unwrapStrapiEntry(raw);
   const articleTypeRaw = typeof r.article_type === "string" ? r.article_type : "";
@@ -788,6 +801,7 @@ function mapArticle(raw: unknown): StrapiArticle {
   ).includes(articleTypeRaw as StrapiArticle["articleType"])
     ? (articleTypeRaw as StrapiArticle["articleType"])
     : "politistiko_keimeno";
+  const relatedEventRef = mapArticleTitleSlugRef(r.related_event, "name");
   return {
     id: r.id,
     documentId: r.documentId,
@@ -800,19 +814,11 @@ function mapArticle(raw: unknown): StrapiArticle {
     articleType,
     featuredImageAlt: typeof r.featured_image_alt === "string" ? r.featured_image_alt : "",
     featuredImageUrl: strapiMediaUrl(r.featured_image, "medium") ?? undefined,
-    relatedEvent:
-      r.related_event && typeof r.related_event === "object"
-        ? {
-            name:
-              typeof (r.related_event as Record<string, unknown>).name === "string"
-                ? ((r.related_event as Record<string, unknown>).name as string)
-                : "",
-            slug:
-              typeof (r.related_event as Record<string, unknown>).slug === "string"
-                ? ((r.related_event as Record<string, unknown>).slug as string)
-                : "",
-          }
-        : undefined,
+    relatedMovie: mapArticleTitleSlugRef(r.related_movie, "title"),
+    relatedTheaterShow: mapArticleTitleSlugRef(r.related_theater_show, "title"),
+    relatedEvent: relatedEventRef
+      ? { name: relatedEventRef.title, slug: relatedEventRef.slug }
+      : undefined,
     tags: normalizeArticleTagsFromStrapi(r.tags),
     publishedAt: typeof r.publishedAt === "string" ? r.publishedAt : "",
   };
@@ -1246,6 +1252,15 @@ export interface StrapiArticle {
     | "politistiko_keimeno";
   featuredImageAlt: string;
   featuredImageUrl?: string;
+  relatedMovie?: {
+    title: string;
+    slug: string;
+  };
+  relatedTheaterShow?: {
+    title: string;
+    slug: string;
+  };
+  /** (Παλιό) Γενική εκδήλωση — προτιμήστε ταινία ή παράσταση. */
   relatedEvent?: {
     name: string;
     slug: string;
@@ -1386,6 +1401,10 @@ const ARTICLE_PUBLIC_QUERY: Record<string, string> = {
   "sort[0]": "publishedAt:desc",
   "populate[featured_image]": "*",
   "populate[tags]": "*",
+  "populate[related_movie][fields][0]": "title",
+  "populate[related_movie][fields][1]": "slug",
+  "populate[related_theater_show][fields][0]": "title",
+  "populate[related_theater_show][fields][1]": "slug",
   "populate[related_event][fields][0]": "name",
   "populate[related_event][fields][1]": "slug",
 };

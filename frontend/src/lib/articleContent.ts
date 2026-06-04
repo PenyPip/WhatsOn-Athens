@@ -2,22 +2,31 @@
 const LAYOUT_STYLE_DROP =
   /^(?:text-align|float|width|max-width|margin(?:-left|-right|-top|-bottom)?|display|clear)\s*:/i;
 
-/** Αφαιρεί float, width, text-align κ.λπ. από HTML ώστε να ελέγχει το CSS μας. */
-export function normalizeArticleLayoutHtml(html: string): string {
-  let out = html.replace(/\sstyle="([^"]*)"/gi, (_match, styleBody: string) => {
+const CKEDITOR_CLASS_DROP =
+  /^(?:image-style-|image_resized|text-align-|align-left|align-right|align-center|align-justify)$/i;
+
+function stripInlineStyleAttr(html: string): string {
+  return html.replace(/\sstyle=(["'])([\s\S]*?)\1/gi, (_match, _quote, styleBody: string) => {
     const kept = styleBody
       .split(";")
       .map((chunk) => chunk.trim())
       .filter((chunk) => chunk && !LAYOUT_STYLE_DROP.test(chunk));
     return kept.length ? ` style="${kept.join("; ")}"` : "";
   });
+}
 
-  out = out.replace(/\sclass="([^"]*)"/gi, (_m, cls: string) => {
+/** Αφαιρεί float, width, text-align κ.λπ. από HTML ώστε να ελέγχει το CSS μας (πλήρης στοίχιση). */
+export function normalizeArticleLayoutHtml(html: string): string {
+  let out = stripInlineStyleAttr(html);
+
+  out = out.replace(/\sclass=(["'])([\s\S]*?)\1/gi, (_m, quote, cls: string) => {
     const next = cls
       .split(/\s+/)
-      .filter((c) => c && !/^image-style-/i.test(c) && c !== "image_resized");
-    return next.length ? ` class="${next.join(" ")}"` : "";
+      .filter((c) => c && !CKEDITOR_CLASS_DROP.test(c) && !/^text-align/i.test(c));
+    return next.length ? ` class=${quote}${next.join(" ")}${quote}` : "";
   });
+
+  out = out.replace(/\salign=(["'])[^"']*\1/gi, "");
 
   return out;
 }

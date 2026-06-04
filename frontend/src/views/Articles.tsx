@@ -9,6 +9,7 @@ import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 import ArticleTags from "@/components/ArticleTags";
+import { resolveArticleRelated } from "@/lib/articleRelated";
 import { articleTypeLabels, formatArticleDate } from "@/lib/articleLabels";
 import { ARTICLE_PAGE_CLASS } from "@/lib/articleTypography";
 
@@ -70,7 +71,9 @@ export default function Articles() {
           <LoadingState message="Φόρτωση άρθρων..." />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filtered.map((article, i) => (
+            {filtered.map((article, i) => {
+              const related = resolveArticleRelated(article);
+              return (
               <article
                 key={`${article.id}-${article.slug}`}
                 className="animate-stagger-in card-elevated overflow-hidden"
@@ -103,13 +106,14 @@ export default function Articles() {
                     <span>
                       {formatArticleDate(article.publishedAt)}
                     </span>
-                    {article.relatedEvent?.name ? (
-                      <span className="text-foreground/80">Σχετικό: {article.relatedEvent.name}</span>
+                    {related ? (
+                      <span className="text-foreground/80">Σχετικό: {related.title}</span>
                     ) : null}
                   </div>
                 </Link>
               </article>
-            ))}
+            );
+            })}
           </div>
         )}
 

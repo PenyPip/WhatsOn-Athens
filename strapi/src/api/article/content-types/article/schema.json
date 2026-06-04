@@ -54,11 +54,26 @@
         "images"
       ]
     },
+    "related_movie": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::movie.movie",
+      "inversedBy": "articles",
+      "description": "Προαιρετικό — σύνδεση με ταινία. Επίλεξε είτε ταινία είτε παράσταση (όχι και τα δύο)."
+    },
+    "related_theater_show": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::theater-show.theater-show",
+      "inversedBy": "articles",
+      "description": "Προαιρετικό — σύνδεση με παράσταση θεάτρου. Επίλεξε είτε ταινία είτε παράσταση (όχι και τα δύο)."
+    },
     "related_event": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::event.event",
-      "inversedBy": "articles"
+      "inversedBy": "articles",
+      "description": "(Παλιό) Γενική εκδήλωση — προτιμήστε ταινία ή παράσταση."
     },
     "tags": {
       "type": "component",

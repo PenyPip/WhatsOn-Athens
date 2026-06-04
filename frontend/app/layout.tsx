@@ -15,8 +15,6 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   viewportFit: "cover",
-  /** iOS: το fixed bottom bar ακολουθεί το ορατό viewport όταν κρύβεται η μπάρα Safari. */
-  interactiveWidget: "resizes-content",
 };
 
 export const metadata: Metadata = {

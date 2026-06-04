@@ -406,6 +406,16 @@ export interface ApiArticleArticle extends Schema.CollectionType {
       'manyToOne',
       'api::event.event'
     >;
+    related_movie: Attribute.Relation<
+      'api::article.article',
+      'manyToOne',
+      'api::movie.movie'
+    >;
+    related_theater_show: Attribute.Relation<
+      'api::article.article',
+      'manyToOne',
+      'api::theater-show.theater-show'
+    >;
     secondary_keywords: Attribute.String;
     slug: Attribute.UID<'api::article.article', 'title'> & Attribute.Required;
     tags: Attribute.Component<'shared.article-tag', true>;
@@ -665,6 +675,11 @@ export interface ApiMovieMovie extends Schema.CollectionType {
   };
   attributes: {
     age_rating: Attribute.String;
+    articles: Attribute.Relation<
+      'api::movie.movie',
+      'oneToMany',
+      'api::article.article'
+    >;
     cast: Attribute.Component<'shared.cast-name', true>;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -866,6 +881,11 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     singularName: 'theater-show';
   };
   attributes: {
+    articles: Attribute.Relation<
+      'api::theater-show.theater-show',
+      'oneToMany',
+      'api::article.article'
+    >;
     cast: Attribute.Component<'shared.cast-name', true>;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<

@@ -113,6 +113,12 @@
       "relation": "oneToMany",
       "target": "api::editorial-review.editorial-review",
       "mappedBy": "theater_show"
+    },
+    "articles": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::article.article",
+      "mappedBy": "related_theater_show"
     }
   }
 }
