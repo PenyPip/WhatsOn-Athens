@@ -386,7 +386,7 @@ export interface ApiArticleArticle extends Schema.CollectionType {
       Attribute.CustomField<
         'plugin::ckeditor5.CKEditor',
         {
-          preset: 'toolbarBalloon';
+          preset: 'articleSimple';
         }
       >;
     createdAt: Attribute.DateTime;

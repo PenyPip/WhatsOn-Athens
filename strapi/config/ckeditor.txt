@@ -2,12 +2,60 @@ globalThis.CKEditorConfig = {
   configsOverwrite: false,
   themeOverwrite: false,
   configs: {
-    toolbarBalloon: {
+    articleSimple: {
+      field: {
+        key: "articleSimple",
+        value: "articleSimple",
+        metadatas: {
+          intlLabel: {
+            id: "ckeditor5.preset.articleSimple.label",
+            defaultMessage: "Άρθρο — απλό (paste, bold, links)",
+          },
+        },
+      },
       editorConfig: {
         language: {
           ignorei18n: true,
           ui: "en",
           content: "el",
+        },
+        plugins: [
+          CKEditor5.autoformat.Autoformat,
+          CKEditor5.basicStyles.Bold,
+          CKEditor5.basicStyles.Italic,
+          CKEditor5.blockQuote.BlockQuote,
+          CKEditor5.essentials.Essentials,
+          CKEditor5.heading.Heading,
+          CKEditor5.link.Link,
+          CKEditor5.list.List,
+          CKEditor5.paragraph.Paragraph,
+          CKEditor5.pasteFromOffice.PasteFromOffice,
+          CKEditor5.sourceEditing.SourceEditing,
+          CKEditor5.ui.BalloonToolbar,
+        ],
+        toolbar: [
+          "heading",
+          "|",
+          "bold",
+          "italic",
+          "link",
+          "|",
+          "bulletedList",
+          "numberedList",
+          "blockQuote",
+          "|",
+          "undo",
+          "redo",
+          "|",
+          "sourceEditing",
+        ],
+        balloonToolbar: ["bold", "italic", "link"],
+        heading: {
+          options: [
+            { model: "paragraph", title: "Paragraph", class: "ck-heading_paragraph" },
+            { model: "heading2", view: "h2", title: "Heading 2", class: "ck-heading_heading2" },
+            { model: "heading3", view: "h3", title: "Heading 3", class: "ck-heading_heading3" },
+          ],
         },
       },
     },
