@@ -55,7 +55,7 @@ services:
           "CMD",
           "node",
           "-e",
-          "require('http').get('http://127.0.0.1:1337/',r=>process.exit(r.statusCode!=null&&r.statusCode<500?0:1)).on('error',()=>process.exit(1))",
+          "require('http').get('http://127.0.0.1:1337/admin',r=>process.exit(r.statusCode!=null&&r.statusCode<500?0:1)).on('error',()=>process.exit(1))",
         ]
       interval: 15s
       timeout: 10s

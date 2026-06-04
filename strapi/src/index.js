@@ -78,6 +78,17 @@ module.exports = {
    * @param {{ strapi: import('@strapi/strapi').Strapi }} opts
    */
   async bootstrap({ strapi }) {
+    strapi.server.app.use(async (ctx, next) => {
+      const p = ctx.path || '';
+      if (p.startsWith('/content-manager') || p.startsWith('/ckeditor5')) {
+        const start = Date.now();
+        await next();
+        strapi.log.info(`[http-detail] ${ctx.method} ${p} → ${ctx.status} (${Date.now() - start}ms)`);
+        return;
+      }
+      await next();
+    });
+
     try {
       const publicRole = await strapi.db
         .query('plugin::users-permissions.role')
