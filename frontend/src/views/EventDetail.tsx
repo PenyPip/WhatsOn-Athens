@@ -15,7 +15,10 @@ import {
   useMovieGenreCatalog,
   useMovieGenres,
   useVenues,
+  useArticlesForMovie,
+  useArticlesForTheater,
 } from "@/hooks/useStrapi";
+import RelatedArticlesSection from "@/components/RelatedArticlesSection";
 import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
@@ -212,6 +215,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   );
 
   const { data: movieBySlug, isLoading: movieBySlugLoading } = useMovieBySlug(isMovieRoute && slug ? slug : "");
+  const { data: articlesForMovie } = useArticlesForMovie(slug ?? "", isMovieRoute && !!slug);
+  const { data: articlesForTheater } = useArticlesForTheater(slug ?? "", isTheaterRoute && !!slug);
+  const relatedArticles = isMovieRoute ? (articlesForMovie ?? []) : (articlesForTheater ?? []);
 
   const event =
     type === "movie"
@@ -825,6 +831,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             {movieInfoAside}
           </>
         )}
+
+        <RelatedArticlesSection
+          articles={relatedArticles}
+          title={isMovie ? "Άρθρα για αυτή την ταινία" : "Άρθρα για αυτή την παράσταση"}
+        />
 
         {eventEditorialReviews.length > 0 && (
           <section>

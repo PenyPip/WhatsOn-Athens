@@ -99,6 +99,11 @@ async function prefetchMovieDetail(qc: QueryClient, slug: string) {
     qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
+    qc.prefetchQuery({
+      queryKey: ["articles", "movie", slug],
+      queryFn: () => api.getArticlesByMovieSlug(slug),
+      ...queryDefaults,
+    }),
   ]);
   finalizeBootstrapCache(qc, { movieSlug: slug });
 }
@@ -107,6 +112,11 @@ async function prefetchTheaterDetail(qc: QueryClient, slug: string) {
   await Promise.all([
     qc.prefetchQuery({ queryKey: ["theaterShow", slug], queryFn: () => api.getTheaterShowBySlug(slug) }),
     qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }),
+    qc.prefetchQuery({
+      queryKey: ["articles", "theater", slug],
+      queryFn: () => api.getArticlesByTheaterSlug(slug),
+      ...queryDefaults,
+    }),
   ]);
   finalizeBootstrapCache(qc);
 }

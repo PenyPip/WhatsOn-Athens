@@ -141,6 +141,26 @@ export const useArticles = (enabled = true, limit = 6) =>
 export const useArticleBySlug = (slug: string) =>
   useQuery({ queryKey: ["article", slug], queryFn: () => api.getArticleBySlug(slug), enabled: !!slug });
 
+export const useArticlesForMovie = (movieSlug: string, enabled = true) =>
+  useQuery({
+    queryKey: ["articles", "movie", movieSlug],
+    queryFn: () => api.getArticlesByMovieSlug(movieSlug),
+    ...CONTENT_QUERY_OPTIONS,
+    retry: 1,
+    throwOnError: false,
+    enabled: enabled && !!movieSlug,
+  });
+
+export const useArticlesForTheater = (theaterSlug: string, enabled = true) =>
+  useQuery({
+    queryKey: ["articles", "theater", theaterSlug],
+    queryFn: () => api.getArticlesByTheaterSlug(theaterSlug),
+    ...CONTENT_QUERY_OPTIONS,
+    retry: 1,
+    throwOnError: false,
+    enabled: enabled && !!theaterSlug,
+  });
+
 export const useEvents = (enabled = true, limit = 6) =>
   useQuery({
     queryKey: ["events", limit],

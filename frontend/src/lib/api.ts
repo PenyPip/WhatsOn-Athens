@@ -1574,6 +1574,20 @@ export const api = {
       return row ? mapArticle(row) : undefined;
     }),
 
+  getArticlesByMovieSlug: (movieSlug: string, limit = 12) =>
+    fetchAPI<any[]>("/articles", {
+      ...ARTICLE_PUBLIC_QUERY,
+      "filters[related_movie][slug][$eq]": movieSlug,
+      "pagination[pageSize]": String(Math.max(1, limit)),
+    }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapArticle(x))),
+
+  getArticlesByTheaterSlug: (theaterSlug: string, limit = 12) =>
+    fetchAPI<any[]>("/articles", {
+      ...ARTICLE_PUBLIC_QUERY,
+      "filters[related_theater_show][slug][$eq]": theaterSlug,
+      "pagination[pageSize]": String(Math.max(1, limit)),
+    }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapArticle(x))),
+
   getEvents: (limit = 6) =>
     fetchAPI<any[]>("/events", {
       ...EVENT_PUBLIC_QUERY,
