@@ -72,34 +72,31 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
 
           <hr className="mt-8 border-0 border-t-2 border-[#13143E]" />
 
+          {hasDeck ? (
+            <p className="mt-8 font-display text-xl font-medium leading-snug text-[#13143E]/90 md:text-2xl md:leading-snug">
+              {article.metaDescription}
+            </p>
+          ) : null}
+
           {hasImage ? (
-            <figure className="mt-10 md:mt-12">
-              <img
-                src={article.featuredImageUrl}
-                alt={article.featuredImageAlt || article.title}
-                className="w-full object-cover"
-                loading="eager"
-              />
+            <figure className={cn("overflow-hidden", hasDeck ? "mt-8" : "mt-8")}>
+              <div className="aspect-[2/1] max-h-[11.5rem] w-full sm:max-h-[12.5rem] md:max-h-[13.5rem]">
+                <img
+                  src={article.featuredImageUrl}
+                  alt={article.featuredImageAlt || article.title}
+                  className="h-full w-full object-cover object-center"
+                  loading="eager"
+                />
+              </div>
               {article.featuredImageAlt ? (
-                <figcaption className="mt-2 font-body text-xs text-[#1C1D62]/45">
+                <figcaption className="mt-1.5 font-body text-[11px] text-[#1C1D62]/45">
                   {article.featuredImageAlt}
                 </figcaption>
               ) : null}
             </figure>
           ) : null}
 
-          {hasDeck ? (
-            <p
-              className={cn(
-                "font-display text-xl font-medium leading-snug text-[#13143E]/90 md:text-2xl md:leading-snug",
-                hasImage ? "mt-10" : "mt-10 md:mt-12",
-              )}
-            >
-              {article.metaDescription}
-            </p>
-          ) : null}
-
-          <div className={cn(hasDeck || hasImage ? "mt-10 md:mt-12" : "mt-10 md:mt-12")}>
+          <div className="mt-8">
             {contentHtml ? (
               <article
                 className="article-detail-prose"
