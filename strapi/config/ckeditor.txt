@@ -1,0 +1,15 @@
+globalThis.CKEditorConfig = {
+  configsOverwrite: false,
+  themeOverwrite: false,
+  configs: {
+    toolbar: {
+      editorConfig: {
+        language: {
+          ignorei18n: true,
+          ui: "en",
+          content: "el",
+        },
+      },
+    },
+  },
+};

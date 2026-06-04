@@ -48,6 +48,7 @@ const nextConfig: NextConfig = {
                 "users-permissions",
                 "upload",
                 "email",
+                "ckeditor5",
               ] as const
             ).flatMap((seg) => [
               { source: `/${seg}`, destination: `${origin}/${seg}` },
