@@ -73,7 +73,29 @@ async function enablePublicPermission(strapi, action, publicRoleId) {
   return true;
 }
 
+function serveCKEditorConfig(ctx) {
+  const fs = require('fs');
+  const path = require('path');
+  const file = path.join(process.cwd(), 'config', 'ckeditor.txt');
+  ctx.type = 'application/javascript; charset=utf-8';
+  ctx.set('Cache-Control', 'no-store');
+  ctx.body = fs.existsSync(file)
+    ? fs.readFileSync(file, 'utf8')
+    : 'globalThis.CKEditorConfig=null';
+}
+
 module.exports = {
+  register({ strapi }) {
+    strapi.server.routes([
+      {
+        method: 'GET',
+        path: '/ckeditor5/ckeditor-config',
+        handler: serveCKEditorConfig,
+        config: { auth: false },
+      },
+    ]);
+  },
+
   /**
    * @param {{ strapi: import('@strapi/strapi').Strapi }} opts
    */
