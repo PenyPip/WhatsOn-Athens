@@ -382,7 +382,13 @@ export interface ApiArticleArticle extends Schema.CollectionType {
         'politistiko_keimeno'
       ]
     >;
-    content: Attribute.RichText;
+    content: Attribute.RichText &
+      Attribute.CustomField<
+        'plugin::ckeditor5.CKEditor',
+        {
+          preset: 'toolbarBalloon';
+        }
+      >;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
       'api::article.article',

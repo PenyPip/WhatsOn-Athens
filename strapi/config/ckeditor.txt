@@ -2,7 +2,7 @@ globalThis.CKEditorConfig = {
   configsOverwrite: false,
   themeOverwrite: false,
   configs: {
-    toolbar: {
+    toolbarBalloon: {
       editorConfig: {
         language: {
           ignorei18n: true,

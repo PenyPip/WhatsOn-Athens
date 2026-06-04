@@ -29,7 +29,11 @@
       "type": "string"
     },
     "content": {
-      "type": "richtext"
+      "type": "customField",
+      "customField": "plugin::ckeditor5.CKEditor",
+      "options": {
+        "preset": "toolbarBalloon"
+      }
     },
     "article_type": {
       "type": "enumeration",
