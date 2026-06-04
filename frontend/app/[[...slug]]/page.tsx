@@ -72,6 +72,7 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
       <SpaRoot
         ssrPath={path}
         homeMainOverlap={showStaticLcp}
+        homeStaticLcp={showStaticLcp}
         suppressHydrationWarning={showStaticLcp}
       />
     </>

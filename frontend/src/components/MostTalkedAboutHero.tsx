@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { useHomeStaticLcpOnPage } from "@/contexts/HomeStaticLcpContext";
 import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
 import { heroMovieCta, resolveHeroScheduleDisplay } from "@/lib/heroScheduleLine";
 import { movieTitleLines, posterAltForMovie } from "@/lib/movieTitles";
@@ -80,6 +81,7 @@ function heroMetaLine(movie: StrapiMovie): string {
 
 const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAboutHeroProps) => {
   const markLcpDone = useHomeLcpDone();
+  const staticLcpOnPage = useHomeStaticLcpOnPage();
   const [activeIndex, setActiveIndex] = useState(0);
 
   const goTo = useCallback(
@@ -118,8 +120,9 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
     return () => cancelAnimationFrame(frame);
   }, [loading, movies.length, markLcpDone]);
 
-  const hasStaticLcp =
+  const hasStaticLcpDom =
     typeof document !== "undefined" && Boolean(document.getElementById("home-static-lcp"));
+  const hasStaticLcp = staticLcpOnPage || hasStaticLcpDom;
   const prioritizePoster = !hasStaticLcp && activeIndex === 0;
 
   if (loading && movies.length === 0) {

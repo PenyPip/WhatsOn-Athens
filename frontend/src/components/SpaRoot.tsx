@@ -3,6 +3,7 @@
 import { useMemo } from "react";
 import SpaProviders from "@/components/SpaProviders";
 import App from "@/App";
+import { HomeStaticLcpContext } from "@/contexts/HomeStaticLcpContext";
 import type { DehydratedState } from "@tanstack/react-query";
 import { readRqBootstrapState } from "@/lib/rqBootstrap";
 type SpaRootProps = {
@@ -12,11 +13,19 @@ type SpaRootProps = {
   bootstrapState?: DehydratedState;
   /** Αρχική: main επικαλύπτει το #home-hero-slot (ίδιο ύψος, χωρίς CLS). */
   homeMainOverlap?: boolean;
+  /** Server HTML έχει HomeStaticLcp — το live hero δεν σχεδιάζει loading shell στο SSR. */
+  homeStaticLcp?: boolean;
   suppressHydrationWarning?: boolean;
 };
 
 /** Client boundary — bootstrap μόνο από `#__RQ_STATE__` (αποφυγή διπλού JSON στο HTML). */
-export default function SpaRoot({ ssrPath, bootstrapState, homeMainOverlap, suppressHydrationWarning }: SpaRootProps) {
+export default function SpaRoot({
+  ssrPath,
+  bootstrapState,
+  homeMainOverlap,
+  homeStaticLcp = false,
+  suppressHydrationWarning,
+}: SpaRootProps) {
   const dehydratedState = useMemo(
     () => readRqBootstrapState() ?? bootstrapState,
     [bootstrapState],
@@ -24,9 +33,11 @@ export default function SpaRoot({ ssrPath, bootstrapState, homeMainOverlap, supp
 
   return (
     <div suppressHydrationWarning={suppressHydrationWarning}>
-      <SpaProviders dehydratedState={dehydratedState}>
-        <App ssrPath={ssrPath} homeMainOverlap={homeMainOverlap} />
-      </SpaProviders>
+      <HomeStaticLcpContext.Provider value={homeStaticLcp}>
+        <SpaProviders dehydratedState={dehydratedState}>
+          <App ssrPath={ssrPath} homeMainOverlap={homeMainOverlap} />
+        </SpaProviders>
+      </HomeStaticLcpContext.Provider>
     </div>
   );
 }
