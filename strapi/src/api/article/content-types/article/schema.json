@@ -59,6 +59,12 @@
       "relation": "manyToOne",
       "target": "api::event.event",
       "inversedBy": "articles"
+    },
+    "tags": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.article-tag",
+      "description": "Ετικέτες που εμφανίζονται κάτω από το κείμενο του άρθρου."
     }
   }
 }

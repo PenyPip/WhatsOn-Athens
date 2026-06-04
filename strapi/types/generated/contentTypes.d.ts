@@ -408,6 +408,7 @@ export interface ApiArticleArticle extends Schema.CollectionType {
     >;
     secondary_keywords: Attribute.String;
     slug: Attribute.UID<'api::article.article', 'title'> & Attribute.Required;
+    tags: Attribute.Component<'shared.article-tag', true>;
     title: Attribute.String & Attribute.Required;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<

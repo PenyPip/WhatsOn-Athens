@@ -7,13 +7,8 @@ import { useArticles } from "@/hooks/useStrapi";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
-const articleTypeLabels: Record<string, string> = {
-  kritiki_parastasis: "Κριτική θεάτρου",
-  kritiki_tainias: "Κριτική ταινίας",
-  sigkrisi: "Σύγκριση",
-  giati_na_deis: "Γιατί να δεις",
-  politistiko_keimeno: "Πολιτιστικό",
-};
+import ArticleTags from "@/components/ArticleTags";
+import { articleTypeLabels, formatArticleDate } from "@/lib/articleLabels";
 
 const articleTypes = [
   "all",
@@ -25,12 +20,6 @@ const articleTypes = [
 ] as const;
 
 type ArticleFilterType = (typeof articleTypes)[number];
-
-function formatGreekDate(value: string): string {
-  const d = new Date(value);
-  if (!Number.isFinite(d.getTime())) return "Χωρίς ημερομηνία";
-  return d.toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" });
-}
 
 export default function Articles() {
   usePageSeo(staticPageSeo.articles);
@@ -103,9 +92,12 @@ export default function Articles() {
                   {article.metaDescription ? (
                     <p className="mt-3 text-sm text-muted-foreground line-clamp-3">{article.metaDescription}</p>
                   ) : null}
+                  {article.tags.length > 0 ? (
+                    <ArticleTags tags={article.tags.slice(0, 4)} className="mt-4" showLabel={false} />
+                  ) : null}
                   <div className="mt-4 border-t border-foreground/5 pt-3 text-xs text-muted-foreground flex items-center justify-between">
                     <span>
-                      {formatGreekDate(article.publishedAt)}
+                      {formatArticleDate(article.publishedAt)}
                     </span>
                     {article.relatedEvent?.name ? (
                       <span className="text-foreground/80">Σχετικό: {article.relatedEvent.name}</span>

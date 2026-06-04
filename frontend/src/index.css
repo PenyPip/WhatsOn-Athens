@@ -241,4 +241,84 @@
   .theater-filter-date:not(.theater-filter-date--empty) {
     color: inherit;
   }
+
+  /** Σελίδα άρθρου — editorial typography (CKEditor / Markdown HTML). */
+  .article-detail-prose {
+    @apply text-[#13143E];
+    font-family: Georgia, "Times New Roman", serif;
+    font-size: 1.125rem;
+    line-height: 1.85;
+    letter-spacing: 0.01em;
+  }
+
+  .article-detail-prose > *:first-child {
+    margin-top: 0;
+  }
+
+  .article-detail-prose > p:first-of-type {
+    margin-top: 0;
+  }
+
+  .article-detail-prose h2 {
+    @apply font-display mt-12 mb-4 text-[1.65rem] font-bold tracking-tight text-[#13143E];
+  }
+
+  .article-detail-prose h3 {
+    @apply font-display mt-9 mb-3 text-xl font-semibold text-[#13143E];
+  }
+
+  .article-detail-prose p {
+    margin-top: 0;
+    margin-bottom: 1.35em;
+  }
+
+  .article-detail-prose a {
+    @apply font-medium text-[#7C2B76] underline underline-offset-2 transition-colors hover:text-[#13143E];
+  }
+
+  .article-detail-prose strong {
+    @apply font-semibold text-[#13143E];
+  }
+
+  .article-detail-prose em {
+    @apply italic;
+  }
+
+  .article-detail-prose ul,
+  .article-detail-prose ol {
+    @apply my-6 space-y-2 pl-6;
+  }
+
+  .article-detail-prose ul {
+    list-style-type: disc;
+  }
+
+  .article-detail-prose ol {
+    list-style-type: decimal;
+  }
+
+  .article-detail-prose li {
+    @apply pl-1;
+  }
+
+  .article-detail-prose blockquote {
+    @apply my-8 border-l-4 border-[#7C2B76]/60 bg-[#F0EDF8]/80 py-4 pl-6 pr-4 font-display text-lg italic text-[#13143E]/90;
+  }
+
+  .article-detail-prose img {
+    @apply my-8 w-full rounded-xl shadow-md ring-1 ring-[#1C1D62]/10;
+  }
+
+  .article-detail-prose figure {
+    @apply my-8;
+  }
+
+  .article-detail-prose figcaption {
+    @apply mt-2 text-center text-xs text-muted-foreground;
+  }
+
+  .article-detail-prose hr {
+    @apply my-10 border-t;
+    border-color: rgba(28, 29, 98, 0.12);
+  }
 }

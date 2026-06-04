@@ -506,6 +506,42 @@ function mapHomeAttributes(attrs: Record<string, unknown>): MappedHomepage {
   };
 }
 
+/** Ετικέτες άρθρου (component shared.article-tag). */
+export function normalizeArticleTagsFromStrapi(tags: unknown): string[] {
+  if (tags == null) return [];
+  if (typeof tags === "string") {
+    const t = tags.trim();
+    if (!t) return [];
+    return t
+      .split(/\r?\n|[,;·•]\s*/g)
+      .map((s) => s.trim())
+      .filter(Boolean);
+  }
+  if (!Array.isArray(tags)) return [];
+  const out: string[] = [];
+  for (const item of tags) {
+    if (typeof item === "string") {
+      const s = item.trim();
+      if (s) out.push(s);
+      continue;
+    }
+    if (item && typeof item === "object") {
+      const o = item as Record<string, unknown>;
+      const unwrapped =
+        o.attributes && typeof o.attributes === "object" ? (o.attributes as Record<string, unknown>) : o;
+      const label =
+        typeof unwrapped.label === "string"
+          ? unwrapped.label
+          : typeof o.label === "string"
+            ? o.label
+            : "";
+      const s = label.trim();
+      if (s) out.push(s);
+    }
+  }
+  return out;
+}
+
 /** Unwrap Strapi cast: επαναλαμβανόμενο component, παλιό JSON (array), ή string (γραμμές/κόμματα). */
 export function normalizeCastFromStrapi(cast: unknown): string[] {
   if (cast == null) return [];
@@ -777,6 +813,7 @@ function mapArticle(raw: unknown): StrapiArticle {
                 : "",
           }
         : undefined,
+    tags: normalizeArticleTagsFromStrapi(r.tags),
     publishedAt: typeof r.publishedAt === "string" ? r.publishedAt : "",
   };
 }
@@ -1213,6 +1250,7 @@ export interface StrapiArticle {
     name: string;
     slug: string;
   };
+  tags: string[];
   publishedAt: string;
 }
 
@@ -1347,6 +1385,7 @@ const EDITORIAL_REVIEW_PUBLIC_QUERY: Record<string, string> = {
 const ARTICLE_PUBLIC_QUERY: Record<string, string> = {
   "sort[0]": "publishedAt:desc",
   "populate[featured_image]": "*",
+  "populate[tags]": "*",
   "populate[related_event][fields][0]": "name",
   "populate[related_event][fields][1]": "slug",
 };

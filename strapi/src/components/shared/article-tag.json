@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_shared_article_tags",
+  "info": {
+    "displayName": "Ετικέτα",
+    "description": "Μία ετικέτα ανά καταχώρηση. Στο Admin: «Προσθήκη νέας εγγραφής» για κάθε tag."
+  },
+  "options": {},
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    }
+  }
+}

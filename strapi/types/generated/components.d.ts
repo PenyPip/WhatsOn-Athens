@@ -82,6 +82,17 @@ export interface SchedulingSkipDay extends Schema.Component {
   };
 }
 
+export interface SharedArticleTag extends Schema.Component {
+  collectionName: 'components_shared_article_tags';
+  info: {
+    description: '\u039C\u03AF\u03B1 \u03B5\u03C4\u03B9\u03BA\u03AD\u03C4\u03B1 \u03B1\u03BD\u03AC \u03BA\u03B1\u03C4\u03B1\u03C7\u03CE\u03C1\u03B7\u03C3\u03B7. \u03A3\u03C4\u03BF Admin: \u00AB\u03A0\u03C1\u03BF\u03C3\u03B8\u03AE\u03BA\u03B7 \u03BD\u03AD\u03B1\u03C2 \u03B5\u03B3\u03B3\u03C1\u03B1\u03C6\u03AE\u03C2\u00BB \u03B3\u03B9\u03B1 \u03BA\u03AC\u03B8\u03B5 tag.';
+    displayName: '\u0395\u03C4\u03B9\u03BA\u03AD\u03C4\u03B1';
+  };
+  attributes: {
+    label: Attribute.String & Attribute.Required;
+  };
+}
+
 export interface SharedCastName extends Schema.Component {
   collectionName: 'components_shared_cast_names';
   info: {
@@ -123,6 +134,7 @@ declare module '@strapi/types' {
       'home.layout-section': HomeLayoutSection;
       'navigation.nav-item': NavigationNavItem;
       'scheduling.skip-day': SchedulingSkipDay;
+      'shared.article-tag': SharedArticleTag;
       'shared.cast-name': SharedCastName;
       'theater.weekly-slot': TheaterWeeklySlot;
     }

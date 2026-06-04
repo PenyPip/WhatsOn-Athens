@@ -1,21 +1,12 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
-import { ArrowLeft } from "lucide-react";
-import Footer from "@/components/Footer";
+import ArticleDetailTemplate from "@/components/ArticleDetailTemplate";
 import LoadingState from "@/components/LoadingState";
 import { useArticleBySlug } from "@/hooks/useStrapi";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { articleContentToHtml } from "@/lib/articleContent";
 import { truncateDescription } from "@/lib/siteMetadata";
-
-const articleTypeLabels: Record<string, string> = {
-  kritiki_parastasis: "Κριτική θεάτρου",
-  kritiki_tainias: "Κριτική ταινίας",
-  sigkrisi: "Σύγκριση",
-  giati_na_deis: "Γιατί να δεις",
-  politistiko_keimeno: "Πολιτιστικό",
-};
 
 export default function ArticleDetail() {
   const { slug } = useParams();
@@ -59,65 +50,5 @@ export default function ArticleDetail() {
     );
   }
 
-  const publishedLabel = (() => {
-    const d = new Date(article.publishedAt);
-    if (!Number.isFinite(d.getTime())) return "Χωρίς ημερομηνία";
-    return d.toLocaleDateString("el-GR", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    });
-  })();
-
-  return (
-    <div className="min-h-screen pb-20 md:pb-0">
-      <div className="container max-w-3xl pt-36">
-        <div className="animate-fade-in-up">
-          <Link
-            to="/articles"
-            className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors mb-6"
-          >
-            <ArrowLeft className="w-3 h-3" /> Πίσω στα άρθρα
-          </Link>
-
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mb-4">
-            <span className="text-[10px] font-semibold uppercase tracking-[0.15em] text-muted-foreground">
-              {articleTypeLabels[article.articleType] ?? "Άρθρο"}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {publishedLabel}
-            </span>
-          </div>
-
-          <h1 className="font-display text-3xl md:text-4xl font-bold mb-3">{article.title}</h1>
-
-          {article.featuredImageUrl ? (
-            <img
-              src={article.featuredImageUrl}
-              alt={article.featuredImageAlt || article.title}
-              className="mb-6 w-full rounded-xl object-cover"
-              loading="eager"
-            />
-          ) : null}
-
-          {article.metaDescription ? (
-            <p className="text-base text-muted-foreground leading-relaxed mb-8">{article.metaDescription}</p>
-          ) : null}
-
-          <article
-            className="article-prose prose prose-lg max-w-none prose-headings:font-display prose-h2:mt-10 prose-h2:mb-4 prose-h2:text-2xl prose-h2:font-bold prose-h3:mt-8 prose-h3:mb-3 prose-h3:text-xl prose-h3:font-semibold prose-p:my-5 prose-p:leading-relaxed prose-strong:font-bold prose-em:italic prose-a:text-[#7C2B76] prose-a:font-medium prose-a:underline hover:prose-a:text-[#13143E]"
-            dangerouslySetInnerHTML={{ __html: contentHtml }}
-          />
-
-          {article.relatedEvent?.name ? (
-            <div className="mt-10 rounded-xl border border-border bg-muted/20 p-4">
-              <p className="text-xs uppercase tracking-[0.14em] text-muted-foreground mb-2">Σχετικό event</p>
-              <p className="text-sm font-semibold text-foreground">{article.relatedEvent.name}</p>
-            </div>
-          ) : null}
-        </div>
-      </div>
-      <Footer />
-    </div>
-  );
+  return <ArticleDetailTemplate article={article} contentHtml={contentHtml} />;
 }
