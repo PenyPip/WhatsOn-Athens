@@ -41,8 +41,7 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
 
   return (
     <div className={cn(ARTICLE_PAGE_CLASS, "min-h-screen bg-white pb-20 md:pb-0")}>
-      <div className="container pt-32 pb-16 md:pt-36 md:pb-24">
-        <div className={cn(ARTICLE_COLUMN_CLASS, "animate-fade-in-up px-0")}>
+      <div className={cn(ARTICLE_COLUMN_CLASS, "animate-fade-in-up pt-32 pb-16 md:pt-36 md:pb-24")}>
           <Link
             to="/articles"
             className="font-article-ui mb-10 inline-flex items-center gap-1.5 text-xs font-medium text-[#1C1D62]/55 transition-colors hover:text-[#7C2B76]"
@@ -73,7 +72,7 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
           <hr className="mt-8 w-full border-0 border-t-2 border-[#13143E]" />
 
           {hasDeck ? (
-            <p className="mt-8 w-full text-left font-article text-xl font-medium leading-snug text-[#13143E]/90 md:text-2xl md:leading-snug">
+            <p className="article-lead mt-8 w-full font-article text-xl font-medium leading-snug text-[#13143E]/90 md:text-2xl md:leading-snug">
               {article.metaDescription}
             </p>
           ) : null}
@@ -136,7 +135,6 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
             </Link>
             <p className="font-article-ui text-[11px] uppercase tracking-[0.1em] text-[#1C1D62]/45">{typeLabel}</p>
           </footer>
-        </div>
       </div>
 
       <Footer />

@@ -1,11 +1,34 @@
+/** Inline styles από CKEditor που χαλάνε τη στήλη / στοίχιση στο frontend. */
+const LAYOUT_STYLE_DROP =
+  /^(?:text-align|float|width|max-width|margin(?:-left|-right|-top|-bottom)?|display|clear)\s*:/i;
+
+/** Αφαιρεί float, width, text-align κ.λπ. από HTML ώστε να ελέγχει το CSS μας. */
+export function normalizeArticleLayoutHtml(html: string): string {
+  let out = html.replace(/\sstyle="([^"]*)"/gi, (_match, styleBody: string) => {
+    const kept = styleBody
+      .split(";")
+      .map((chunk) => chunk.trim())
+      .filter((chunk) => chunk && !LAYOUT_STYLE_DROP.test(chunk));
+    return kept.length ? ` style="${kept.join("; ")}"` : "";
+  });
+
+  out = out.replace(/\sclass="([^"]*)"/gi, (_m, cls: string) => {
+    const next = cls
+      .split(/\s+/)
+      .filter((c) => c && !/^image-style-/i.test(c) && c !== "image_resized");
+    return next.length ? ` class="${next.join(" ")}"` : "";
+  });
+
+  return out;
+}
+
 /** Αν το CMS έστειλε HTML (CKEditor), το χρησιμοποιούμε ως έχει· αλλιώς απλό Markdown → HTML. */
 export function articleContentToHtml(raw: string | undefined | null): string {
   const content = typeof raw === "string" ? raw.trim() : "";
   if (!content) return "";
 
-  if (looksLikeHtml(content)) return content;
-
-  return markdownToHtml(content);
+  const html = looksLikeHtml(content) ? content : markdownToHtml(content);
+  return normalizeArticleLayoutHtml(html);
 }
 
 function looksLikeHtml(value: string): boolean {
