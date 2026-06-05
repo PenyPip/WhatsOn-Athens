@@ -10,7 +10,7 @@ import {
 } from "@/lib/articleLabels";
 import ArticleRelatedEventCard from "@/components/ArticleRelatedEventCard";
 import { resolveArticleRelated } from "@/lib/articleRelated";
-import { eventDisplayTitle } from "@/lib/eventLabels";
+import { eventHasDisplayableInfo } from "@/lib/eventLabels";
 import { ARTICLE_COLUMN_CLASS, ARTICLE_PAGE_CLASS } from "@/lib/articleTypography";
 import type { StrapiArticle } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -36,7 +36,13 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
   const hasDeck = Boolean(article.metaDescription?.trim());
   const related = resolveArticleRelated(article);
   const relatedEvent = article.relatedEvent;
-  const hasRelatedEvent = Boolean(relatedEvent && eventDisplayTitle(relatedEvent));
+  const relatedEventTitleFallback =
+    relatedEvent?.slug?.trim() && relatedEvent.slug.trim() === article.slug?.trim()
+      ? article.title
+      : undefined;
+  const hasRelatedEvent = Boolean(
+    relatedEvent && eventHasDisplayableInfo(relatedEvent, { fallbackTitle: relatedEventTitleFallback }),
+  );
   const hasRelatedMedia = Boolean(related);
   const hasTags = article.tags.length > 0;
   const hasImage = Boolean(article.featuredImageUrl);
@@ -114,7 +120,9 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
             )}
           </div>
 
-          {hasRelatedEvent && relatedEvent ? <ArticleRelatedEventCard event={relatedEvent} /> : null}
+          {hasRelatedEvent && relatedEvent ? (
+            <ArticleRelatedEventCard event={relatedEvent} titleFallback={relatedEventTitleFallback} />
+          ) : null}
 
           {hasTags ? (
             <ArticleTags

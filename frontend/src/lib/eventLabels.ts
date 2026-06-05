@@ -49,10 +49,38 @@ export function formatEventTicketPrice(price: number | undefined): string | null
   return `${rounded} €`;
 }
 
-export function eventDisplayTitle(event: Pick<StrapiEvent, "titleEl" | "titleEn">): string {
+/** Ανάγνωση τίτλου από slug (π.χ. παλιά events χωρίς title_el στο CMS). */
+export function eventTitleFromSlug(slug: string | undefined): string {
+  const s = typeof slug === "string" ? slug.trim() : "";
+  if (!s) return "";
+  return s
+    .replace(/-/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+export function eventHasDisplayableInfo(
+  event: Pick<StrapiEvent, "titleEl" | "titleEn" | "slug" | "startDate" | "synopsisEl">,
+  options?: { fallbackTitle?: string },
+): boolean {
+  if (eventDisplayTitle(event, options)) return true;
+  if (event.startDate?.trim()) return true;
+  if (event.synopsisEl?.trim()) return true;
+  return Boolean(event.slug?.trim());
+}
+
+export function eventDisplayTitle(
+  event: Pick<StrapiEvent, "titleEl" | "titleEn" | "slug">,
+  options?: { fallbackTitle?: string },
+): string {
   const el = event.titleEl?.trim();
   if (el) return el;
-  return event.titleEn?.trim() ?? "";
+  const en = event.titleEn?.trim();
+  if (en) return en;
+  const fallback = options?.fallbackTitle?.trim();
+  if (fallback) return fallback;
+  return eventTitleFromSlug(event.slug);
 }
 
 export function eventPath(slug: string): string {

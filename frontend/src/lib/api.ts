@@ -838,6 +838,8 @@ function mapEventVenue(rel: unknown): StrapiEventVenue | undefined {
 function mapEvent(raw: unknown): StrapiEvent {
   const r = unwrapStrapiEntry(raw);
   const legacyName = typeof r.name === "string" ? r.name.trim() : "";
+  const legacyVenueName = typeof r.venue_name === "string" ? r.venue_name.trim() : "";
+  const legacyVenueAddress = typeof r.venue_address === "string" ? r.venue_address.trim() : "";
   const titleEl =
     (typeof r.title_el === "string" && r.title_el.trim()) || legacyName || "";
   const eventTypeRaw = typeof r.event_type === "string" ? r.event_type : "other";
@@ -863,7 +865,15 @@ function mapEvent(raw: unknown): StrapiEvent {
     endDate: typeof r.end_date === "string" ? r.end_date : "",
     startTime: typeof r.start_time === "string" ? r.start_time : "",
     endTime: typeof r.end_time === "string" ? r.end_time : "",
-    venue: mapEventVenue(r.venue),
+    venue:
+      mapEventVenue(r.venue) ??
+      (legacyVenueName || legacyVenueAddress
+        ? {
+            name: legacyVenueName,
+            slug: "",
+            address: legacyVenueAddress,
+          }
+        : undefined),
     onlineLink: typeof r.online_link === "string" ? r.online_link.trim() : "",
     eventType,
     tags: normalizeArticleTagsFromStrapi(r.tags),
@@ -1472,6 +1482,35 @@ const EDITORIAL_REVIEW_PUBLIC_QUERY: Record<string, string> = {
   "populate[restaurant][fields][0]": "name",
 };
 
+const EVENT_SCALAR_FIELDS = [
+  "title_el",
+  "title_en",
+  "slug",
+  "synopsis_el",
+  "synopsis_en",
+  "editorial_note_el",
+  "editorial_note_en",
+  "start_date",
+  "end_date",
+  "start_time",
+  "end_time",
+  "online_link",
+  "event_type",
+  "ticket_price",
+  "ticket_url",
+  "language_subtitles",
+  "meta_description",
+  "featured",
+] as const;
+
+function eventScalarPopulateParams(prefix: string): Record<string, string> {
+  const out: Record<string, string> = {};
+  EVENT_SCALAR_FIELDS.forEach((field, i) => {
+    out[`${prefix}[fields][${i}]`] = field;
+  });
+  return out;
+}
+
 const ARTICLE_PUBLIC_QUERY: Record<string, string> = {
   "sort[0]": "publishedAt:desc",
   "populate[featured_image]": "*",
@@ -1480,6 +1519,7 @@ const ARTICLE_PUBLIC_QUERY: Record<string, string> = {
   "populate[related_movie][fields][1]": "slug",
   "populate[related_theater_show][fields][0]": "title",
   "populate[related_theater_show][fields][1]": "slug",
+  ...eventScalarPopulateParams("populate[related_event]"),
   "populate[related_event][populate][poster]": "*",
   "populate[related_event][populate][venue][fields][0]": "name",
   "populate[related_event][populate][venue][fields][1]": "slug",

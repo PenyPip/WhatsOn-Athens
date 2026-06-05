@@ -151,6 +151,13 @@ module.exports = {
     }
 
     try {
+      const { migrateLegacyEvents } = require('./utils/migrateLegacyEvents');
+      await migrateLegacyEvents(strapi);
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap legacy events]', e);
+    }
+
+    try {
       const existing = await strapi.entityService.findMany('api::site-navigation.site-navigation', {
         publicationState: 'preview',
       });

@@ -46,7 +46,9 @@ export function resolveArticleRelatedListLabel(article: StrapiArticle): string |
   if (movie) return movie;
   const ev = article.relatedEvent;
   if (ev) {
-    const eventTitle = eventDisplayTitle(ev);
+    const fallback =
+      ev.slug?.trim() && ev.slug.trim() === article.slug?.trim() ? article.title : undefined;
+    const eventTitle = eventDisplayTitle(ev, { fallbackTitle: fallback });
     if (eventTitle) return eventTitle;
   }
   return undefined;

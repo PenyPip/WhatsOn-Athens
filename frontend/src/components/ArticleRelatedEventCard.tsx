@@ -4,6 +4,7 @@ import type { StrapiEvent } from "@/lib/api";
 import EventDetailContent from "@/components/EventDetailContent";
 import {
   eventDisplayTitle,
+  eventHasDisplayableInfo,
   eventPath,
   eventSecondaryTitle,
   eventTypeLabels,
@@ -13,12 +14,18 @@ import { cn } from "@/lib/utils";
 
 type ArticleRelatedEventCardProps = {
   event: StrapiEvent;
+  /** Τίτλος από συνδεδεμένο άρθρο όταν το event δεν έχει title_el (legacy CMS). */
+  titleFallback?: string;
   className?: string;
 };
 
-export default function ArticleRelatedEventCard({ event, className }: ArticleRelatedEventCardProps) {
-  const title = eventDisplayTitle(event);
-  if (!title) return null;
+export default function ArticleRelatedEventCard({
+  event,
+  titleFallback,
+  className,
+}: ArticleRelatedEventCardProps) {
+  const title = eventDisplayTitle(event, { fallbackTitle: titleFallback });
+  if (!eventHasDisplayableInfo(event, { fallbackTitle: titleFallback })) return null;
 
   const secondary = eventSecondaryTitle(event);
   const typeLabel = eventTypeLabels[event.eventType] ?? eventTypeLabels.other;
