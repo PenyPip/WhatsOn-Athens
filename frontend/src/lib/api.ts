@@ -1740,6 +1740,12 @@ export const api = {
       return row ? mapEvent(row) : undefined;
     }),
 
+  /** Ελαφρύ πρόγραμμα για αρχική — ένα request, περιορισμένο horizon (όχι 10× pagination). */
+  getShowtimesForHome: () =>
+    fetchAPI<any[]>("/showtimes/home-calendar", { weeks: "5" }, { noStore: true, noPopulate: true }).then((rows) =>
+      (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x)),
+    ),
+
   getShowtimes: (options?: { venueSlug?: string }) => {
     const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";
     if (venueSlug) {

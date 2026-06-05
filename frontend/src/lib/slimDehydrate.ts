@@ -10,36 +10,47 @@ import type {
 } from "@/lib/api";
 import { showtimeIsUpcoming } from "@/lib/homeMovieFilters";
 
+const SHOWTIME_CACHE_KEYS: readonly (readonly [string, ...string[]])[] = [["showtimes"], ["showtimes", "home"]];
+
+function readShowtimesCaches(qc: QueryClient): { key: readonly [string, ...string[]]; data: StrapiShowtime[] }[] {
+  const out: { key: readonly [string, ...string[]]; data: StrapiShowtime[] }[] = [];
+  for (const key of SHOWTIME_CACHE_KEYS) {
+    const data = qc.getQueryData<StrapiShowtime[]>(key);
+    if (data?.length) out.push({ key, data });
+  }
+  return out;
+}
+
+function slimShowtimeRows(rows: StrapiShowtime[]): StrapiShowtime[] {
+  return rows.map((st) => ({
+    id: st.id,
+    datetime: st.datetime,
+    scheduleKind: st.scheduleKind,
+    weekEnd: st.weekEnd,
+    venueId: st.venueId,
+    venueSlug: st.venueSlug,
+    venue: st.venue,
+    hallId: st.hallId,
+    hallName: st.hallName,
+    movieId: st.movieId,
+    movieSlug: st.movieSlug,
+    movieTitle: st.movieTitle,
+    movieGenre: st.movieGenre,
+    movieGenreSlugs: st.movieGenreSlugs,
+    moviePosterUrl: st.moviePosterUrl,
+    movieDuration: st.movieDuration,
+    movieImdbRating: st.movieImdbRating,
+    movieIsDubbed: st.movieIsDubbed,
+    summerScreening: st.summerScreening,
+    venueSummerOutdoor: st.venueSummerOutdoor,
+    price: st.price,
+    priceStudent: st.priceStudent,
+  })) as StrapiShowtime[];
+}
+
 function slimMoviesShowtimes(qc: QueryClient): void {
-  const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
-  if (showtimes?.length) {
-    qc.setQueryData(
-      ["showtimes"],
-      showtimes.map((st) => ({
-        id: st.id,
-        datetime: st.datetime,
-        scheduleKind: st.scheduleKind,
-        weekEnd: st.weekEnd,
-        venueId: st.venueId,
-        venueSlug: st.venueSlug,
-        venue: st.venue,
-        hallId: st.hallId,
-        hallName: st.hallName,
-        movieId: st.movieId,
-        movieSlug: st.movieSlug,
-        movieTitle: st.movieTitle,
-        movieGenre: st.movieGenre,
-        movieGenreSlugs: st.movieGenreSlugs,
-        moviePosterUrl: st.moviePosterUrl,
-        movieDuration: st.movieDuration,
-        movieImdbRating: st.movieImdbRating,
-        movieIsDubbed: st.movieIsDubbed,
-        summerScreening: st.summerScreening,
-        venueSummerOutdoor: st.venueSummerOutdoor,
-        price: st.price,
-        priceStudent: st.priceStudent,
-      })),
-    );
+  for (const { key, data } of readShowtimesCaches(qc)) {
+    qc.setQueryData(key, slimShowtimeRows(data));
   }
 
   const movies = qc.getQueryData<StrapiMovie[]>(["movies"]);
@@ -192,12 +203,12 @@ function slimHomepageBootstrap(qc: QueryClient): void {
 
 /** Λιγότερες εγγραφές showtimes στο bootstrap αρχικής (ταχύτερο JSON.parse). */
 export function trimHomeShowtimesDehydrate(qc: QueryClient): void {
-  const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
+  const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes", "home"]);
   if (!showtimes?.length) return;
   const now = Date.now();
   const until = now + HOME_SHOWTIME_HORIZON_MS;
   qc.setQueryData(
-    ["showtimes"],
+    ["showtimes", "home"],
     showtimes.filter((st) => {
       if (!showtimeIsUpcoming(st, new Date(now))) return false;
       const t = Date.parse(st.datetime);
@@ -222,7 +233,8 @@ export function trimShowtimesForMovieSlug(qc: QueryClient, movieSlug: string): v
 export function trimMoviesForHomeBootstrap(qc: QueryClient): void {
   const movies = qc.getQueryData<StrapiMovie[]>(["movies"]);
   if (!movies?.length) return;
-  const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
+  const showtimes =
+    qc.getQueryData<StrapiShowtime[]>(["showtimes", "home"]) ?? qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
   const keepIds = new Set<number>();
   const keepSlugs = new Set<string>();
   for (const m of movies) {

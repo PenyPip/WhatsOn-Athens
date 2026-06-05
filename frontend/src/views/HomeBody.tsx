@@ -333,7 +333,11 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const deferSecondary = useDeferUntilLcpDone();
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies();
-  const { data: showtimes, isPending: showtimesPending, isError: showtimesError } = useShowtimes(needsShowtimes);
+  const { data: showtimes, isPending: showtimesPending, isError: showtimesError } = useShowtimes(
+    needsShowtimes,
+    undefined,
+    { home: true },
+  );
   const awaitingMovies = movies === undefined && moviesPending;
   const awaitingShowtimes = showtimes === undefined && showtimesPending;
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues && deferSecondary);
@@ -479,13 +483,13 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "summer_venues",
               <>
-                {venues === undefined && venuesLoading ? (
-                  <section className="relative section-black border-y border-white/[0.07] py-10 md:py-14">
+                {(needsVenues && !deferSecondary) || (venues === undefined && venuesLoading) ? (
+                  <section className="relative section-black border-y border-white/[0.07] py-10 md:py-14 min-h-[28rem] md:min-h-[32rem]">
                     <div className="container max-w-7xl">
                       <div className="mb-8 h-8 w-48 animate-pulse rounded bg-white/10" />
                       <ul className="grid list-none grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3">
-                        {[0, 1, 2].map((i) => (
-                          <li key={i} className="h-28 animate-pulse rounded-xl bg-white/10" />
+                        {[0, 1, 2, 3, 4, 5].map((i) => (
+                          <li key={i} className="h-32 animate-pulse rounded-xl bg-white/10" />
                         ))}
                       </ul>
                     </div>
@@ -575,8 +579,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                       Περιοδείες & παραστάσεις που ταξιδεύουν
                     </h2>
                   </div>
-                  {theaterAwaiting ? (
-                    <div className="mt-10 flex gap-4 overflow-hidden pb-2">
+                  {(needsTheater && !deferSecondary) || theaterAwaiting ? (
+                    <div className="mt-10 flex min-h-[14rem] gap-4 overflow-hidden pb-2">
                       {[0, 1, 2, 3].map((i) => (
                         <div
                           key={i}
@@ -591,11 +595,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                   ) : touringShowsForHome.length === 0 ? (
                     <div className="mt-10 max-w-2xl rounded-xl border border-white/10 bg-black/35 px-5 py-6 md:px-7 md:py-7">
                       <p className="font-body text-sm leading-relaxed text-white/75 md:text-[0.9375rem]">
-                        Δεν υπάρχουν περιοδείες προς το παρόν. Στο CMS δημιούργησε{" "}
-                        <strong className="font-medium text-white">Theater Show</strong> με ενεργό{" "}
-                        <strong className="font-medium text-white">on tour</strong>, προαιρετικά χωρίς χώρο (venue), και
-                        βάλε το <strong className="font-medium text-white">more link</strong> στην παράσταση (όχι στον
-                        χώρο).
+                        Δεν υπάρχουν περιοδείες προς το παρόν.
                       </p>
                       <a
                         href="/theater"
@@ -665,8 +665,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
           case "new_articles":
             return sectionEl(
               "new_articles",
-              articlesLoading && latestArticles.length === 0 ? (
-                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+              (needsArticles && !deferSecondary) || (articlesLoading && latestArticles.length === 0) ? (
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10 min-h-[22rem]">
                   <div className="container max-w-7xl">
                     <div className="mb-2 h-3 w-20 animate-pulse rounded bg-[#1C1D62]/10" />
                     <div className="h-8 w-56 animate-pulse rounded bg-[#1C1D62]/10" />
@@ -739,8 +739,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
           case "events":
             return sectionEl(
               "events",
-              eventsLoading && latestEvents.length === 0 ? (
-                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+              (needsEvents && !deferSecondary) || (eventsLoading && latestEvents.length === 0) ? (
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10 min-h-[22rem]">
                   <div className="container max-w-7xl">
                     <div className="mb-2 h-3 w-20 animate-pulse rounded bg-[#1C1D62]/10" />
                     <div className="h-8 w-56 animate-pulse rounded bg-[#1C1D62]/10" />
@@ -865,8 +865,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
           case "dining":
             return sectionEl(
               "dining",
-              restaurants === undefined && restaurantsLoading ? (
-                <div className="section-black border-y border-white/[0.07] py-10">
+              (needsDining && !deferSecondary) || (restaurants === undefined && restaurantsLoading) ? (
+                <div className="section-black border-y border-white/[0.07] py-10 min-h-[18rem]">
                   <div className="container max-w-7xl">
                     <div className="mb-6 h-7 w-40 animate-pulse rounded bg-white/10" />
                     <div className="flex gap-4 overflow-hidden">

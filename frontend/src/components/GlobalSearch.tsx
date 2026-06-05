@@ -227,7 +227,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
             </div>
           ) : listsError ? (
             <p className="px-4 py-6 text-sm leading-relaxed text-red-300">
-              Δεν ήταν δυνατή η φόρτωση των λιστών. Έλεγξε αν ο Strapi server ανταποκρίνεται.
+              Δεν ήταν δυνατή η φόρτωση. Δοκίμασε ξανά αργότερα.
             </p>
           ) : !hasHits ? (
             <p className="px-4 py-6 text-sm text-white/55">Δεν βρέθηκαν αποτελέσματα.</p>

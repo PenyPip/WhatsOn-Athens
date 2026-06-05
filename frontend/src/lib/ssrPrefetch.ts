@@ -59,7 +59,9 @@ async function prefetchHomeBundle(qc: QueryClient) {
     qc.prefetchQuery({ queryKey: ["movies"], queryFn: movieQueryFn, ...queryDefaults }),
   ];
   if (homeNeedsShowtimes(layout.sections)) {
-    tasks.push(qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }));
+    tasks.push(
+      qc.prefetchQuery({ queryKey: ["showtimes", "home"], queryFn: () => api.getShowtimesForHome(), ...queryDefaults }),
+    );
   }
   if (homeNeedsArticles(layout.sections)) {
     tasks.push(qc.prefetchQuery({ queryKey: ["articles", 6], queryFn: () => api.getArticles(6), ...queryDefaults }));

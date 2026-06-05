@@ -79,4 +79,46 @@ module.exports = createCoreController('api::showtime.showtime', ({ strapi }) => 
 
     ctx.body = { data: rows };
   },
+
+  /** Ελαφρύ πρόγραμμα για αρχική — όλοι οι χώροι, περιορισμένο horizon (χωρίς pagination). */
+  async homeCalendar(ctx) {
+    const now = new Date();
+    const weeks = parseWeeks(ctx.query?.weeks ?? 5);
+    const todayKey = todayAthensKey(now);
+    const endKey = endAthensKeyAfterWeeks(now, weeks);
+    const endIso = new Date(`${endKey}T23:59:59.999+03:00`).toISOString();
+    const rows = await strapi.entityService.findMany('api::showtime.showtime', {
+      filters: {
+        $or: [
+          {
+            datetime: { $gte: now.toISOString(), $lte: endIso },
+          },
+          {
+            schedule_kind: 'week_block',
+            datetime: { $lte: endIso },
+            week_end: { $gte: todayKey },
+          },
+        ],
+      },
+      fields: ['datetime', 'week_end', 'schedule_kind', 'available_seats', 'price', 'summer_screening'],
+      populate: {
+        movie: {
+          fields: ['id', 'slug', 'title', 'original_title', 'duration', 'imdb_rating', 'critic_score', 'is_dubbed', 'language'],
+          populate: {
+            movie_genres: { fields: ['slug', 'label', 'sort_order'] },
+            poster: { fields: ['url', 'formats'] },
+          },
+        },
+        venue: {
+          fields: ['id', 'slug', 'name', 'summer_outdoor'],
+        },
+        hall: { fields: ['id', 'name'] },
+      },
+      sort: ['datetime:asc'],
+      publicationState: 'preview',
+      limit: 2500,
+    });
+
+    ctx.body = { data: rows };
+  },
 }));

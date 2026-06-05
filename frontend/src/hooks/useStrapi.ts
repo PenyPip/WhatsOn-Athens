@@ -181,10 +181,12 @@ export const useEventBySlug = (slug: string) =>
     throwOnError: false,
   });
 
-export const useShowtimes = (enabled = true, venueSlug?: string) =>
-  useQuery({
-    queryKey: ["showtimes", venueSlug ?? ""],
-    queryFn: () => api.getShowtimes({ venueSlug }),
+export const useShowtimes = (enabled = true, venueSlug?: string, options?: { home?: boolean }) => {
+  const home = options?.home === true;
+  const scopeKey = home ? "home" : (venueSlug ?? "");
+  return useQuery({
+    queryKey: ["showtimes", scopeKey],
+    queryFn: () => (home ? api.getShowtimesForHome() : api.getShowtimes({ venueSlug })),
     ...PROGRAM_QUERY_OPTIONS,
     throwOnError: false,
     retry: 1,
@@ -192,6 +194,7 @@ export const useShowtimes = (enabled = true, venueSlug?: string) =>
     refetchOnMount: true,
     refetchOnWindowFocus: true,
   });
+};
 
 export const useUserReviews = () =>
   useQuery({ queryKey: ["userReviews"], queryFn: api.getUserReviews, staleTime: 300_000, retry: 1, throwOnError: false });

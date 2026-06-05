@@ -65,7 +65,7 @@ const TheaterPage = () => {
           <LoadingState message="Φόρτωση παραστάσεων..." />
         ) : !hasShows ? (
           <p className="text-sm text-muted-foreground">
-            Δεν υπάρχουν παραστάσεις προς το παρόν. Πρόσθεσέ τες στο CMS (Theater Show).
+            Δεν υπάρχουν παραστάσεις προς το παρόν.
           </p>
         ) : (
           <>
