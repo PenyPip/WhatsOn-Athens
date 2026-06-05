@@ -9,5 +9,5 @@ if ! docker compose ps nginx --status running >/dev/null 2>&1; then
 fi
 
 docker compose exec nginx nginx -t
-docker compose exec nginx nginx -s reload
-echo "nginx reloaded"
+docker compose restart nginx
+echo "nginx restarted (reload αρκετό για μικρές αλλαγές · restart για http2 / buffer defaults)"
