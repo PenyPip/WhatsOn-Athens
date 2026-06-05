@@ -46,7 +46,7 @@ function ensureEventsAfterArticles(sections: HomeSectionId[]): HomeSectionId[] {
   const anchor = withoutEvents.indexOf("new_articles");
   if (anchor === -1) return sections;
 
-  const next = [...withoutEvents];
+  const next: HomeSectionId[] = [...withoutEvents];
   next.splice(anchor + 1, 0, "events");
   return next;
 }
