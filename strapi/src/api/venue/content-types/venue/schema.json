@@ -54,10 +54,10 @@
     },
     "type": {
       "type": "enumeration",
-      "enum": ["cinema", "theater"],
+      "enum": ["cinema", "theater", "other"],
       "required": true,
       "default": "cinema",
-      "description": "Σινεμά ή θέατρο — επιλογή από λίστα στο admin."
+      "description": "Σινεμά, θέατρο ή άλλος πολιτιστικός χώρος (πολυχώρος, γκαλερί, ξενοδοχείο κ.λπ.)."
     },
     "summer_outdoor": {
       "type": "boolean",

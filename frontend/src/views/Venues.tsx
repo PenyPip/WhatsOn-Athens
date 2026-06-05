@@ -6,7 +6,14 @@ import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useShowtimes, useVenues } from "@/hooks/useStrapi";
 import { buildVenueShowtimeRangeMap, formatVenueShowtimeRangeLabel } from "@/lib/venueShowtimeRange";
-import { isCinemaVenue, isPublicVenueListing } from "@/lib/venueType";
+import {
+  isCinemaVenue,
+  isPublicVenueListing,
+  parseVenueKindFilterParam,
+  venueMatchesKindFilter,
+  VENUE_KIND_FILTER_OPTIONS,
+  type VenueKindFilter,
+} from "@/lib/venueType";
 import {
   ATHENS_DISTRICT_FILTER_OPTIONS,
   ATHENS_DISTRICT_LABELS,
@@ -30,7 +37,8 @@ const Venues = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const districtFilter = parseVenueDistrictParam(searchParams.get("district"));
   const districtUi = activeDistrictFilter(districtFilter);
-  const hasListFilter = districtFilter !== null;
+  const kindFilter = parseVenueKindFilterParam(searchParams.get("type"));
+  const hasListFilter = districtFilter !== null || kindFilter !== "all";
 
   usePageSeo({
     ...staticPageSeo.venues,
@@ -47,10 +55,16 @@ const Venues = () => {
 
   const setDistrictUi = (next: AthensDistrictFilter) => {
     const params = new URLSearchParams(searchParams);
-    params.delete("type");
     params.delete("area");
     if (next === "all") params.delete("district");
     else params.set("district", next);
+    setSearchParams(params);
+  };
+
+  const setKindUi = (next: VenueKindFilter) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === "all") params.delete("type");
+    else params.set("type", next);
     setSearchParams(params);
   };
 
@@ -58,9 +72,10 @@ const Venues = () => {
     return [...(venues ?? [])]
       .filter(isPublicVenueListing)
       .filter(isAthensVenue)
+      .filter((v) => venueMatchesKindFilter(v, kindFilter))
       .filter((v) => venueMatchesDistrictFilter(v, districtFilter))
       .sort((a, b) => a.name.localeCompare(b.name, "el"));
-  }, [venues, districtFilter]);
+  }, [venues, districtFilter, kindFilter]);
 
   return (
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
@@ -68,12 +83,40 @@ const Venues = () => {
         <div className="container">
           <PageHeaderReveal>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Χώροι</h1>
-            <p className="text-white/50 text-sm">Σινεμά & θερινά στην Αθήνα — ανά περιοχή</p>
+            <p className="text-white/50 text-sm">
+              Σινεμά, θέατρα και άλλοι πολιτιστικοί χώροι στην Αθήνα — ανά περιοχή
+            </p>
           </PageHeaderReveal>
         </div>
       </div>
 
       <div className="container">
+        <div
+          className="mb-4 flex flex-wrap items-center gap-2"
+          role="group"
+          aria-label="Τύπος χώρου"
+        >
+          <span className="mr-1 w-full text-sm uppercase tracking-wider text-muted-foreground sm:w-auto">
+            Τύπος:
+          </span>
+          {VENUE_KIND_FILTER_OPTIONS.map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setKindUi(value)}
+              aria-pressed={kindFilter === value}
+              className={cn(
+                "rounded border px-4 py-1.5 text-sm font-medium transition-all",
+                kindFilter === value
+                  ? "border-[#13143E] bg-[#13143E] text-white"
+                  : "border-border bg-card text-muted-foreground hover:border-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div
           className="mb-6 flex flex-wrap items-center gap-2 md:mb-8"
           role="group"
@@ -104,9 +147,9 @@ const Venues = () => {
           <LoadingState message="Φόρτωση χώρων..." />
         ) : filteredVenues.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {districtFilter
-              ? `Δεν βρέθηκαν σινεμά στην περιοχή «${ATHENS_DISTRICT_LABELS[districtFilter]}».`
-              : "Δεν υπάρχουν καταχωρημένα σινεμά στην Αθήνα προς το παρόν."}
+            {districtFilter || kindFilter !== "all"
+              ? "Δεν βρέθηκαν χώροι με αυτά τα κριτήρια."
+              : "Δεν υπάρχουν καταχωρημένοι χώροι στην Αθήνα προς το παρόν."}
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

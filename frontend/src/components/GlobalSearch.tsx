@@ -300,7 +300,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
               {venueHits.length > 0 ? (
                 <section className="px-2">
                   <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">
-                    Σινεμά
+                    Χώροι
                   </p>
                   <ul>
                     {venueHits.map((v) => (

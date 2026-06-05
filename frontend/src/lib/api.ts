@@ -815,7 +815,9 @@ function mapArticle(raw: unknown): StrapiArticle {
     featuredImageUrl: strapiMediaUrl(r.featured_image, "medium") ?? undefined,
     relatedMovie: mapArticleTitleSlugRef(r.related_movie, "title"),
     relatedTheaterShow: mapArticleTitleSlugRef(r.related_theater_show, "title"),
-    relatedEvent: r.related_event ? mapEvent(r.related_event) : undefined,
+    relatedEvent: unwrapStrapiRelationNode(r.related_event)
+      ? mapEvent(r.related_event)
+      : undefined,
     tags: normalizeArticleTagsFromStrapi(r.tags),
     publishedAt: typeof r.publishedAt === "string" ? r.publishedAt : "",
   };
@@ -836,7 +838,7 @@ function mapEventVenue(rel: unknown): StrapiEventVenue | undefined {
 }
 
 function mapEvent(raw: unknown): StrapiEvent {
-  const r = unwrapStrapiEntry(raw);
+  const r = unwrapStrapiEntry(unwrapStrapiRelationNode(raw));
   const legacyName = typeof r.name === "string" ? r.name.trim() : "";
   const legacyVenueName = typeof r.venue_name === "string" ? r.venue_name.trim() : "";
   const legacyVenueAddress = typeof r.venue_address === "string" ? r.venue_address.trim() : "";
@@ -887,21 +889,25 @@ function mapEvent(raw: unknown): StrapiEvent {
   };
 }
 
-/** Strapi REST v4: σχέση ως επίπεδο αντικείμενο ή ως `{ data: { attributes } }` */
-function strapiRelationAttrs(rel: unknown): Record<string, unknown> | null {
+/** Strapi REST v4: `{ data: { id, attributes } }` ή `{ id, attributes }` → κόμβος εγγραφής. */
+function unwrapStrapiRelationNode(rel: unknown): unknown {
   if (rel == null || typeof rel !== "object") return null;
   const o = rel as Record<string, unknown>;
   if ("data" in o) {
     const d = o.data;
     if (d == null) return null;
-    const node = Array.isArray(d) ? d[0] : d;
-    if (!node || typeof node !== "object") return null;
-    const n = node as Record<string, unknown>;
-    if (n.attributes && typeof n.attributes === "object") return n.attributes as Record<string, unknown>;
-    return n;
+    return Array.isArray(d) ? (d[0] ?? null) : d;
   }
-  if (o.attributes && typeof o.attributes === "object") return o.attributes as Record<string, unknown>;
-  return o;
+  return rel;
+}
+
+/** Strapi REST v4: σχέση ως επίπεδο αντικείμενο ή ως `{ data: { attributes } }` */
+function strapiRelationAttrs(rel: unknown): Record<string, unknown> | null {
+  const node = unwrapStrapiRelationNode(rel);
+  if (node == null || typeof node !== "object") return null;
+  const n = node as Record<string, unknown>;
+  if (n.attributes && typeof n.attributes === "object") return n.attributes as Record<string, unknown>;
+  return n;
 }
 
 function strapiRelationNumericId(rel: unknown): number | undefined {

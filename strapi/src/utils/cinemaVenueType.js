@@ -7,8 +7,10 @@ const LEGACY_VENUE_TYPE_TO_ENUM = {
   'Σινεμά': 'cinema',
   'σινεμά': 'cinema',
   'Θέατρο': 'theater',
-  'Μουσική Σκηνή': 'theater',
-  'Πολυχώρος': 'theater',
+  'Μουσική Σκηνή': 'other',
+  'Πολυχώρος': 'other',
+  'Άλλο': 'other',
+  'άλλο': 'other',
 };
 
 function isCinemaVenue(venue) {
@@ -23,10 +25,10 @@ function cinemaVenueTypeFilter() {
   return { type: { $in: CINEMA_TYPE_VALUES } };
 }
 
-/** Μία φορά: παλιές ελληνικές ετικέτες → cinema / theater (χωρίς validation). */
+/** Παλιές ελληνικές ετικέτες → cinema / theater / other (χωρίς validation). */
 async function migrateLegacyVenueTypes(strapi) {
   const store = strapi.store({ type: 'plugin', name: 'whatson-venue-types' });
-  if (await store.get({ key: 'migrated' })) return;
+  if (await store.get({ key: 'migratedV2' })) return;
 
   let updated = 0;
   for (const [from, to] of Object.entries(LEGACY_VENUE_TYPE_TO_ENUM)) {
@@ -42,9 +44,9 @@ async function migrateLegacyVenueTypes(strapi) {
       updated += 1;
     }
   }
-  await store.set({ key: 'migrated', value: true });
+  await store.set({ key: 'migratedV2', value: true });
   if (updated > 0) {
-    strapi.log.info(`[whatson] venue type migration: ${updated} εγγραφές → cinema/theater`);
+    strapi.log.info(`[whatson] venue type migration: ${updated} εγγραφές → cinema/theater/other`);
   }
 }
 

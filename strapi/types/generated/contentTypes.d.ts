@@ -1062,7 +1062,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
       'oneToMany',
       'api::theater-show.theater-show'
     >;
-    type: Attribute.Enumeration<['cinema', 'theater']> &
+    type: Attribute.Enumeration<['cinema', 'theater', 'other']> &
       Attribute.Required &
       Attribute.DefaultTo<'cinema'>;
     updated: Attribute.Boolean & Attribute.Private & Attribute.DefaultTo<false>;
