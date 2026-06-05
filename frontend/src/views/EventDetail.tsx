@@ -643,7 +643,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           <div
             className={cn(
               "animate-fade-in-up",
-              isMovie && movie?.posterUrl
+              (isMovie && movie?.posterUrl) || (!isMovie && theaterShow?.posterUrl)
                 ? "flex flex-col gap-8 md:flex-row md:items-end md:justify-between md:gap-10 lg:gap-14"
                 : "flex h-full items-end",
             )}
@@ -651,7 +651,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             <div
               className={cn(
                 "min-w-0 max-w-3xl",
-                isMovie && movie?.posterUrl ? "md:flex-1 md:pb-1" : "",
+                (isMovie && movie?.posterUrl) || (!isMovie && theaterShow?.posterUrl) ? "md:flex-1 md:pb-1" : "",
               )}
             >
             <Link to={isMovie ? "/movies" : "/theater"} className="inline-flex items-center gap-1 text-sm text-white/50 hover:text-white transition-colors mb-4">
@@ -782,6 +782,22 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     className="h-full w-full object-contain object-center"
                   />
                   <MoviePosterMeta movie={movie} />
+                </div>
+              </figure>
+            ) : !isMovie && theaterShow?.posterUrl ? (
+              <figure className="mx-auto w-full max-w-[18.5rem] shrink-0 sm:max-w-[20rem] md:mx-0 md:max-w-[22rem] lg:max-w-[26rem]">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={theaterShow.posterUrl}
+                    alt={posterAltForTheater(theaterShow.title)}
+                    width={1040}
+                    height={780}
+                    fetchPriority="high"
+                    loading="eager"
+                    decoding="async"
+                    className="h-full w-full object-contain object-center p-1"
+                  />
                 </div>
               </figure>
             ) : null}

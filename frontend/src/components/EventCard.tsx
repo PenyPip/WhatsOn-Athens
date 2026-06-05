@@ -141,7 +141,7 @@ const EventCard = ({
         <div
           className={cn(
             "relative shrink-0 overflow-hidden",
-            landscapePoster ? "aspect-[3/2] bg-[#ebe8f2]" : "aspect-[2/3]",
+            landscapePoster ? "aspect-[4/3] bg-[#ebe8f2]" : "aspect-[2/3]",
             !posterUrl && !showGradientFallback && !landscapePoster && "bg-secondary",
             !posterUrl && !showGradientFallback && landscapePoster && "bg-[#ebe8f2]",
           )}
@@ -160,13 +160,13 @@ const EventCard = ({
               fetchPriority={posterPriority ? "high" : undefined}
               sizes={
                 landscapePoster
-                  ? "(max-width: 640px) 72vw, (max-width: 1024px) 36vw, 304px"
+                  ? "(max-width: 640px) 82vw, (max-width: 1024px) 42vw, 360px"
                   : "(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 200px"
               }
               className={cn(
                 "h-full w-full transition-transform duration-500",
                 landscapePoster
-                  ? "object-contain object-center p-1.5 group-hover:scale-[1.02]"
+                  ? "object-contain object-center p-0.5 group-hover:scale-[1.02]"
                   : "object-cover group-hover:scale-105",
               )}
             />
