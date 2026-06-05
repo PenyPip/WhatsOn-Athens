@@ -143,8 +143,8 @@ const EventCard = ({
             "relative flex shrink-0 items-center justify-center overflow-hidden bg-[#ebe8f2]",
             landscapePoster
               ? theaterHomeCompact || darkSectionCard
-                ? "aspect-[4/3]"
-                : "aspect-[4/3] max-h-44 sm:max-h-48"
+                ? "aspect-[4/3] max-h-36 sm:max-h-40"
+                : "aspect-[4/3] max-h-32 sm:max-h-36"
               : "aspect-[2/3] bg-secondary",
             !posterUrl && !showGradientFallback && !landscapePoster && "bg-secondary",
             !posterUrl && !showGradientFallback && landscapePoster && "bg-[#ebe8f2]",

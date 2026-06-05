@@ -584,7 +584,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                       {[0, 1, 2, 3].map((i) => (
                         <div
                           key={i}
-                          className="h-[12.5rem] w-[18.5rem] shrink-0 animate-pulse rounded-lg bg-white/10 md:h-[14rem] md:w-[21rem]"
+                          className="h-[10.5rem] w-[15rem] shrink-0 animate-pulse rounded-lg bg-white/10 md:h-[11.5rem] md:w-[17rem]"
                         />
                       ))}
                     </div>
@@ -626,7 +626,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               badge={show.soldOut ? "SOLD OUT" : "Περιοδεία"}
                               compactMovieMeta
                               darkSectionCard
-                              className="w-[18.5rem] md:w-[21rem]"
+                              className="w-[15rem] md:w-[17rem]"
                               index={i}
                             />
                           </li>
