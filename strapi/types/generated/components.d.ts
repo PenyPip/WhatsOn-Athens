@@ -61,7 +61,17 @@ export interface NavigationNavItem extends Schema.Component {
   };
   attributes: {
     icon: Attribute.Enumeration<
-      ['home', 'film', 'theater', 'dining', 'venues', 'user', 'none']
+      [
+        'home',
+        'film',
+        'theater',
+        'dining',
+        'venues',
+        'articles',
+        'events',
+        'user',
+        'none'
+      ]
     > &
       Attribute.DefaultTo<'none'>;
     label: Attribute.String & Attribute.Required;

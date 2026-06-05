@@ -1,5 +1,14 @@
 /** Εικονίδιο για κάτω μπάρα κινητού (Lucide). */
-export type NavIconKey = "home" | "film" | "theater" | "dining" | "venues" | "user" | "none";
+export type NavIconKey =
+  | "home"
+  | "film"
+  | "theater"
+  | "dining"
+  | "venues"
+  | "articles"
+  | "events"
+  | "user"
+  | "none";
 
 export type NavLinkItem = {
   label: string;
@@ -23,6 +32,8 @@ export const DEFAULT_SITE_NAVIGATION: MappedSiteNavigation = {
     { label: "Θέατρο", path: "/theater", icon: "theater", showOnDesktop: true, showOnMobileTab: true },
     { label: "Φαγητό", path: "/dining", icon: "dining", showOnDesktop: true, showOnMobileTab: true },
     { label: "Χώροι", path: "/venues", icon: "venues", showOnDesktop: true, showOnMobileTab: true },
+    { label: "Άρθρα", path: "/articles", icon: "articles", showOnDesktop: true, showOnMobileTab: false },
+    { label: "Events", path: "/events", icon: "events", showOnDesktop: true, showOnMobileTab: false },
   ],
   mobileTabLinks: [
     { label: "Ταινίες", path: "/movies", icon: "film", showOnDesktop: false, showOnMobileTab: true },

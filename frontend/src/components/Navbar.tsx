@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef } from "react";
+import { lazy, Suspense, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useIdleMount } from "@/hooks/useIdleMount";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
@@ -8,6 +8,7 @@ import { useSiteNavigationData } from "@/hooks/useStrapi";
 import { isNavLinkActive } from "@/lib/navigation";
 import { navIconComponent } from "@/lib/navIcons";
 import type { NavSearchHandle } from "@/components/GlobalSearch";
+import MobileNavDrawer, { MobileNavMenuButton } from "@/components/MobileNavDrawer";
 import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 
 const NavSearch = lazy(() =>
@@ -67,6 +68,7 @@ function BrandLogo({ compact = false, tagline }: { compact?: boolean; tagline: s
 
 const Navbar = () => {
   const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileSearchRef = useRef<NavSearchHandle>(null);
   const desktopSearchRef = useRef<NavSearchHandle>(null);
   const deferNav = useDeferUntilLcpDone();
@@ -132,8 +134,17 @@ const Navbar = () => {
           ) : (
             <NavSearchFallback className="h-9 min-w-0 flex-1" />
           )}
+          <MobileNavMenuButton onClick={() => setMobileMenuOpen(true)} />
         </div>
       </nav>
+
+      <MobileNavDrawer
+        open={mobileMenuOpen}
+        onOpenChange={setMobileMenuOpen}
+        links={desktopLinks}
+        pathname={location.pathname}
+        brandTagline={nav.brandTagline}
+      />
 
       <nav className="fixed top-0 left-0 right-0 z-[60] hidden md:block" style={{ background: NAV_GRADIENT }}>
         <div className="container flex h-28 items-center gap-4">

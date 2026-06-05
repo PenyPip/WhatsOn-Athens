@@ -5,7 +5,17 @@ import {
   type NavLinkItem,
 } from "@/config/navigation";
 
-const NAV_ICON_KEYS = new Set<NavIconKey>(["home", "film", "theater", "dining", "venues", "user", "none"]);
+const NAV_ICON_KEYS = new Set<NavIconKey>([
+  "home",
+  "film",
+  "theater",
+  "dining",
+  "venues",
+  "articles",
+  "events",
+  "user",
+  "none",
+]);
 
 function normalizeNavIcon(raw: unknown): NavIconKey {
   const k = typeof raw === "string" ? raw.trim().toLowerCase() : "";

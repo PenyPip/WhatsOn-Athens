@@ -16,7 +16,7 @@
     },
     "icon": {
       "type": "enumeration",
-      "enum": ["home", "film", "theater", "dining", "venues", "user", "none"],
+      "enum": ["home", "film", "theater", "dining", "venues", "articles", "events", "user", "none"],
       "default": "none"
     },
     "show_on_desktop": {

@@ -1,7 +1,9 @@
 import {
   Building2,
+  CalendarDays,
   Film,
   Home,
+  Newspaper,
   Theater,
   User,
   UtensilsCrossed,
@@ -15,6 +17,8 @@ const NAV_ICONS: Record<NavIconKey, LucideIcon | null> = {
   theater: Theater,
   dining: UtensilsCrossed,
   venues: Building2,
+  articles: Newspaper,
+  events: CalendarDays,
   user: User,
   none: null,
 };
