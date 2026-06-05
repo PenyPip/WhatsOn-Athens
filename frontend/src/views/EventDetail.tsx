@@ -664,8 +664,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </Link>
 
             {!isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto mb-2 w-full max-w-[18.5rem] shrink-0 sm:max-w-[20rem] md:hidden">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
+              <figure className="mx-auto mb-2 w-full max-w-[14rem] shrink-0 sm:max-w-[16rem] md:hidden">
+                <div className="relative flex aspect-[4/3] max-h-44 items-center justify-center overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={theaterShow.posterUrl}
@@ -675,7 +675,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     fetchPriority="high"
                     loading="eager"
                     decoding="async"
-                    className="h-full w-full object-cover object-top"
+                    className="max-h-full max-w-full object-contain object-center"
                   />
                 </div>
               </figure>
@@ -809,8 +809,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </div>
               </figure>
             ) : !isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto hidden w-full max-w-[18.5rem] shrink-0 sm:max-w-[20rem] md:mx-0 md:block md:max-w-[22rem] lg:max-w-[26rem]">
-                <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
+              <figure className="mx-auto hidden w-full max-w-[14rem] shrink-0 sm:max-w-[16rem] md:mx-0 md:block md:max-w-[18rem] lg:max-w-[20rem]">
+                <div className="relative flex aspect-[4/3] max-h-52 items-center justify-center overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20 lg:max-h-56">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={theaterShow.posterUrl}
@@ -820,7 +820,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     fetchPriority="high"
                     loading="eager"
                     decoding="async"
-                    className="h-full w-full object-cover object-top"
+                    className="max-h-full max-w-full object-contain object-center"
                   />
                 </div>
               </figure>
