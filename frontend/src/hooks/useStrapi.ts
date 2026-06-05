@@ -171,6 +171,16 @@ export const useEvents = (enabled = true, limit = 6) =>
     enabled,
   });
 
+export const useEventBySlug = (slug: string) =>
+  useQuery({
+    queryKey: ["event", slug],
+    queryFn: () => api.getEventBySlug(slug),
+    ...CONTENT_QUERY_OPTIONS,
+    enabled: !!slug,
+    retry: 1,
+    throwOnError: false,
+  });
+
 export const useShowtimes = (enabled = true, venueSlug?: string) =>
   useQuery({
     queryKey: ["showtimes", venueSlug ?? ""],

@@ -55,6 +55,11 @@ export function eventDisplayTitle(event: Pick<StrapiEvent, "titleEl" | "titleEn"
   return event.titleEn?.trim() ?? "";
 }
 
+export function eventPath(slug: string): string {
+  const s = slug.trim();
+  return s ? `/events/${encodeURIComponent(s)}` : "/events";
+}
+
 export function eventSecondaryTitle(event: Pick<StrapiEvent, "titleEl" | "titleEn">): string | undefined {
   const en = event.titleEn?.trim();
   const el = event.titleEl?.trim();

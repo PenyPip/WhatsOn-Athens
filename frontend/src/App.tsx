@@ -19,6 +19,8 @@ const Reviews = lazy(() => import(/* webpackChunkName: "reviews" */ "./views/Rev
 const ReviewDetail = lazy(() => import(/* webpackChunkName: "review-detail" */ "./views/ReviewDetail"));
 const Articles = lazy(() => import(/* webpackChunkName: "articles" */ "./views/Articles"));
 const ArticleDetail = lazy(() => import(/* webpackChunkName: "article-detail" */ "./views/ArticleDetail"));
+const Events = lazy(() => import(/* webpackChunkName: "events" */ "./views/Events"));
+const CulturalEventDetail = lazy(() => import(/* webpackChunkName: "cultural-event-detail" */ "./views/CulturalEventDetail"));
 const Privacy = lazy(() => import(/* webpackChunkName: "privacy" */ "./views/Privacy"));
 const Profile = lazy(() => import(/* webpackChunkName: "profile" */ "./views/Profile"));
 const NotFound = lazy(() => import(/* webpackChunkName: "not-found" */ "./views/NotFound"));
@@ -51,6 +53,8 @@ function AppRoutes() {
       <Route path="/reviews/:slug" element={<LazyPage><ReviewDetail /></LazyPage>} />
       <Route path="/articles" element={<LazyPage><Articles /></LazyPage>} />
       <Route path="/articles/:slug" element={<LazyPage><ArticleDetail /></LazyPage>} />
+      <Route path="/events" element={<LazyPage><Events /></LazyPage>} />
+      <Route path="/events/:slug" element={<LazyPage><CulturalEventDetail /></LazyPage>} />
       <Route path="/profile" element={<LazyPage><Profile /></LazyPage>} />
       <Route path="/privacy" element={<LazyPage><Privacy /></LazyPage>} />
       <Route path="*" element={<LazyPage><NotFound /></LazyPage>} />

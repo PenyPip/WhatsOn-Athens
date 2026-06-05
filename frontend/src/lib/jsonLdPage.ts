@@ -41,6 +41,7 @@ const SECTION_LABELS: Record<string, string> = {
   dining: staticPageSeo.dining.title,
   reviews: staticPageSeo.reviews.title,
   articles: staticPageSeo.articles.title,
+  events: staticPageSeo.events.title,
   privacy: staticPageSeo.privacy.title,
 };
 
@@ -58,6 +59,7 @@ export function seoCopyForPath(path: string): { title: string; description: stri
     "/dining": staticPageSeo.dining,
     "/reviews": staticPageSeo.reviews,
     "/articles": staticPageSeo.articles,
+    "/events": staticPageSeo.events,
     "/privacy": staticPageSeo.privacy,
   };
   if (staticByPath[normalized]) {
@@ -99,6 +101,12 @@ export function seoCopyForPath(path: string): { title: string; description: stri
       return {
         title: name,
         description: truncateDescription(`Άρθρο: ${name} — ${siteSeo.siteName}.`),
+      };
+    }
+    if (section === "events") {
+      return {
+        title: name,
+        description: truncateDescription(`Εκδήλωση: ${name} — ${siteSeo.siteName}.`),
       };
     }
     return {
@@ -243,6 +251,22 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
         mainEntityOfPage: { "@id": `${pageUrl}#webpage` },
       }),
     ];
+  }
+  if (parts[0] === "events" && parts.length >= 2) {
+    const hit = crawlEntityByPath(path);
+    const ev = hit?.kind === "culturalEvent" ? hit.entity : null;
+    const poster = ev?.posterUrl ? resolvePublicAssetUrl(ev.posterUrl) : undefined;
+    return stripEmpty({
+      "@type": "Event",
+      "@id": `${pageUrl}#event`,
+      name: ev?.title ?? pageName,
+      url: pageUrl,
+      inLanguage: "el-GR",
+      eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
+      eventStatus: "https://schema.org/EventScheduled",
+      ...(poster ? { image: poster } : {}),
+      ...(ev?.synopsis?.trim() ? { description: truncateDescription(ev.synopsis.trim()) } : {}),
+    });
   }
   if (path === "/privacy") {
     return stripEmpty({

@@ -36,6 +36,14 @@ export type CrawlTheaterShow = {
 };
 export type CrawlRestaurant = { path: string; slug: string; title: string; posterUrl?: string };
 export type CrawlReview = { path: string; slug: string; title: string; posterUrl?: string };
+export type CrawlCulturalEvent = {
+  path: string;
+  slug: string;
+  title: string;
+  posterUrl?: string;
+  synopsis?: string;
+  metaDescription?: string;
+};
 
 const data = crawlData as {
   genres: CrawlGenre[];
@@ -44,6 +52,7 @@ const data = crawlData as {
   theaterShows?: CrawlTheaterShow[];
   restaurants?: CrawlRestaurant[];
   reviews?: CrawlReview[];
+  culturalEvents?: CrawlCulturalEvent[];
 };
 
 export const crawlEnrichment = {
@@ -53,6 +62,7 @@ export const crawlEnrichment = {
   theaterShows: data.theaterShows ?? [],
   restaurants: data.restaurants ?? [],
   reviews: data.reviews ?? [],
+  culturalEvents: data.culturalEvents ?? [],
 };
 
 function normalizePath(path: string): string {
@@ -65,6 +75,7 @@ export function crawlEntityByPath(path: string):
   | { kind: "theater"; entity: CrawlTheaterShow }
   | { kind: "restaurant"; entity: CrawlRestaurant }
   | { kind: "review"; entity: CrawlReview }
+  | { kind: "culturalEvent"; entity: CrawlCulturalEvent }
   | null {
   const p = normalizePath(path);
   const movie = crawlEnrichment.movies.find((m) => m.path === p);
@@ -75,6 +86,8 @@ export function crawlEntityByPath(path: string):
   if (restaurant) return { kind: "restaurant", entity: restaurant };
   const review = crawlEnrichment.reviews.find((r) => r.path === p);
   if (review) return { kind: "review", entity: review };
+  const culturalEvent = crawlEnrichment.culturalEvents.find((e) => e.path === p);
+  if (culturalEvent) return { kind: "culturalEvent", entity: culturalEvent };
   return null;
 }
 
@@ -155,6 +168,14 @@ export function crawlSeoCopyForPath(path: string): { title: string; description:
       title: hit.entity.title,
       description: truncateDescription(`${hit.entity.title} — εστιατόριο και τοποθεσία.`),
     };
+  }
+  if (hit.kind === "culturalEvent") {
+    const e = hit.entity;
+    const desc =
+      e.metaDescription?.trim() ||
+      e.synopsis?.trim() ||
+      `Εκδήλωση ${e.title} — πληροφορίες, χώρος και εισιτήρια.`;
+    return { title: e.title, description: truncateDescription(desc) };
   }
   return {
     title: hit.entity.title,

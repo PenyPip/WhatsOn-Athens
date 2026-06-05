@@ -33,6 +33,7 @@ import {
 import { resolveImdbRating } from "@/lib/movieImdb";
 import {
   eventDisplayTitle,
+  eventPath,
   eventTypeLabels,
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
@@ -778,7 +779,10 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                     <ul className="mt-6 grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Events">
                       {latestEvents.map((event) => (
                         <li key={`${event.id}-${event.slug}`}>
-                          <article className="flex h-full gap-4 rounded-xl border border-border/70 bg-background/85 p-4">
+                          <Link
+                            to={eventPath(event.slug)}
+                            className="group flex h-full gap-4 rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background"
+                          >
                             {event.posterUrl ? (
                               <img
                                 src={event.posterUrl}
@@ -797,7 +801,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               <p className="mt-1 text-[11px] text-muted-foreground/90">
                                 {formatEventScheduleLine(event)}
                               </p>
-                              <h3 className="mt-1.5 font-display text-lg font-semibold leading-tight text-foreground">
+                              <h3 className="mt-1.5 font-display text-lg font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
                                 {eventDisplayTitle(event)}
                               </h3>
                               {event.venue?.name ? (
@@ -810,21 +814,19 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                                   {event.synopsisEl}
                                 </p>
                               ) : null}
-                              {event.ticketUrl ? (
-                                <a
-                                  href={event.ticketUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="mt-2 inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85"
-                                >
-                                  Εισιτήρια
-                                </a>
-                              ) : null}
                             </div>
-                          </article>
+                          </Link>
                         </li>
                       ))}
                     </ul>
+                    <div className="mt-5 text-center">
+                      <Link
+                        to="/events"
+                        className="inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
+                      >
+                        Όλα τα Events
+                      </Link>
+                    </div>
                   </div>
                 </section>
               ),

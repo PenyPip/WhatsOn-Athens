@@ -41,6 +41,11 @@ function matchArticleSlug(path: string): string | null {
   return m?.[1] ?? null;
 }
 
+function matchCulturalEventSlug(path: string): string | null {
+  const m = path.match(/^\/events\/([^/]+)$/);
+  return m?.[1] ?? null;
+}
+
 function matchMoviesVenueSlug(path: string): string | null {
   const m = path.match(/^\/movies\/venue\/([^/]+)$/);
   return m?.[1] ?? null;
@@ -139,6 +144,7 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
     const diningSlug = matchDiningSlug(normalized);
     const reviewSlug = matchReviewSlug(normalized);
     const articleSlug = matchArticleSlug(normalized);
+    const culturalEventSlug = matchCulturalEventSlug(normalized);
 
     if (normalized === "/") {
       await prefetchHomeBundle(qc);
@@ -180,6 +186,17 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
       ]);
     } else if (normalized === "/articles") {
       await qc.prefetchQuery({ queryKey: ["articles", 100], queryFn: () => api.getArticles(100) });
+    } else if (normalized === "/events") {
+      await qc.prefetchQuery({ queryKey: ["events", 200], queryFn: () => api.getEvents(200), ...queryDefaults });
+    } else if (culturalEventSlug) {
+      await Promise.all([
+        qc.prefetchQuery({
+          queryKey: ["event", culturalEventSlug],
+          queryFn: () => api.getEventBySlug(culturalEventSlug),
+          ...queryDefaults,
+        }),
+        qc.prefetchQuery({ queryKey: ["events", 50], queryFn: () => api.getEvents(50), ...queryDefaults }),
+      ]);
     } else if (articleSlug) {
       await Promise.all([
         qc.prefetchQuery({

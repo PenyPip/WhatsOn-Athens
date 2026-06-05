@@ -91,6 +91,12 @@
     <priority>0.6</priority>
   </url>
   <url>
+    <loc>https://the37n.gr/events</loc>
+    <lastmod>2026-06-05</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
     <loc>https://the37n.gr/privacy</loc>
     <lastmod>2026-06-05</lastmod>
     <changefreq>yearly</changefreq>

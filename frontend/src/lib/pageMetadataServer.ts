@@ -22,7 +22,7 @@ export function buildMetadataForPath(path: string): Metadata {
   const ogImageAbsolute = resolvePublicAssetUrl(posterUrl) ?? resolvePublicAssetUrl(siteSeo.ogImagePath);
   const isDetailWithPoster =
     /^\/(movies|theater|dining)\/[^/]+/.test(normalized) ||
-    /^\/(reviews|articles)\/[^/]+/.test(normalized);
+    /^\/(reviews|articles|events)\/[^/]+/.test(normalized);
   const imageSize = isDetailWithPoster && posterUrl ? posterOgImageSize : { width: 1200, height: 630 };
   const ogAlt = posterUrl ? `${title} — αφίσα` : siteSeo.ogImageAlt;
 

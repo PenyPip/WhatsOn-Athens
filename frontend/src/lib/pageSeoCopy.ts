@@ -79,6 +79,11 @@ export const staticPageSeo = {
     description: "Όλα τα άρθρα, συγκρίσεις και πολιτιστικά κείμενα του 37Ν.",
     path: "/articles",
   },
+  events: {
+    title: "Events",
+    description: "Πολιτιστικές εκδηλώσεις στην Αθήνα — κινηματογράφος, θέατρο, μουσική, τέχνη και περισσότερα.",
+    path: "/events",
+  },
   privacy: {
     title: "Απόρρητο & cookies",
     description: "Πολιτική απορρήτου, cookies και διαφημίσεων του 37Ν.",

@@ -1684,6 +1684,16 @@ export const api = {
       "pagination[pageSize]": String(Math.max(1, limit)),
     }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapEvent(x))),
 
+  getEventBySlug: (slug: string) =>
+    fetchAPI<any[]>("/events", {
+      ...EVENT_PUBLIC_QUERY,
+      "filters[slug][$eq]": slug,
+      "pagination[pageSize]": "1",
+    }).then((d) => {
+      const row = Array.isArray(d) ? d[0] : undefined;
+      return row ? mapEvent(row) : undefined;
+    }),
+
   getShowtimes: (options?: { venueSlug?: string }) => {
     const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";
     if (venueSlug) {

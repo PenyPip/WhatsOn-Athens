@@ -1,5 +1,5 @@
 import type { StrapiArticle } from "@/lib/api";
-import { eventDisplayTitle } from "@/lib/eventLabels";
+import { eventDisplayTitle, eventPath } from "@/lib/eventLabels";
 
 export type ArticleRelatedKind = "movie" | "theater" | "event";
 
@@ -44,6 +44,15 @@ export function resolveArticleRelatedListLabel(article: StrapiArticle): string |
   if (theater) return theater;
   const movie = article.relatedMovie?.title?.trim();
   if (movie) return movie;
-  const eventTitle = article.relatedEvent ? eventDisplayTitle(article.relatedEvent) : "";
-  return eventTitle || undefined;
+  const ev = article.relatedEvent;
+  if (ev) {
+    const eventTitle = eventDisplayTitle(ev);
+    if (eventTitle) return eventTitle;
+  }
+  return undefined;
+}
+
+export function resolveArticleRelatedEventHref(article: StrapiArticle): string | undefined {
+  const slug = article.relatedEvent?.slug?.trim();
+  return slug ? eventPath(slug) : undefined;
 }

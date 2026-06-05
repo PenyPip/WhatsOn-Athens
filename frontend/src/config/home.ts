@@ -12,9 +12,9 @@ export const HOME_SECTION_IDS = [
   "summer_cinema",
   "summer_venues",
   "tours",
-  "events",
   "new_movies",
   "new_articles",
+  "events",
   "movies_week",
   "coming_soon",
   "dining",
@@ -31,9 +31,25 @@ export const FALLBACK_SECTIONS: HomeSectionId[] = [
   "summer_cinema",
   "summer_venues",
   "tours",
+  "new_articles",
+  "events",
   "dining",
   "newsletter",
 ];
+
+/** Events εμφανίζονται πάντα αμέσως μετά τα άρθρα όταν υπάρχει μπλοκ new_articles. */
+function ensureEventsAfterArticles(sections: HomeSectionId[]): HomeSectionId[] {
+  const articlesIdx = sections.indexOf("new_articles");
+  if (articlesIdx === -1) return sections;
+
+  const withoutEvents = sections.filter((id) => id !== "events");
+  const anchor = withoutEvents.indexOf("new_articles");
+  if (anchor === -1) return sections;
+
+  const next = [...withoutEvents];
+  next.splice(anchor + 1, 0, "events");
+  return next;
+}
 
 /** Παλιά κλειδιά πριν το split σε summer_cinema / tours */
 const LEGACY_SECTION_MAP: Record<string, HomeSectionId> = {
@@ -62,10 +78,8 @@ export interface ResolvedHomepageLayout extends MappedHomepage {}
 
 /** Ενοποίηση: κενές λίστες ή null → προεπιλογές */
 export function resolveHomepageLayout(mapped: MappedHomepage | null): ResolvedHomepageLayout {
-  if (!mapped?.sections.length) {
-    return { sections: [...FALLBACK_SECTIONS] };
-  }
-  return { sections: mapped.sections };
+  const base = mapped?.sections.length ? mapped.sections : [...FALLBACK_SECTIONS];
+  return { sections: ensureEventsAfterArticles(base) };
 }
 
 export function layoutShowsHero(layout: ResolvedHomepageLayout): boolean {
