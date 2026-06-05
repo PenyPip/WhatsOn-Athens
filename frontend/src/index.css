@@ -40,6 +40,7 @@
 @layer base {
   :root {
     --mobile-tab-bar-h: 3.5rem;
+    --mobile-safe-bottom-fixed: 0px;
     --background: 240 30% 97%;
     --foreground: 240 50% 12%;
 
@@ -194,7 +195,7 @@
     transform: translate(-50%, -50%);
   }
 
-  /** Κάτω tab bar — σταθερό ύψος, πάντα bottom:0 (χωρίς δυναμικό inset). */
+  /** Κάτω tab bar — σταθερό ύψος (safe-area κλειδωμένο στο --mobile-safe-bottom-fixed). */
   .mobile-bottom-nav {
     position: fixed;
     left: 0;
@@ -202,12 +203,11 @@
     bottom: 0;
     z-index: 70;
     width: 100%;
-    max-width: 100vw;
     box-sizing: border-box;
-    height: calc(var(--mobile-tab-bar-h) + env(safe-area-inset-bottom, 0px));
-    min-height: calc(var(--mobile-tab-bar-h) + env(safe-area-inset-bottom, 0px));
-    max-height: calc(var(--mobile-tab-bar-h) + env(safe-area-inset-bottom, 0px));
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    height: calc(var(--mobile-tab-bar-h) + var(--mobile-safe-bottom-fixed));
+    min-height: calc(var(--mobile-tab-bar-h) + var(--mobile-safe-bottom-fixed));
+    max-height: calc(var(--mobile-tab-bar-h) + var(--mobile-safe-bottom-fixed));
+    padding-bottom: var(--mobile-safe-bottom-fixed);
     border-top: 1px solid rgba(141, 47, 143, 0.35);
     background: linear-gradient(
       95deg,
@@ -219,7 +219,9 @@
       #13143e 100%
     );
     pointer-events: auto;
-    contain: layout size style;
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
     overflow: hidden;
   }
 

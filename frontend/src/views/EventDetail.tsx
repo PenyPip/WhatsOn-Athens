@@ -608,7 +608,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       <section
         className={cn(
           "relative overflow-hidden bg-[#13143E]",
-          isMovie ? "md:min-h-[min(52vh,640px)]" : "min-h-[50vh]",
+          isMovie || theaterShow?.posterUrl
+            ? "md:min-h-[min(52vh,640px)]"
+            : "min-h-[50vh]",
         )}
       >
         {isMovie && movie?.posterUrl ? (
@@ -639,12 +641,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-[#13143E]/75 to-[#13143E]/35" />
 
-        <div className="relative z-10 container pb-8 pt-20 md:pb-12 md:pt-32 lg:pt-36">
+        <div className="relative z-10 container pb-6 pt-20 md:pb-10 md:pt-32 lg:pt-36">
           <div
             className={cn(
               "animate-fade-in-up",
               (isMovie && movie?.posterUrl) || (!isMovie && theaterShow?.posterUrl)
-                ? "flex flex-col gap-8 md:flex-row md:items-end md:justify-between md:gap-10 lg:gap-14"
+                ? "flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-10 lg:gap-14"
                 : "flex h-full items-end",
             )}
           >
@@ -805,7 +807,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         </div>
       </section>
 
-      <div className="container mt-8 space-y-10 md:mt-10 md:space-y-12">
+      <div
+        className={cn(
+          "container space-y-10 md:space-y-12",
+          isMovie ? "mt-8 md:mt-10" : "mt-6 md:mt-8",
+        )}
+      >
         {isMovie ? (
           <>
             <section className="max-w-5xl animate-fade-in-up md:max-w-6xl">

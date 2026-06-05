@@ -79,7 +79,7 @@ function AppShell({ homeMainOverlap }: AppShellProps) {
       <Navbar />
       <main
         className={cn(
-          "min-h-screen max-md:pb-[calc(var(--mobile-tab-bar-h)+env(safe-area-inset-bottom,0px))]",
+          "min-h-screen max-md:pb-[calc(var(--mobile-tab-bar-h)+var(--mobile-safe-bottom-fixed))]",
           overlapHome ? "home-main-overlap" : "max-md:pt-16 md:pt-28",
         )}
       >

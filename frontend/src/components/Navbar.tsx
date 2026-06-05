@@ -2,6 +2,7 @@ import { lazy, Suspense, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useIdleMount } from "@/hooks/useIdleMount";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
+import { useStableMobileSafeArea } from "@/hooks/useStableMobileSafeArea";
 import { Link, useLocation } from "react-router-dom";
 import { User } from "lucide-react";
 import { useSiteNavigationData } from "@/hooks/useStrapi";
@@ -73,6 +74,7 @@ const Navbar = () => {
   const desktopSearchRef = useRef<NavSearchHandle>(null);
   const deferNav = useDeferUntilLcpDone();
   const showSearch = useIdleMount(2500);
+  useStableMobileSafeArea();
   const nav = useSiteNavigationData(deferNav);
 
   const desktopLinks = nav.desktopLinks;
