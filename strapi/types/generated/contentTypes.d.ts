@@ -525,6 +525,7 @@ export interface ApiEditorialReviewEditorialReview
 export interface ApiEventEvent extends Schema.CollectionType {
   collectionName: 'events';
   info: {
+    description: '\u03A0\u03BF\u03BB\u03B9\u03C4\u03B9\u03C3\u03C4\u03B9\u03BA\u03AD\u03C2 \u03B5\u03BA\u03B4\u03B7\u03BB\u03CE\u03C3\u03B5\u03B9\u03C2 \u2014 \u03C0\u03BB\u03AE\u03C1\u03B7 \u03C3\u03C4\u03BF\u03B9\u03C7\u03B5\u03AF\u03B1, \u03C3\u03CD\u03BD\u03B4\u03B5\u03C3\u03B7 \u03BC\u03B5 \u03AC\u03C1\u03B8\u03C1\u03B1 \u03BA\u03B1\u03B9 featured picks.';
     displayName: 'Event';
     pluralName: 'events';
     singularName: 'event';
@@ -545,13 +546,31 @@ export interface ApiEventEvent extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    editorial_note_el: Attribute.Text;
+    editorial_note_en: Attribute.Text;
     end_date: Attribute.Date;
-    name: Attribute.String & Attribute.Required;
-    organizer: Attribute.String;
+    end_time: Attribute.Time;
+    event_type: Attribute.Enumeration<
+      ['cinema', 'theater', 'music', 'art', 'food', 'other']
+    > &
+      Attribute.Required &
+      Attribute.DefaultTo<'other'>;
+    featured: Attribute.Boolean & Attribute.DefaultTo<false>;
+    language_subtitles: Attribute.String;
+    meta_description: Attribute.String;
+    online_link: Attribute.String;
+    poster: Attribute.Media<'images'>;
     publishedAt: Attribute.DateTime;
-    slug: Attribute.UID<'api::event.event', 'name'> & Attribute.Required;
+    slug: Attribute.UID<'api::event.event', 'title_el'> & Attribute.Required;
     start_date: Attribute.Date;
+    start_time: Attribute.Time;
+    synopsis_el: Attribute.Text;
+    synopsis_en: Attribute.Text;
+    tags: Attribute.Component<'shared.article-tag', true>;
+    ticket_price: Attribute.Decimal;
     ticket_url: Attribute.String;
+    title_el: Attribute.String & Attribute.Required;
+    title_en: Attribute.String;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::event.event',
@@ -559,8 +578,11 @@ export interface ApiEventEvent extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
-    venue_address: Attribute.String;
-    venue_name: Attribute.String;
+    venue: Attribute.Relation<
+      'api::event.event',
+      'manyToOne',
+      'api::venue.venue'
+    >;
   };
 }
 
@@ -1010,6 +1032,11 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     day_prices: Attribute.Component<'cinema.day-price', true>;
     district: Attribute.Enumeration<
       ['center', 'north', 'south', 'west', 'east', 'piraeus', 'greater_other']
+    >;
+    events: Attribute.Relation<
+      'api::venue.venue',
+      'oneToMany',
+      'api::event.event'
     >;
     google_maps_url: Attribute.String;
     halls: Attribute.Relation<

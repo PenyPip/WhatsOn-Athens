@@ -31,6 +31,11 @@ import {
   formatUpcomingCinemaWeekRange,
 } from "@/lib/homeMovieFilters";
 import { resolveImdbRating } from "@/lib/movieImdb";
+import {
+  eventDisplayTitle,
+  eventTypeLabels,
+  formatEventScheduleLine,
+} from "@/lib/eventLabels";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
@@ -364,13 +369,13 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     return flagged.length > 0 ? flagged : all.slice(0, 12);
   }, [restaurants]);
   const latestArticles = useMemo(() => articles ?? [], [articles]);
-  const latestEvents = useMemo(() => events ?? [], [events]);
-
-  const formatEventDate = (raw: string): string => {
-    const d = new Date(raw);
-    if (!Number.isFinite(d.getTime())) return "Χωρίς ημερομηνία";
-    return d.toLocaleDateString("el-GR", { day: "numeric", month: "short" });
-  };
+  const latestEvents = useMemo(() => {
+    const list = events ?? [];
+    return [...list].sort((a, b) => {
+      if (a.featured !== b.featured) return a.featured ? -1 : 1;
+      return (a.startDate || "").localeCompare(b.startDate || "");
+    });
+  }, [events]);
   const summerVenuesForHome = useMemo(
     () => summerVenuesWithShowtimesOrAll(venueList, stList),
     [venueList, stList],
@@ -773,27 +778,49 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                     <ul className="mt-6 grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Events">
                       {latestEvents.map((event) => (
                         <li key={`${event.id}-${event.slug}`}>
-                          <article className="h-full rounded-xl border border-border/70 bg-background/85 p-4">
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/80">
-                              {formatEventDate(event.startDate)}
-                              {event.endDate ? ` — ${formatEventDate(event.endDate)}` : ""}
-                            </p>
-                            <h3 className="mt-2 font-display text-lg font-semibold leading-tight text-foreground">
-                              {event.name}
-                            </h3>
-                            {event.venueName ? (
-                              <p className="mt-2 line-clamp-1 text-sm leading-relaxed text-muted-foreground">{event.venueName}</p>
+                          <article className="flex h-full gap-4 rounded-xl border border-border/70 bg-background/85 p-4">
+                            {event.posterUrl ? (
+                              <img
+                                src={event.posterUrl}
+                                alt={eventDisplayTitle(event)}
+                                className="h-24 w-16 shrink-0 rounded-md object-cover ring-1 ring-border/40"
+                                loading="lazy"
+                              />
                             ) : null}
-                            {event.ticketUrl ? (
-                              <a
-                                href={event.ticketUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="mt-3 inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
-                              >
-                                Εισιτήρια
-                              </a>
-                            ) : null}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
+                                {eventTypeLabels[event.eventType]}
+                                {event.featured ? (
+                                  <span className="ml-2 text-[#7C2B76]">· Featured</span>
+                                ) : null}
+                              </p>
+                              <p className="mt-1 text-[11px] text-muted-foreground/90">
+                                {formatEventScheduleLine(event)}
+                              </p>
+                              <h3 className="mt-1.5 font-display text-lg font-semibold leading-tight text-foreground">
+                                {eventDisplayTitle(event)}
+                              </h3>
+                              {event.venue?.name ? (
+                                <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{event.venue.name}</p>
+                              ) : event.onlineLink ? (
+                                <p className="mt-1 text-sm text-muted-foreground">Online</p>
+                              ) : null}
+                              {event.synopsisEl ? (
+                                <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                  {event.synopsisEl}
+                                </p>
+                              ) : null}
+                              {event.ticketUrl ? (
+                                <a
+                                  href={event.ticketUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="mt-2 inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85"
+                                >
+                                  Εισιτήρια
+                                </a>
+                              ) : null}
+                            </div>
                           </article>
                         </li>
                       ))}

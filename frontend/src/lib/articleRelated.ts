@@ -1,4 +1,5 @@
 import type { StrapiArticle } from "@/lib/api";
+import { eventDisplayTitle } from "@/lib/eventLabels";
 
 export type ArticleRelatedKind = "movie" | "theater" | "event";
 
@@ -10,7 +11,7 @@ export type ArticleRelated = {
   sectionLabel: string;
 };
 
-/** Μία σχετική εγγραφή — προτεραιότητα: παράσταση → ταινία → (παλιό) event. */
+/** Σύντομο link ταινίας/παράστασης (όχι Event — αυτό έχει ξεχωριστό panel). */
 export function resolveArticleRelated(article: StrapiArticle): ArticleRelated | undefined {
   const theater = article.relatedTheaterShow;
   if (theater?.title?.trim() && theater.slug?.trim()) {
@@ -34,15 +35,15 @@ export function resolveArticleRelated(article: StrapiArticle): ArticleRelated | 
     };
   }
 
-  const event = article.relatedEvent;
-  if (event?.name?.trim()) {
-    return {
-      kind: "event",
-      title: event.name.trim(),
-      slug: event.slug?.trim() ?? "",
-      sectionLabel: "Σχετική εκδήλωση",
-    };
-  }
-
   return undefined;
+}
+
+/** Για λίστα άρθρων — τίτλος σχετικής εκδήλωσης αν υπάρχει. */
+export function resolveArticleRelatedListLabel(article: StrapiArticle): string | undefined {
+  const theater = article.relatedTheaterShow?.title?.trim();
+  if (theater) return theater;
+  const movie = article.relatedMovie?.title?.trim();
+  if (movie) return movie;
+  const eventTitle = article.relatedEvent ? eventDisplayTitle(article.relatedEvent) : "";
+  return eventTitle || undefined;
 }

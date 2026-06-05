@@ -92,6 +92,12 @@
       "relation": "oneToMany",
       "target": "api::showtime.showtime",
       "mappedBy": "venue"
+    },
+    "events": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::event.event",
+      "mappedBy": "venue"
     }
   }
 }

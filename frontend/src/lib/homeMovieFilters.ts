@@ -49,6 +49,22 @@ function stubNumericIdFromSlug(slug: string): number {
   return u === 0 ? 1 : u;
 }
 
+/** Συμπληρώνει διάρκεια / IMDb / μεταγλωτ. από populate προβολής όταν λείπουν στο catalog. */
+export function mergeMovieWithShowtimeFields(movie: StrapiMovie, st: StrapiShowtime): StrapiMovie {
+  const duration =
+    typeof movie.duration === "number" && movie.duration > 0
+      ? movie.duration
+      : typeof st.movieDuration === "number" && st.movieDuration > 0
+        ? st.movieDuration
+        : movie.duration;
+  const imdbRating = movie.imdbRating ?? st.movieImdbRating;
+  const isDubbed = movie.isDubbed || Boolean(st.movieIsDubbed);
+  if (duration === movie.duration && imdbRating === movie.imdbRating && isDubbed === movie.isDubbed) {
+    return movie;
+  }
+  return { ...movie, duration, imdbRating, isDubbed };
+}
+
 /** Όταν η γραμμή `/movies` λείπει (π.χ. draft ταινία) αλλά η προβολή φέρνει slug + τίτλο + είδος από `populate[movie]`. */
 /** Όταν το catalog δεν είναι ακόμα στο client — stub από πεδία προβολής. */
 export function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefined): StrapiMovie | null {
@@ -76,12 +92,14 @@ export function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefin
     cast: [],
     genre: genreLine || (slugs.length ? movieGenreSlugsToDisplayLine(slugs) : ""),
     genreSlugs: slugs,
-    duration: 0,
+    duration:
+      typeof st.movieDuration === "number" && st.movieDuration > 0 ? st.movieDuration : 0,
     language: "",
-    isDubbed: false,
+    isDubbed: Boolean(st.movieIsDubbed),
     ageRating: "",
     synopsis: "",
-    criticScore: 0,
+    criticScore: st.movieImdbRating ?? 0,
+    imdbRating: st.movieImdbRating,
     mostTalkedAbout: false,
     releaseDate: "",
     posterUrl: st.moviePosterUrl ?? undefined,
@@ -230,17 +248,18 @@ function moviesFromShowtimesOrdered(
           ? movies.find((m) => Number(m.id) === Number(key.slice(3)))
           : movies.find((m) => m.slug === slug);
       if (hit) {
-        const g = (hit.genre ?? "").trim();
+        let merged = mergeMovieWithShowtimeFields(hit, st);
+        const g = (merged.genre ?? "").trim();
         const fromSt = (st.movieGenre ?? "").trim();
         if (!g && fromSt) {
-          return {
-            ...hit,
+          merged = {
+            ...merged,
             genre: fromSt,
             genreSlugs:
-              st.movieGenreSlugs && st.movieGenreSlugs.length > 0 ? st.movieGenreSlugs : hit.genreSlugs,
+              st.movieGenreSlugs && st.movieGenreSlugs.length > 0 ? st.movieGenreSlugs : merged.genreSlugs,
           };
         }
-        return hit;
+        return merged;
       }
       return movieStubFromShowtime(slug, st);
     })

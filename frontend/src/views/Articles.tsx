@@ -9,7 +9,7 @@ import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 import ArticleTags from "@/components/ArticleTags";
-import { resolveArticleRelated } from "@/lib/articleRelated";
+import { resolveArticleRelatedListLabel } from "@/lib/articleRelated";
 import { articleTypeLabels, formatArticleDate } from "@/lib/articleLabels";
 import { ARTICLE_PAGE_CLASS } from "@/lib/articleTypography";
 
@@ -72,7 +72,7 @@ export default function Articles() {
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filtered.map((article, i) => {
-              const related = resolveArticleRelated(article);
+              const relatedLabel = resolveArticleRelatedListLabel(article);
               return (
               <article
                 key={`${article.id}-${article.slug}`}
@@ -106,8 +106,8 @@ export default function Articles() {
                     <span>
                       {formatArticleDate(article.publishedAt)}
                     </span>
-                    {related ? (
-                      <span className="text-foreground/80">Σχετικό: {related.title}</span>
+                    {relatedLabel ? (
+                      <span className="text-foreground/80">Σχετικό: {relatedLabel}</span>
                     ) : null}
                   </div>
                 </Link>

@@ -73,7 +73,7 @@
       "relation": "manyToOne",
       "target": "api::event.event",
       "inversedBy": "articles",
-      "description": "(Παλιό) Γενική εκδήλωση — προτιμήστε ταινία ή παράσταση."
+      "description": "Πολιτιστική εκδήλωση (Event) — εμφανίζεται πλήρως στο άρθρο. Ξεχωριστά από ταινία/παράσταση."
     },
     "tags": {
       "type": "component",

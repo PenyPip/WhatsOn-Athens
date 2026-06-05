@@ -4,38 +4,108 @@
   "info": {
     "singularName": "event",
     "pluralName": "events",
-    "displayName": "Event"
+    "displayName": "Event",
+    "description": "Πολιτιστικές εκδηλώσεις — πλήρη στοιχεία, σύνδεση με άρθρα και featured picks."
   },
   "options": {
     "draftAndPublish": true
   },
   "attributes": {
-    "name": {
+    "title_el": {
       "type": "string",
-      "required": true
+      "required": true,
+      "description": "Τίτλος (Ελληνικά)."
+    },
+    "title_en": {
+      "type": "string",
+      "description": "Τίτλος (Αγγλικά) — προαιρετικό."
     },
     "slug": {
       "type": "uid",
-      "targetField": "name",
+      "targetField": "title_el",
       "required": true
     },
+    "synopsis_el": {
+      "type": "text",
+      "description": "Σύνοψη (ΕΛ)."
+    },
+    "synopsis_en": {
+      "type": "text",
+      "description": "Σύνοψη (EN)."
+    },
+    "editorial_note_el": {
+      "type": "text",
+      "description": "Editorial σημείωση (ΕΛ) — εμφανίζεται στο άρθρο."
+    },
+    "editorial_note_en": {
+      "type": "text",
+      "description": "Editorial σημείωση (EN)."
+    },
+    "poster": {
+      "type": "media",
+      "allowedTypes": ["images"],
+      "description": "Αφίσα / ποστερ."
+    },
     "start_date": {
-      "type": "date"
+      "type": "date",
+      "description": "Ημερομηνία έναρξης."
     },
     "end_date": {
-      "type": "date"
+      "type": "date",
+      "description": "Ημερομηνία λήξης (προαιρετικό)."
     },
-    "venue_name": {
-      "type": "string"
+    "start_time": {
+      "type": "time",
+      "description": "Ώρα έναρξης."
     },
-    "venue_address": {
-      "type": "string"
+    "end_time": {
+      "type": "time",
+      "description": "Ώρα λήξης (προαιρετικό)."
+    },
+    "venue": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::venue.venue",
+      "inversedBy": "events",
+      "description": "Φυσικός χώρος — προαιρετικό αν είναι online-only."
+    },
+    "online_link": {
+      "type": "string",
+      "description": "Σύνδεσμος streaming / online εκδήλωσης."
+    },
+    "event_type": {
+      "type": "enumeration",
+      "enum": ["cinema", "theater", "music", "art", "food", "other"],
+      "default": "other",
+      "required": true,
+      "description": "Τύπος: Κινηματογράφος, Θέατρο, Μουσική, Τέχνη, Φαγητό, Άλλο."
+    },
+    "tags": {
+      "type": "component",
+      "repeatable": true,
+      "component": "shared.article-tag",
+      "description": "Ελεύθερες ετικέτες (μία ανά εγγραφή)."
+    },
+    "ticket_price": {
+      "type": "decimal",
+      "description": "Τιμή εισιτηρίου (€) — προαιρετικό."
     },
     "ticket_url": {
-      "type": "string"
+      "type": "string",
+      "description": "Σύνδεσμος αγοράς εισιτηρίων."
     },
-    "organizer": {
-      "type": "string"
+    "language_subtitles": {
+      "type": "string",
+      "description": "Γλώσσα / υπότιτλοι."
+    },
+    "meta_description": {
+      "type": "string",
+      "description": "SEO meta description."
+    },
+    "featured": {
+      "type": "boolean",
+      "default": false,
+      "description": "Featured pick — προτεραιότητα στην αρχική."
     },
     "articles": {
       "type": "relation",

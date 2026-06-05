@@ -40,6 +40,7 @@ import {
   showtimeIsUpcoming,
   showtimeShowsOutdoorLabel,
   enrichMoviesWithShowtimeGenre,
+  mergeMovieWithShowtimeFields,
   startOfCinemaWeek,
 } from "@/lib/homeMovieFilters";
 import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
@@ -287,6 +288,22 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     [soonShowtimes, groupShowtimesByVenue],
   );
 
+  const mergedMovieForDisplay = useMemo((): (StrapiMovie & { summerScreening?: boolean }) | null => {
+    if (type !== "movie" || !slug) return null;
+    const raw = movieBySlug ?? movieFromList;
+    if (!raw) return null;
+    const mov = raw as StrapiMovie;
+    const st =
+      eventShowtimes.find(
+        (s) =>
+          s.movieSlug === slug ||
+          (mov.id > 0 && s.movieId != null && Number(s.movieId) === Number(mov.id)),
+      ) ?? eventShowtimes[0];
+    const base = st ? mergeMovieWithShowtimeFields(mov, st) : mov;
+    const summerScreening = eventShowtimes.some(showtimeShowsOutdoorLabel);
+    return summerScreening ? { ...base, summerScreening: true } : base;
+  }, [type, slug, movieBySlug, movieFromList, eventShowtimes]);
+
   const genreLabel = useMemo(() => {
     if (!event) return "";
     const isM = type === "movie";
@@ -384,7 +401,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   }
 
   const isMovie = type === "movie";
-  const movie = isMovie ? event as StrapiMovie : null;
+  const movie = isMovie ? (mergedMovieForDisplay ?? (event as StrapiMovie)) : null;
   const theaterShow = !isMovie ? (event as StrapiTheaterShow) : null;
   const related = isMovie
     ? sortMoviesByCinemaCount(

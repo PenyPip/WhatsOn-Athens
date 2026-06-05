@@ -55,6 +55,7 @@ import {
   moviesFromUpcomingShowtimes,
   enrichMoviesWithShowtimeGenre,
   formatUpcomingCinemaWeekRange,
+  mergeMovieWithShowtimeFields,
   movieStubFromShowtime,
 } from "@/lib/homeMovieFilters";
 import { compareMoviesByShowingVenueCount } from "@/lib/movieCinemaSort";
@@ -523,12 +524,12 @@ const Movies = () => {
     const resolveMovie = (st: StrapiShowtime): StrapiMovie | null => {
       if (st.movieId != null) {
         const hit = movieMap.get(Number(st.movieId));
-        if (hit) return hit;
+        if (hit) return mergeMovieWithShowtimeFields(hit, st);
       }
       const slug = typeof st.movieSlug === "string" ? st.movieSlug.trim() : "";
       if (slug) {
         const bySlug = (moviesEnriched ?? []).find((m) => m.slug === slug);
-        if (bySlug) return bySlug;
+        if (bySlug) return mergeMovieWithShowtimeFields(bySlug, st);
         return movieStubFromShowtime(slug, st);
       }
       return null;
@@ -980,6 +981,9 @@ const Movies = () => {
                       const rows = flattenShowingsToRows(cardShowings, cinemaWeekClip);
                       const dayGroups = groupShowtimeRowsByDay(rows);
                       const hasShowRows = rows.length > 0;
+                      const summerScreening = cardShowings.some((block) =>
+                        block.slots.some((slot) => slot.summerScreening),
+                      );
                       return (
                         <div
                           key={`${section.label}-${movie.slug}`}
@@ -998,6 +1002,7 @@ const Movies = () => {
                             posterSrcSet={movie.posterSrcSet}
                             type="movie"
                             isDubbed={movie.isDubbed}
+                            summerScreening={summerScreening}
                             tone="soft"
                             attachShowtimes={hasShowRows}
                             compactMovieMeta

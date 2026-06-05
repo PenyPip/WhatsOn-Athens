@@ -8,7 +8,9 @@ import {
   estimateReadingMinutes,
   formatArticleDateUppercase,
 } from "@/lib/articleLabels";
+import ArticleRelatedEventCard from "@/components/ArticleRelatedEventCard";
 import { resolveArticleRelated } from "@/lib/articleRelated";
+import { eventDisplayTitle } from "@/lib/eventLabels";
 import { ARTICLE_COLUMN_CLASS, ARTICLE_PAGE_CLASS } from "@/lib/articleTypography";
 import type { StrapiArticle } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -33,7 +35,9 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
   const readingMin = estimateReadingMinutes(contentHtml || article.content);
   const hasDeck = Boolean(article.metaDescription?.trim());
   const related = resolveArticleRelated(article);
-  const hasRelated = Boolean(related);
+  const relatedEvent = article.relatedEvent;
+  const hasRelatedEvent = Boolean(relatedEvent && eventDisplayTitle(relatedEvent));
+  const hasRelatedMedia = Boolean(related);
   const hasTags = article.tags.length > 0;
   const hasImage = Boolean(article.featuredImageUrl);
   const kickerTag = article.tags[0]?.trim();
@@ -110,6 +114,8 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
             )}
           </div>
 
+          {hasRelatedEvent && relatedEvent ? <ArticleRelatedEventCard event={relatedEvent} /> : null}
+
           {hasTags ? (
             <ArticleTags
               tags={article.tags}
@@ -118,7 +124,7 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
             />
           ) : null}
 
-          {related ? (
+          {hasRelatedMedia && related ? (
             <aside className="mt-12 w-full rounded-lg border border-[#1C1D62]/10 bg-[#F0EDF8]/50 px-5 py-5 text-left md:px-6">
               <p className="font-article-ui text-[10px] font-bold uppercase tracking-[0.18em] text-[#7C2B76]">
                 {related.sectionLabel}

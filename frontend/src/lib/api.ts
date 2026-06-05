@@ -801,7 +801,6 @@ function mapArticle(raw: unknown): StrapiArticle {
   ).includes(articleTypeRaw as StrapiArticle["articleType"])
     ? (articleTypeRaw as StrapiArticle["articleType"])
     : "politistiko_keimeno";
-  const relatedEventRef = mapArticleTitleSlugRef(r.related_event, "name");
   return {
     id: r.id,
     documentId: r.documentId,
@@ -816,27 +815,65 @@ function mapArticle(raw: unknown): StrapiArticle {
     featuredImageUrl: strapiMediaUrl(r.featured_image, "medium") ?? undefined,
     relatedMovie: mapArticleTitleSlugRef(r.related_movie, "title"),
     relatedTheaterShow: mapArticleTitleSlugRef(r.related_theater_show, "title"),
-    relatedEvent: relatedEventRef
-      ? { name: relatedEventRef.title, slug: relatedEventRef.slug }
-      : undefined,
+    relatedEvent: r.related_event ? mapEvent(r.related_event) : undefined,
     tags: normalizeArticleTagsFromStrapi(r.tags),
     publishedAt: typeof r.publishedAt === "string" ? r.publishedAt : "",
   };
 }
 
+const EVENT_TYPES = ["cinema", "theater", "music", "art", "food", "other"] as const;
+
+function mapEventVenue(rel: unknown): StrapiEventVenue | undefined {
+  const attrs = strapiRelationAttrs(rel);
+  if (!attrs) return undefined;
+  const name = typeof attrs.name === "string" ? attrs.name.trim() : "";
+  const slug = typeof attrs.slug === "string" ? attrs.slug.trim() : "";
+  const address = typeof attrs.address === "string" ? attrs.address.trim() : "";
+  const googleMapsUrl =
+    typeof attrs.google_maps_url === "string" ? attrs.google_maps_url.trim() : "";
+  if (!name && !slug && !address) return undefined;
+  return { name, slug, address, googleMapsUrl: googleMapsUrl || undefined };
+}
+
 function mapEvent(raw: unknown): StrapiEvent {
   const r = unwrapStrapiEntry(raw);
+  const legacyName = typeof r.name === "string" ? r.name.trim() : "";
+  const titleEl =
+    (typeof r.title_el === "string" && r.title_el.trim()) || legacyName || "";
+  const eventTypeRaw = typeof r.event_type === "string" ? r.event_type : "other";
+  const eventType: StrapiEventType = (EVENT_TYPES as readonly string[]).includes(eventTypeRaw)
+    ? (eventTypeRaw as StrapiEventType)
+    : "other";
+  const posterVariants = strapiPosterSrcSet(r.poster);
+  const posterUrl = strapiMediaUrl(r.poster, "medium") ?? posterVariants?.src ?? undefined;
+
   return {
     id: r.id,
     documentId: r.documentId,
-    name: typeof r.name === "string" ? r.name : "",
     slug: typeof r.slug === "string" ? r.slug : "",
+    titleEl,
+    titleEn: typeof r.title_en === "string" ? r.title_en.trim() : "",
+    synopsisEl: typeof r.synopsis_el === "string" ? r.synopsis_el.trim() : "",
+    synopsisEn: typeof r.synopsis_en === "string" ? r.synopsis_en.trim() : "",
+    editorialNoteEl: typeof r.editorial_note_el === "string" ? r.editorial_note_el.trim() : "",
+    editorialNoteEn: typeof r.editorial_note_en === "string" ? r.editorial_note_en.trim() : "",
+    posterUrl,
+    posterSrcSet: posterVariants?.srcSet,
     startDate: typeof r.start_date === "string" ? r.start_date : "",
     endDate: typeof r.end_date === "string" ? r.end_date : "",
-    venueName: typeof r.venue_name === "string" ? r.venue_name : "",
-    venueAddress: typeof r.venue_address === "string" ? r.venue_address : "",
-    ticketUrl: typeof r.ticket_url === "string" ? r.ticket_url : "",
-    organizer: typeof r.organizer === "string" ? r.organizer : "",
+    startTime: typeof r.start_time === "string" ? r.start_time : "",
+    endTime: typeof r.end_time === "string" ? r.end_time : "",
+    venue: mapEventVenue(r.venue),
+    onlineLink: typeof r.online_link === "string" ? r.online_link.trim() : "",
+    eventType,
+    tags: normalizeArticleTagsFromStrapi(r.tags),
+    ticketPrice: parseOptionalDecimal(r.ticket_price),
+    ticketUrl: typeof r.ticket_url === "string" ? r.ticket_url.trim() : "",
+    languageSubtitles:
+      typeof r.language_subtitles === "string" ? r.language_subtitles.trim() : "",
+    metaDescription: typeof r.meta_description === "string" ? r.meta_description.trim() : "",
+    featured: r.featured === true,
+    publishedAt: typeof r.publishedAt === "string" ? r.publishedAt : "",
   };
 }
 
@@ -994,6 +1031,16 @@ function mapShowtime(
   const posterVariants = mAttrs ? strapiPosterSrcSet(mAttrs.poster) : undefined;
   const moviePosterUrl = mAttrs ? strapiMediaUrl(mAttrs.poster, "small") ?? posterVariants?.src ?? null : undefined;
   const moviePosterSrcSet = posterVariants?.srcSet;
+  const movieDurationRaw = mAttrs?.duration;
+  const movieDuration =
+    typeof movieDurationRaw === "number" && Number.isFinite(movieDurationRaw) && movieDurationRaw > 0
+      ? movieDurationRaw
+      : undefined;
+  const movieImdbRating =
+    mAttrs != null
+      ? parseOptionalDecimal(mAttrs.imdb_rating) ?? parseOptionalDecimal(mAttrs.critic_score)
+      : undefined;
+  const movieIsDubbed = mAttrs ? movieIsDubbedFromRaw(mAttrs as Record<string, unknown>) : undefined;
 
   const baseId = String(s.id);
   const slots = Array.isArray(s.show_slots) ? s.show_slots : [];
@@ -1043,6 +1090,9 @@ function mapShowtime(
     movieGenreSlugs: movieGenreSlugsFromShowtime.length ? movieGenreSlugsFromShowtime : undefined,
     moviePosterUrl,
     moviePosterSrcSet,
+    movieDuration,
+    movieImdbRating,
+    movieIsDubbed,
   };
   };
 
@@ -1260,11 +1310,8 @@ export interface StrapiArticle {
     title: string;
     slug: string;
   };
-  /** (Παλιό) Γενική εκδήλωση — προτιμήστε ταινία ή παράσταση. */
-  relatedEvent?: {
-    name: string;
-    slug: string;
-  };
+  /** Πολιτιστική εκδήλωση (Event) — πλήρη στοιχεία για panel στο άρθρο. */
+  relatedEvent?: StrapiEvent;
   tags: string[];
   publishedAt: string;
 }
@@ -1300,21 +1347,49 @@ export interface StrapiShowtime {
   /** Από populate poster στη σχέση movie — λίστες χωρίς πλήρες catalog. */
   moviePosterUrl?: string | null;
   moviePosterSrcSet?: string;
+  /** Από populate movie — για αφίσες όταν λείπει catalog (/movies hard refresh). */
+  movieDuration?: number;
+  movieImdbRating?: number;
+  movieIsDubbed?: boolean;
   hallId?: number;
   hallName?: string;
+}
+
+export type StrapiEventType = "cinema" | "theater" | "music" | "art" | "food" | "other";
+
+export interface StrapiEventVenue {
+  name: string;
+  slug: string;
+  address: string;
+  googleMapsUrl?: string;
 }
 
 export interface StrapiEvent {
   id: number;
   documentId: string;
-  name: string;
   slug: string;
+  titleEl: string;
+  titleEn: string;
+  synopsisEl: string;
+  synopsisEn: string;
+  editorialNoteEl: string;
+  editorialNoteEn: string;
+  posterUrl?: string;
+  posterSrcSet?: string;
   startDate: string;
   endDate: string;
-  venueName: string;
-  venueAddress: string;
+  startTime: string;
+  endTime: string;
+  venue?: StrapiEventVenue;
+  onlineLink: string;
+  eventType: StrapiEventType;
+  tags: string[];
+  ticketPrice?: number;
   ticketUrl: string;
-  organizer: string;
+  languageSubtitles: string;
+  metaDescription: string;
+  featured: boolean;
+  publishedAt: string;
 }
 
 export interface StrapiUserReview {
@@ -1405,18 +1480,33 @@ const ARTICLE_PUBLIC_QUERY: Record<string, string> = {
   "populate[related_movie][fields][1]": "slug",
   "populate[related_theater_show][fields][0]": "title",
   "populate[related_theater_show][fields][1]": "slug",
-  "populate[related_event][fields][0]": "name",
-  "populate[related_event][fields][1]": "slug",
+  "populate[related_event][populate][poster]": "*",
+  "populate[related_event][populate][venue][fields][0]": "name",
+  "populate[related_event][populate][venue][fields][1]": "slug",
+  "populate[related_event][populate][venue][fields][2]": "address",
+  "populate[related_event][populate][venue][fields][3]": "google_maps_url",
+  "populate[related_event][populate][tags]": "*",
 };
 
 const EVENT_PUBLIC_QUERY: Record<string, string> = {
   "sort[0]": "start_date:asc",
+  "populate[poster]": "*",
+  "populate[venue][fields][0]": "name",
+  "populate[venue][fields][1]": "slug",
+  "populate[venue][fields][2]": "address",
+  "populate[venue][fields][3]": "google_maps_url",
+  "populate[tags]": "*",
 };
 
 const SHOWTIME_POPULATE: Record<string, string> = {
   "populate[movie][fields][0]": "title",
   "populate[movie][fields][1]": "slug",
   "populate[movie][fields][2]": "original_title",
+  "populate[movie][fields][3]": "duration",
+  "populate[movie][fields][4]": "imdb_rating",
+  "populate[movie][fields][5]": "critic_score",
+  "populate[movie][fields][6]": "is_dubbed",
+  "populate[movie][fields][7]": "language",
   "populate[movie][populate][poster]": "*",
   "populate[movie][populate][movie_genres][fields][0]": "slug",
   "populate[movie][populate][movie_genres][fields][1]": "label",
