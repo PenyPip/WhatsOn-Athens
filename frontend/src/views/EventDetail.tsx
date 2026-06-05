@@ -646,7 +646,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             className={cn(
               "animate-fade-in-up",
               (isMovie && movie?.posterUrl) || (!isMovie && theaterShow?.posterUrl)
-                ? "flex flex-col gap-5 md:flex-row md:items-end md:justify-between md:gap-10 lg:gap-14"
+                ? cn(
+                    "flex flex-col md:flex-row md:items-end md:justify-between md:gap-10 lg:gap-14",
+                    isMovie ? "gap-5" : "gap-3",
+                  )
                 : "flex h-full items-end",
             )}
           >
@@ -660,6 +663,24 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               <ArrowLeft className="w-4 h-4" /> Πίσω στις {isMovie ? "Ταινίες" : "Παραστάσεις"}
             </Link>
 
+            {!isMovie && theaterShow?.posterUrl ? (
+              <figure className="mx-auto mb-2 w-full max-w-[18.5rem] shrink-0 sm:max-w-[20rem] md:hidden">
+                <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={theaterShow.posterUrl}
+                    alt={posterAltForTheater(theaterShow.title)}
+                    width={1040}
+                    height={780}
+                    fetchPriority="high"
+                    loading="eager"
+                    decoding="async"
+                    className="h-full w-full object-cover object-top"
+                  />
+                </div>
+              </figure>
+            ) : null}
+
             {movie && (imdbRating != null || movie.ageRating?.trim()) ? (
               <div className="flex items-center gap-3 mb-3">
                 {imdbRating != null ? <ImdbRatingBadge rating={imdbRating} variant="hero" /> : null}
@@ -670,9 +691,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             ) : null}
 
             <h1
-              className={`font-display text-3xl md:text-5xl font-bold text-white ${
-                headline.secondary ? "mb-2" : "mb-4"
-              }`}
+              className={cn(
+                "font-display text-3xl font-bold text-white md:text-5xl",
+                headline.secondary ? "mb-2" : theaterShow?.posterUrl && !isMovie ? "mb-2 md:mb-4" : "mb-4",
+              )}
             >
               {headline.primary}
             </h1>
@@ -787,7 +809,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </div>
               </figure>
             ) : !isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto w-full max-w-[18.5rem] shrink-0 sm:max-w-[20rem] md:mx-0 md:max-w-[22rem] lg:max-w-[26rem]">
+              <figure className="mx-auto hidden w-full max-w-[18.5rem] shrink-0 sm:max-w-[20rem] md:mx-0 md:block md:max-w-[22rem] lg:max-w-[26rem]">
                 <div className="relative aspect-[4/3] overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -798,7 +820,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     fetchPriority="high"
                     loading="eager"
                     decoding="async"
-                    className="h-full w-full object-contain object-center p-1"
+                    className="h-full w-full object-cover object-top"
                   />
                 </div>
               </figure>

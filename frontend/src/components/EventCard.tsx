@@ -166,7 +166,9 @@ const EventCard = ({
               className={cn(
                 "h-full w-full transition-transform duration-500",
                 landscapePoster
-                  ? "object-contain object-center p-0.5 group-hover:scale-[1.02]"
+                  ? theaterHomeCompact || darkSectionCard
+                    ? "object-contain object-center p-0.5 group-hover:scale-[1.02]"
+                    : "object-cover object-top group-hover:scale-[1.02]"
                   : "object-cover group-hover:scale-105",
               )}
             />
@@ -200,7 +202,8 @@ const EventCard = ({
         </div>
         <div
           className={cn(
-            "flex min-h-0 flex-col px-3 pb-2 pt-1.5",
+            "flex min-h-0 flex-col px-3 pb-2",
+            isTheater && !attachShowtimes ? "pt-0" : "pt-1.5",
             attachShowtimes
               ? "shrink-0 border-t border-border/[0.1] px-3 py-2 pb-2"
               : cn(
@@ -224,7 +227,7 @@ const EventCard = ({
                     : "min-h-[5.5rem]"
                   : theaterHomeCompact
                     ? "min-h-[2.5rem]"
-                    : "min-h-[2.75rem]",
+                    : "min-h-0",
             )}
           >
             <h3

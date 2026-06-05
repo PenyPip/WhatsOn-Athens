@@ -6,3 +6,6 @@
 !.env.sample
 
 .DS_Store
+
+# Cursor — skills / τοπικές ρυθμίσεις IDE (όχι deploy στο server)
+.cursor/
