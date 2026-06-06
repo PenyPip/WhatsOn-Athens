@@ -792,11 +792,9 @@ const Movies = () => {
 
   const pageH1 = listSeo.h1;
 
-  const needsVenueData = Boolean(venueSlug || areaFilter || districtFilter || summerOutdoorOnly || moviesSection === "summer");
-
   const showListSkeleton =
     (showtimes === undefined && showtimesLoading) ||
-    (needsVenueData && venues === undefined && venuesLoading) ||
+    (venues === undefined && venuesLoading) ||
     (needsCatalogMovies && movies === undefined && moviesLoading);
 
   return (

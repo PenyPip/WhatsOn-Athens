@@ -111,12 +111,18 @@ const EventCard = ({
   /** Οριζόντια σειρά (αρχική, κ.λπ.): σταθερό ύψος τίτλου/υπότιτλου/ειδους. */
   const uniformScrollCard = uniformMovie && !movieListingMeta && !attachShowtimes;
 
+  /** Θέατρο: συμπαγής κάρτα — χωρίς τέντωμα ύψους (grid / οριζόντια σειρά). */
+  const theaterCompactCard = isTheater && !attachShowtimes;
+
   return (
     <div
       className={cn(
         attachShowtimes
           ? "flex w-full min-w-0 shrink-0 flex-col"
-          : "flex h-full min-h-0 min-w-0 flex-1 flex-col",
+          : cn(
+              "flex min-w-0 flex-col",
+              theaterCompactCard ? "h-auto" : "h-full min-h-0 flex-1",
+            ),
         className,
       )}
     >
@@ -127,7 +133,7 @@ const EventCard = ({
           attachShowtimes
             ? "w-full shrink-0 rounded-b-none rounded-t-lg bg-transparent shadow-none ring-0 hover:translate-y-0 hover:shadow-none hover:ring-0"
             : cn(
-                "h-full min-h-0 flex-1",
+                theaterCompactCard ? "h-auto w-full" : "h-full min-h-0 flex-1",
                 tone === "soft"
                   ? "rounded-lg border-transparent bg-muted/35 shadow-none ring-1 ring-border/10 hover:-translate-y-0.5 hover:bg-muted/45 hover:shadow-[0_4px_14px_rgba(28,29,98,0.09)] hover:ring-border/[0.22]"
                   : cn(
@@ -141,7 +147,7 @@ const EventCard = ({
         <div
           className={cn(
             "relative w-full shrink-0 overflow-hidden",
-            landscapePoster ? "aspect-[4/3] bg-[#ebe8f2]" : "aspect-[2/3] bg-secondary",
+            landscapePoster ? "aspect-video bg-[#ebe8f2]" : "aspect-[2/3] bg-secondary",
             !posterUrl && !showGradientFallback && !landscapePoster && "bg-secondary",
             !posterUrl && !showGradientFallback && landscapePoster && "bg-[#ebe8f2]",
           )}
@@ -166,7 +172,7 @@ const EventCard = ({
               className={cn(
                 "h-full w-full transition-transform duration-500",
                 landscapePoster
-                  ? "object-contain object-center group-hover:scale-[1.02]"
+                  ? "object-cover object-top group-hover:scale-[1.02]"
                   : "object-cover object-center group-hover:scale-105",
               )}
             />
@@ -201,11 +207,11 @@ const EventCard = ({
         <div
           className={cn(
             "flex min-h-0 flex-col px-3 pb-2",
-            isTheater && !attachShowtimes ? "pt-0" : "pt-1.5",
+            isTheater && !attachShowtimes ? "pt-2" : "pt-1.5",
             attachShowtimes
               ? "shrink-0 border-t border-border/[0.1] px-3 py-2 pb-2"
               : cn(
-                  "min-h-0 flex-1 gap-0",
+                  theaterCompactCard ? "shrink-0" : "min-h-0 flex-1 gap-0",
                   tone === "soft"
                     ? "border-t border-border/[0.07]"
                     : darkSectionCard
@@ -279,14 +285,14 @@ const EventCard = ({
           ) : null}
           {movieListingMeta || theaterHomeCompact ? null : (
             <>
-              <p className={cn("mb-1 mt-2 min-h-[1.3125rem] shrink-0 text-sm leading-snug line-clamp-1", metaClass)}>
+              <p className={cn("mb-1 mt-1 min-h-0 shrink-0 text-sm leading-snug line-clamp-1", metaClass)}>
                 {subtitleLine}
               </p>
               <div
                 className={cn(
                   "flex shrink-0 items-end gap-2 pt-1",
                   type === "movie" ? "justify-end" : "justify-between",
-                  !attachShowtimes && !uniformMovie ? "mt-auto" : "",
+                  !attachShowtimes && !uniformMovie && !isTheater ? "mt-auto" : "",
                 )}
               >
                 {isTheater ? (

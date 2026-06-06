@@ -135,7 +135,7 @@ const TheaterPage = () => {
             {filteredShows.length === 0 ? (
               <p className="mb-6 text-sm text-muted-foreground">Δεν βρέθηκαν παραστάσεις με αυτά τα φίλτρα.</p>
             ) : null}
-            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+            <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {filteredShows.map((show, i) => {
                 const priceLine = theaterPriceLabel(resolveTheaterTicketPrices(show));
                 const scheduleLine = theaterScheduleSummary(show.weeklySchedule, 3);

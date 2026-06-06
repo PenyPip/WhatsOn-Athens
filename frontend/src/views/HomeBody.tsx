@@ -333,12 +333,15 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const deferSecondary = useDeferUntilLcpDone();
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies();
-  const { data: showtimes, isPending: showtimesPending, isError: showtimesError } = useShowtimes(
+  const { data: showtimes, isPending: showtimesPending, isFetching: showtimesFetching, isError: showtimesError } = useShowtimes(
     needsShowtimes,
     undefined,
   );
   const awaitingMovies = movies === undefined && moviesPending;
   const awaitingShowtimes = showtimes === undefined && showtimesPending;
+  /** Μην δείχνεις «κενό» όσο φορτώνουν προβολές (refetch μετά από SSR/bootstrap). */
+  const awaitingShowtimeProgram =
+    awaitingShowtimes || (showtimesFetching && (showtimes?.length ?? 0) === 0 && !showtimesError);
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues && deferSecondary);
   const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(
     needsDining && deferSecondary,
@@ -380,6 +383,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
       return (a.startDate || "").localeCompare(b.startDate || "");
     });
   }, [events]);
+  const summerVenuesAwaiting = needsVenues && deferSecondary && venues === undefined && venuesLoading;
+  const awaitingSummerMovies = awaitingShowtimeProgram || summerVenuesAwaiting;
   const summerVenuesForHome = useMemo(
     () => summerVenuesWithShowtimesOrAll(venueList, stList),
     [venueList, stList],
@@ -448,7 +453,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "movies_today",
               <MovieRowScroll
-                loading={awaitingShowtimes}
+                loading={awaitingShowtimeProgram}
                 loadingMessage="Φόρτωση προβολών της ημέρας..."
                 fetchErrorMessage={
                   moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
@@ -464,7 +469,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "summer_cinema",
               <MovieRowScroll
-                loading={awaitingShowtimes}
+                loading={awaitingSummerMovies}
                 loadingMessage="Φόρτωση θερινών προβολών..."
                 fetchErrorMessage={
                   moviesError || showtimesError || venuesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
@@ -846,7 +851,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "movies_week",
               <MovieRowScroll
-                loading={awaitingShowtimes}
+                loading={awaitingShowtimeProgram}
                 loadingMessage="Φόρτωση ταινιών εβδομάδας..."
                 fetchErrorMessage={moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={weekMovies}
