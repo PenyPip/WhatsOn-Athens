@@ -79,7 +79,7 @@ const Navbar = () => {
   const showSearch =
     useIdleMount(isMobile ? 4500 : 2500) && (!isMobile || !onHome || deferNav);
   useStableMobileSafeArea();
-  const nav = useSiteNavigationData(deferNav);
+  const nav = useSiteNavigationData(!isMobile || deferNav);
 
   const desktopLinks = nav.desktopLinks;
   const mobileTabLinks = nav.mobileTabLinks;

@@ -142,7 +142,10 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
     if (typeof document === "undefined") return;
 
     const staticEl = document.getElementById("home-static-lcp");
-    if (staticEl) {
+    const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
+
+    /** Mobile: χωρίς αναμονή loading (deadlock) — desktop: περίμενε live hero (CLS). */
+    if (staticEl && isMobileViewport) {
       let cancelled = false;
       let idleId: number | undefined;
       const frame = requestAnimationFrame(() => {
@@ -168,7 +171,18 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
     }
 
     if (loading) return;
-    markLcpDone();
+    if (movies.length === 0) {
+      markLcpDone();
+      return;
+    }
+    if (!staticEl) {
+      markLcpDone();
+      return;
+    }
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => markLcpDone());
+    });
+    return () => cancelAnimationFrame(frame);
   }, [loading, movies.length, markLcpDone]);
 
   const hasStaticLcpDom =
