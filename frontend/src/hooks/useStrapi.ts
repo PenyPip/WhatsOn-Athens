@@ -35,10 +35,10 @@ export function useHomeLayout() {
   return useMemo(() => resolveHomepageLayout(homepage.data ?? null), [homepage.data]);
 }
 
-export const useMovies = (enabled = true) =>
+export const useMovies = (enabled = true, options?: { fullCatalog?: boolean }) =>
   useQuery({
     queryKey: ["movies"],
-    queryFn: api.getMovies,
+    queryFn: () => (options?.fullCatalog !== false ? api.getMovies() : api.getMoviesForHome()),
     ...CONTENT_QUERY_OPTIONS,
     throwOnError: false,
     retry: 1,

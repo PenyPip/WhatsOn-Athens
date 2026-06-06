@@ -6,11 +6,13 @@ import VenueCard from "@/components/VenueCard";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
 import {
   homeNeedsArticles,
   homeNeedsDining,
   homeNeedsEvents,
+  homeNeedsFullMovieCatalog,
   homeNeedsShowtimes,
   homeNeedsTheater,
   homeNeedsVenues,
@@ -324,24 +326,32 @@ type HomeBodyProps = {
 
 export default function HomeBody({ layout }: HomeBodyProps) {
   const sections = layout.sections;
+  const isMobile = useIsMobile();
   const needsVenues = homeNeedsVenues(sections);
   const needsTheater = homeNeedsTheater(sections);
   const needsDining = homeNeedsDining(sections);
   const needsArticles = homeNeedsArticles(sections);
   const needsEvents = homeNeedsEvents(sections);
   const needsShowtimes = homeNeedsShowtimes(sections);
+  const needsFullMovieCatalog = homeNeedsFullMovieCatalog(sections);
   const deferSecondary = useDeferUntilLcpDone();
+  /** Mobile: αναβολή catalog/API μέχρι το static LCP — λιγότερο TBT στο πρώτο paint. */
+  const deferProgramData = !isMobile || deferSecondary;
 
-  const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies();
+  const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies(deferProgramData, {
+    fullCatalog: needsFullMovieCatalog,
+  });
   const { data: showtimes, isPending: showtimesPending, isFetching: showtimesFetching, isError: showtimesError } = useShowtimes(
-    needsShowtimes,
+    needsShowtimes && deferProgramData,
     undefined,
   );
-  const awaitingMovies = movies === undefined && moviesPending;
-  const awaitingShowtimes = showtimes === undefined && showtimesPending;
+  const awaitingMovies = deferProgramData && movies === undefined && moviesPending;
+  const awaitingShowtimes = deferProgramData && showtimes === undefined && showtimesPending;
   /** Μην δείχνεις «κενό» όσο φορτώνουν προβολές (refetch μετά από SSR/bootstrap). */
   const awaitingShowtimeProgram =
-    awaitingShowtimes || (showtimesFetching && (showtimes?.length ?? 0) === 0 && !showtimesError);
+    !deferProgramData ||
+    awaitingShowtimes ||
+    (showtimesFetching && (showtimes?.length ?? 0) === 0 && !showtimesError);
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues && deferSecondary);
   const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(
     needsDining && deferSecondary,
@@ -410,7 +420,11 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   );
   const mostTalkedAboutList = useMemo(() => mostTalkedAboutMovies(movieList), [movieList]);
 
-  const sectionEl = (id: HomeSectionId, node: ReactNode) => <Fragment key={id}>{node}</Fragment>;
+  const sectionEl = (id: HomeSectionId, node: ReactNode) => (
+    <Fragment key={id}>
+      <div className={id !== "hero" && id !== "strip" ? "home-below-fold" : undefined}>{node}</div>
+    </Fragment>
+  );
 
   return (
     <>
@@ -429,7 +443,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
               <MostTalkedAboutHero
                 movies={mostTalkedAboutList}
                 showtimes={stList}
-                loading={awaitingMovies}
+                loading={awaitingMovies || (isMobile && !deferSecondary)}
               />,
             );
           case "strip":

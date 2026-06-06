@@ -27,6 +27,9 @@ export function homeHeroCriticalCss(): string {
     `@media(min-width:1024px){#home-static-lcp .home-static-lcp__poster-wrap{width:17rem}}` +
     `#home-static-lcp img.home-static-lcp__poster{display:block;width:100%;height:100%;object-fit:contain;object-position:center;border-radius:.75rem}` +
     `html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}` +
+    `html.spa-lcp-done #home-hero-slot{display:none}` +
+    `html.spa-lcp-done .home-main-overlap{margin-top:0;padding-top:3.5rem}` +
+    `@media(min-width:768px){html.spa-lcp-done .home-main-overlap{padding-top:4rem}}` +
     `html:not(.spa-lcp-done) [data-home-hero-live]{opacity:0;pointer-events:none}` +
     `html.spa-lcp-done [data-home-hero-live]{opacity:1;pointer-events:auto}` +
     `.home-main-overlap{margin-top:-${min}px;padding-top:3.5rem}` +
@@ -34,9 +37,9 @@ export function homeHeroCriticalCss(): string {
   );
 }
 
-/** Compact hero — πιο πολυσυζητημένες (χωράει ολόκληρη αφίσα 2:3). */
+/** Compact hero — ίδιο ύψος με #home-hero-slot στο mobile (χωρίς CLS στο handoff). */
 export const HOME_HERO_COMPACT_SECTION_CLASS =
-  "relative overflow-hidden bg-[#13143E] max-md:min-h-0 max-md:-mt-16 max-md:pt-16 md:-mt-28 md:pt-28 md:min-h-[580px]";
+  "relative overflow-hidden bg-[#13143E] max-md:h-[380px] max-md:min-h-[380px] max-md:max-h-[380px] md:-mt-28 md:pt-28 md:min-h-[580px]";
 
 /** @deprecated Χρησιμοποίησε HOME_HERO_COMPACT_SECTION_CLASS */
 export const HOME_HERO_SECTION_CLASS = HOME_HERO_COMPACT_SECTION_CLASS;

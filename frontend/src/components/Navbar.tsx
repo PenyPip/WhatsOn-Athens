@@ -2,6 +2,7 @@ import { lazy, Suspense, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useIdleMount } from "@/hooks/useIdleMount";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useStableMobileSafeArea } from "@/hooks/useStableMobileSafeArea";
 import { Link, useLocation } from "react-router-dom";
 import { User } from "lucide-react";
@@ -69,11 +70,14 @@ function BrandLogo({ compact = false, tagline }: { compact?: boolean; tagline: s
 
 const Navbar = () => {
   const location = useLocation();
+  const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const mobileSearchRef = useRef<NavSearchHandle>(null);
   const desktopSearchRef = useRef<NavSearchHandle>(null);
   const deferNav = useDeferUntilLcpDone();
-  const showSearch = useIdleMount(2500);
+  const onHome = location.pathname === "/";
+  const showSearch =
+    useIdleMount(isMobile ? 4500 : 2500) && (!isMobile || !onHome || deferNav);
   useStableMobileSafeArea();
   const nav = useSiteNavigationData(deferNav);
 
@@ -200,7 +204,9 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {typeof document !== "undefined" ? createPortal(mobileBottomNav, document.body) : mobileBottomNav}
+      {typeof document !== "undefined" && (!isMobile || deferNav)
+        ? createPortal(mobileBottomNav, document.body)
+        : null}
     </>
   );
 };

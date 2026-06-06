@@ -34,11 +34,12 @@ export default function HomeStaticLcp({ posterHref, title, synopsis }: HomeStati
                 className="home-static-lcp__poster"
                 src={src}
                 alt={displayTitle}
-                width={416}
-                height={624}
+                width={320}
+                height={480}
                 fetchPriority="high"
                 loading="eager"
-                decoding="async"
+                decoding="sync"
+                sizes="(max-width: 768px) 152px, 240px"
               />
             </div>
           </div>

@@ -139,19 +139,36 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
   }, [activeIndex, movies.length, goTo]);
 
   useEffect(() => {
+    if (typeof document === "undefined") return;
+
+    const staticEl = document.getElementById("home-static-lcp");
+    if (staticEl) {
+      let cancelled = false;
+      let idleId: number | undefined;
+      const frame = requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          if (cancelled) return;
+          const finish = () => {
+            if (!cancelled) markLcpDone();
+          };
+          if (typeof requestIdleCallback !== "undefined") {
+            idleId = requestIdleCallback(finish, { timeout: 1200 });
+          } else {
+            finish();
+          }
+        });
+      });
+      return () => {
+        cancelled = true;
+        cancelAnimationFrame(frame);
+        if (idleId !== undefined && typeof cancelIdleCallback !== "undefined") {
+          cancelIdleCallback(idleId);
+        }
+      };
+    }
+
     if (loading) return;
-    if (movies.length === 0) {
-      markLcpDone();
-      return;
-    }
-    if (typeof document === "undefined" || !document.getElementById("home-static-lcp")) {
-      markLcpDone();
-      return;
-    }
-    const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => markLcpDone());
-    });
-    return () => cancelAnimationFrame(frame);
+    markLcpDone();
   }, [loading, movies.length, markLcpDone]);
 
   const hasStaticLcpDom =

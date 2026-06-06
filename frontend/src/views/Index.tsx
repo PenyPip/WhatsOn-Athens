@@ -15,11 +15,11 @@ const Index = () => {
   const homeBodyReady = layout.sections.length > 0;
 
   return (
-    <div className="min-h-screen pb-20 md:pb-0">
+    <div className="min-h-screen md:pb-0">
       {!hasHero ? <MarkLcpDone /> : null}
 
       {homeBodyReady ? <HomeBody layout={layout} /> : null}
-      <>
+      <div className="home-below-fold">
         <HomeSeoIntro />
 
         <footer className="section-black border-t border-white/10 py-12">
@@ -83,7 +83,7 @@ const Index = () => {
             </div>
           </div>
         </footer>
-      </>
+      </div>
     </div>
   );
 };
