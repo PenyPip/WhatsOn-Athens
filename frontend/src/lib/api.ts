@@ -1466,7 +1466,7 @@ const CUISINE_PUBLIC_QUERY: Record<string, string> = {
   "fields[2]": "sort_order",
 };
 
-const VENUE_PUBLIC_QUERY: Record<string, string> = {
+const VENUE_PROGRAM_QUERY: Record<string, string> = {
   "fields[0]": "slug",
   "fields[1]": "name",
   "fields[2]": "address",
@@ -1474,9 +1474,13 @@ const VENUE_PUBLIC_QUERY: Record<string, string> = {
   "fields[4]": "district",
   "fields[5]": "google_maps_url",
   "fields[6]": "more_link",
-  "fields[7]": "seats_total",
-  "fields[8]": "type",
-  "fields[9]": "summer_outdoor",
+  "fields[7]": "type",
+  "fields[8]": "summer_outdoor",
+};
+
+const VENUE_PUBLIC_QUERY: Record<string, string> = {
+  ...VENUE_PROGRAM_QUERY,
+  "fields[9]": "seats_total",
   "populate[day_prices][fields][0]": "day",
   "populate[day_prices][fields][1]": "regular_price",
   "populate[day_prices][fields][2]": "student_price",
@@ -1574,6 +1578,41 @@ function upcomingShowtimeFilters(now = new Date()): Record<string, string> {
     "filters[$or][1][week_end][$gte]": todayKey,
     "sort[0]": "datetime:asc",
   };
+}
+
+async function fetchShowtimesCalendar(weeks = 5): Promise<StrapiShowtime[]> {
+  const rows = await fetchAPI<any[]>(
+    "/showtimes/home-calendar",
+    { weeks: String(weeks) },
+    { noPopulate: true },
+  );
+  return (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x));
+}
+
+async function fetchShowtimesVenueCalendar(venueSlug: string, weeks = 3): Promise<StrapiShowtime[]> {
+  const venueFilter = { "filters[venue][slug][$eq]": venueSlug };
+  try {
+    const rows = await fetchAPI<any[]>(
+      "/showtimes/venue-calendar",
+      { venue: venueSlug, weeks: String(weeks) },
+      { noPopulate: true },
+    );
+    return (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x));
+  } catch {
+    const [catalog, rows] = await Promise.all([
+      fetchMovieGenreCatalog(),
+      fetchAPIPagedEntries(
+        "/showtimes",
+        {
+          ...SHOWTIME_POPULATE,
+          ...upcomingShowtimeFilters(),
+          ...venueFilter,
+        },
+        { noStore: true },
+      ),
+    ]);
+    return rows.flatMap((x) => mapShowtime(x, catalog.hydrate, catalog.linkIndex));
+  }
 }
 
 async function fetchSiteNavigation(): Promise<MappedSiteNavigation | null> {
@@ -1685,6 +1724,10 @@ export const api = {
   getVenues: () =>
     fetchAPIPagedEntries("/venues", VENUE_PUBLIC_QUERY).then((rows) => rows.map((x) => mapVenue(x))),
 
+  /** Χώροι για λίστα προβολών — χωρίς day_prices (μικρότερο payload). */
+  getVenuesForProgram: () =>
+    fetchAPIPagedEntries("/venues", VENUE_PROGRAM_QUERY).then((rows) => rows.map((x) => mapVenue(x))),
+
   getEditorialReviews: () =>
     fetchAPI<any[]>("/editorial-reviews", EDITORIAL_REVIEW_PUBLIC_QUERY).then((d) =>
       (Array.isArray(d) ? d : []).map((x) => mapEditorialReview(x)),
@@ -1740,50 +1783,15 @@ export const api = {
       return row ? mapEvent(row) : undefined;
     }),
 
-  /** Ελαφρύ πρόγραμμα για αρχική — ένα request, περιορισμένο horizon (όχι 10× pagination). */
-  getShowtimesForHome: () =>
-    fetchAPI<any[]>("/showtimes/home-calendar", { weeks: "5" }, { noStore: true, noPopulate: true }).then((rows) =>
-      (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x)),
-    ),
+  /** Ελαφρύ πρόγραμμα — ένα request, ~5 εβδομάδες (αρχική, /movies, λεπτομέρεια). */
+  getShowtimesForHome: () => fetchShowtimesCalendar(5),
 
   getShowtimes: (options?: { venueSlug?: string }) => {
     const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";
     if (venueSlug) {
-      const venueFilter = { "filters[venue][slug][$eq]": venueSlug };
-      return fetchAPI<any[]>(
-        "/showtimes/venue-calendar",
-        { venue: venueSlug, weeks: "3" },
-        { noStore: true },
-      )
-        .then((rows) => (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x)))
-        .catch(async () => {
-          // Fallback: αν αποτύχει το lightweight endpoint, χρησιμοποιούμε το κλασικό query.
-          const [catalog, rows] = await Promise.all([
-            fetchMovieGenreCatalog(),
-            fetchAPIPagedEntries(
-              "/showtimes",
-              {
-                ...SHOWTIME_POPULATE,
-                ...upcomingShowtimeFilters(),
-                ...venueFilter,
-              },
-              { noStore: true },
-            ),
-          ]);
-          return rows.flatMap((x) => mapShowtime(x, catalog.hydrate, catalog.linkIndex));
-        });
+      return fetchShowtimesVenueCalendar(venueSlug, 3);
     }
-    return Promise.all([
-      fetchMovieGenreCatalog(),
-      fetchAPIPagedEntries(
-        "/showtimes",
-        {
-          ...SHOWTIME_POPULATE,
-          ...upcomingShowtimeFilters(),
-        },
-        { noStore: true },
-      ),
-    ]).then(([catalog, rows]) => rows.flatMap((x) => mapShowtime(x, catalog.hydrate, catalog.linkIndex)));
+    return fetchShowtimesCalendar(5);
   },
 
   getUserReviews: () =>

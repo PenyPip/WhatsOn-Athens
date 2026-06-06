@@ -16,7 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import EventCard from "@/components/EventCard";
 import MoviesGridSkeleton from "@/components/MoviesGridSkeleton";
 import Footer from "@/components/Footer";
-import { useMovies, useShowtimes, useVenues, useMovieGenres } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useVenuesForProgram, useMovieGenres } from "@/hooks/useStrapi";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import {
   cinemaGroupKey,
@@ -433,7 +433,7 @@ const Movies = () => {
   const needsCatalogMovies = moviesSection === "new" || moviesSection === "soon" || moviesSection === "week";
   const { data: movies, isLoading: moviesLoading } = useMovies(needsCatalogMovies);
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(true, venueSlug || undefined);
-  const { data: venues, isLoading: venuesLoading } = useVenues();
+  const { data: venues, isLoading: venuesLoading } = useVenuesForProgram();
   const needsGenreList = Boolean(genreFilterSlug || pathFilters.genreSlug || routeGenreSlug);
   const { data: movieGenresList } = useMovieGenres(needsGenreList);
   const [summerOutdoorOnly, setSummerOutdoorOnly] = useState(false);

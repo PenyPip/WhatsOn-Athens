@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { CONTENT_QUERY_OPTIONS } from "@/lib/contentQuery";
-import { PROGRAM_QUERY_OPTIONS } from "@/lib/programQuery";
+import { PROGRAM_QUERY_OPTIONS, SHOWTIMES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 import { resolveHomepageLayout } from "@/config/home";
 import { DEFAULT_SITE_NAVIGATION } from "@/config/navigation";
 
@@ -122,6 +122,16 @@ export const useVenues = (enabled = true) =>
     enabled,
   });
 
+export const useVenuesForProgram = (enabled = true) =>
+  useQuery({
+    queryKey: VENUES_PROGRAM_QUERY_KEY,
+    queryFn: api.getVenuesForProgram,
+    ...CONTENT_QUERY_OPTIONS,
+    throwOnError: false,
+    retry: 1,
+    enabled,
+  });
+
 export const useEditorialReviews = () =>
   useQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews, staleTime: 300_000, retry: 1, throwOnError: false });
 
@@ -181,18 +191,16 @@ export const useEventBySlug = (slug: string) =>
     throwOnError: false,
   });
 
-export const useShowtimes = (enabled = true, venueSlug?: string, options?: { home?: boolean }) => {
-  const home = options?.home === true;
-  const scopeKey = home ? "home" : (venueSlug ?? "");
+export const useShowtimes = (enabled = true, venueSlug?: string) => {
+  const scopeKey = venueSlug?.trim() ? venueSlug.trim() : SHOWTIMES_CALENDAR_QUERY_KEY[1];
   return useQuery({
     queryKey: ["showtimes", scopeKey],
-    queryFn: () => (home ? api.getShowtimesForHome() : api.getShowtimes({ venueSlug })),
+    queryFn: () =>
+      venueSlug?.trim() ? api.getShowtimes({ venueSlug: venueSlug.trim() }) : api.getShowtimesForHome(),
     ...PROGRAM_QUERY_OPTIONS,
     throwOnError: false,
     retry: 1,
     enabled,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
   });
 };
 

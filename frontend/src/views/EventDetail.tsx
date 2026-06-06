@@ -664,8 +664,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </Link>
 
             {!isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto mb-2 w-full max-w-[11rem] shrink-0 sm:max-w-[12rem] md:hidden">
-                <div className="relative flex aspect-[4/3] max-h-32 items-center justify-center overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
+              <figure className="mx-auto mb-2 w-full max-w-[min(100%,14rem)] shrink-0 md:hidden">
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={theaterShow.posterUrl}
@@ -675,7 +675,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     fetchPriority="high"
                     loading="eager"
                     decoding="async"
-                    className="max-h-full max-w-full object-contain object-center"
+                    className="h-full w-full object-contain object-center"
                   />
                 </div>
               </figure>
@@ -810,7 +810,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               </figure>
             ) : !isMovie && theaterShow?.posterUrl ? (
               <figure className="mx-auto hidden w-full max-w-[11rem] shrink-0 sm:max-w-[12rem] md:mx-0 md:block md:max-w-[14rem] lg:max-w-[15rem]">
-                <div className="relative flex aspect-[4/3] max-h-36 items-center justify-center overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20 md:max-h-40">
+                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={theaterShow.posterUrl}
@@ -820,7 +820,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     fetchPriority="high"
                     loading="eager"
                     decoding="async"
-                    className="max-h-full max-w-full object-contain object-center"
+                    className="h-full w-full object-contain object-center"
                   />
                 </div>
               </figure>

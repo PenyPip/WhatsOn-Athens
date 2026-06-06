@@ -9,6 +9,7 @@ import {
   type MappedHomepage,
 } from "@/config/home";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
+import { SHOWTIMES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 import { finalizeBootstrapCache, minifyDehydratedState } from "@/lib/slimDehydrate";
 
 const queryDefaults = {
@@ -60,7 +61,11 @@ async function prefetchHomeBundle(qc: QueryClient) {
   ];
   if (homeNeedsShowtimes(layout.sections)) {
     tasks.push(
-      qc.prefetchQuery({ queryKey: ["showtimes", "home"], queryFn: () => api.getShowtimesForHome(), ...queryDefaults }),
+      qc.prefetchQuery({
+        queryKey: SHOWTIMES_CALENDAR_QUERY_KEY,
+        queryFn: () => api.getShowtimesForHome(),
+        ...queryDefaults,
+      }),
     );
   }
   if (homeNeedsArticles(layout.sections)) {
@@ -80,8 +85,12 @@ async function prefetchHomeBundle(qc: QueryClient) {
 /** Λίστα /movies — χωρίς πλήρες catalog στο HTML (client fetch για ταινίες). */
 async function prefetchMoviesList(qc: QueryClient) {
   await Promise.all([
-    qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
+    qc.prefetchQuery({
+      queryKey: SHOWTIMES_CALENDAR_QUERY_KEY,
+      queryFn: () => api.getShowtimesForHome(),
+      ...queryDefaults,
+    }),
+    qc.prefetchQuery({ queryKey: VENUES_PROGRAM_QUERY_KEY, queryFn: api.getVenuesForProgram, ...queryDefaults }),
   ]);
   finalizeBootstrapCache(qc, { trimHomeShowtimes: true, trimVenuesForShowtimes: true });
 }
@@ -94,7 +103,7 @@ async function prefetchMoviesVenueProgram(qc: QueryClient, venueSlug: string) {
       queryFn: () => api.getShowtimes({ venueSlug }),
       ...queryDefaults,
     }),
-    qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
+    qc.prefetchQuery({ queryKey: VENUES_PROGRAM_QUERY_KEY, queryFn: api.getVenuesForProgram, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
   ]);
   finalizeBootstrapCache(qc);
@@ -103,7 +112,11 @@ async function prefetchMoviesVenueProgram(qc: QueryClient, venueSlug: string) {
 async function prefetchMovieDetail(qc: QueryClient, slug: string) {
   await Promise.all([
     qc.prefetchQuery({ queryKey: ["movie", slug], queryFn: () => api.getMovieBySlug(slug) }),
-    qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
+    qc.prefetchQuery({
+      queryKey: SHOWTIMES_CALENDAR_QUERY_KEY,
+      queryFn: () => api.getShowtimesForHome(),
+      ...queryDefaults,
+    }),
     qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
     qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
     qc.prefetchQuery({
@@ -163,7 +176,11 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
     } else if (normalized === "/venues") {
       await Promise.all([
         qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
-        qc.prefetchQuery({ queryKey: ["showtimes"], queryFn: () => api.getShowtimes(), ...queryDefaults }),
+        qc.prefetchQuery({
+          queryKey: SHOWTIMES_CALENDAR_QUERY_KEY,
+          queryFn: () => api.getShowtimesForHome(),
+          ...queryDefaults,
+        }),
       ]);
       finalizeBootstrapCache(qc, { trimHomeShowtimes: true, trimVenuesForShowtimes: true });
     } else if (normalized === "/dining") {

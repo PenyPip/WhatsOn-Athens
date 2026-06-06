@@ -8,9 +8,14 @@ import type {
   StrapiTheaterShow,
   StrapiVenue,
 } from "@/lib/api";
+import { SHOWTIMES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 import { showtimeIsUpcoming } from "@/lib/homeMovieFilters";
 
-const SHOWTIME_CACHE_KEYS: readonly (readonly [string, ...string[]])[] = [["showtimes"], ["showtimes", "home"]];
+const SHOWTIME_CACHE_KEYS: readonly (readonly [string, ...string[]])[] = [
+  SHOWTIMES_CALENDAR_QUERY_KEY,
+  ["showtimes", "home"],
+  ["showtimes"],
+];
 
 function readShowtimesCaches(qc: QueryClient): { key: readonly [string, ...string[]]; data: StrapiShowtime[] }[] {
   const out: { key: readonly [string, ...string[]]; data: StrapiShowtime[] }[] = [];
@@ -203,28 +208,29 @@ function slimHomepageBootstrap(qc: QueryClient): void {
 
 /** Λιγότερες εγγραφές showtimes στο bootstrap αρχικής (ταχύτερο JSON.parse). */
 export function trimHomeShowtimesDehydrate(qc: QueryClient): void {
-  const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes", "home"]);
+  const showtimes =
+    qc.getQueryData<StrapiShowtime[]>(SHOWTIMES_CALENDAR_QUERY_KEY) ??
+    qc.getQueryData<StrapiShowtime[]>(["showtimes", "home"]);
   if (!showtimes?.length) return;
   const now = Date.now();
   const until = now + HOME_SHOWTIME_HORIZON_MS;
-  qc.setQueryData(
-    ["showtimes", "home"],
-    showtimes.filter((st) => {
-      if (!showtimeIsUpcoming(st, new Date(now))) return false;
-      const t = Date.parse(st.datetime);
-      return !Number.isFinite(t) || t <= until;
-    }),
-  );
+  const trimmed = showtimes.filter((st) => {
+    if (!showtimeIsUpcoming(st, new Date(now))) return false;
+    const t = Date.parse(st.datetime);
+    return !Number.isFinite(t) || t <= until;
+  });
+  qc.setQueryData(SHOWTIMES_CALENDAR_QUERY_KEY, trimmed);
+  qc.setQueryData(["showtimes", "home"], trimmed);
 }
 
 /** Μόνο προβολές μίας ταινίας στο bootstrap σελίδας λεπτομέρειας. */
 export function trimShowtimesForMovieSlug(qc: QueryClient, movieSlug: string): void {
   const slug = movieSlug.trim();
   if (!slug) return;
-  const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
+  const showtimes = qc.getQueryData<StrapiShowtime[]>(SHOWTIMES_CALENDAR_QUERY_KEY);
   if (!showtimes?.length) return;
   qc.setQueryData(
-    ["showtimes"],
+    SHOWTIMES_CALENDAR_QUERY_KEY,
     showtimes.filter((st) => st.movieSlug === slug),
   );
 }
@@ -234,7 +240,9 @@ export function trimMoviesForHomeBootstrap(qc: QueryClient): void {
   const movies = qc.getQueryData<StrapiMovie[]>(["movies"]);
   if (!movies?.length) return;
   const showtimes =
-    qc.getQueryData<StrapiShowtime[]>(["showtimes", "home"]) ?? qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
+    qc.getQueryData<StrapiShowtime[]>(SHOWTIMES_CALENDAR_QUERY_KEY) ??
+    qc.getQueryData<StrapiShowtime[]>(["showtimes", "home"]) ??
+    qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
   const keepIds = new Set<number>();
   const keepSlugs = new Set<string>();
   for (const m of movies) {
@@ -257,8 +265,11 @@ export function trimMoviesForHomeBootstrap(qc: QueryClient): void {
 
 /** Μόνο venues που εμφανίζονται στις τρέχουσες προβολές. */
 export function trimVenuesForShowtimes(qc: QueryClient): void {
-  const showtimes = qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
-  const venues = qc.getQueryData<StrapiVenue[]>(["venues"]);
+  const showtimes =
+    qc.getQueryData<StrapiShowtime[]>(SHOWTIMES_CALENDAR_QUERY_KEY) ??
+    qc.getQueryData<StrapiShowtime[]>(["showtimes"]);
+  const venues =
+    qc.getQueryData<StrapiVenue[]>(VENUES_PROGRAM_QUERY_KEY) ?? qc.getQueryData<StrapiVenue[]>(["venues"]);
   if (!showtimes?.length || !venues?.length) return;
   const venueIds = new Set<number>();
   const venueSlugs = new Set<string>();
@@ -268,15 +279,18 @@ export function trimVenuesForShowtimes(qc: QueryClient): void {
     if (st.venueSlug) venueSlugs.add(st.venueSlug);
     if (typeof st.venue === "string" && st.venue.trim()) venueNames.add(st.venue.trim());
   }
-  qc.setQueryData(
-    ["venues"],
-    venues.filter(
-      (v) =>
-        venueIds.has(v.id) ||
-        venueSlugs.has(v.slug) ||
-        venueNames.has(v.name.trim()),
-    ),
+  const trimmed = venues.filter(
+    (v) =>
+      venueIds.has(v.id) ||
+      venueSlugs.has(v.slug) ||
+      venueNames.has(v.name.trim()),
   );
+  if (qc.getQueryData(VENUES_PROGRAM_QUERY_KEY)) {
+    qc.setQueryData(VENUES_PROGRAM_QUERY_KEY, trimmed);
+  }
+  if (qc.getQueryData(["venues"])) {
+    qc.setQueryData(["venues"], trimmed);
+  }
 }
 
 /** Τελικό slim + trim για κάθε static export route. */

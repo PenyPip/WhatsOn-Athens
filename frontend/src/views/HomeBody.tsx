@@ -336,7 +336,6 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const { data: showtimes, isPending: showtimesPending, isError: showtimesError } = useShowtimes(
     needsShowtimes,
     undefined,
-    { home: true },
   );
   const awaitingMovies = movies === undefined && moviesPending;
   const awaitingShowtimes = showtimes === undefined && showtimesPending;
@@ -707,19 +706,31 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                         <li key={`${article.id}-${article.slug}`}>
                           <Link
                             to={`/articles/${article.slug}`}
-                            className="group block h-full rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background"
+                            className="group flex h-full gap-3 rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background"
                           >
-                            <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/80">
-                              {articleTypeLabel[article.articleType] ?? "Άρθρο"}
-                            </p>
-                            <h3 className="mt-2 font-display text-lg font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
-                              {article.title}
-                            </h3>
-                            {article.metaDescription ? (
-                              <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
-                                {article.metaDescription}
-                              </p>
+                            {article.featuredImageUrl ? (
+                              <img
+                                src={article.featuredImageUrl}
+                                alt={article.featuredImageAlt || article.title}
+                                className="h-16 w-16 shrink-0 rounded-lg object-cover md:h-[4.5rem] md:w-[4.5rem]"
+                                loading="lazy"
+                                width={72}
+                                height={72}
+                              />
                             ) : null}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground/80">
+                                {articleTypeLabel[article.articleType] ?? "Άρθρο"}
+                              </p>
+                              <h3 className="mt-2 font-display text-lg font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
+                                {article.title}
+                              </h3>
+                              {article.metaDescription ? (
+                                <p className="mt-2 line-clamp-3 text-sm leading-relaxed text-muted-foreground">
+                                  {article.metaDescription}
+                                </p>
+                              ) : null}
+                            </div>
                           </Link>
                         </li>
                       ))}
