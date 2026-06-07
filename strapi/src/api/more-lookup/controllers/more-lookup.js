@@ -1,12 +1,18 @@
 'use strict';
 
-const { runMoreEventCodeLookup, DEFAULT_MIN_SCORE } = require('../../../utils/moreEventCodeLookup');
+const {
+  runMoreEventCodeLookup,
+  applyMoreEventCodeMatches,
+  DEFAULT_MIN_SCORE,
+  DEFAULT_APPLY_MIN_SCORE,
+} = require('../../../utils/moreEventCodeLookup');
 
 module.exports = {
   async status(ctx) {
     ctx.body = {
       enabled: process.env.MORE_LOOKUP_ENABLED !== 'false',
       minScore: DEFAULT_MIN_SCORE,
+      applyMinScore: DEFAULT_APPLY_MIN_SCORE,
     };
   },
 
@@ -25,8 +31,26 @@ module.exports = {
     const matchCms = body.matchCms !== false;
     const listAll = body.listAll === true;
     const skipVerify = body.skipVerify === true;
+    const apply = body.apply === true;
 
     const adminEmail = ctx.state?.admin?.email || 'unknown';
+
+    if (apply) {
+      strapi.log.info(`[more-lookup] apply by ${adminEmail} query=${query || '-'}`);
+      try {
+        const result = await applyMoreEventCodeMatches(strapi, {
+          query: query || null,
+          overwriteExisting: body.overwriteExisting === true,
+        });
+        ctx.body = result;
+      } catch (e) {
+        strapi.log.error('[more-lookup] apply failed', e);
+        ctx.status = 500;
+        ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+      }
+      return;
+    }
+
     strapi.log.info(`[more-lookup] run by ${adminEmail} matchCms=${matchCms} query=${query || '-'}`);
 
     try {

@@ -15,6 +15,7 @@ import {
   Th,
   Td,
   Badge,
+  Checkbox,
 } from '@strapi/design-system';
 import { useFetchClient, useNotification } from '@strapi/helper-plugin';
 
@@ -22,6 +23,8 @@ const App = () => {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(true);
+  const [applyMinScore, setApplyMinScore] = useState(0.85);
+  const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [result, setResult] = useState(null);
   const { get, post } = useFetchClient();
   const toggleNotification = useNotification();
@@ -30,6 +33,9 @@ const App = () => {
     try {
       const res = await get('/api/more-lookup/status');
       setEnabled(res?.data?.enabled !== false);
+      if (typeof res?.data?.applyMinScore === 'number') {
+        setApplyMinScore(res.data.applyMinScore);
+      }
     } catch {
       setEnabled(true);
     }
@@ -64,9 +70,36 @@ const App = () => {
     }
   };
 
+  const applyToCms = async () => {
+    setLoading(true);
+    try {
+      const res = await post('/api/more-lookup/run', {
+        query: query.trim() || undefined,
+        apply: true,
+        overwriteExisting,
+      });
+      setResult(res.data);
+      const applied = res?.data?.apply?.stats?.applied ?? 0;
+      const skipped = res?.data?.apply?.stats?.skipped ?? 0;
+      toggleNotification({
+        type: applied > 0 ? 'success' : 'warning',
+        message: res?.data?.message || `Ενημερώθηκαν ${applied} ταινίες · παραλείφθηκαν ${skipped}`,
+      });
+    } catch (error) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.message ||
+        'Αποτυχία εγγραφής στο CMS.';
+      toggleNotification({ type: 'warning', message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const matches = result?.matches ?? [];
   const matchedRows = matches.filter((r) => r.matched);
   const catalog = result?.catalog ?? [];
+  const applyResult = result?.apply;
 
   return (
     <Layout>
@@ -83,10 +116,9 @@ const App = () => {
           ) : (
             <>
               <Typography variant="omega" textColor="neutral600">
-                Βρίσκει per-movie <strong>event_group_code</strong> (π.χ.{' '}
-                <code>evg_arkoudotrupa_1902_38</code>) από το More.com και το ταυτίζει με ταινίες
-                CMS. Αντίγραψε τον κωδικό στο πεδίο <strong>event_group_code</strong> της ταινίας
-                (Content Manager → Ταινία).
+                Ταυτίζει ταινίες CMS με More.com και μπορεί να γράψει απευθείας το{' '}
+                <strong>event_group_code</strong> (π.χ. <code>evg_arkoudotrupa_1902_38</code>).
+                Γράφει μόνο κενά πεδία με score ≥ {applyMinScore.toFixed(2)} και επιβεβαιωμένο More API.
               </Typography>
 
               <Box paddingTop={4} paddingBottom={2} maxWidth="480px">
@@ -103,6 +135,9 @@ const App = () => {
                 <Button loading={loading} onClick={() => runLookup({ matchCms: true, listAll: false })}>
                   Ταύτιση με CMS
                 </Button>
+                <Button variant="success" loading={loading} onClick={applyToCms}>
+                  Γράψε στο CMS
+                </Button>
                 <Button
                   variant="secondary"
                   loading={loading}
@@ -118,6 +153,15 @@ const App = () => {
                   Πλήρης κατάλογος More
                 </Button>
               </Flex>
+
+              <Box paddingTop={3}>
+                <Checkbox
+                  checked={overwriteExisting}
+                  onCheckedChange={(checked) => setOverwriteExisting(checked === true)}
+                >
+                  Αντικατάσταση υπάρχοντος event_group_code (conflicts)
+                </Checkbox>
+              </Box>
             </>
           )}
         </Box>
@@ -131,6 +175,23 @@ const App = () => {
                 ? ` · ταύτιση CMS: ${result.stats.matched}/${result.stats.cmsMovies}`
                 : ''}
             </Typography>
+          </Box>
+        ) : null}
+
+        {applyResult ? (
+          <Box paddingTop={4} padding={4} background="success100" hasRadius>
+            <Typography variant="pi" fontWeight="bold">
+              Εγγραφή CMS: {applyResult.stats.applied} ενημερώθηκαν · {applyResult.stats.skipped}{' '}
+              παραλείφθηκαν
+            </Typography>
+            {applyResult.applied?.length ? (
+              <Typography variant="pi" textColor="neutral600" paddingTop={2}>
+                {applyResult.applied
+                  .slice(0, 15)
+                  .map((r) => `${r.cmsTitle} → ${r.eventGroupCode}`)
+                  .join(' · ')}
+              </Typography>
+            ) : null}
           </Box>
         ) : null}
 

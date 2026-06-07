@@ -5,6 +5,7 @@ const MORE_GETEVENTS = 'https://www.more.com/_api/playdetails/getevents';
 const USER_AGENT = 'whatson-more-lookup/1.0';
 const FETCH_TIMEOUT_MS = 25_000;
 const DEFAULT_MIN_SCORE = 0.68;
+const DEFAULT_APPLY_MIN_SCORE = Number(process.env.MORE_LOOKUP_APPLY_MIN_SCORE || 0.85);
 
 function normalizeText(raw) {
   return String(raw ?? '')
@@ -321,11 +322,124 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
   return result;
 }
 
+function skipReason(row, options) {
+  const applyMinScore = options.applyMinScore ?? DEFAULT_APPLY_MIN_SCORE;
+  const overwriteExisting = options.overwriteExisting === true;
+  const requireApiVerify = options.requireApiVerify !== false;
+
+  if (!row.matched) return 'no_match';
+  if (row.score < applyMinScore) return 'low_score';
+  if (!row.suggestedEventGroupCode) return 'no_code';
+  if (requireApiVerify && !row.verify?.ok) return 'api_verify_failed';
+  if (row.cmsEventGroupCode === row.suggestedEventGroupCode) return 'already_set';
+  if (row.conflict && !overwriteExisting) return 'conflict';
+  if (row.cmsEventGroupCode && !overwriteExisting) return 'has_existing_code';
+  return null;
+}
+
+/**
+ * Ταύτιση + εγγραφή event_group_code στις ταινίες CMS.
+ * @param {object} strapi
+ * @param {{ query?: string, minScore?: number, applyMinScore?: number, overwriteExisting?: boolean, requireApiVerify?: boolean }} options
+ */
+async function applyMoreEventCodeMatches(strapi, options = {}) {
+  const started = Date.now();
+  const minScore = options.minScore ?? DEFAULT_MIN_SCORE;
+  const applyMinScore = options.applyMinScore ?? DEFAULT_APPLY_MIN_SCORE;
+  const overwriteExisting = options.overwriteExisting === true;
+  const requireApiVerify = options.requireApiVerify !== false;
+
+  const lookup = await runMoreEventCodeLookup(strapi, {
+    query: options.query ?? null,
+    matchCms: true,
+    skipVerify: false,
+    minScore,
+  });
+
+  const candidates = lookup.matches
+    .filter((r) => r.matched && r.suggestedEventGroupCode)
+    .sort((a, b) => b.score - a.score);
+
+  const codeTakenBy = new Map();
+  const applied = [];
+  const skipped = [];
+
+  for (const row of candidates) {
+    const reason = skipReason(row, { applyMinScore, overwriteExisting, requireApiVerify });
+    if (reason) {
+      skipped.push({
+        movieId: row.movieId,
+        cmsTitle: row.cmsTitle,
+        suggestedEventGroupCode: row.suggestedEventGroupCode,
+        cmsEventGroupCode: row.cmsEventGroupCode,
+        score: row.score,
+        reason,
+      });
+      continue;
+    }
+
+    const code = row.suggestedEventGroupCode;
+    const existingOwner = codeTakenBy.get(code);
+    if (existingOwner != null && existingOwner !== row.movieId) {
+      skipped.push({
+        movieId: row.movieId,
+        cmsTitle: row.cmsTitle,
+        suggestedEventGroupCode: code,
+        score: row.score,
+        reason: 'duplicate_code',
+      });
+      continue;
+    }
+
+    try {
+      await strapi.entityService.update('api::movie.movie', row.movieId, {
+        data: { event_group_code: code },
+      });
+      codeTakenBy.set(code, row.movieId);
+      applied.push({
+        movieId: row.movieId,
+        cmsTitle: row.cmsTitle,
+        moreTitle: row.moreTitle,
+        eventGroupCode: code,
+        previousCode: row.cmsEventGroupCode || null,
+        score: row.score,
+      });
+    } catch (e) {
+      skipped.push({
+        movieId: row.movieId,
+        cmsTitle: row.cmsTitle,
+        suggestedEventGroupCode: code,
+        score: row.score,
+        reason: 'update_failed',
+        error: e?.message || String(e),
+      });
+    }
+  }
+
+  return {
+    ...lookup,
+    apply: {
+      applyMinScore,
+      overwriteExisting,
+      applied,
+      skipped,
+      stats: {
+        applied: applied.length,
+        skipped: skipped.length,
+      },
+    },
+    durationMs: Date.now() - started,
+    message: `Ενημερώθηκαν ${applied.length} ταινίες · παραλείφθηκαν ${skipped.length}`,
+  };
+}
+
 module.exports = {
   DEFAULT_MIN_SCORE,
+  DEFAULT_APPLY_MIN_SCORE,
   fetchMoreCatalog,
   verifyEventGroupCode,
   runMoreEventCodeLookup,
+  applyMoreEventCodeMatches,
   normalizeText,
   filterMoreMovies,
   matchMoviesToMore,
