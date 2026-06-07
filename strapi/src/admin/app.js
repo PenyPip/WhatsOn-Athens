@@ -20,6 +20,19 @@ const register = (app) => {
     },
     permissions: [],
   });
+  app.addMenuLink({
+    to: '/plugins/more-lookup',
+    icon: () => React.createElement('span', null, '🎟️'),
+    intlLabel: {
+      id: 'more-lookup.plugin.name',
+      defaultMessage: 'More event codes',
+    },
+    Component: async () => {
+      const component = await import('./pages/MoreLookupPage');
+      return component;
+    },
+    permissions: [],
+  });
 };
 
 export default {

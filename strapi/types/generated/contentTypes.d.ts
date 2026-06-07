@@ -718,6 +718,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'oneToMany',
       'api::editorial-review.editorial-review'
     >;
+    event_group_code: Attribute.String;
     imdb_rating: Attribute.Decimal;
     is_dubbed: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;

@@ -82,6 +82,10 @@
       "default": false,
       "description": "Εμφάνιση στην ενότητα «Πολυσυζητημένες» της αρχικής (μπορείς να επιλέξεις πολλές ταινίες)."
     },
+    "event_group_code": {
+      "type": "string",
+      "description": "More.com eventGroupCode ανά ταινία (π.χ. evg_arkoudotrupa_1902_38). Όχι venue bundle (evg_aiglecinema_…). Βρες με: npm run lookup-more-codes"
+    },
     "showtimes": {
       "type": "relation",
       "relation": "oneToMany",
