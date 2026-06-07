@@ -3,4 +3,8 @@ module.exports = {
     enabled: true,
     resolve: './node_modules/@_sh/strapi-plugin-ckeditor',
   },
+  'more-lookup': {
+    enabled: true,
+    resolve: './src/plugins/more-lookup',
+  },
 };

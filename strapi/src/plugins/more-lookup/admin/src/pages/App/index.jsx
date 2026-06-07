@@ -18,7 +18,7 @@ import {
 } from '@strapi/design-system';
 import { useFetchClient, useNotification } from '@strapi/helper-plugin';
 
-const MoreLookupPage = () => {
+const App = () => {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(true);
@@ -85,8 +85,8 @@ const MoreLookupPage = () => {
               <Typography variant="omega" textColor="neutral600">
                 Βρίσκει per-movie <strong>event_group_code</strong> (π.χ.{' '}
                 <code>evg_arkoudotrupa_1902_38</code>) από το More.com και το ταυτίζει με ταινίες
-                CMS. Δεν ενημερώνει αυτόματα το CMS — μόνο προτάσεις για αντιγραφή στο πεδίο{' '}
-                <strong>event_group_code</strong>.
+                CMS. Αντίγραψε τον κωδικό στο πεδίο <strong>event_group_code</strong> της ταινίας
+                (Content Manager → Ταινία).
               </Typography>
 
               <Box paddingTop={4} paddingBottom={2} maxWidth="480px">
@@ -271,4 +271,4 @@ const MoreLookupPage = () => {
   );
 };
 
-export default MoreLookupPage;
+export default App;

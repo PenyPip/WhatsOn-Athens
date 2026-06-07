@@ -1,0 +1,11 @@
+{
+  "name": "more-lookup",
+  "version": "1.0.0",
+  "private": true,
+  "strapi": {
+    "name": "more-lookup",
+    "displayName": "More κωδικοί ταινίας",
+    "description": "Αναζήτηση More.com event_group_code και ταύτιση με ταινίες CMS",
+    "kind": "plugin"
+  }
+}
