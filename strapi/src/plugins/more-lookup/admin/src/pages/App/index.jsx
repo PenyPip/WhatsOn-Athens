@@ -56,6 +56,35 @@ function formatCodeList(codes) {
   return list.join(' · ');
 }
 
+function EllipsisCell({ text, tone = 'neutral800', mono = false }) {
+  const value = String(text ?? '—');
+  return (
+    <Typography
+      variant="pi"
+      textColor={tone}
+      fontWeight={mono ? 'bold' : undefined}
+      ellipsis
+      title={value}
+      className={mono ? 'more-lookup-cell-code' : 'more-lookup-cell-ellipsis'}
+    >
+      {value}
+    </Typography>
+  );
+}
+
+function MatchRowActions({ loading, onApprove, onReject }) {
+  return (
+    <div className="more-lookup-row-actions">
+      <Button size="S" variant="tertiary" loading={loading} onClick={onReject}>
+        Απόρριψη
+      </Button>
+      <Button size="S" variant="success" loading={loading} onClick={onApprove}>
+        Έγκριση
+      </Button>
+    </div>
+  );
+}
+
 /** Μία γραμμή ανά κωδικό (κύριος + επιπλέον) για ξεκάθαρο πίνακα ταύτισης. */
 function expandMatchRows(rows) {
   return rows.flatMap((row) => {
@@ -946,102 +975,92 @@ const App = () => {
                 subtitle="Έγκριση γράφει τον κωδικό στο CMS · Απόρριψη τον αποκλείει από μελλοντικές προτάσεις. Το «Γράψε αυτόματα» εφαρμόζει μόνο όσα δεν απορρίφθηκαν."
               />
             </Box>
-            <Table colCount={9} rowCount={matchDisplayRows.length}>
+            <Box className="more-lookup-match-table more-lookup-match-table--matches">
+            <Table colCount={8} rowCount={matchDisplayRows.length}>
               <Thead>
                 <Tr>
-                  <Th>
+                  <Th className="more-lookup-col-actions">
+                    <Typography variant="sigma">—</Typography>
+                  </Th>
+                  <Th className="more-lookup-col-cms-title">
+                    <Typography variant="sigma">CMS</Typography>
+                  </Th>
+                  <Th className="more-lookup-col-more-title">
+                    <Typography variant="sigma">More</Typography>
+                  </Th>
+                  <Th className="more-lookup-col-code">
+                    <Typography variant="sigma">evg_</Typography>
+                  </Th>
+                  <Th className="more-lookup-col-type">
                     <Typography variant="sigma">Τύπος</Typography>
                   </Th>
-                  <Th>
-                    <Typography variant="sigma">CMS τίτλος</Typography>
+                  <Th className="more-lookup-col-score">
+                    <Typography variant="sigma">Sc</Typography>
                   </Th>
-                  <Th>
-                    <Typography variant="sigma">Ρόλος</Typography>
-                  </Th>
-                  <Th>
-                    <Typography variant="sigma">More τίτλος</Typography>
-                  </Th>
-                  <Th>
-                    <Typography variant="sigma">event_group_code</Typography>
-                  </Th>
-                  <Th>
-                    <Typography variant="sigma">Score</Typography>
-                  </Th>
-                  <Th>
+                  <Th className="more-lookup-col-api">
                     <Typography variant="sigma">API</Typography>
                   </Th>
-                  <Th>
+                  <Th className="more-lookup-col-cms-now">
                     <Typography variant="sigma">CMS τώρα</Typography>
-                  </Th>
-                  <Th>
-                    <Typography variant="sigma">Ενέργειες</Typography>
                   </Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {matchDisplayRows.map((row) => (
                   <Tr key={row.displayKey}>
-                    <Td>
+                    <Td className="more-lookup-col-actions">
+                      <MatchRowActions
+                        loading={loading}
+                        onReject={() => rejectMatchCode(row)}
+                        onApprove={() => approveMatchCode(row)}
+                      />
+                    </Td>
+                    <Td className="more-lookup-col-cms-title">
+                      <EllipsisCell text={row.cmsTitle} />
+                    </Td>
+                    <Td className="more-lookup-col-more-title">
+                      <EllipsisCell text={row.displayMoreTitle} tone="neutral600" />
+                    </Td>
+                    <Td className="more-lookup-col-code">
+                      <EllipsisCell text={row.displayCode} mono />
+                      {row.codeRole !== 'κύριος' ? (
+                        <Typography variant="pi" textColor="neutral500">
+                          {row.codeRole}
+                        </Typography>
+                      ) : null}
+                    </Td>
+                    <Td className="more-lookup-col-type">
                       <Badge>{cmsTypeLabel(row.contentType)}</Badge>
                     </Td>
-                    <Td>
-                      <Typography textColor="neutral800">{row.cmsTitle}</Typography>
+                    <Td className="more-lookup-col-score">
+                      <Typography variant="pi">{row.displayScore.toFixed(2)}</Typography>
+                      {row.displayMatchMethod === 'more_page_slug' ? (
+                        <Badge>slug</Badge>
+                      ) : null}
                     </Td>
-                    <Td>
-                      <Badge>{row.codeRole}</Badge>
-                    </Td>
-                    <Td>
-                      <Typography textColor="neutral600">{row.displayMoreTitle}</Typography>
-                    </Td>
-                    <Td>
-                      <Typography fontWeight="bold">{row.displayCode}</Typography>
-                    </Td>
-                    <Td>
-                      <Flex direction="column" alignItems="flex-start" gap={1}>
-                        <Typography>{row.displayScore.toFixed(2)}</Typography>
-                        {row.displayMatchMethod === 'more_page_slug' ? (
-                          <Badge>slug More</Badge>
-                        ) : null}
-                      </Flex>
-                    </Td>
-                    <Td>
+                    <Td className="more-lookup-col-api">
                       <Typography variant="pi">
                         {row.displayVerify?.ok
-                          ? `${row.displayVerify.eventCount} ev / ${row.displayVerify.venueCount} venues`
+                          ? `${row.displayVerify.eventCount}/${row.displayVerify.venueCount}`
                           : row.displayVerify?.error || '—'}
                       </Typography>
                     </Td>
-                    <Td>
-                      {(row.cmsEventGroupCodes?.length ?? 0) > 0 ? (
-                        <Badge>{formatCodeList(row.cmsEventGroupCodes)}</Badge>
-                      ) : (
-                        <Badge>κενό</Badge>
-                      )}
-                    </Td>
-                    <Td>
-                      <Flex gap={1} wrap="wrap">
-                        <Button
-                          size="S"
-                          variant="success"
-                          loading={loading}
-                          onClick={() => approveMatchCode(row)}
-                        >
-                          Έγκριση
-                        </Button>
-                        <Button
-                          size="S"
-                          variant="tertiary"
-                          loading={loading}
-                          onClick={() => rejectMatchCode(row)}
-                        >
-                          Απόρριψη
-                        </Button>
-                      </Flex>
+                    <Td className="more-lookup-col-cms-now">
+                      <EllipsisCell
+                        text={
+                          (row.cmsEventGroupCodes?.length ?? 0) > 0
+                            ? formatCodeList(row.cmsEventGroupCodes)
+                            : 'κενό'
+                        }
+                        tone="neutral600"
+                        mono={(row.cmsEventGroupCodes?.length ?? 0) > 0}
+                      />
                     </Td>
                   </Tr>
                 ))}
               </Tbody>
             </Table>
+            </Box>
           </Box>
         ) : null}
 
@@ -1058,83 +1077,70 @@ const App = () => {
                 }
               />
             </Box>
+            <Box className="more-lookup-match-table more-lookup-match-table--pending">
             <Table colCount={7} rowCount={pendingApproval.length}>
               <Thead>
                 <Tr>
-                  <Th>
-                    <Typography variant="sigma">Τύπος</Typography>
+                  <Th className="more-lookup-col-actions">
+                    <Typography variant="sigma">—</Typography>
                   </Th>
-                  <Th>
-                    <Typography variant="sigma">CMS τίτλος</Typography>
+                  <Th className="more-lookup-col-cms-title">
+                    <Typography variant="sigma">CMS</Typography>
                   </Th>
-                  <Th>
-                    <Typography variant="sigma">More τίτλος</Typography>
+                  <Th className="more-lookup-col-more-title">
+                    <Typography variant="sigma">More</Typography>
                   </Th>
-                  <Th>
-                    <Typography variant="sigma">event_group_code</Typography>
+                  <Th className="more-lookup-col-code">
+                    <Typography variant="sigma">evg_</Typography>
                   </Th>
-                  <Th>
-                    <Typography variant="sigma">Score</Typography>
+                  <Th className="more-lookup-col-score">
+                    <Typography variant="sigma">Sc</Typography>
                   </Th>
-                  <Th>
+                  <Th className="more-lookup-col-cms-now">
                     <Typography variant="sigma">CMS τώρα</Typography>
                   </Th>
-                  <Th>
-                    <Typography variant="sigma">Ενέργειες</Typography>
+                  <Th className="more-lookup-col-type">
+                    <Typography variant="sigma">Τύπος</Typography>
                   </Th>
                 </Tr>
               </Thead>
               <Tbody>
                 {pendingApproval.map((row) => (
                   <Tr key={rowKey(row)}>
-                    <Td>
+                    <Td className="more-lookup-col-actions">
+                      <MatchRowActions
+                        loading={loading}
+                        onReject={() => rejectItem(row)}
+                        onApprove={() => approveItem(row, Boolean(row.cmsEventGroupCode))}
+                      />
+                    </Td>
+                    <Td className="more-lookup-col-cms-title">
+                      <EllipsisCell text={row.cmsTitle} />
+                    </Td>
+                    <Td className="more-lookup-col-more-title">
+                      <EllipsisCell text={row.moreTitle || '—'} tone="neutral600" />
+                    </Td>
+                    <Td className="more-lookup-col-code">
+                      <EllipsisCell text={row.suggestedEventGroupCode} mono />
+                    </Td>
+                    <Td className="more-lookup-col-score">
+                      <Typography variant="pi">{Number(row.score).toFixed(2)}</Typography>
+                    </Td>
+                    <Td className="more-lookup-col-cms-now">
+                      <EllipsisCell
+                        text={row.cmsEventGroupCode || 'κενό'}
+                        tone="neutral600"
+                        mono={Boolean(row.cmsEventGroupCode)}
+                      />
+                    </Td>
+                    <Td className="more-lookup-col-type">
                       <Badge>{cmsTypeLabel(row.contentType)}</Badge>
-                    </Td>
-                    <Td>
-                      <Typography>{row.cmsTitle}</Typography>
-                    </Td>
-                    <Td>
-                      <Typography textColor="neutral600">{row.moreTitle || '—'}</Typography>
-                    </Td>
-                    <Td>
-                      <Typography fontWeight="bold">{row.suggestedEventGroupCode}</Typography>
-                    </Td>
-                    <Td>
-                      <Typography>{Number(row.score).toFixed(2)}</Typography>
-                    </Td>
-                    <Td>
-                      {row.cmsEventGroupCode ? (
-                        <Badge>{row.cmsEventGroupCode}</Badge>
-                      ) : (
-                        <Badge>κενό</Badge>
-                      )}
-                    </Td>
-                    <Td>
-                      <Flex gap={1} wrap="wrap">
-                        <Button
-                          size="S"
-                          variant="success"
-                          loading={loading}
-                          onClick={() =>
-                            approveItem(row, Boolean(row.cmsEventGroupCode))
-                          }
-                        >
-                          Έγκριση
-                        </Button>
-                        <Button
-                          size="S"
-                          variant="tertiary"
-                          loading={loading}
-                          onClick={() => rejectItem(row)}
-                        >
-                          Απόρριψη
-                        </Button>
-                      </Flex>
                     </Td>
                   </Tr>
                 ))}
               </Tbody>
             </Table>
+            </Box>
           </Box>
         ) : null}
 
