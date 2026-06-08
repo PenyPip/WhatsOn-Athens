@@ -722,7 +722,6 @@ export interface ApiMovieMovie extends Schema.CollectionType {
     imdb_rating: Attribute.Decimal;
     is_dubbed: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
-    more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
     most_talked_about: Attribute.Boolean & Attribute.DefaultTo<false>;
     movie_genres: Attribute.Relation<
       'api::movie.movie',
@@ -730,9 +729,6 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'api::movie-genre.movie-genre'
     >;
     original_title: Attribute.String & Attribute.Required & Attribute.Unique;
-    pending_event_group_code: Attribute.String & Attribute.Private;
-    pending_match_score: Attribute.Decimal & Attribute.Private;
-    pending_more_title: Attribute.String & Attribute.Private;
     poster: Attribute.Media<'images'>;
     publishedAt: Attribute.DateTime;
     release_date: Attribute.Date;

@@ -7,6 +7,7 @@ import { normalizeMovieOriginalTitle } from "@/lib/movieTitles";
 import { normalizeVenueKind, type VenueKind } from "@/lib/venueType";
 import { mapVenueDayPrices, resolveShowtimePricing, type VenueDayPrice } from "@/lib/venuePricing";
 import { parseTheaterRunDate } from "@/lib/theaterRunDates";
+import { cinemaPathSlugFromMoreLink } from "@/lib/moviesVenuePath";
 
 const API_PREFIX = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
 
@@ -1799,6 +1800,24 @@ export const api = {
   /** Χώροι για λίστα προβολών — χωρίς day_prices (μικρότερο payload). */
   getVenuesForProgram: () =>
     fetchAPIPagedEntries("/venues", VENUE_PROGRAM_QUERY).then((rows) => rows.map((x) => mapVenue(x))),
+
+  getVenueBySlug: async (slug: string) => {
+    const s = slug.trim();
+    if (!s) return undefined;
+    const bySlug = await fetchAPI<any[]>("/venues", {
+      ...VENUE_PROGRAM_QUERY,
+      "filters[slug][$eq]": s,
+      "pagination[pageSize]": "1",
+    }).then((rows) => (Array.isArray(rows) ? rows[0] : undefined));
+    if (bySlug) return mapVenue(bySlug);
+    const pathNeedle = `/cinemas/${s.toLowerCase()}`;
+    const byMoreLink = await fetchAPI<any[]>("/venues", {
+      ...VENUE_PROGRAM_QUERY,
+      "filters[more_link][$containsi]": pathNeedle,
+      "pagination[pageSize]": "5",
+    }).then((rows) => (Array.isArray(rows) ? rows : []).map((x) => mapVenue(x)));
+    return byMoreLink.find((v) => cinemaPathSlugFromMoreLink(v.moreLink) === s.toLowerCase()) ?? byMoreLink[0];
+  },
 
   getEditorialReviews: () =>
     fetchAPI<any[]>("/editorial-reviews", EDITORIAL_REVIEW_PUBLIC_QUERY).then((d) =>

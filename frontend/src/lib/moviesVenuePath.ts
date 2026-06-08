@@ -1,3 +1,14 @@
+/** Slug σελίδας More σινεμά από `more_link` (π.χ. …/cinemas/odos-malaga/). */
+export function cinemaPathSlugFromMoreLink(moreLink: string | undefined | null): string | null {
+  const m = String(moreLink || "").match(/\/cinemas?\/([^/?#]+)/i);
+  if (!m?.[1]) return null;
+  try {
+    return decodeURIComponent(m[1]).trim().toLowerCase();
+  } catch {
+    return m[1].trim().toLowerCase();
+  }
+}
+
 /** Canonical path προγράμματος σινεμά (indexable, στο sitemap). */
 export function moviesVenueProgramPath(slug: string): string {
   const s = slug.trim();

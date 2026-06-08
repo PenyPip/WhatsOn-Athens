@@ -43,6 +43,40 @@ function rowKey(row) {
 
 const CATALOG_PAGE_SIZE = 50;
 
+function ActionRow({ title, description, children }) {
+  return (
+    <Flex
+      gap={4}
+      padding={4}
+      alignItems="flex-start"
+      justifyContent="space-between"
+      wrap="wrap"
+      background="neutral100"
+      hasRadius
+    >
+      <Box style={{ flex: '1 1 16rem', minWidth: '14rem' }}>
+        <Typography fontWeight="semiBold" textColor="neutral800">
+          {title}
+        </Typography>
+        <Typography variant="pi" textColor="neutral600" paddingTop={1}>
+          {description}
+        </Typography>
+      </Box>
+      <Flex alignItems="center" style={{ flexShrink: 0 }}>
+        {children}
+      </Flex>
+    </Flex>
+  );
+}
+
+function SectionIntro({ children }) {
+  return (
+    <Typography variant="omega" textColor="neutral600">
+      {children}
+    </Typography>
+  );
+}
+
 const App = () => {
   const [query, setQuery] = useState('');
   const [catalogPage, setCatalogPage] = useState(1);
@@ -250,92 +284,139 @@ const App = () => {
   return (
     <Layout>
       <HeaderLayout
-        title="More event_group_code"
-        subtitle="Ταύτιση ταινιών και παραστάσεων θεάτρου CMS με More.com (σινεμά + θέατρο)"
+        title="More — κωδικοί & συγχρονισμός"
+        subtitle="Σύνδεση CMS (ταινίες, θέατρο) με More.com και εισαγωγή προβολών"
       />
       <ContentLayout>
-        <Box padding={6} background="neutral0" shadow="filterShadow" hasRadius>
-          {!enabled ? (
+        {!enabled ? (
+          <Box padding={6} background="neutral0" shadow="filterShadow" hasRadius>
             <Typography textColor="danger600">
               Απενεργοποιημένο (MORE_LOOKUP_ENABLED=false). Άλλαξε env και κάνε restart Strapi.
             </Typography>
-          ) : (
-            <>
-              <Typography variant="omega" textColor="neutral600">
-                Ταυτίζει ταινίες και <strong>παραστάσεις θεάτρου</strong> CMS με More.com (σινεμά
-                + θέατρο) και μπορεί να γράψει το <strong>event_group_code</strong>.
-                Το «Γράψε στο CMS» γράφει ταύτιση με score ≥ {applyMinScore.toFixed(2)} — έλεγξε
-                τον πίνακα πριν πατήσεις.
-              </Typography>
+          </Box>
+        ) : (
+          <>
+            <Box padding={6} background="neutral0" shadow="filterShadow" hasRadius>
+              <Typography variant="delta">Τι κάνει αυτή η σελίδα</Typography>
+              <Box paddingTop={3}>
+                <SectionIntro>
+                  Το More.com δίνει σε κάθε ταινία/παράσταση έναν κωδικό{' '}
+                  <strong>event_group_code</strong> (π.χ. <code>evg_arkoudotrupa_…</code>). Με αυτόν
+                  συγχρονίζονται οι ώρες προβολής. Εδώ:
+                </SectionIntro>
+                <Box paddingTop={2} paddingLeft={2}>
+                  <Typography variant="pi" textColor="neutral600">
+                    1. Βρίσκεις/ταυτίζεις κωδικούς CMS ↔ More
+                    <br />
+                    2. Τους γράφεις στο πεδίο <strong>event_group_code</strong> της ταινίας ή της
+                    παράστασης
+                    <br />
+                    3. Τρέχεις συγχρονισμό για νέες προβολές / θεατρικές παραστάσεις
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
 
-              <Box paddingTop={4} paddingBottom={2} maxWidth="480px">
+            <Box paddingTop={4} padding={6} background="neutral0" shadow="filterShadow" hasRadius>
+              <Typography variant="delta">Βήμα 1 — Κωδικοί More</Typography>
+              <Box paddingTop={2} paddingBottom={4} maxWidth="32rem">
                 <TextInput
-                  label="Αναζήτηση τίτλου (προαιρετικό)"
+                  label="Φίλτρο τίτλου (προαιρετικό)"
                   name="query"
-                  placeholder="π.χ. Αρκουδότρυπα, Scary Movie"
+                  hint="Περιορίζει ταύτιση ή κατάλογο — π.χ. «Αρκουδότρυπα»"
+                  placeholder="π.χ. Αρκουδότρυπα"
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                 />
               </Box>
 
-              <Flex gap={2} paddingTop={2} wrap="wrap">
-                <Button loading={loading} onClick={() => runLookup({ matchCms: true, listAll: false })}>
-                  Ταύτιση με CMS
-                </Button>
-                <Button variant="success" loading={loading} onClick={applyToCms}>
-                  Αυτόματες στο CMS
-                </Button>
-                <Button
-                  variant="secondary"
-                  loading={loading}
-                  onClick={() => runLookup({ matchCms: false, listAll: false })}
+              <Flex direction="column" gap={3}>
+                <ActionRow
+                  title="1. Ταύτιση με CMS (μόνο προβολή)"
+                  description="Συγκρίνει ταινίες και παραστάσεις θεάτρου του CMS με τον κατάλογο More. Δείχνει πίνακα προτάσεων και «Προς έγκριση» για χαμηλό score — δεν αλλάζει τίποτα στο CMS."
                 >
-                  Κατάλογος More (20)
-                </Button>
-                <Button
-                  variant="tertiary"
-                  loading={loading}
-                  onClick={() => runLookup({ matchCms: false, listAll: true })}
+                  <Button loading={loading} onClick={() => runLookup({ matchCms: true, listAll: false })}>
+                    Εκτέλεση ταύτισης
+                  </Button>
+                </ActionRow>
+
+                <ActionRow
+                  title="2. Αυτόματη εγγραφή στο CMS"
+                  description={`Γράφει event_group_code όπου το score ≥ ${applyMinScore.toFixed(2)}. Για ταινίες με χαμηλότερο score: έλεγξε τον πίνακα και βάλε τον κωδικό χειροκίνητα. Για θέατρο: «Προς έγκριση».`}
                 >
-                  Πλήρης κατάλογος More
-                </Button>
+                  <Button variant="success" loading={loading} onClick={applyToCms}>
+                    Γράψε αυτόματα
+                  </Button>
+                </ActionRow>
+
+                <ActionRow
+                  title="3. Δείγμα καταλόγου More"
+                  description="Τα πρώτα ~25 entries από More (ταινίες + θέατρο) με στήλη CMS: τι υπάρχει ήδη στο site. Χρήσιμο για γρήγορη αναφορά."
+                >
+                  <Button
+                    variant="secondary"
+                    loading={loading}
+                    onClick={() => runLookup({ matchCms: false, listAll: false })}
+                  >
+                    Δείγμα καταλόγου
+                  </Button>
+                </ActionRow>
+
+                <ActionRow
+                  title="4. Πλήρης κατάλογος More"
+                  description="Όλες οι εγγραφές More (~370+) με σελιδοποίηση και φίλτρο «μόνο μη περασμένα». Δεν γράφει στο CMS."
+                >
+                  <Button
+                    variant="tertiary"
+                    loading={loading}
+                    onClick={() => runLookup({ matchCms: false, listAll: true })}
+                  >
+                    Πλήρης κατάλογος
+                  </Button>
+                </ActionRow>
               </Flex>
 
-              <Box paddingTop={3}>
+              <Box paddingTop={4} padding={3} background="neutral100" hasRadius>
                 <Checkbox
                   checked={overwriteExisting}
                   onCheckedChange={(checked) => setOverwriteExisting(checked === true)}
                 >
-                  Αντικατάσταση υπάρχοντος event_group_code (conflicts)
+                  Αντικατάσταση υπάρχοντος event_group_code (όταν υπάρχει ήδη διαφορετικός κωδικός)
                 </Checkbox>
               </Box>
-            </>
-          )}
-        </Box>
-
-        <Box paddingTop={4} padding={6} background="neutral0" shadow="filterShadow" hasRadius>
-          <Typography variant="delta">Συγχρονισμός προβολών & θεατρικών παραστάσεων (cron)</Typography>
-          <Typography variant="omega" textColor="neutral600" paddingTop={2}>
-            Για κάθε ταινία ή <strong>παράσταση θεάτρου</strong> με <strong>event_group_code</strong>{' '}
-            καλεί το More API και δημιουργεί <strong>Προβολή ταινίας</strong> ή{' '}
-            <strong>Θεατρική παράσταση</strong> όταν ο χώρος έχει <strong>venue_id</strong> ή{' '}
-            <strong>venue bundle</strong> (<code>event_group_code</code> στον χώρο, π.χ.{' '}
-            <code>evg_aiglecinema_…</code>). Μόνο προσθήκη νέων · cron 06:45.
-          </Typography>
-          {!showtimeSyncEnabled ? (
-            <Box paddingTop={3}>
-              <Typography textColor="danger600">
-                Απενεργοποιημένο (MORE_SHOWTIME_SYNC_ENABLED=false).
-              </Typography>
             </Box>
-          ) : (
-            <Flex paddingTop={4}>
-              <Button variant="success" loading={loading} onClick={syncShowtimes}>
-                Συγχρονισμός τώρα
-              </Button>
-            </Flex>
-          )}
-        </Box>
+
+            <Box paddingTop={4} padding={6} background="neutral0" shadow="filterShadow" hasRadius>
+              <Typography variant="delta">Βήμα 2 — Συγχρονισμός προβολών</Typography>
+              <Box paddingTop={2}>
+                <SectionIntro>
+                  Για κάθε ταινία/παράσταση με <strong>event_group_code</strong> καλεί το More API και
+                  δημιουργεί <strong>Προβολή ταινίας</strong> ή <strong>Θεατρική παράσταση</strong>.
+                  Χρειάζεται χώρος με <strong>venue_id</strong> ή venue bundle — αλλιώς δημιουργείται
+                  σινεμά/θέατρο αυτόματα όπου επιτρέπεται. Μόνο νέες εγγραφές · cron καθημερινά 06:45.
+                </SectionIntro>
+              </Box>
+              {!showtimeSyncEnabled ? (
+                <Box paddingTop={3}>
+                  <Typography textColor="danger600">
+                    Απενεργοποιημένο (MORE_SHOWTIME_SYNC_ENABLED=false).
+                  </Typography>
+                </Box>
+              ) : (
+                <Box paddingTop={4}>
+                  <ActionRow
+                    title="Συγχρονισμός τώρα"
+                    description="Ίδια λογική με το cron — χειροκίνητο trigger για άμεσο αποτέλεσμα. Το report εμφανίζεται από κάτω."
+                  >
+                    <Button variant="success" loading={loading} onClick={syncShowtimes}>
+                      Τρέξε sync
+                    </Button>
+                  </ActionRow>
+                </Box>
+              )}
+            </Box>
+          </>
+        )}
 
         {syncReport ? (
           <Box paddingTop={4} padding={4} background="primary100" hasRadius>
@@ -408,7 +489,11 @@ const App = () => {
         {matchedRows.length > 0 ? (
           <Box paddingTop={6} background="neutral0" shadow="filterShadow" hasRadius>
             <Box padding={4}>
-              <Typography variant="delta">Προτεινόμενα event_group_code (CMS → More)</Typography>
+              <Typography variant="delta">Αποτελέσματα ταύτισης (CMS → More)</Typography>
+              <Typography variant="pi" textColor="neutral600" paddingTop={1}>
+                Προτάσεις κωδικού ανά εγγραφή CMS · Score = βεβαιότητα ταύτισης · API = επαλήθευση
+                από More
+              </Typography>
             </Box>
             <Table colCount={7} rowCount={matchedRows.length}>
               <Thead>
@@ -491,8 +576,9 @@ const App = () => {
                 </Button>
               </Flex>
               <Typography variant="pi" textColor="neutral600" paddingTop={2}>
-                Χαμηλό score (&lt; {applyMinScore.toFixed(2)}) — έλεγξε και πάτα Έγκριση για να
-                γραφτεί το <code>event_group_code</code>.
+                Χαμηλό score (&lt; {applyMinScore.toFixed(2)}) — μόνο για <strong>θέατρο</strong>:
+                έλεγξε και πάτα Έγκριση. Για <strong>ταινίες</strong> γράψε τον κωδικό χειροκίνητα στο
+                CMS ή τρέξε «Γράψε αυτόματα» αν το score είναι αρκετό.
               </Typography>
             </Box>
             <Table colCount={7} rowCount={pendingApproval.length}>
@@ -606,7 +692,7 @@ const App = () => {
                   checked={catalogOnlyMissing}
                   onCheckedChange={(checked) => setCatalogOnlyMissing(checked === true)}
                 >
-                  Μόνο μη περασμένα στο CMS
+                  Εμφάνιση μόνο κωδικών που λείπουν από το CMS
                 </Checkbox>
               </Box>
             </Box>

@@ -84,28 +84,7 @@
     },
     "event_group_code": {
       "type": "string",
-      "description": "Κύριος More.com eventGroupCode ανά ταινία (π.χ. evg_arkoudotrupa_1902_38). Για επιπλέον κωδικούς χρησιμοποίησε «More event groups». Όχι venue bundle."
-    },
-    "more_event_groups": {
-      "type": "component",
-      "repeatable": true,
-      "component": "cinema.more-event-group",
-      "description": "Επιπλέον per-movie κωδικοί More — το cron συγχρονίζει προβολές από όλους (κύριος + εδώ)."
-    },
-    "pending_event_group_code": {
-      "type": "string",
-      "private": true,
-      "description": "Προτεινόμενος More κωδικός (χαμηλό score) — αναμένει έγκριση admin πριν γραφτεί στο event_group_code."
-    },
-    "pending_more_title": {
-      "type": "string",
-      "private": true,
-      "description": "Τίτλος ταινίας στο More για την προτεινόμενη ταύτιση."
-    },
-    "pending_match_score": {
-      "type": "decimal",
-      "private": true,
-      "description": "Score ταύτισης CMS↔More (0–1) για την προτεινόμενη εγγραφή."
+      "description": "More.com eventGroupCode ανά ταινία (π.χ. evg_arkoudotrupa_1902_38). Όχι venue bundle (evg_*cinema*)."
     },
     "showtimes": {
       "type": "relation",

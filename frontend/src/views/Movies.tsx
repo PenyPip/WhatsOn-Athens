@@ -16,15 +16,17 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import EventCard from "@/components/EventCard";
 import MoviesGridSkeleton from "@/components/MoviesGridSkeleton";
 import Footer from "@/components/Footer";
-import { useMovies, useShowtimes, useVenuesForProgram, useMovieGenres } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useVenuesForProgram, useVenueBySlug, useMovieGenres } from "@/hooks/useStrapi";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import {
   cinemaGroupKey,
+  findVenueByProgramSlug,
   findVenueFromStableKey,
   isValidExternalUrl,
   resolveGoogleMapsHref,
   moviesHrefForVenue,
   resolveCinemaGroupFromShowtimes,
+  venueFromShowtimesBySlug,
 } from "@/lib/venueResolve";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
@@ -434,6 +436,19 @@ const Movies = () => {
   const { data: movies, isLoading: moviesLoading } = useMovies(needsCatalogMovies);
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(true, venueSlug || undefined);
   const { data: venues, isLoading: venuesLoading } = useVenuesForProgram();
+  const venueInList = useMemo(
+    () => (venueSlug && venues?.length ? findVenueByProgramSlug(venues, venueSlug) : null),
+    [venueSlug, venues],
+  );
+  const venueFromShowtimes = useMemo(
+    () => (venueSlug && showtimes?.length ? venueFromShowtimesBySlug(showtimes, venueSlug) : null),
+    [venueSlug, showtimes],
+  );
+  const needsVenueFetch = Boolean(venueSlug) && !venueInList && !venueFromShowtimes && !venuesLoading;
+  const { data: venueFetched, isLoading: venueFetchedLoading } = useVenueBySlug(
+    venueSlug || undefined,
+    needsVenueFetch,
+  );
   const needsGenreList = Boolean(genreFilterSlug || pathFilters.genreSlug || routeGenreSlug);
   const { data: movieGenresList } = useMovieGenres(needsGenreList);
   const [summerOutdoorOnly, setSummerOutdoorOnly] = useState(false);
@@ -461,6 +476,32 @@ const Movies = () => {
     return [];
   }, [movies, showtimes]);
 
+  const areaUiValue: AreaKey = areaFilter ?? "athens";
+
+  const setAreaParam = (key: AreaKey) => {
+    const next = new URLSearchParams(searchParams);
+    next.delete("venue");
+    next.delete("area");
+    next.delete("district");
+    const qs = next.toString();
+    if (key === "athens") {
+      if (pathFilters.section) {
+        const base = moviesSectionPath(pathFilters.section);
+        navigate(qs ? `${base}?${qs}` : base);
+        return;
+      }
+      if (pathFilters.genreSlug) {
+        const base = moviesGenrePath(pathFilters.genreSlug);
+        navigate(qs ? `${base}?${qs}` : base);
+        return;
+      }
+      navigate(qs ? `/movies?${qs}` : "/movies");
+      return;
+    }
+    const base = moviesAreaPath(key);
+    navigate(qs ? `${base}?${qs}` : base);
+  };
+
   const setDistrictParam = (key: AthensDistrictKey | null) => {
     const next = new URLSearchParams(searchParams);
     next.delete("venue");
@@ -476,9 +517,14 @@ const Movies = () => {
   };
 
   const venueFilter = useMemo((): StrapiVenue | null => {
-    if (!venueSlug || !venues?.length) return null;
-    return venues.find((v) => v.slug === venueSlug) ?? null;
-  }, [venues, venueSlug]);
+    if (!venueSlug) return null;
+    return venueInList ?? venueFromShowtimes ?? venueFetched ?? null;
+  }, [venueSlug, venueInList, venueFromShowtimes, venueFetched]);
+
+  const venueLookupPending =
+    Boolean(venueSlug) &&
+    !venueFilter &&
+    (venuesLoading || showtimesLoading || (needsVenueFetch && venueFetchedLoading));
 
   /** Λίστα /movies: μόνο Αθήνα· άλλες πόλεις μόνο από SEO path (/movies/area/…). */
   const effectiveAreaFilter: AreaKey | null = areaFilter ?? (venueFilter ? null : "athens");
@@ -488,8 +534,8 @@ const Movies = () => {
     if (summerOutdoorOnly) parts.push("Θερινά");
     if (venueFilter) parts.push(venueFilter.name);
     else {
-      if (areaFilter && areaFilter !== "athens") parts.push(AREA_LABELS[areaFilter]);
-      if (districtFilter) parts.push(ATHENS_DISTRICT_LABELS[districtFilter]);
+      parts.push(AREA_LABELS[areaUiValue]);
+      if (areaUiValue === "athens" && districtFilter) parts.push(ATHENS_DISTRICT_LABELS[districtFilter]);
     }
     if (genreFilterSlug) {
       const g = movieGenresList?.find((x) => x.slug.toLowerCase() === genreFilterSlug);
@@ -500,7 +546,7 @@ const Movies = () => {
   }, [
     summerOutdoorOnly,
     venueFilter,
-    areaFilter,
+    areaUiValue,
     districtFilter,
     genreFilterSlug,
     moviesSection,
@@ -805,8 +851,10 @@ const Movies = () => {
             <h1 className="font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl">
               {pageH1}
             </h1>
-            {!venueFilter && !pathFilters.section && !pathFilters.genreSlug && !pathFilters.area ? (
-              <p className="text-sm text-white/60 md:text-base">Τώρα στα σινεμά στην Αθήνα</p>
+            {!venueFilter && !pathFilters.section && !pathFilters.genreSlug ? (
+              <p className="text-sm text-white/60 md:text-base">
+                Τώρα στα σινεμά στην {AREA_LABELS[areaUiValue]}
+              </p>
             ) : null}
             {venueFilter ? (
               <div className="mt-3 space-y-1.5 text-sm text-white/75 md:mt-4">
@@ -845,9 +893,14 @@ const Movies = () => {
       </div>
 
       <div className="container">
-        {venueSlug && !venueFilter && !venuesLoading ? (
+        {venueSlug && !venueFilter && !venueLookupPending ? (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-950/[0.09] px-4 py-3.5 ring-1 ring-amber-600/18">
-            <p className="text-sm text-amber-100/90">Ο σύνδεσμος χώρου δεν αντιστοιχεί σε καταχωρημένο venue.</p>
+            <p className="text-sm text-amber-100/90">
+              Ο σύνδεσμος χώρου δεν αντιστοιχεί σε καταχωρημένο σινεμά. Έλεγξε ότι το CMS slug ή το{" "}
+              <code className="text-amber-50/90">more_link</code> ταιριάζει με το URL (
+              <code className="text-amber-50/90">/movies/venue/{venueSlug}</code>) και ότι ο χώρος είναι
+              δημοσιευμένος.
+            </p>
             <button
               type="button"
               onClick={clearVenueFilter}
@@ -896,35 +949,64 @@ const Movies = () => {
               <div className="space-y-3 px-3 pb-3 md:px-3.5 lg:px-4">
                 <div className="flex flex-wrap items-end gap-2 lg:gap-3">
                   {!venueFilter ? (
-                    <div className={MOVIES_FILTER_DISTRICT_CELL}>
-                      <label htmlFor="movies-filter-district" className={MOVIES_FILTER_LABEL}>
-                        Περιοχή
-                      </label>
-                      <div className="relative">
-                        <select
-                          id="movies-filter-district"
-                          value={districtFilter ?? FILTER_ALL}
-                          onChange={(e) => {
-                            const v = e.target.value;
-                            setDistrictParam(v === FILTER_ALL ? null : (v as AthensDistrictKey));
-                          }}
-                          disabled={venuesLoading}
-                          className={MOVIES_FILTER_SELECT}
-                          aria-label="Περιοχή Αθήνας"
-                        >
-                          <option value={FILTER_ALL}>Όλη η Αθήνα</option>
-                          {(ATHENS_DISTRICT_KEYS as readonly AthensDistrictKey[]).map((key) => (
-                            <option key={key} value={key}>
-                              {ATHENS_DISTRICT_LABELS[key]}
-                            </option>
-                          ))}
-                        </select>
-                        <ChevronDown
-                          className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                          aria-hidden
-                        />
+                    <>
+                      <div className={MOVIES_FILTER_DISTRICT_CELL}>
+                        <label htmlFor="movies-filter-area" className={MOVIES_FILTER_LABEL}>
+                          Πόλη
+                        </label>
+                        <div className="relative">
+                          <select
+                            id="movies-filter-area"
+                            value={areaUiValue}
+                            onChange={(e) => setAreaParam(e.target.value as AreaKey)}
+                            disabled={venuesLoading}
+                            className={MOVIES_FILTER_SELECT}
+                            aria-label="Πόλη προβολών"
+                          >
+                            {(AREA_KEYS as readonly AreaKey[]).map((key) => (
+                              <option key={key} value={key}>
+                                {AREA_LABELS[key]}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown
+                            className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                            aria-hidden
+                          />
+                        </div>
                       </div>
-                    </div>
+                      {areaUiValue === "athens" ? (
+                        <div className={MOVIES_FILTER_DISTRICT_CELL}>
+                          <label htmlFor="movies-filter-district" className={MOVIES_FILTER_LABEL}>
+                            Περιοχή
+                          </label>
+                          <div className="relative">
+                            <select
+                              id="movies-filter-district"
+                              value={districtFilter ?? FILTER_ALL}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setDistrictParam(v === FILTER_ALL ? null : (v as AthensDistrictKey));
+                              }}
+                              disabled={venuesLoading}
+                              className={MOVIES_FILTER_SELECT}
+                              aria-label="Περιοχή Αθήνας"
+                            >
+                              <option value={FILTER_ALL}>Όλη η Αθήνα</option>
+                              {(ATHENS_DISTRICT_KEYS as readonly AthensDistrictKey[]).map((key) => (
+                                <option key={key} value={key}>
+                                  {ATHENS_DISTRICT_LABELS[key]}
+                                </option>
+                              ))}
+                            </select>
+                            <ChevronDown
+                              className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                              aria-hidden
+                            />
+                          </div>
+                        </div>
+                      ) : null}
+                    </>
                   ) : null}
                   <SummerOutdoorToggle
                     checked={summerOutdoorOnly}
@@ -1059,7 +1141,7 @@ const Movies = () => {
           groupedMovies.length === 0 && (
           <div className="text-center py-20 text-muted-foreground text-base">
             <p>
-              {venueSlug && !venueFilter && !venuesLoading
+              {venueSlug && !venueFilter && !venueLookupPending
                 ? "Δεν βρέθηκε ο χώρος του συνδέσμου."
                 : venueFilter
                   ? `Δεν βρέθηκαν προβολές στο ${venueFilter.name} για αυτό το φίλτρο.`

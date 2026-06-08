@@ -17,11 +17,15 @@ import {
 import {
   ATHENS_DISTRICT_FILTER_OPTIONS,
   ATHENS_DISTRICT_LABELS,
-  isAthensVenue,
+  parseVenueAreaParam,
   parseVenueDistrictParam,
+  VENUE_AREA_FILTER_OPTIONS,
+  venueMatchesAreaFilter,
   venueMatchesDistrictFilter,
   type AthensDistrictFilter,
   type AthensDistrictKey,
+  type VenueAreaFilter,
+  type VenueAreaKey,
 } from "@/lib/venueArea";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
@@ -33,12 +37,18 @@ function activeDistrictFilter(
   return districtParam ?? "all";
 }
 
+function activeAreaFilter(areaParam: VenueAreaKey | null): VenueAreaFilter {
+  return areaParam ?? "athens";
+}
+
 const Venues = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const areaFilter = parseVenueAreaParam(searchParams.get("area"));
+  const areaUi = activeAreaFilter(areaFilter);
   const districtFilter = parseVenueDistrictParam(searchParams.get("district"));
   const districtUi = activeDistrictFilter(districtFilter);
   const kindFilter = parseVenueKindFilterParam(searchParams.get("type"));
-  const hasListFilter = districtFilter !== null || kindFilter !== "all";
+  const hasListFilter = areaFilter !== null || districtFilter !== null || kindFilter !== "all";
 
   usePageSeo({
     ...staticPageSeo.venues,
@@ -53,9 +63,16 @@ const Venues = () => {
     [venues, showtimes],
   );
 
+  const setAreaUi = (next: VenueAreaFilter) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === "all" || next === "athens") params.delete("area");
+    else params.set("area", next);
+    if (next !== "athens" && next !== "all") params.delete("district");
+    setSearchParams(params);
+  };
+
   const setDistrictUi = (next: AthensDistrictFilter) => {
     const params = new URLSearchParams(searchParams);
-    params.delete("area");
     if (next === "all") params.delete("district");
     else params.set("district", next);
     setSearchParams(params);
@@ -69,13 +86,15 @@ const Venues = () => {
   };
 
   const filteredVenues = useMemo(() => {
+    const areaKey: VenueAreaKey | null =
+      areaUi === "all" ? null : areaUi === "athens" && !areaFilter ? "athens" : areaFilter;
     return [...(venues ?? [])]
       .filter(isPublicVenueListing)
-      .filter(isAthensVenue)
+      .filter((v) => venueMatchesAreaFilter(v, areaKey))
       .filter((v) => venueMatchesKindFilter(v, kindFilter))
       .filter((v) => venueMatchesDistrictFilter(v, districtFilter))
       .sort((a, b) => a.name.localeCompare(b.name, "el"));
-  }, [venues, districtFilter, kindFilter]);
+  }, [venues, areaFilter, areaUi, districtFilter, kindFilter]);
 
   return (
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
@@ -84,13 +103,39 @@ const Venues = () => {
           <PageHeaderReveal>
             <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Χώροι</h1>
             <p className="text-white/50 text-sm">
-              Σινεμά, θέατρα και άλλοι πολιτιστικοί χώροι στην Αθήνα — ανά περιοχή
+              Σινεμά, θέατρα και άλλοι πολιτιστικοί χώροι — Αθήνα, Θεσσαλονίκη και αλλού
             </p>
           </PageHeaderReveal>
         </div>
       </div>
 
       <div className="container">
+        <div
+          className="mb-4 flex flex-wrap items-center gap-2"
+          role="group"
+          aria-label="Πόλη"
+        >
+          <span className="mr-1 w-full text-sm uppercase tracking-wider text-muted-foreground sm:w-auto">
+            Πόλη:
+          </span>
+          {VENUE_AREA_FILTER_OPTIONS.filter((o) => o.value !== "other").map(({ value, label }) => (
+            <button
+              key={value}
+              type="button"
+              onClick={() => setAreaUi(value)}
+              aria-pressed={areaUi === value}
+              className={cn(
+                "rounded border px-4 py-1.5 text-sm font-medium transition-all",
+                areaUi === value
+                  ? "border-[#13143E] bg-[#13143E] text-white"
+                  : "border-border bg-card text-muted-foreground hover:border-foreground hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+
         <div
           className="mb-4 flex flex-wrap items-center gap-2"
           role="group"
@@ -117,6 +162,7 @@ const Venues = () => {
           ))}
         </div>
 
+        {areaUi === "athens" || areaUi === "all" ? (
         <div
           className="mb-6 flex flex-wrap items-center gap-2 md:mb-8"
           role="group"
@@ -142,14 +188,15 @@ const Venues = () => {
             </button>
           ))}
         </div>
+        ) : null}
 
         {isLoading ? (
           <LoadingState message="Φόρτωση χώρων..." />
         ) : filteredVenues.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {districtFilter || kindFilter !== "all"
+            {areaFilter || districtFilter || kindFilter !== "all"
               ? "Δεν βρέθηκαν χώροι με αυτά τα κριτήρια."
-              : "Δεν υπάρχουν καταχωρημένοι χώροι στην Αθήνα προς το παρόν."}
+              : "Δεν υπάρχουν καταχωρημένοι χώροι προς το παρόν."}
           </p>
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">

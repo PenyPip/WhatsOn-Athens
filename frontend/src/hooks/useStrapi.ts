@@ -132,6 +132,16 @@ export const useVenuesForProgram = (enabled = true) =>
     enabled,
   });
 
+export const useVenueBySlug = (slug: string | undefined, enabled = true) =>
+  useQuery({
+    queryKey: ["venue", "slug", slug?.trim() || ""],
+    queryFn: () => api.getVenueBySlug(slug!.trim()),
+    ...CONTENT_QUERY_OPTIONS,
+    enabled: enabled && Boolean(slug?.trim()),
+    throwOnError: false,
+    retry: 1,
+  });
+
 export const useEditorialReviews = () =>
   useQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews, staleTime: 300_000, retry: 1, throwOnError: false });
 
