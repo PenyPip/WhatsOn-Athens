@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import './more-lookup-admin.css';
+import '../more-lookup-admin.css';
 import {
   Layout,
   HeaderLayout,
