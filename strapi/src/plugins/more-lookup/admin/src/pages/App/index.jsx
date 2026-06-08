@@ -877,7 +877,7 @@ const App = () => {
             <Box paddingTop={4} padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
               <PanelHeader
                 title="Βήμα 2 — Συγχρονισμός προβολών"
-                subtitle="More API → Προβολή ταινίας / Παράσταση · cron καθημερινά 06:45"
+                subtitle="More API → Προβολή ταινίας / Παράσταση · μόνο χειροκίνητα (χωρίς cron)"
                 action={
                   showtimeSyncEnabled ? (
                     <Button

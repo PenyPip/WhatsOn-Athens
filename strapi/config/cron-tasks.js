@@ -84,24 +84,8 @@ module.exports = {
       }
     },
     options: {
-      // Κάθε μέρα 04:20 — πριν τον συγχρονισμό More 06:45
+      // Κάθε μέρα 04:20
       rule: '20 4 * * *',
-    },
-  },
-  syncMoreShowtimesDaily: {
-    task: async ({ strapi }) => {
-      if (process.env.MORE_SHOWTIME_SYNC_ENABLED === 'false') return;
-      try {
-        const { syncShowtimesFromMore } = require('../src/utils/moreShowtimeSync');
-        const report = await syncShowtimesFromMore(strapi);
-        strapi.log.info(`[cron] syncMoreShowtimesDaily: ${report.message || report.created}`);
-      } catch (e) {
-        strapi.log.error('[cron] syncMoreShowtimesDaily', e);
-      }
-    },
-    options: {
-      // Κάθε μέρα 06:45 (μετά τη διαγραφή παλιών προβολών 04:20)
-      rule: '45 6 * * *',
     },
   },
 };

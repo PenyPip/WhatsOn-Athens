@@ -41,7 +41,7 @@
     },
     "venue_id": {
       "type": "string",
-      "description": "More.com venueId (π.χ. 3345 για Αίγλη). Χρησιμοποιείται από cron συγχρονισμού προβολών (διαδρομή ταινίας)."
+      "description": "More.com venueId (π.χ. 3345 για Αίγλη). Χρησιμοποιείται από χειροκίνητο sync προβολών (More lookup → Τρέξε sync)."
     },
     "event_group_code": {
       "type": "string",
@@ -56,7 +56,7 @@
     "more_sync_log": {
       "type": "text",
       "private": true,
-      "description": "Τελευταίο report cron/agent συγχρονισμού More (JSON)."
+      "description": "Τελευταίο report χειροκίνητου συγχρονισμού More (JSON)."
     },
     "seats_total": {
       "type": "integer"
