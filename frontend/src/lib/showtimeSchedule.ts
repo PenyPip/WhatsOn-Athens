@@ -1,8 +1,13 @@
-import type { StrapiShowtime } from "@/lib/api";
-
 export type ShowtimeScheduleKind = "exact" | "week_block";
 
-export function showtimeIsWeekBlock(st: Pick<StrapiShowtime, "scheduleKind">): boolean {
+/** Κοινά πεδία προβολής ταινίας / θεατρικής παράστασης. */
+export type ScheduleSlot = {
+  scheduleKind?: ShowtimeScheduleKind;
+  datetime: string;
+  weekEnd?: string;
+};
+
+export function showtimeIsWeekBlock(st: Pick<ScheduleSlot, "scheduleKind">): boolean {
   return st.scheduleKind === "week_block";
 }
 
@@ -34,7 +39,7 @@ export function endOfLocalDay(d: Date): Date {
 }
 
 /** Εύρος ημερομηνιών για week_block (συμπεριλαμβάνεται η τελευταία μέρα). */
-export function showtimeWeekRange(st: StrapiShowtime): { start: Date; end: Date } | null {
+export function showtimeWeekRange(st: ScheduleSlot): { start: Date; end: Date } | null {
   if (!showtimeIsWeekBlock(st)) return null;
   const start = parseShowtimeLocalDay(st.datetime);
   const endDay = parseShowtimeLocalDay(st.weekEnd ?? st.datetime);
@@ -44,7 +49,7 @@ export function showtimeWeekRange(st: StrapiShowtime): { start: Date; end: Date 
   return { start, end };
 }
 
-export function showtimeIsUpcoming(st: StrapiShowtime, now = new Date()): boolean {
+export function showtimeIsUpcoming(st: ScheduleSlot, now = new Date()): boolean {
   const range = showtimeWeekRange(st);
   if (range) return range.end.getTime() >= now.getTime();
   const dt = new Date(st.datetime);
@@ -54,7 +59,7 @@ export function showtimeIsUpcoming(st: StrapiShowtime, now = new Date()): boolea
 
 /** Επικάλυψη προβολής με διάστημα [rangeStart, rangeEnd]. */
 export function showtimeOverlapsRange(
-  st: StrapiShowtime,
+  st: ScheduleSlot,
   rangeStart: Date,
   rangeEnd: Date,
   now = new Date(),
@@ -73,7 +78,7 @@ export function showtimeOverlapsRange(
 
 /** Προβολή ξεκινά αυστηρά μετά το τέλος του range (για «Προσεχώς» στη σελίδα ταινίας). */
 export function showtimeStartsAfterRange(
-  st: StrapiShowtime,
+  st: ScheduleSlot,
   rangeEnd: Date,
   now = new Date(),
 ): boolean {
@@ -110,7 +115,7 @@ export function eachDayInclusiveInRange(start: Date, end: Date): Date[] {
   return out;
 }
 
-export function formatShowtimeWeekRangeLabel(st: StrapiShowtime): string | null {
+export function formatShowtimeWeekRangeLabel(st: ScheduleSlot): string | null {
   const range = showtimeWeekRange(st);
   if (!range) return null;
   const sameDay =
@@ -133,7 +138,7 @@ export function localDayKey(d: Date): string {
 }
 
 /** week_block ενεργό σήμερα (συμπεριλαμβάνεται η τρέχουσα τοπική μέρα). */
-export function showtimeWeekBlockOverlapsLocalDay(st: StrapiShowtime, day: Date): boolean {
+export function showtimeWeekBlockOverlapsLocalDay(st: ScheduleSlot, day: Date): boolean {
   const range = showtimeWeekRange(st);
   if (!range) return false;
   const dayStart = startOfLocalDay(day);
@@ -148,7 +153,10 @@ export type MoviesDaySectionMeta = {
 };
 
 /** Ομαδοποίηση προβολής σε «Σήμερα» / «Αύριο» / ημερομηνία — τοπική μέρα, όχι UTC. */
-export function moviesDaySectionMeta(st: StrapiShowtime, now = new Date()): MoviesDaySectionMeta | null {
+export function moviesDaySectionMeta(
+  st: ScheduleSlot & { venue?: string; venueId?: number; venueSlug?: string },
+  now = new Date(),
+): MoviesDaySectionMeta | null {
   const todayStart = startOfLocalDay(now);
   const tomorrowStart = new Date(todayStart);
   tomorrowStart.setDate(tomorrowStart.getDate() + 1);

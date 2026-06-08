@@ -1,0 +1,68 @@
+{
+  "kind": "collectionType",
+  "collectionName": "theater_performances",
+  "info": {
+    "singularName": "theater-performance",
+    "pluralName": "theater-performances",
+    "displayName": "Θεατρική παράσταση",
+    "description": "Μία εμφάνιση = παράσταση θεάτρου + χώρος + ημερομηνία/ώρα (ανάλογα με Προβολή ταινίας)."
+  },
+  "options": {
+    "draftAndPublish": true
+  },
+  "attributes": {
+    "schedule_kind": {
+      "type": "enumeration",
+      "enum": ["exact", "week_block"],
+      "default": "exact",
+      "required": true,
+      "description": "«Ολόκληρη εβδομάδα»: η παράσταση εμφανίζεται στο πρόγραμμα του χώρου χωρίς συγκεκριμένες ώρες."
+    },
+    "datetime": {
+      "type": "datetime",
+      "required": true,
+      "description": "Ακριβείς ώρες: πρώτη παράσταση. Ολόκληρη εβδομάδα: πρώτη μέρα· η ώρα αγνοείται στο site."
+    },
+    "week_end": {
+      "type": "date",
+      "description": "Μόνο για «Ολόκληρη εβδομάδα»: τελευταία μέρα (συμπεριλαμβάνεται)."
+    },
+    "repeat_until": {
+      "type": "date",
+      "description": "Τελευταία μέρα (συμπεριλαμβάνεται). Ίδια ώρα με το datetime κάθε μέρα."
+    },
+    "repeat_skip_days": {
+      "type": "component",
+      "repeatable": true,
+      "component": "scheduling.skip-day",
+      "description": "Ημερομηνίες χωρίς παράσταση μέσα στο διάστημα."
+    },
+    "available_seats": {
+      "type": "integer"
+    },
+    "price": {
+      "type": "decimal",
+      "description": "Προαιρετική τιμή για αυτή την εμφάνιση (€). Αλλιώς από/έως στην παράσταση θεάτρου."
+    },
+    "theater_show": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::theater-show.theater-show",
+      "inversedBy": "theater_performances",
+      "required": true
+    },
+    "venue": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::venue.venue",
+      "inversedBy": "theater_performances",
+      "required": true
+    },
+    "hall": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::hall.hall",
+      "description": "Προαιρετική αίθουσα (πρέπει να ανήκει στο ίδιο venue)."
+    }
+  }
+}

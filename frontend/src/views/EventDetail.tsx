@@ -11,6 +11,7 @@ import {
   useEditorialReviews,
   useUserReviews,
   useShowtimes,
+  useTheaterPerformances,
   useMovieBySlug,
   useMovieGenreCatalog,
   useMovieGenres,
@@ -27,6 +28,7 @@ import {
   resolveMovieGenreLine,
   type StrapiMovie,
   type StrapiShowtime,
+  type StrapiTheaterPerformance,
   type StrapiTheaterShow,
   type StrapiVenue,
 } from "@/lib/api";
@@ -49,6 +51,7 @@ import {
   showtimeIsWeekBlock,
   showtimeOverlapsRange,
   showtimeStartsAfterRange,
+  showtimeIsUpcoming as scheduleSlotIsUpcoming,
 } from "@/lib/showtimeSchedule";
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
@@ -70,6 +73,9 @@ import { isTouringTheaterShow } from "@/lib/theaterTours";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import TheaterWeeklySchedule, { TheaterScheduleHeroPreview } from "@/components/TheaterWeeklySchedule";
+import ScheduleCompactRow from "@/components/ScheduleCompactRow";
+import { groupTheaterPerformancesByVenue } from "@/lib/theaterPerformances";
+import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
 import {
   cinemaGroupKey,
   isValidExternalUrl,
@@ -201,9 +207,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { data: editorialReviews } = useEditorialReviews();
   const { data: userReviews } = useUserReviews();
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(isMovieRoute);
+  const { data: theaterPerformances, isLoading: performancesLoading } = useTheaterPerformances(isTheaterRoute);
   const { data: genreCatalog } = useMovieGenreCatalog(isMovieRoute && loadRelatedMovies);
   const { data: movieGenresList } = useMovieGenres(isMovieRoute);
-  const { data: venues } = useVenues(isMovieRoute);
+  const { data: venues } = useVenues(isMovieRoute || isTheaterRoute);
 
   const moviesEnriched = useMemo(
     () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),
@@ -236,6 +243,31 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     const filtered = list.filter((st) => st.movieSlug === slug && showtimeIsUpcoming(st, now));
     return [...filtered].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
   }, [showtimes, slug, type]);
+
+  const eventPerformances = useMemo((): StrapiTheaterPerformance[] => {
+    const list = theaterPerformances ?? [];
+    if (!slug || type !== "theater") return [];
+    const now = new Date();
+    const filtered = list.filter(
+      (p) => p.theaterShowSlug === slug && scheduleSlotIsUpcoming(p, now),
+    );
+    return [...filtered].sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+  }, [theaterPerformances, slug, type]);
+
+  const performancesByVenue = useMemo(
+    () => groupTheaterPerformancesByVenue(eventPerformances, venues ?? []),
+    [eventPerformances, venues],
+  );
+
+  const performanceVenueNames = useMemo(() => {
+    const names = new Set<string>();
+    for (const group of performancesByVenue) {
+      if (group.venueName.trim()) names.add(group.venueName.trim());
+    }
+    return [...names];
+  }, [performancesByVenue]);
+
+  const hasTheaterPerformances = eventPerformances.length > 0;
 
   const { cinemaWeekShowtimes, soonShowtimes } = useMemo(() => {
     const now = new Date();
@@ -403,6 +435,76 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const isMovie = type === "movie";
   const movie = isMovie ? (mergedMovieForDisplay ?? (event as StrapiMovie)) : null;
   const theaterShow = !isMovie ? (event as StrapiTheaterShow) : null;
+
+  const theaterPerformancePriceLabel = (p: StrapiTheaterPerformance): string | null => {
+    if (p.price != null && Number.isFinite(p.price)) {
+      const rounded = Math.round(p.price * 100) / 100;
+      return `${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(2).replace(/\.?0+$/, "")}€`;
+    }
+    if (theaterShow) {
+      return theaterPriceLabel(resolveTheaterTicketPrices(theaterShow));
+    }
+    return null;
+  };
+
+  const theaterPerformancesSection = !isMovie ? (
+    <section
+      id="theater-performances"
+      className="scroll-mt-24 rounded-xl border border-[#13143E]/12 bg-[#13143E]/[0.03] p-4 md:p-6"
+    >
+      <div className="mb-4 flex items-center gap-2.5 md:mb-5">
+        <MapPin className="h-4 w-4 shrink-0 text-[#13143E]/70" aria-hidden />
+        <div>
+          <h2 className="font-display text-lg font-semibold text-foreground md:text-xl">Πού & πότε παίζεται</h2>
+          <p className="mt-0.5 text-sm text-muted-foreground">Επερχόμενες εμφανίσεις ανά χώρο</p>
+        </div>
+      </div>
+      {performancesLoading && theaterPerformances === undefined ? (
+        <p className="text-sm text-muted-foreground" role="status">
+          Φόρτωση εμφανίσεων…
+        </p>
+      ) : null}
+      {!performancesLoading && !hasTheaterPerformances ? (
+        <p className="text-sm text-muted-foreground">
+          Δεν υπάρχουν καταχωρημένες επερχόμενες εμφανίσεις για αυτή την παράσταση.
+        </p>
+      ) : null}
+      {hasTheaterPerformances ? (
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
+          {performancesByVenue.map(({ key, venueName, slots, venue }) => {
+            if (!slots.length) return null;
+            return (
+              <div
+                key={key}
+                className="flex min-h-0 flex-col rounded-lg border border-border/80 bg-card/50 p-3 sm:p-4"
+              >
+                <div className="mb-2 border-b border-border/60 pb-2">
+                  <CinemaVenueLinks venueName={venueName} venue={venue} compact />
+                </div>
+                <ShowtimesExpandable listClassName="min-h-0 flex-1">
+                  {slots.map((p) => (
+                    <ScheduleCompactRow
+                      key={p.id}
+                      slot={p}
+                      hallName={p.hallName}
+                      priceLabel={theaterPerformancePriceLabel(p)}
+                      emphasized
+                    />
+                  ))}
+                </ShowtimesExpandable>
+                {isValidExternalUrl(venue?.moreLink) ? (
+                  <div className="mt-2 border-t border-border/50 pt-2">
+                    <VenueBookingLink venue={venue} compact />
+                  </div>
+                ) : null}
+              </div>
+            );
+          })}
+        </div>
+      ) : null}
+    </section>
+  ) : null;
+
   const related = isMovie
     ? sortMoviesByCinemaCount(
         (moviesEnriched ?? []).filter((m) => m.slug !== slug),
@@ -733,7 +835,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   <Globe className="w-4 h-4" /> {movie.language.trim()}
                 </span>
               ) : null}
-              {theaterShow?.venue?.trim() ? (
+              {performanceVenueNames.length ? (
+                <span className="flex items-center gap-1">
+                  <Users className="w-4 h-4" /> {performanceVenueNames.join(" · ")}
+                </span>
+              ) : theaterShow?.venue?.trim() ? (
                 <span className="flex items-center gap-1">
                   <Users className="w-4 h-4" /> {theaterShow.venue}
                 </span>
@@ -748,7 +854,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </div>
 
             {theaterShow &&
-            (theaterShow.weeklySchedule?.length ||
+            (hasTheaterPerformances ||
+              theaterShow.weeklySchedule?.length ||
               theaterShow.ticketPrice != null ||
               theaterShow.ticketPriceFrom != null ||
               theaterShow.ticketPriceTo != null) ? (
@@ -758,7 +865,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             <div
               className={cn(
                 "flex flex-wrap gap-3",
-                theaterShow?.weeklySchedule?.length ? "mt-6" : "mt-0",
+                hasTheaterPerformances || theaterShow?.weeklySchedule?.length ? "mt-6" : "mt-0",
               )}
             >
               {isMovie ? (
@@ -767,6 +874,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   className="inline-flex items-center rounded bg-white px-6 py-3 text-base font-semibold text-[#13143E] transition-colors hover:bg-white/90"
                 >
                   Προβολές & τιμές
+                </a>
+              ) : hasTheaterPerformances ? (
+                <a
+                  href="#theater-performances"
+                  className="inline-flex items-center rounded bg-white px-6 py-3 text-base font-semibold text-[#13143E] transition-colors hover:bg-white/90"
+                >
+                  Εμφανίσεις & τιμές
                 </a>
               ) : theaterShow?.weeklySchedule?.length ? (
                 <a
@@ -887,6 +1001,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </div>
               ) : null}
             </section>
+            {theaterPerformancesSection}
             {theaterShow?.weeklySchedule?.length ? (
               <TheaterWeeklySchedule show={theaterShow} id="theater-schedule" className="max-w-3xl" />
             ) : null}

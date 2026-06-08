@@ -3,13 +3,14 @@ import EventCard from "@/components/EventCard";
 import PageHeaderReveal from "@/components/PageHeaderReveal";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
-import { useTheaterShows } from "@/hooks/useStrapi";
+import { useTheaterShows, useTheaterPerformances } from "@/hooks/useStrapi";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { cn } from "@/lib/utils";
 import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
 import { theaterScheduleSummary } from "@/lib/theaterSchedule";
+import { performanceOverlapsDateRange, theaterPerformanceSummary } from "@/lib/theaterPerformances";
 
 function ymdToMs(ymd: string): number {
   const [y, m, d] = ymd.split("-").map((x) => Number(x));
@@ -17,8 +18,14 @@ function ymdToMs(ymd: string): number {
   return new Date(y, m - 1, d).getTime();
 }
 
-function dateFilterMatch(show: { runStart?: string; runEnd?: string }, fromYmd: string, toYmd: string): boolean {
+function dateFilterMatch(
+  show: { runStart?: string; runEnd?: string; slug: string },
+  fromYmd: string,
+  toYmd: string,
+  performancesForShow: { datetime: string; scheduleKind?: "exact" | "week_block"; weekEnd?: string }[],
+): boolean {
   if (!fromYmd && !toYmd) return true;
+  if (performancesForShow.some((p) => performanceOverlapsDateRange(p, fromYmd, toYmd))) return true;
   const fromMs = fromYmd ? ymdToMs(fromYmd) : null;
   const toMs = toYmd ? ymdToMs(toYmd) : null;
   if ((fromMs != null && !Number.isFinite(fromMs)) || (toMs != null && !Number.isFinite(toMs))) return true;
@@ -35,16 +42,29 @@ const TheaterPage = () => {
   usePageSeo(staticPageSeo.theater);
 
   const { data: theaterShows, isLoading } = useTheaterShows();
+  const { data: theaterPerformances } = useTheaterPerformances();
   const [onlyTour, setOnlyTour] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
   const allShows = useMemo(() => theaterShows ?? [], [theaterShows]);
+  const performancesByShowSlug = useMemo(() => {
+    const m = new Map<string, NonNullable<typeof theaterPerformances>>();
+    for (const p of theaterPerformances ?? []) {
+      const slug = p.theaterShowSlug?.trim();
+      if (!slug) continue;
+      const list = m.get(slug) ?? [];
+      list.push(p);
+      m.set(slug, list);
+    }
+    return m;
+  }, [theaterPerformances]);
   const filteredShows = useMemo(() => {
     return allShows.filter((show) => {
       if (onlyTour && !show.onTour) return false;
-      return dateFilterMatch(show, dateFrom, dateTo);
+      const perfs = performancesByShowSlug.get(show.slug) ?? [];
+      return dateFilterMatch(show, dateFrom, dateTo, perfs);
     });
-  }, [allShows, onlyTour, dateFrom, dateTo]);
+  }, [allShows, onlyTour, dateFrom, dateTo, performancesByShowSlug]);
   const hasShows = allShows.length > 0;
 
   return (
@@ -138,7 +158,10 @@ const TheaterPage = () => {
             <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-3">
               {filteredShows.map((show, i) => {
                 const priceLine = theaterPriceLabel(resolveTheaterTicketPrices(show));
-                const scheduleLine = theaterScheduleSummary(show.weeklySchedule, 3);
+                const showPerformances = performancesByShowSlug.get(show.slug) ?? [];
+                const scheduleLine =
+                  theaterPerformanceSummary(showPerformances) ??
+                  theaterScheduleSummary(show.weeklySchedule, 3);
                 return (
                 <EventCard
                   key={show.id}

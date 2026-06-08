@@ -112,6 +112,12 @@
       "target": "api::showtime.showtime",
       "mappedBy": "venue"
     },
+    "theater_performances": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::theater-performance.theater-performance",
+      "mappedBy": "venue"
+    },
     "events": {
       "type": "relation",
       "relation": "oneToMany",

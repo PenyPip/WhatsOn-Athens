@@ -1119,6 +1119,76 @@ function mapShowtime(
   return s.datetime ? [toRow(s.datetime, 0)] : [];
 }
 
+function mapTheaterPerformance(raw: unknown): StrapiTheaterPerformance[] {
+  const s = unwrapStrapiEntry(raw);
+  const venueId = strapiRelationNumericId(s.venue as unknown);
+  const vAttrs = strapiRelationAttrs(s.venue as unknown);
+  const venueSlug =
+    typeof vAttrs?.slug === "string" && vAttrs.slug.trim() ? vAttrs.slug.trim() : undefined;
+  const venue =
+    typeof vAttrs?.name === "string" && vAttrs.name
+      ? vAttrs.name
+      : typeof s.venue === "string"
+        ? s.venue
+        : "";
+
+  const hAttrs = strapiRelationAttrs(s.hall as unknown);
+  const hallName =
+    typeof hAttrs?.name === "string" && hAttrs.name.trim() ? hAttrs.name.trim() : undefined;
+  const hallId = strapiRelationNumericId(s.hall as unknown);
+
+  const tsAttrs = strapiRelationAttrs(s.theater_show as unknown);
+  const theaterShowSlug =
+    typeof tsAttrs?.slug === "string" && tsAttrs.slug.trim() ? tsAttrs.slug.trim() : undefined;
+  const theaterShowTitle =
+    typeof tsAttrs?.title === "string" && tsAttrs.title.trim() ? tsAttrs.title.trim() : undefined;
+  const theaterShowId = strapiRelationNumericId(s.theater_show as unknown);
+  const soldOutRaw = tsAttrs?.sold_out;
+  const theaterShowSoldOut = soldOutRaw === true || soldOutRaw === "true" || soldOutRaw === 1;
+  const posterVariants = tsAttrs ? strapiPosterSrcSet(tsAttrs.poster) : undefined;
+  const theaterShowPosterUrl = tsAttrs
+    ? strapiMediaUrl(tsAttrs.poster, "small") ?? posterVariants?.src ?? null
+    : undefined;
+
+  const baseId = String(s.id);
+  const seatsRaw = s.available_seats;
+  const seatsNum =
+    seatsRaw !== null && seatsRaw !== undefined && seatsRaw !== ""
+      ? typeof seatsRaw === "number"
+        ? seatsRaw
+        : Number(seatsRaw)
+      : NaN;
+
+  const scheduleKindRaw = s.schedule_kind;
+  const scheduleKind =
+    scheduleKindRaw === "week_block" ? ("week_block" as const) : ("exact" as const);
+  const weekEnd =
+    typeof s.week_end === "string" && s.week_end.trim() ? s.week_end.trim().slice(0, 10) : undefined;
+  const price = parseShowtimePrice(s.price);
+
+  const toRow = (datetime: string, index: number): StrapiTheaterPerformance => ({
+    id: `${baseId}-${index}`,
+    documentId: s.documentId,
+    datetime,
+    scheduleKind,
+    weekEnd,
+    venue,
+    venueId,
+    venueSlug,
+    hallId,
+    hallName,
+    availableSeats: Number.isFinite(seatsNum) ? seatsNum : 0,
+    price,
+    theaterShowId,
+    theaterShowSlug,
+    theaterShowTitle,
+    theaterShowPosterUrl,
+    theaterShowSoldOut,
+  });
+
+  return s.datetime ? [toRow(s.datetime, 0)] : [];
+}
+
 function mapUserReview(raw: unknown): StrapiUserReview {
   const r = unwrapStrapiEntry(raw);
   return {
@@ -1371,6 +1441,26 @@ export interface StrapiShowtime {
   hallName?: string;
 }
 
+export interface StrapiTheaterPerformance {
+  id: string;
+  documentId: string;
+  datetime: string;
+  scheduleKind?: "exact" | "week_block";
+  weekEnd?: string;
+  venue: string;
+  venueId?: number;
+  venueSlug?: string;
+  hallId?: number;
+  hallName?: string;
+  availableSeats: number;
+  price?: number;
+  theaterShowId?: number;
+  theaterShowSlug?: string;
+  theaterShowTitle?: string;
+  theaterShowPosterUrl?: string | null;
+  theaterShowSoldOut?: boolean;
+}
+
 export type StrapiEventType = "cinema" | "theater" | "music" | "art" | "food" | "other";
 
 export interface StrapiEventVenue {
@@ -1615,6 +1705,47 @@ async function fetchShowtimesVenueCalendar(venueSlug: string, weeks = 3): Promis
   }
 }
 
+async function fetchTheaterPerformancesCalendar(weeks = 5): Promise<StrapiTheaterPerformance[]> {
+  const rows = await fetchAPI<any[]>(
+    "/theater-performances/home-calendar",
+    { weeks: String(weeks) },
+    { noPopulate: true },
+  );
+  return (Array.isArray(rows) ? rows : []).flatMap((x) => mapTheaterPerformance(x));
+}
+
+async function fetchTheaterPerformancesVenueCalendar(
+  venueSlug: string,
+  weeks = 3,
+): Promise<StrapiTheaterPerformance[]> {
+  try {
+    const rows = await fetchAPI<any[]>(
+      "/theater-performances/venue-calendar",
+      { venue: venueSlug, weeks: String(weeks) },
+      { noPopulate: true },
+    );
+    return (Array.isArray(rows) ? rows : []).flatMap((x) => mapTheaterPerformance(x));
+  } catch {
+    const rows = await fetchAPIPagedEntries(
+      "/theater-performances",
+      {
+        "populate[theater_show][fields][0]": "slug",
+        "populate[theater_show][fields][1]": "title",
+        "populate[theater_show][fields][2]": "sold_out",
+        "populate[theater_show][populate][poster][fields][0]": "url",
+        "populate[theater_show][populate][poster][fields][1]": "formats",
+        "populate[venue][fields][0]": "slug",
+        "populate[venue][fields][1]": "name",
+        "populate[hall][fields][0]": "name",
+        "filters[venue][slug][$eq]": venueSlug,
+        ...upcomingShowtimeFilters(),
+      },
+      { noStore: true },
+    );
+    return rows.flatMap((x) => mapTheaterPerformance(x));
+  }
+}
+
 async function fetchSiteNavigation(): Promise<MappedSiteNavigation | null> {
   const url = new URL(`${API_PREFIX}/site-navigation`, apiRequestBaseUrl());
   url.searchParams.set("populate[items]", "*");
@@ -1792,6 +1923,16 @@ export const api = {
       return fetchShowtimesVenueCalendar(venueSlug, 3);
     }
     return fetchShowtimesCalendar(5);
+  },
+
+  getTheaterPerformancesForHome: () => fetchTheaterPerformancesCalendar(5),
+
+  getTheaterPerformances: (options?: { venueSlug?: string }) => {
+    const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";
+    if (venueSlug) {
+      return fetchTheaterPerformancesVenueCalendar(venueSlug, 3);
+    }
+    return fetchTheaterPerformancesCalendar(5);
   },
 
   getUserReviews: () =>

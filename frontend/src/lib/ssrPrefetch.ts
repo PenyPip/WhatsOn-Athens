@@ -9,7 +9,7 @@ import {
   type MappedHomepage,
 } from "@/config/home";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
-import { SHOWTIMES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
+import { SHOWTIMES_CALENDAR_QUERY_KEY, THEATER_PERFORMANCES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 import { finalizeBootstrapCache, minifyDehydratedState } from "@/lib/slimDehydrate";
 
 const queryDefaults = {
@@ -133,6 +133,12 @@ async function prefetchTheaterDetail(qc: QueryClient, slug: string) {
     qc.prefetchQuery({ queryKey: ["theaterShow", slug], queryFn: () => api.getTheaterShowBySlug(slug) }),
     qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }),
     qc.prefetchQuery({
+      queryKey: THEATER_PERFORMANCES_CALENDAR_QUERY_KEY,
+      queryFn: () => api.getTheaterPerformancesForHome(),
+      ...queryDefaults,
+    }),
+    qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
+    qc.prefetchQuery({
       queryKey: ["articles", "theater", slug],
       queryFn: () => api.getArticlesByTheaterSlug(slug),
       ...queryDefaults,
@@ -170,7 +176,14 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
     } else if (movieSlug) {
       await prefetchMovieDetail(qc, movieSlug);
     } else if (normalized === "/theater") {
-      await qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults });
+      await Promise.all([
+        qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }),
+        qc.prefetchQuery({
+          queryKey: THEATER_PERFORMANCES_CALENDAR_QUERY_KEY,
+          queryFn: () => api.getTheaterPerformancesForHome(),
+          ...queryDefaults,
+        }),
+      ]);
     } else if (theaterSlug) {
       await prefetchTheaterDetail(qc, theaterSlug);
     } else if (normalized === "/venues") {

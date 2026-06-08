@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
 import { CONTENT_QUERY_OPTIONS } from "@/lib/contentQuery";
-import { PROGRAM_QUERY_OPTIONS, SHOWTIMES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
+import { PROGRAM_QUERY_OPTIONS, SHOWTIMES_CALENDAR_QUERY_KEY, THEATER_PERFORMANCES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 import { resolveHomepageLayout } from "@/config/home";
 import { DEFAULT_SITE_NAVIGATION } from "@/config/navigation";
 
@@ -197,6 +197,21 @@ export const useShowtimes = (enabled = true, venueSlug?: string) => {
     queryKey: ["showtimes", scopeKey],
     queryFn: () =>
       venueSlug?.trim() ? api.getShowtimes({ venueSlug: venueSlug.trim() }) : api.getShowtimesForHome(),
+    ...PROGRAM_QUERY_OPTIONS,
+    throwOnError: false,
+    retry: 1,
+    enabled,
+  });
+};
+
+export const useTheaterPerformances = (enabled = true, venueSlug?: string) => {
+  const scopeKey = venueSlug?.trim() ? venueSlug.trim() : THEATER_PERFORMANCES_CALENDAR_QUERY_KEY[1];
+  return useQuery({
+    queryKey: ["theaterPerformances", scopeKey],
+    queryFn: () =>
+      venueSlug?.trim()
+        ? api.getTheaterPerformances({ venueSlug: venueSlug.trim() })
+        : api.getTheaterPerformancesForHome(),
     ...PROGRAM_QUERY_OPTIONS,
     throwOnError: false,
     retry: 1,

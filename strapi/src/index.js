@@ -17,6 +17,8 @@ const PUBLIC_COLLECTION_READ_ACTIONS = [
   'api::hall.hall.findOne',
   'api::theater-show.theater-show.find',
   'api::theater-show.theater-show.findOne',
+  'api::theater-performance.theater-performance.find',
+  'api::theater-performance.theater-performance.findOne',
   'api::restaurant.restaurant.find',
   'api::restaurant.restaurant.findOne',
   'api::editorial-review.editorial-review.find',

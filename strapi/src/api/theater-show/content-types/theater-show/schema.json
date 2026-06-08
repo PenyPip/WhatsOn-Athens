@@ -125,7 +125,14 @@
       "relation": "manyToOne",
       "target": "api::venue.venue",
       "inversedBy": "theater_shows",
-      "description": "Προαιρετικό — σταθερή σκηνή. Κενό για περιοδείες χωρίς συγκεκριμένο venue."
+      "description": "Προαιρετικό — κύριος/προεπιλεγμένος χώρος. Για συγκεκριμένες ημερομηνίες χρησιμοποίησε «Θεατρικές παραστάσεις»."
+    },
+    "theater_performances": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::theater-performance.theater-performance",
+      "mappedBy": "theater_show",
+      "description": "Εμφανίσεις παράστασης ανά χώρο και ημερομηνία/ώρα."
     },
     "reviews": {
       "type": "relation",

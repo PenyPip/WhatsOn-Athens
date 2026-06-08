@@ -900,6 +900,63 @@ export interface ApiSiteNavigationSiteNavigation extends Schema.SingleType {
   };
 }
 
+export interface ApiTheaterPerformanceTheaterPerformance
+  extends Schema.CollectionType {
+  collectionName: 'theater_performances';
+  info: {
+    description: '\u039C\u03AF\u03B1 \u03B5\u03BC\u03C6\u03AC\u03BD\u03B9\u03C3\u03B7 = \u03C0\u03B1\u03C1\u03AC\u03C3\u03C4\u03B1\u03C3\u03B7 \u03B8\u03B5\u03AC\u03C4\u03C1\u03BF\u03C5 + \u03C7\u03CE\u03C1\u03BF\u03C2 + \u03B7\u03BC\u03B5\u03C1\u03BF\u03BC\u03B7\u03BD\u03AF\u03B1/\u03CE\u03C1\u03B1 (\u03B1\u03BD\u03AC\u03BB\u03BF\u03B3\u03B1 \u03BC\u03B5 \u03A0\u03C1\u03BF\u03B2\u03BF\u03BB\u03AE \u03C4\u03B1\u03B9\u03BD\u03AF\u03B1\u03C2).';
+    displayName: '\u0398\u03B5\u03B1\u03C4\u03C1\u03B9\u03BA\u03AE \u03C0\u03B1\u03C1\u03AC\u03C3\u03C4\u03B1\u03C3\u03B7';
+    pluralName: 'theater-performances';
+    singularName: 'theater-performance';
+  };
+  options: {
+    draftAndPublish: true;
+  };
+  attributes: {
+    available_seats: Attribute.Integer;
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::theater-performance.theater-performance',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    datetime: Attribute.DateTime & Attribute.Required;
+    hall: Attribute.Relation<
+      'api::theater-performance.theater-performance',
+      'manyToOne',
+      'api::hall.hall'
+    >;
+    price: Attribute.Decimal;
+    publishedAt: Attribute.DateTime;
+    repeat_skip_days: Attribute.Component<'scheduling.skip-day', true>;
+    repeat_until: Attribute.Date;
+    schedule_kind: Attribute.Enumeration<['exact', 'week_block']> &
+      Attribute.Required &
+      Attribute.DefaultTo<'exact'>;
+    theater_show: Attribute.Relation<
+      'api::theater-performance.theater-performance',
+      'manyToOne',
+      'api::theater-show.theater-show'
+    > &
+      Attribute.Required;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::theater-performance.theater-performance',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    venue: Attribute.Relation<
+      'api::theater-performance.theater-performance',
+      'manyToOne',
+      'api::venue.venue'
+    > &
+      Attribute.Required;
+    week_end: Attribute.Date;
+  };
+}
+
 export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
   collectionName: 'theater_shows';
   info: {
@@ -952,6 +1009,11 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
       Attribute.Required;
     sold_out: Attribute.Boolean & Attribute.DefaultTo<false>;
     synopsis: Attribute.Text;
+    theater_performances: Attribute.Relation<
+      'api::theater-show.theater-show',
+      'oneToMany',
+      'api::theater-performance.theater-performance'
+    >;
     ticket_price: Attribute.Decimal;
     ticket_price_from: Attribute.Decimal;
     ticket_price_to: Attribute.Decimal;
@@ -1070,6 +1132,11 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     >;
     slug: Attribute.UID<'api::venue.venue', 'name'> & Attribute.Required;
     summer_outdoor: Attribute.Boolean & Attribute.DefaultTo<false>;
+    theater_performances: Attribute.Relation<
+      'api::venue.venue',
+      'oneToMany',
+      'api::theater-performance.theater-performance'
+    >;
     theater_shows: Attribute.Relation<
       'api::venue.venue',
       'oneToMany',
@@ -1537,6 +1604,7 @@ declare module '@strapi/types' {
       'api::restaurant.restaurant': ApiRestaurantRestaurant;
       'api::showtime.showtime': ApiShowtimeShowtime;
       'api::site-navigation.site-navigation': ApiSiteNavigationSiteNavigation;
+      'api::theater-performance.theater-performance': ApiTheaterPerformanceTheaterPerformance;
       'api::theater-show.theater-show': ApiTheaterShowTheaterShow;
       'api::user-review.user-review': ApiUserReviewUserReview;
       'api::venue.venue': ApiVenueVenue;
