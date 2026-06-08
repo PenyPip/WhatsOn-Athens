@@ -84,7 +84,13 @@
     },
     "event_group_code": {
       "type": "string",
-      "description": "More.com eventGroupCode ανά ταινία (π.χ. evg_arkoudotrupa_1902_38). Όχι venue bundle (evg_*cinema*)."
+      "description": "Κύριος More.com eventGroupCode (π.χ. evg_arkoudotrupa_1902_38). Όχι venue bundle."
+    },
+    "more_event_groups": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.more-event-group",
+      "description": "Επιπλέον More κωδικοί της ίδιας ταινίας — για ευρύτερη ταύτιση/συγχρονισμό (άλλη έκδοση, γλώσσα κ.λπ.)."
     },
     "showtimes": {
       "type": "relation",

@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { ChevronDown } from "lucide-react";
 import { useSearchParams } from "react-router-dom";
 import PageHeaderReveal from "@/components/PageHeaderReveal";
 import VenueCard from "@/components/VenueCard";
@@ -16,7 +17,6 @@ import {
 } from "@/lib/venueType";
 import {
   ATHENS_DISTRICT_FILTER_OPTIONS,
-  ATHENS_DISTRICT_LABELS,
   parseVenueAreaParam,
   parseVenueDistrictParam,
   VENUE_AREA_FILTER_OPTIONS,
@@ -40,6 +40,10 @@ function activeDistrictFilter(
 function activeAreaFilter(areaParam: VenueAreaKey | null): VenueAreaFilter {
   return areaParam ?? "athens";
 }
+
+const VENUES_FILTER_LABEL = "text-xs font-medium text-muted-foreground";
+const VENUES_FILTER_SELECT =
+  "h-10 w-full min-w-0 appearance-none rounded-md border border-input bg-background py-2 pl-3 pr-9 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
 
 const Venues = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -163,31 +167,30 @@ const Venues = () => {
         </div>
 
         {areaUi === "athens" || areaUi === "all" ? (
-        <div
-          className="mb-6 flex flex-wrap items-center gap-2 md:mb-8"
-          role="group"
-          aria-label="Περιοχή Αθήνας"
-        >
-          <span className="mr-1 w-full text-sm uppercase tracking-wider text-muted-foreground sm:w-auto">
-            Περιοχή:
-          </span>
-          {ATHENS_DISTRICT_FILTER_OPTIONS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setDistrictUi(value)}
-              aria-pressed={districtUi === value}
-              className={cn(
-                "rounded border px-4 py-1.5 text-sm font-medium transition-all",
-                districtUi === value
-                  ? "border-[#13143E] bg-[#13143E] text-white"
-                  : "border-border bg-card text-muted-foreground hover:border-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          <div className="mb-6 w-full max-w-[18rem] space-y-1.5 md:mb-8">
+            <label htmlFor="venues-filter-district" className={VENUES_FILTER_LABEL}>
+              Περιοχή Αθήνας
+            </label>
+            <div className="relative">
+              <select
+                id="venues-filter-district"
+                value={districtUi}
+                onChange={(e) => setDistrictUi(e.target.value as AthensDistrictFilter)}
+                className={VENUES_FILTER_SELECT}
+                aria-label="Περιοχή Αθήνας"
+              >
+                {ATHENS_DISTRICT_FILTER_OPTIONS.map(({ value, label }) => (
+                  <option key={value} value={value}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
+                aria-hidden
+              />
+            </div>
+          </div>
         ) : null}
 
         {isLoading ? (

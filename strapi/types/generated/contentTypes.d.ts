@@ -722,6 +722,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
     imdb_rating: Attribute.Decimal;
     is_dubbed: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
+    more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
     most_talked_about: Attribute.Boolean & Attribute.DefaultTo<false>;
     movie_genres: Attribute.Relation<
       'api::movie.movie',
@@ -956,7 +957,8 @@ export interface ApiTheaterPerformanceTheaterPerformance
 export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
   collectionName: 'theater_shows';
   info: {
-    displayName: 'Theater Show';
+    description: '\u0397 \u03C0\u03B1\u03C1\u03AC\u03C3\u03C4\u03B1\u03C3\u03B7 (\u03AD\u03C1\u03B3\u03BF) \u2014 \u03CC\u03C7\u03B9 \u03BF \u03C7\u03CE\u03C1\u03BF\u03C2. \u039F\u03B9 \u03B5\u03BC\u03C6\u03B1\u03BD\u03AF\u03C3\u03B5\u03B9\u03C2 \u03B1\u03BD\u03AC \u03B8\u03AD\u03B1\u03C4\u03C1\u03BF: \u00AB\u0398\u03B5\u03B1\u03C4\u03C1\u03B9\u03BA\u03AE \u03C0\u03B1\u03C1\u03AC\u03C3\u03C4\u03B1\u03C3\u03B7\u00BB.';
+    displayName: '\u03A0\u03B1\u03C1\u03AC\u03C3\u03C4\u03B1\u03C3\u03B7 \u03B8\u03B5\u03AC\u03C4\u03C1\u03BF\u03C5';
     pluralName: 'theater-shows';
     singularName: 'theater-show';
   };
@@ -1073,8 +1075,8 @@ export interface ApiUserReviewUserReview extends Schema.CollectionType {
 export interface ApiVenueVenue extends Schema.CollectionType {
   collectionName: 'venues';
   info: {
-    description: '\u03A0.\u03C7. Village The Mall, \u03B8\u03B5\u03C1\u03B9\u03BD\u03CC \u0391\u03B8\u03AE\u03BD\u03B1 \u03BA.\u03BB\u03C0. \u03A4\u03CD\u03C0\u03BF\u03C2: \u03A3\u03B9\u03BD\u03B5\u03BC\u03AC / \u0398\u03AD\u03B1\u03C4\u03C1\u03BF \u03BA.\u03BB\u03C0. \u03A4\u03BF \u03C0\u03B5\u03B4\u03AF\u03BF \u00AB\u0398\u03B5\u03C1\u03B9\u03BD\u03CC\u00BB \u03BE\u03B5\u03C7\u03C9\u03C1\u03AF\u03B6\u03B5\u03B9 \u03C4\u03B1 \u03B8\u03B5\u03C1\u03B9\u03BD\u03AC \u03C3\u03B9\u03BD\u03B5\u03BC\u03AC \u03B1\u03C0\u03CC \u03C4\u03B1 \u03BA\u03BB\u03B5\u03B9\u03C3\u03C4\u03AC.';
-    displayName: '\u03A7\u03CE\u03C1\u03BF\u03C2 / \u03A3\u03B9\u03BD\u03B5\u03BC\u03AC';
+    description: '\u03A3\u03B9\u03BD\u03B5\u03BC\u03AC, \u03B8\u03AD\u03B1\u03C4\u03C1\u03B1 \u03BA\u03B1\u03B9 \u03AC\u03BB\u03BB\u03BF\u03B9 \u03C7\u03CE\u03C1\u03BF\u03B9. \u0394\u03B9\u03AC\u03BB\u03B5\u03BE\u03B5 \u03C4\u03CD\u03C0\u03BF (\u03A3\u03B9\u03BD\u03B5\u03BC\u03AC / \u0398\u03AD\u03B1\u03C4\u03C1\u03BF) \u03AE \u03C7\u03C1\u03B7\u03C3\u03B9\u03BC\u03BF\u03C0\u03BF\u03AF\u03B7\u03C3\u03B5 \u03C4\u03B1 shortcuts \u00AB\u03A3\u03B9\u03BD\u03B5\u03BC\u03AC\u00BB / \u00AB\u0398\u03AD\u03B1\u03C4\u03C1\u03B1\u00BB \u03C3\u03C4\u03BF \u03B1\u03C1\u03B9\u03C3\u03C4\u03B5\u03C1\u03CC \u03BC\u03B5\u03BD\u03BF\u03CD.';
+    displayName: '\u03A7\u03CE\u03C1\u03BF\u03B9';
     pluralName: 'venues';
     singularName: 'venue';
   };

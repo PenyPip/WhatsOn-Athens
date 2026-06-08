@@ -26,7 +26,7 @@ function cmsTypeLabel(contentType) {
 }
 
 function catalogKindLabel(row) {
-  if (row.kind === 'venue_bundle') return 'Σινεμά bundle';
+  if (row.kind === 'venue_bundle') return 'Σινεμά';
   if (row.category === 'theater') return 'Θέατρο';
   return 'Ταινία';
 }
@@ -39,6 +39,13 @@ function catalogCmsStatusLabel(row) {
 
 function rowKey(row) {
   return `${row.contentType || 'movie'}:${row.cmsId ?? row.movieId ?? row.theaterShowId}`;
+}
+
+function formatCodeList(codes) {
+  const list = Array.isArray(codes) ? codes.filter(Boolean) : [];
+  if (!list.length) return '—';
+  if (list.length === 1) return list[0];
+  return list.join(' · ');
 }
 
 const CATALOG_PAGE_SIZE = 50;
@@ -80,7 +87,7 @@ function SectionIntro({ children }) {
 const App = () => {
   const [query, setQuery] = useState('');
   const [catalogPage, setCatalogPage] = useState(1);
-  const [catalogOnlyMissing, setCatalogOnlyMissing] = useState(false);
+  const [catalogOnlyMissing, setCatalogOnlyMissing] = useState(true);
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [applyMinScore, setApplyMinScore] = useState(0.45);
@@ -123,14 +130,13 @@ const App = () => {
     setCatalogPage(1);
   }, [result, catalogOnlyMissing]);
 
-  const runLookup = async ({ matchCms, listAll }) => {
+  const runLookup = async () => {
     setLoading(true);
     setResult(null);
     try {
       const res = await post('/api/more-lookup/run', {
         query: query.trim() || undefined,
-        matchCms,
-        listAll,
+        matchCms: true,
       });
       setResult(res.data);
       setPendingApproval(res?.data?.pendingApproval ?? []);
@@ -333,45 +339,19 @@ const App = () => {
               <Flex direction="column" gap={3}>
                 <ActionRow
                   title="1. Ταύτιση με CMS (μόνο προβολή)"
-                  description="Συγκρίνει ταινίες και παραστάσεις θεάτρου του CMS με τον κατάλογο More. Δείχνει πίνακα προτάσεων και «Προς έγκριση» για χαμηλό score — δεν αλλάζει τίποτα στο CMS."
+                  description="Συγκρίνει ταινίες και παραστάσεις θεάτρου με τον πλήρη κατάλογο More. Δείχνει προτάσεις, «Προς έγκριση» και πίνακα καταλόγου (με φίλτρο «μόνο μη περασμένα») — δεν αλλάζει τίποτα στο CMS."
                 >
-                  <Button loading={loading} onClick={() => runLookup({ matchCms: true, listAll: false })}>
+                  <Button loading={loading} onClick={runLookup}>
                     Εκτέλεση ταύτισης
                   </Button>
                 </ActionRow>
 
                 <ActionRow
                   title="2. Αυτόματη εγγραφή στο CMS"
-                  description={`Γράφει event_group_code όπου το score ≥ ${applyMinScore.toFixed(2)}. Για ταινίες με χαμηλότερο score: έλεγξε τον πίνακα και βάλε τον κωδικό χειροκίνητα. Για θέατρο: «Προς έγκριση».`}
+                  description={`Γράφει όλους τους κωδικούς με score ≥ ${applyMinScore.toFixed(2)} (κύριος + επιπλέον more_event_groups). Για χαμηλότερο score: χειροκίνητα ή «Προς έγκριση» (θέατρο).`}
                 >
                   <Button variant="success" loading={loading} onClick={applyToCms}>
                     Γράψε αυτόματα
-                  </Button>
-                </ActionRow>
-
-                <ActionRow
-                  title="3. Δείγμα καταλόγου More"
-                  description="Τα πρώτα ~25 entries από More (ταινίες + θέατρο) με στήλη CMS: τι υπάρχει ήδη στο site. Χρήσιμο για γρήγορη αναφορά."
-                >
-                  <Button
-                    variant="secondary"
-                    loading={loading}
-                    onClick={() => runLookup({ matchCms: false, listAll: false })}
-                  >
-                    Δείγμα καταλόγου
-                  </Button>
-                </ActionRow>
-
-                <ActionRow
-                  title="4. Πλήρης κατάλογος More"
-                  description="Όλες οι εγγραφές More (~370+) με σελιδοποίηση και φίλτρο «μόνο μη περασμένα». Δεν γράφει στο CMS."
-                >
-                  <Button
-                    variant="tertiary"
-                    loading={loading}
-                    onClick={() => runLookup({ matchCms: false, listAll: true })}
-                  >
-                    Πλήρης κατάλογος
                   </Button>
                 </ActionRow>
               </Flex>
@@ -532,9 +512,16 @@ const App = () => {
                     </Td>
                     <Td>
                       <Typography textColor="neutral600">{row.moreTitle}</Typography>
+                      {(row.moreMatches?.length ?? 0) > 1 ? (
+                        <Typography variant="pi" textColor="neutral500" paddingTop={1}>
+                          +{(row.moreMatches?.length ?? 0) - 1} ακόμα στο More
+                        </Typography>
+                      ) : null}
                     </Td>
                     <Td>
-                      <Typography fontWeight="bold">{row.suggestedEventGroupCode}</Typography>
+                      <Typography fontWeight="bold">
+                        {formatCodeList(row.suggestedEventGroupCodes || [row.suggestedEventGroupCode])}
+                      </Typography>
                     </Td>
                     <Td>
                       <Typography>{row.score.toFixed(2)}</Typography>
@@ -547,12 +534,10 @@ const App = () => {
                       </Typography>
                     </Td>
                     <Td>
-                      {row.cmsEventGroupCode ? (
-                        row.conflict ? (
-                          <Badge>έχει: {row.cmsEventGroupCode}</Badge>
-                        ) : (
-                          <Badge>OK</Badge>
-                        )
+                      {(row.cmsEventGroupCodes?.length ?? 0) > 0 ? (
+                        <Badge>
+                          {formatCodeList(row.cmsEventGroupCodes)}
+                        </Badge>
                       ) : (
                         <Badge>κενό</Badge>
                       )}
@@ -675,7 +660,7 @@ const App = () => {
           </Box>
         ) : null}
 
-        {catalog.length > 0 ? (
+        {catalog.length > 0 && (!catalogOnlyMissing || catalogFiltered.length > 0) ? (
           <Box paddingTop={6} background="neutral0" shadow="filterShadow" hasRadius>
             <Box padding={4}>
               <Flex justifyContent="space-between" alignItems="center" gap={2} wrap="wrap">
@@ -692,7 +677,7 @@ const App = () => {
                   checked={catalogOnlyMissing}
                   onCheckedChange={(checked) => setCatalogOnlyMissing(checked === true)}
                 >
-                  Εμφάνιση μόνο κωδικών που λείπουν από το CMS
+                  Εμφάνιση μόνο κωδικών που λείπουν από το CMS (μόνο στον πίνακα καταλόγου)
                 </Checkbox>
               </Box>
             </Box>

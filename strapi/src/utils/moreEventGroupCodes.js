@@ -1,7 +1,66 @@
 'use strict';
 
+function normalizeCatalogText(raw) {
+  return String(raw ?? '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim();
+}
+
+function codeSlugRoot(code) {
+  return String(code || '')
+    .replace(/^evg_/i, '')
+    .split('_')[0]
+    .toLowerCase();
+}
+
+/** Κωδικοί evg_* που συνήθως αντιστοιχούν σε χώρο σινεμά (όχι ταινία). */
+const CINEMA_VENUE_CODE_PREFIX =
+  /^(therino|cine|sine|sinem|kinematographos|kinematografo|laistherino|olumpiontherino|sinekepos)/i;
+
+function looksLikeMovieCatalogTitle(title) {
+  const raw = String(title || '').trim();
+  if (!raw) return false;
+  if (/\s\|\s/.test(raw)) return true;
+  if (/\(\d{4}\)/.test(raw)) return true;
+  if (/\s·\s/.test(raw) && !/^cine\s/i.test(raw)) return true;
+  if (raw.length > 72) return true;
+  if (/αφιερωμα|αφιέρωμα|αφιερωματα|αφιερώματα/i.test(raw) && raw.length > 36) return true;
+  return false;
+}
+
+function looksLikeCinemaVenueCatalogTitle(title) {
+  if (looksLikeMovieCatalogTitle(title)) return false;
+  const t = normalizeCatalogText(title);
+  if (/^(θεριν[οός]|therino)\s/.test(t)) return true;
+  if (/\s[-–]\s*θεριν[οός]?$/.test(t)) return true;
+  if (/θεριν[οός]\s+κινηματογραφ/.test(t)) return true;
+  if (/κινηματογραφος\s|kinematographos\s/.test(t) && t.length < 60) return true;
+  if (/^(cine|sine|σινε|σινέ)\s/.test(t)) return true;
+  if (/^(σινε|cine)\s*(μαρθα|μελινα|καρμεν)/.test(t)) return true;
+  return false;
+}
+
 function isVenueBundleCode(code) {
-  return /cinema|kinematog|movietheater/i.test(String(code || ''));
+  const s = String(code || '').toLowerCase();
+  if (/cinema|kinematog|movietheater/i.test(s)) return true;
+  if (/apollon|ribiera|europacinema|aiglecinema|athenaia/.test(codeSlugRoot(code))) return true;
+  return CINEMA_VENUE_CODE_PREFIX.test(codeSlugRoot(code));
+}
+
+/**
+ * Ταξινόμηση εγγραφής καταλόγου More (σελίδα cinema) — ταινία vs χώρος σινεμά.
+ * @param {string} code
+ * @param {string} title
+ * @returns {'movie' | 'venue_bundle'}
+ */
+function classifyCinemaCatalogKind(code, title) {
+  if (looksLikeMovieCatalogTitle(title)) return 'movie';
+  if (isVenueBundleCode(code)) return 'venue_bundle';
+  if (looksLikeCinemaVenueCatalogTitle(title)) return 'venue_bundle';
+  return 'movie';
 }
 
 function extractEvgCodeFromText(raw) {
@@ -92,6 +151,9 @@ function collectEventGroupCodes(movie) {
 
 module.exports = {
   isVenueBundleCode,
+  classifyCinemaCatalogKind,
+  looksLikeMovieCatalogTitle,
+  looksLikeCinemaVenueCatalogTitle,
   extractEvgCodeFromText,
   collectEventGroupCodes,
   collectVenueBundleCodes,

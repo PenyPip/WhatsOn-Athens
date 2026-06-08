@@ -4,7 +4,8 @@
   "info": {
     "singularName": "theater-show",
     "pluralName": "theater-shows",
-    "displayName": "Theater Show"
+    "displayName": "Παράσταση θεάτρου",
+    "description": "Η παράσταση (έργο) — όχι ο χώρος. Οι εμφανίσεις ανά θέατρο: «Θεατρική παράσταση»."
   },
   "attributes": {
     "title": {

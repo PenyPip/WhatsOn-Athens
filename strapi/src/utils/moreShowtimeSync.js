@@ -402,6 +402,7 @@ async function loadMoviesWithCodes(strapi, movieIdFilter) {
   const rows = await findAllEntities(strapi, 'api::movie.movie', {
     filters,
     fields: ['id', 'title', 'slug', 'event_group_code'],
+    populate: { more_event_groups: true },
     publicationState: 'preview',
     pageSize: 200,
   });

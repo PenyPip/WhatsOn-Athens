@@ -12,6 +12,7 @@ const {
   collectEventGroupCodes,
   collectVenueBundleCodes,
   collectTheaterVenueBundleCodes,
+  classifyCinemaCatalogKind,
 } = require('./moreEventGroupCodes');
 
 const CMS_LOOKUP_CONFIG = {
@@ -63,7 +64,7 @@ function parseMoreCatalogHtml(html, { category, classifyKind }) {
     let title = nameMatch?.[1]?.trim() || hMatch?.[1]?.trim() || '';
     if (!title && urlMatch?.[1]) title = slugFromMoreUrl(urlMatch[1], category);
 
-    const kind = classifyKind(code);
+    const kind = classifyKind(code, title);
     byCode.set(code, {
       code,
       title: title || '(χωρίς τίτλο)',
@@ -74,14 +75,6 @@ function parseMoreCatalogHtml(html, { category, classifyKind }) {
   }
 
   return [...byCode.values()];
-}
-
-function isLikelyVenueBundle(code) {
-  const slug = String(code || '')
-    .replace(/^evg_/i, '')
-    .split('_')[0]
-    .toLowerCase();
-  return /cinema|kinematog|movietheater|apollon|ribiera|europacinema|aiglecinema|athenaia/.test(slug);
 }
 
 async function fetchText(url) {
@@ -107,7 +100,7 @@ async function fetchMoreCatalog() {
 
   const cinema = parseMoreCatalogHtml(cinemaHtml, {
     category: 'cinema',
-    classifyKind: (code) => (isLikelyVenueBundle(code) ? 'venue_bundle' : 'movie'),
+    classifyKind: (code, title) => classifyCinemaCatalogKind(code, title),
   });
   const theater = parseMoreCatalogHtml(theaterHtml, {
     category: 'theater',
@@ -202,20 +195,32 @@ function matchCmsItemsToMore(cmsItems, catalog, minScore = DEFAULT_MIN_SCORE) {
       return entry.kind === 'show';
     });
 
-    let best = null;
-    let bestScore = 0;
+    const scored = [];
     for (const more of pool) {
       const score = scoreMatch(cms, more);
-      if (score > bestScore) {
-        bestScore = score;
-        best = more;
+      if (score >= MIN_HINT_SCORE) {
+        scored.push({ more, score });
       }
     }
+    scored.sort((a, b) => b.score - a.score);
+
+    const best = scored[0] || null;
+    const bestScore = best?.score || 0;
+    const qualifying = scored.filter((row) => row.score >= minScore);
+
     results.push({
       cms,
-      more: bestScore >= MIN_HINT_SCORE ? best : null,
+      more: best?.more ?? null,
+      moreMatches: scored.map((row) => ({
+        moreTitle: row.more.title,
+        suggestedEventGroupCode: row.more.code,
+        moreUrl: row.more.moreUrl,
+        moreCategory: row.more.category,
+        score: Number(row.score.toFixed(3)),
+      })),
+      suggestedEventGroupCodes: qualifying.map((row) => row.more.code),
       score: bestScore,
-      matched: bestScore >= minScore && best != null,
+      matched: qualifying.length > 0,
     });
   }
 
@@ -271,6 +276,7 @@ function mapCmsLookupRow(row, contentType) {
 async function loadCmsMovies(strapi) {
   const rows = await strapi.entityService.findMany('api::movie.movie', {
     fields: ['id', 'title', 'original_title', 'slug', 'event_group_code'],
+    populate: { more_event_groups: true },
     publicationState: 'preview',
     pagination: { pageSize: 500 },
   });
@@ -425,6 +431,62 @@ async function clearMoviePending(strapi, movieId) {
   await clearCmsPending(strapi, 'movie', movieId);
 }
 
+function moreGroupsFromEntry(entry) {
+  return (entry?.more_event_groups || [])
+    .map((group) => ({ code: String(group.code || '').trim() }))
+    .filter((group) => group.code);
+}
+
+/**
+ * Προσθήκη ενός ή περισσότερων event_group_code σε ταινία/παράσταση.
+ * Κενό primary → πρώτος κωδικός primary, υπόλοιποι σε more_event_groups.
+ */
+async function mergeEventGroupCodesIntoCms(strapi, contentType, entry, codes, options = {}) {
+  const config = CMS_LOOKUP_CONFIG[contentType];
+  if (!config) throw new Error(`Άγνωστος τύπος CMS: ${contentType}`);
+
+  const overwriteExisting = options.overwriteExisting === true;
+  const existingCodes = collectEventGroupCodes(entry);
+  const incoming = [...new Set((codes || []).map((code) => String(code || '').trim()).filter(Boolean))];
+  const toAdd = incoming.filter((code) => !existingCodes.includes(code));
+  if (!toAdd.length) {
+    return { added: [], primary: String(entry.event_group_code || '').trim() || null, alreadyPresent: true };
+  }
+
+  const primary = String(entry.event_group_code || '').trim();
+  const data = {};
+
+  if (!primary) {
+    data.event_group_code = toAdd[0];
+    const rest = toAdd.slice(1);
+    if (rest.length) {
+      data.more_event_groups = [...moreGroupsFromEntry(entry), ...rest.map((code) => ({ code }))];
+    }
+  } else if (overwriteExisting && toAdd.length === 1 && incoming.length === 1) {
+    data.event_group_code = toAdd[0];
+  } else {
+    const moreGroups = moreGroupsFromEntry(entry);
+    for (const code of toAdd) {
+      moreGroups.push({ code });
+    }
+    data.more_event_groups = moreGroups;
+  }
+
+  if (contentType === 'theater_show') {
+    data.pending_event_group_code = null;
+    data.pending_more_title = null;
+    data.pending_match_score = null;
+  }
+
+  await strapi.entityService.update(config.uid, entry.id, { data });
+
+  return {
+    added: toAdd,
+    primary: data.event_group_code || primary || null,
+    addedAsSecondary: Boolean(primary && !data.event_group_code),
+  };
+}
+
 async function syncPendingApprovals(strapi, matches, applyMinScore = DEFAULT_APPLY_MIN_SCORE) {
   const pendingIds = new Set();
   for (const row of matches) {
@@ -510,7 +572,7 @@ async function approveMoreEventGroupCode(strapi, options = {}) {
 
   const entry = await strapi.entityService.findOne(config.uid, id, {
     fields: ['id', 'title', 'event_group_code', 'pending_event_group_code'],
-    populate: contentType === 'theater_show' ? { more_event_groups: true } : undefined,
+    populate: { more_event_groups: true },
     publicationState: 'preview',
   });
   if (!entry) {
@@ -541,53 +603,25 @@ async function approveMoreEventGroupCode(strapi, options = {}) {
   }
 
   if (existing && existing !== code && !overwriteExisting) {
-    if (contentType === 'theater_show') {
-      const moreGroups = (entry.more_event_groups || []).map((group) => ({
-        code: String(group.code || '').trim(),
-      })).filter((group) => group.code);
-      moreGroups.push({ code });
-
-      await strapi.entityService.update(config.uid, id, {
-        data: {
-          more_event_groups: moreGroups,
-          pending_event_group_code: null,
-          pending_more_title: null,
-          pending_match_score: null,
-        },
-      });
-
-      return {
-        ok: true,
-        contentType,
-        cmsId: id,
-        movieId: null,
-        theaterShowId: id,
-        cmsTitle: entry.title,
-        eventGroupCode: code,
-        previousCode: existing || null,
-        addedAsSecondary: true,
-      };
-    }
-    throw new Error(
-      'Η ταινία έχει ήδη event_group_code — ενεργοποίησε «Αντικατάσταση» ή άλλαξέ το χειροκίνητα.',
-    );
+    const merged = await mergeEventGroupCodesIntoCms(strapi, contentType, entry, [code]);
+    await clearCmsPending(strapi, contentType, id);
+    return {
+      ok: true,
+      contentType,
+      cmsId: id,
+      movieId: contentType === 'movie' ? id : null,
+      theaterShowId: contentType === 'theater_show' ? id : null,
+      cmsTitle: entry.title,
+      eventGroupCode: code,
+      previousCode: existing || null,
+      addedAsSecondary: merged.addedAsSecondary === true,
+    };
   }
 
-  const clearPending =
-    contentType === 'theater_show'
-      ? {
-          pending_event_group_code: null,
-          pending_more_title: null,
-          pending_match_score: null,
-        }
-      : {};
-
-  await strapi.entityService.update(config.uid, id, {
-    data: {
-      event_group_code: code,
-      ...clearPending,
-    },
+  const merged = await mergeEventGroupCodesIntoCms(strapi, contentType, entry, [code], {
+    overwriteExisting,
   });
+  await clearCmsPending(strapi, contentType, id);
 
   return {
     ok: true,
@@ -598,6 +632,7 @@ async function approveMoreEventGroupCode(strapi, options = {}) {
     cmsTitle: entry.title,
     eventGroupCode: code,
     previousCode: existing || null,
+    addedAsSecondary: merged.addedAsSecondary === true,
   };
 }
 
@@ -607,7 +642,8 @@ async function attachVerification(entries, skipVerify) {
   }
   const out = [];
   for (const entry of entries) {
-    const verify = entry.code ? await verifyEventGroupCode(entry.code) : null;
+    const code = entry.eventGroupCode || entry.code || null;
+    const verify = code ? await verifyEventGroupCode(code) : null;
     out.push({ ...entry, verify });
   }
   return out;
@@ -635,12 +671,10 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
   const moreTheaterShows = catalog.filter((e) => e.category === 'theater' && e.kind === 'show');
   const venueBundles = catalog.filter((e) => e.kind === 'venue_bundle');
 
-  let catalogRows = catalog.filter((e) => e.kind !== 'venue_bundle');
+  let catalogRows = [...catalog];
   if (query?.trim()) {
     catalogRows = filterMoreCatalog(catalogRows, query);
-  } else if (listAll) {
-    catalogRows = catalogRows;
-  } else if (!matchCms) {
+  } else if (!matchCms && !listAll && catalogLimit > 0) {
     catalogRows = catalogRows.slice(0, catalogLimit);
   }
 
@@ -673,6 +707,9 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
     const codesToVerify = new Set();
     for (const row of rawMatches) {
       if (row.more?.code) codesToVerify.add(row.more.code);
+      for (const match of row.moreMatches || []) {
+        if (match.suggestedEventGroupCode) codesToVerify.add(match.suggestedEventGroupCode);
+      }
     }
 
     const verified = new Map();
@@ -684,7 +721,14 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
 
     result.matches = rawMatches.map((row) => {
       const suggestedCode = row.more?.code ?? null;
+      const suggestedCodes = row.suggestedEventGroupCodes || (suggestedCode ? [suggestedCode] : []);
       const verify = suggestedCode ? verified.get(suggestedCode) ?? null : null;
+      const moreMatches = (row.moreMatches || []).map((match) => ({
+        ...match,
+        verify: match.suggestedEventGroupCode
+          ? verified.get(match.suggestedEventGroupCode) ?? null
+          : null,
+      }));
       const cmsCodes = row.cms.eventGroupCodes || [];
       const cmsCode = row.cms.eventGroupCode || cmsCodes[0] || null;
       const hasSuggested = cmsHasEventGroupCode(row.cms, suggestedCode);
@@ -700,6 +744,8 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
         cmsEventGroupCodes: cmsCodes,
         moreTitle: row.more?.title ?? null,
         suggestedEventGroupCode: suggestedCode,
+        suggestedEventGroupCodes: suggestedCodes,
+        moreMatches,
         moreUrl: row.more?.moreUrl ?? null,
         moreCategory: row.more?.category ?? null,
         score: Number((row.score || 0).toFixed(3)),
@@ -744,7 +790,7 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
     }
   }
 
-  if (!matchCms || query?.trim() || listAll) {
+  {
     const [cmsItems, cmsVenues] = await Promise.all([
       loadAllCmsItems(strapi),
       loadCmsVenues(strapi),
@@ -771,23 +817,20 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
   return result;
 }
 
-function skipReason(row, options) {
+function skipCodeReason(row, code, score, verify, options) {
   const applyMinScore = options.applyMinScore ?? DEFAULT_APPLY_MIN_SCORE;
-  const overwriteExisting = options.overwriteExisting === true;
   const requireApiVerify = options.requireApiVerify !== false;
 
-  if (!row.matched) return 'no_match';
-  if (row.score < applyMinScore) return 'low_score';
-  if (!row.suggestedEventGroupCode) return 'no_code';
-  if (requireApiVerify && !row.verify?.ok) return 'api_verify_failed';
+  if (!code) return 'no_code';
+  if (score < applyMinScore) return 'low_score';
+  if (requireApiVerify && verify && !verify.ok) return 'api_verify_failed';
+
   const cmsCodes = row.cmsEventGroupCodes?.length
     ? row.cmsEventGroupCodes
     : row.cmsEventGroupCode
       ? [row.cmsEventGroupCode]
       : [];
-  if (cmsCodes.includes(row.suggestedEventGroupCode)) return 'already_set';
-  if (row.conflict && !overwriteExisting) return 'conflict';
-  if (cmsCodes.length && !overwriteExisting) return 'has_existing_code';
+  if (cmsCodes.includes(code)) return 'already_set';
   return null;
 }
 
@@ -811,78 +854,137 @@ async function applyMoreEventCodeMatches(strapi, options = {}) {
   });
 
   const candidates = lookup.matches
-    .filter((r) => r.matched && r.suggestedEventGroupCode)
+    .filter((r) => r.matched)
     .sort((a, b) => b.score - a.score);
 
   const codeTakenBy = new Map();
   const applied = [];
   const skipped = [];
+  const entryCache = new Map();
 
   for (const row of candidates) {
-    const reason = skipReason(row, { applyMinScore, overwriteExisting, requireApiVerify });
-    if (reason) {
-      skipped.push({
-        contentType: row.contentType,
-        cmsId: row.cmsId,
-        movieId: row.movieId,
-        theaterShowId: row.theaterShowId,
-        cmsTitle: row.cmsTitle,
-        suggestedEventGroupCode: row.suggestedEventGroupCode,
-        cmsEventGroupCode: row.cmsEventGroupCode,
-        score: row.score,
-        reason,
-      });
-      continue;
-    }
-
-    const code = row.suggestedEventGroupCode;
     const contentType = row.contentType || 'movie';
     const cmsId = row.cmsId ?? row.movieId ?? row.theaterShowId;
-    const ownerKey = `${contentType}:${code}`;
-    const existingOwner = codeTakenBy.get(ownerKey);
-    if (existingOwner != null && existingOwner !== cmsId) {
-      skipped.push({
-        contentType,
-        cmsId,
-        movieId: row.movieId,
-        theaterShowId: row.theaterShowId,
-        cmsTitle: row.cmsTitle,
-        suggestedEventGroupCode: code,
-        score: row.score,
-        reason: 'duplicate_code',
-      });
-      continue;
-    }
+    const codeRows =
+      row.moreMatches?.length > 0
+        ? row.moreMatches
+        : row.suggestedEventGroupCode
+          ? [
+              {
+                suggestedEventGroupCode: row.suggestedEventGroupCode,
+                score: row.score,
+                verify: row.verify,
+                moreTitle: row.moreTitle,
+              },
+            ]
+          : [];
 
-    try {
-      await strapi.entityService.update(CMS_LOOKUP_CONFIG[contentType].uid, cmsId, {
-        data: { event_group_code: code },
+    const codesToApply = [];
+    for (const match of codeRows) {
+      const code = match.suggestedEventGroupCode;
+      const reason = skipCodeReason(
+        row,
+        code,
+        Number(match.score ?? row.score),
+        match.verify ?? row.verify,
+        { applyMinScore, overwriteExisting, requireApiVerify },
+      );
+      if (reason) {
+        skipped.push({
+          contentType,
+          cmsId,
+          movieId: row.movieId,
+          theaterShowId: row.theaterShowId,
+          cmsTitle: row.cmsTitle,
+          suggestedEventGroupCode: code,
+          cmsEventGroupCode: row.cmsEventGroupCode,
+          score: Number(match.score ?? row.score),
+          reason,
+        });
+        continue;
+      }
+
+      const ownerKey = `${contentType}:${code}`;
+      const existingOwner = codeTakenBy.get(ownerKey);
+      if (existingOwner != null && existingOwner !== cmsId) {
+        skipped.push({
+          contentType,
+          cmsId,
+          movieId: row.movieId,
+          theaterShowId: row.theaterShowId,
+          cmsTitle: row.cmsTitle,
+          suggestedEventGroupCode: code,
+          score: Number(match.score ?? row.score),
+          reason: 'duplicate_code',
+        });
+        continue;
+      }
+      codesToApply.push({
+        code,
+        score: Number(match.score ?? row.score),
+        moreTitle: match.moreTitle ?? row.moreTitle,
       });
       codeTakenBy.set(ownerKey, cmsId);
+    }
+
+    if (!codesToApply.length) continue;
+
+    try {
+      const cacheKey = `${contentType}:${cmsId}`;
+      if (!entryCache.has(cacheKey)) {
+        const entry = await strapi.entityService.findOne(CMS_LOOKUP_CONFIG[contentType].uid, cmsId, {
+          fields: ['id', 'title', 'event_group_code'],
+          populate: { more_event_groups: true },
+          publicationState: 'preview',
+        });
+        entryCache.set(cacheKey, entry);
+      }
+
+      const merged = await mergeEventGroupCodesIntoCms(
+        strapi,
+        contentType,
+        entryCache.get(cacheKey),
+        codesToApply.map((item) => item.code),
+        { overwriteExisting },
+      );
+
+      const refreshed = await strapi.entityService.findOne(CMS_LOOKUP_CONFIG[contentType].uid, cmsId, {
+        fields: ['id', 'title', 'event_group_code'],
+        populate: { more_event_groups: true },
+        publicationState: 'preview',
+      });
+      entryCache.set(cacheKey, refreshed);
+
       await clearCmsPending(strapi, contentType, cmsId);
-      applied.push({
-        contentType,
-        cmsId,
-        movieId: row.movieId,
-        theaterShowId: row.theaterShowId,
-        cmsTitle: row.cmsTitle,
-        moreTitle: row.moreTitle,
-        eventGroupCode: code,
-        previousCode: row.cmsEventGroupCode || null,
-        score: row.score,
-      });
+      for (const item of codesToApply) {
+        if (!merged.added.includes(item.code)) continue;
+        applied.push({
+          contentType,
+          cmsId,
+          movieId: row.movieId,
+          theaterShowId: row.theaterShowId,
+          cmsTitle: row.cmsTitle,
+          moreTitle: item.moreTitle,
+          eventGroupCode: item.code,
+          previousCode: row.cmsEventGroupCode || null,
+          score: item.score,
+          addedAsSecondary: merged.addedAsSecondary === true,
+        });
+      }
     } catch (e) {
-      skipped.push({
-        contentType,
-        cmsId,
-        movieId: row.movieId,
-        theaterShowId: row.theaterShowId,
-        cmsTitle: row.cmsTitle,
-        suggestedEventGroupCode: code,
-        score: row.score,
-        reason: 'update_failed',
-        error: e?.message || String(e),
-      });
+      for (const item of codesToApply) {
+        skipped.push({
+          contentType,
+          cmsId,
+          movieId: row.movieId,
+          theaterShowId: row.theaterShowId,
+          cmsTitle: row.cmsTitle,
+          suggestedEventGroupCode: item.code,
+          score: item.score,
+          reason: 'update_failed',
+          error: e?.message || String(e),
+        });
+      }
     }
   }
 
