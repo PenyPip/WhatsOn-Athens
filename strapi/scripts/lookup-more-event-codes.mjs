@@ -100,7 +100,7 @@ async function main() {
       );
     }
 
-    const matched = matches.filter((r) => r.more && r.score >= 0.68);
+    const matched = matches.filter((r) => r.more && r.score >= 0.45);
     console.log(`\nΣύνοψη: ${matched.length} ταύτιση, ${matches.length - matched.length} χωρίς match`);
     return;
   }

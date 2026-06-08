@@ -4,8 +4,8 @@ const {
   runMoreEventCodeLookup,
   applyMoreEventCodeMatches,
   approveMoreEventGroupCode,
-  loadPendingApprovalMovies,
-  clearMoviePending,
+  loadPendingApprovalItems,
+  clearCmsPending,
   DEFAULT_MIN_SCORE,
   DEFAULT_APPLY_MIN_SCORE,
 } = require('../../../utils/moreEventCodeLookup');
@@ -13,7 +13,7 @@ const { syncShowtimesFromMore, DEFAULT_HORIZON_DAYS } = require('../../../utils/
 
 module.exports = {
   async status(ctx) {
-    const pending = await loadPendingApprovalMovies(strapi);
+    const pending = await loadPendingApprovalItems(strapi);
     ctx.body = {
       enabled: process.env.MORE_LOOKUP_ENABLED !== 'false',
       showtimeSyncEnabled: process.env.MORE_SHOWTIME_SYNC_ENABLED !== 'false',
@@ -25,22 +25,26 @@ module.exports = {
   },
 
   async pending(ctx) {
-    const pending = await loadPendingApprovalMovies(strapi);
+    const pending = await loadPendingApprovalItems(strapi);
     ctx.body = { ok: true, pending, count: pending.length };
   },
 
   async reject(ctx) {
-    const movieId = ctx.request.body?.movieId;
-    if (movieId == null) {
+    const body = ctx.request.body ?? {};
+    const contentType =
+      body.contentType || (body.theaterShowId != null ? 'theater_show' : 'movie');
+    const cmsId = Number(body.cmsId ?? body.movieId ?? body.theaterShowId);
+    if (!Number.isFinite(cmsId)) {
       ctx.status = 400;
-      ctx.body = { ok: false, error: { message: 'Απαιτείται movieId' } };
+      ctx.body = { ok: false, error: { message: 'Απαιτείται cmsId / movieId / theaterShowId' } };
       return;
     }
-    await clearMoviePending(strapi, Number(movieId));
+    await clearCmsPending(strapi, contentType, cmsId);
     ctx.body = {
       ok: true,
-      movieId: Number(movieId),
-      pendingRemaining: (await loadPendingApprovalMovies(strapi)).length,
+      contentType,
+      cmsId,
+      pendingRemaining: (await loadPendingApprovalItems(strapi)).length,
     };
   },
 
@@ -51,13 +55,19 @@ module.exports = {
 
     const items = Array.isArray(body.approvals)
       ? body.approvals
-      : body.movieId != null
-        ? [{ movieId: body.movieId, eventGroupCode: body.eventGroupCode }]
+      : body.cmsId != null || body.movieId != null || body.theaterShowId != null
+        ? [{
+            contentType: body.contentType,
+            cmsId: body.cmsId,
+            movieId: body.movieId,
+            theaterShowId: body.theaterShowId,
+            eventGroupCode: body.eventGroupCode,
+          }]
         : [];
 
     if (!items.length) {
       ctx.status = 400;
-      ctx.body = { ok: false, error: { message: 'Απαιτείται movieId ή approvals[]' } };
+      ctx.body = { ok: false, error: { message: 'Απαιτείται cmsId ή approvals[]' } };
       return;
     }
 
@@ -67,17 +77,21 @@ module.exports = {
     for (const item of items) {
       try {
         const result = await approveMoreEventGroupCode(strapi, {
+          contentType: item.contentType,
+          cmsId: item.cmsId,
           movieId: item.movieId,
+          theaterShowId: item.theaterShowId,
           eventGroupCode: item.eventGroupCode,
           overwriteExisting,
         });
         approved.push(result);
         strapi.log.info(
-          `[more-lookup] approved by ${adminEmail} movie ${result.movieId} → ${result.eventGroupCode}`,
+          `[more-lookup] approved by ${adminEmail} ${result.contentType} ${result.cmsId} → ${result.eventGroupCode}`,
         );
       } catch (e) {
         errors.push({
-          movieId: item.movieId,
+          contentType: item.contentType,
+          cmsId: item.cmsId ?? item.movieId ?? item.theaterShowId,
           error: e?.message || String(e),
         });
       }
@@ -87,8 +101,8 @@ module.exports = {
       ok: errors.length === 0,
       approved,
       errors,
-      message: `Εγκρίθηκαν ${approved.length} ταινίες${errors.length ? ` · ${errors.length} σφάλματα` : ''}`,
-      pendingRemaining: (await loadPendingApprovalMovies(strapi)).length,
+      message: `Εγκρίθηκαν ${approved.length} εγγραφές${errors.length ? ` · ${errors.length} σφάλματα` : ''}`,
+      pendingRemaining: (await loadPendingApprovalItems(strapi)).length,
     };
   },
 
@@ -118,7 +132,7 @@ module.exports = {
           query: query || null,
           overwriteExisting: body.overwriteExisting === true,
         });
-        result.pendingApproval = await loadPendingApprovalMovies(strapi);
+        result.pendingApproval = await loadPendingApprovalItems(strapi);
         ctx.body = result;
       } catch (e) {
         strapi.log.error('[more-lookup] apply failed', e);
@@ -141,7 +155,7 @@ module.exports = {
       ctx.body = {
         ...result,
         message: matchCms
-          ? `Ταύτιση: ${result.stats.matched} αξιόπιστες · ${result.stats.pendingApproval} προς έγκριση`
+          ? `Ταύτιση: ${result.stats.matched} (ταινίες ${result.stats.cmsMovies} · θέατρο ${result.stats.cmsTheaterShows}) · ${result.stats.pendingApproval} προς έγκριση`
           : `Κατάλογος More: ${result.stats.catalogShown ?? result.catalog?.length ?? 0} εγγραφές`,
       };
     } catch (e) {

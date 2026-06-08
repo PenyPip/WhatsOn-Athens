@@ -719,7 +719,6 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'api::editorial-review.editorial-review'
     >;
     event_group_code: Attribute.String;
-    more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
     imdb_rating: Attribute.Decimal;
     is_dubbed: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
@@ -929,13 +928,18 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
       'oneToMany',
       'api::editorial-review.editorial-review'
     >;
+    event_group_code: Attribute.String;
     genre: Attribute.Enumeration<
       ['drama', 'comedy', 'musical', 'dance', 'opera']
     >;
     is_last_shows: Attribute.Boolean & Attribute.DefaultTo<false>;
     is_premiere: Attribute.Boolean & Attribute.DefaultTo<false>;
+    more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
     more_link: Attribute.String;
     on_tour: Attribute.Boolean & Attribute.DefaultTo<false>;
+    pending_event_group_code: Attribute.String & Attribute.Private;
+    pending_match_score: Attribute.Decimal & Attribute.Private;
+    pending_more_title: Attribute.String & Attribute.Private;
     poster: Attribute.Media<'images'>;
     reviews: Attribute.Relation<
       'api::theater-show.theater-show',
@@ -1039,6 +1043,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     district: Attribute.Enumeration<
       ['center', 'north', 'south', 'west', 'east', 'piraeus', 'greater_other']
     >;
+    event_group_code: Attribute.String;
     events: Attribute.Relation<
       'api::venue.venue',
       'oneToMany',
@@ -1052,6 +1057,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     >;
     image: Attribute.Media<'images'>;
     info: Attribute.Text & Attribute.Private;
+    more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
     more_link: Attribute.String;
     more_sync_log: Attribute.Text & Attribute.Private;
     name: Attribute.String & Attribute.Required;

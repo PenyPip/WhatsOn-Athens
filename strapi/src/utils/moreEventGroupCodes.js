@@ -4,6 +4,38 @@ function isVenueBundleCode(code) {
   return /cinema|kinematog|movietheater/i.test(String(code || ''));
 }
 
+function extractEvgCodeFromText(raw) {
+  const match = String(raw || '').match(/(evg_[a-z0-9_]+)/i);
+  return match ? match[1] : '';
+}
+
+/**
+ * Venue bundle κωδικοί (evg_aiglecinema_…): event_group_code + evg_* μέσα στο more_link.
+ * @param {object} venue
+ * @returns {string[]}
+ */
+function collectVenueBundleCodes(venue) {
+  const codes = [];
+  const seen = new Set();
+
+  const add = (raw) => {
+    const code = String(raw || '').trim();
+    if (!code || !isVenueBundleCode(code) || seen.has(code)) return;
+    seen.add(code);
+    codes.push(code);
+  };
+
+  add(venue?.event_group_code ?? venue?.eventGroupCode);
+  add(extractEvgCodeFromText(venue?.more_link ?? venue?.moreLink));
+
+  const groups = venue?.more_event_groups ?? venue?.moreEventGroups ?? [];
+  for (const group of groups) {
+    add(group?.code ?? group?.attributes?.code);
+  }
+
+  return codes;
+}
+
 /**
  * Όλοι οι per-movie κωδικοί μιας ταινίας: πρωτεύων event_group_code + repeatable more_event_groups.
  * @param {object} movie
@@ -32,5 +64,7 @@ function collectEventGroupCodes(movie) {
 
 module.exports = {
   isVenueBundleCode,
+  extractEvgCodeFromText,
   collectEventGroupCodes,
+  collectVenueBundleCodes,
 };

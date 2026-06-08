@@ -95,6 +95,31 @@
       "type": "string",
       "description": "URL περιοδείας, κρατήσεων ή επίσημης σελίδας της παράστασης (όχι στον χώρο)."
     },
+    "event_group_code": {
+      "type": "string",
+      "description": "More.com eventGroupCode (π.χ. evg_takouniastonbalto_1254_5019). Βρες με More lookup."
+    },
+    "more_event_groups": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.more-event-group",
+      "description": "Επιπλέον More κωδικοί για την ίδια παράσταση."
+    },
+    "pending_event_group_code": {
+      "type": "string",
+      "private": true,
+      "description": "Προτεινόμενος More κωδικός — αναμένει έγκριση admin."
+    },
+    "pending_more_title": {
+      "type": "string",
+      "private": true,
+      "description": "Τίτλος στο More για την προτεινόμενη ταύτιση."
+    },
+    "pending_match_score": {
+      "type": "decimal",
+      "private": true,
+      "description": "Score ταύτισης CMS↔More (0–1)."
+    },
     "venue": {
       "type": "relation",
       "relation": "manyToOne",

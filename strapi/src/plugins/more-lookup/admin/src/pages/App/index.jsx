@@ -19,11 +19,20 @@ import {
 } from '@strapi/design-system';
 import { useFetchClient, useNotification } from '@strapi/helper-plugin';
 
+function cmsTypeLabel(contentType) {
+  if (contentType === 'theater_show') return 'Θέατρο';
+  return 'Ταινία';
+}
+
+function rowKey(row) {
+  return `${row.contentType || 'movie'}:${row.cmsId ?? row.movieId ?? row.theaterShowId}`;
+}
+
 const App = () => {
   const [query, setQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(true);
-  const [applyMinScore, setApplyMinScore] = useState(0.85);
+  const [applyMinScore, setApplyMinScore] = useState(0.45);
   const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [showtimeSyncEnabled, setShowtimeSyncEnabled] = useState(true);
   const [result, setResult] = useState(null);
@@ -117,19 +126,20 @@ const App = () => {
   const catalog = result?.catalog ?? [];
   const applyResult = result?.apply;
 
-  const approveMovie = async (movieId, overwrite = false) => {
+  const approveItem = async (row, overwrite = false) => {
     setLoading(true);
     try {
       const res = await post('/api/more-lookup/approve', {
-        movieId,
+        contentType: row.contentType,
+        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId,
+        movieId: row.movieId,
+        theaterShowId: row.theaterShowId,
         overwriteExisting: overwrite,
       });
-      setPendingApproval(
-        (prev) => prev.filter((r) => Number(r.movieId) !== Number(movieId)),
-      );
+      setPendingApproval((prev) => prev.filter((r) => rowKey(r) !== rowKey(row)));
       toggleNotification({
         type: 'success',
-        message: res?.data?.message || 'Η ταινία εγκρίθηκε.',
+        message: res?.data?.message || 'Η εγγραφή εγκρίθηκε.',
       });
     } catch (error) {
       const message =
@@ -142,11 +152,16 @@ const App = () => {
     }
   };
 
-  const rejectMovie = async (movieId) => {
+  const rejectItem = async (row) => {
     setLoading(true);
     try {
-      await post('/api/more-lookup/reject', { movieId });
-      setPendingApproval((prev) => prev.filter((r) => Number(r.movieId) !== Number(movieId)));
+      await post('/api/more-lookup/reject', {
+        contentType: row.contentType,
+        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId,
+        movieId: row.movieId,
+        theaterShowId: row.theaterShowId,
+      });
+      setPendingApproval((prev) => prev.filter((r) => rowKey(r) !== rowKey(row)));
       toggleNotification({ type: 'info', message: 'Η πρόταση απορρίφθηκε.' });
     } catch (error) {
       toggleNotification({ type: 'warning', message: 'Αποτυχία απόρριψης.' });
@@ -161,7 +176,10 @@ const App = () => {
     try {
       const res = await post('/api/more-lookup/approve', {
         approvals: pendingApproval.map((r) => ({
+          contentType: r.contentType,
+          cmsId: r.cmsId ?? r.movieId ?? r.theaterShowId,
           movieId: r.movieId,
+          theaterShowId: r.theaterShowId,
           eventGroupCode: r.suggestedEventGroupCode,
         })),
         overwriteExisting,
@@ -203,7 +221,7 @@ const App = () => {
     <Layout>
       <HeaderLayout
         title="More event_group_code"
-        subtitle="Αναζήτηση κωδικών More.com και ταύτιση με ταινίες CMS"
+        subtitle="Ταύτιση ταινιών και παραστάσεων θεάτρου CMS με More.com (σινεμά + θέατρο)"
       />
       <ContentLayout>
         <Box padding={6} background="neutral0" shadow="filterShadow" hasRadius>
@@ -214,12 +232,10 @@ const App = () => {
           ) : (
             <>
               <Typography variant="omega" textColor="neutral600">
-                Ταυτίζει ταινίες CMS με More.com και μπορεί να γράψει απευθείας το{' '}
-                <strong>event_group_code</strong> (π.χ. <code>evg_arkoudotrupa_1902_38</code>). Για
-                δεύτερο κωδικό ίδιας ταινίας πρόσθεσε <strong>More event groups</strong> στην
-                επεξεργασία ταινίας.
-                Το «Γράψε στο CMS» περνάει μόνο αξιόπιστες (score ≥ {applyMinScore.toFixed(2)}).
-                Οι υπόλοιπες πάνε σε <strong>έγκριση</strong> πριν μπουν στο CMS.
+                Ταυτίζει ταινίες και <strong>παραστάσεις θεάτρου</strong> CMS με More.com (σινεμά
+                + θέατρο) και μπορεί να γράψει το <strong>event_group_code</strong>.
+                Το «Γράψε στο CMS» γράφει ταύτιση με score ≥ {applyMinScore.toFixed(2)} — έλεγξε
+                τον πίνακα πριν πατήσεις.
               </Typography>
 
               <Box paddingTop={4} paddingBottom={2} maxWidth="480px">
@@ -270,10 +286,10 @@ const App = () => {
         <Box paddingTop={4} padding={6} background="neutral0" shadow="filterShadow" hasRadius>
           <Typography variant="delta">Συγχρονισμός προβολών (cron)</Typography>
           <Typography variant="omega" textColor="neutral600" paddingTop={2}>
-            Για κάθε ταινία με <strong>event_group_code</strong> και/ή επιπλέον{' '}
-            <strong>More event groups</strong> στο CMS καλεί το More API (όλοι οι κωδικοί) και
-            δημιουργεί <strong>Προβολή ταινίας</strong> όταν ο χώρος έχει <strong>venue_id</strong>{' '}
-            (More venueId, π.χ. 3345). Μόνο προσθήκη νέων προβολών · cron 06:45.
+            Για κάθε ταινία με <strong>event_group_code</strong> καλεί το More API και δημιουργεί{' '}
+            <strong>Προβολή ταινίας</strong> όταν ο χώρος έχει <strong>venue_id</strong> ή{' '}
+            <strong>venue bundle</strong> (<code>event_group_code</code> στον χώρο, π.χ.{' '}
+            <code>evg_aiglecinema_…</code>). Μόνο προσθήκη νέων · cron 06:45.
           </Typography>
           {!showtimeSyncEnabled ? (
             <Box paddingTop={3}>
@@ -307,10 +323,10 @@ const App = () => {
         {result?.stats ? (
           <Box paddingTop={4}>
             <Typography variant="pi" textColor="neutral600">
-              {result.durationMs}ms · More ταινίες: {result.stats.moreMovies} · venue bundles:{' '}
-              {result.stats.venueBundles}
+              {result.durationMs}ms · More σινεμά: {result.stats.moreMovies} · θέατρο:{' '}
+              {result.stats.moreTheaterShows ?? '—'} · venue bundles: {result.stats.venueBundles}
               {result.stats.matched != null
-                ? ` · ταύτιση CMS: ${result.stats.matched}/${result.stats.cmsMovies}`
+                ? ` · ταύτιση CMS: ${result.stats.matched}/${(result.stats.cmsMovies ?? 0) + (result.stats.cmsTheaterShows ?? 0)}`
                 : ''}
             </Typography>
           </Box>
@@ -338,9 +354,12 @@ const App = () => {
             <Box padding={4}>
               <Typography variant="delta">Προτεινόμενα event_group_code (CMS → More)</Typography>
             </Box>
-            <Table colCount={6} rowCount={matchedRows.length}>
+            <Table colCount={7} rowCount={matchedRows.length}>
               <Thead>
                 <Tr>
+                  <Th>
+                    <Typography variant="sigma">Τύπος</Typography>
+                  </Th>
                   <Th>
                     <Typography variant="sigma">CMS τίτλος</Typography>
                   </Th>
@@ -363,7 +382,10 @@ const App = () => {
               </Thead>
               <Tbody>
                 {matchedRows.map((row) => (
-                  <Tr key={row.movieId}>
+                  <Tr key={rowKey(row)}>
+                    <Td>
+                      <Badge>{cmsTypeLabel(row.contentType)}</Badge>
+                    </Td>
                     <Td>
                       <Typography textColor="neutral800">{row.cmsTitle}</Typography>
                     </Td>
@@ -417,9 +439,12 @@ const App = () => {
                 γραφτεί το <code>event_group_code</code>.
               </Typography>
             </Box>
-            <Table colCount={6} rowCount={pendingApproval.length}>
+            <Table colCount={7} rowCount={pendingApproval.length}>
               <Thead>
                 <Tr>
+                  <Th>
+                    <Typography variant="sigma">Τύπος</Typography>
+                  </Th>
                   <Th>
                     <Typography variant="sigma">CMS τίτλος</Typography>
                   </Th>
@@ -442,7 +467,10 @@ const App = () => {
               </Thead>
               <Tbody>
                 {pendingApproval.map((row) => (
-                  <Tr key={row.movieId}>
+                  <Tr key={rowKey(row)}>
+                    <Td>
+                      <Badge>{cmsTypeLabel(row.contentType)}</Badge>
+                    </Td>
                     <Td>
                       <Typography>{row.cmsTitle}</Typography>
                     </Td>
@@ -469,7 +497,7 @@ const App = () => {
                           variant="success"
                           loading={loading}
                           onClick={() =>
-                            approveMovie(row.movieId, Boolean(row.cmsEventGroupCode))
+                            approveItem(row, Boolean(row.cmsEventGroupCode))
                           }
                         >
                           Έγκριση
@@ -478,7 +506,7 @@ const App = () => {
                           size="S"
                           variant="tertiary"
                           loading={loading}
-                          onClick={() => rejectMovie(row.movieId)}
+                          onClick={() => rejectItem(row)}
                         >
                           Απόρριψη
                         </Button>

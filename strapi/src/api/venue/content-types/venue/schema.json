@@ -41,7 +41,17 @@
     },
     "venue_id": {
       "type": "string",
-      "description": "More.com venueId (π.χ. 3345 για Αίγλη). Χρησιμοποιείται από cron συγχρονισμού προβολών."
+      "description": "More.com venueId (π.χ. 3345 για Αίγλη). Χρησιμοποιείται από cron συγχρονισμού προβολών (διαδρομή ταινίας)."
+    },
+    "event_group_code": {
+      "type": "string",
+      "description": "More venue bundle (π.χ. evg_aiglecinema_1558_3950). Cron: προβολές σινεμά χωρίς venue_id — ταύτιση ταινίας μέσω eventId index από ταινίες."
+    },
+    "more_event_groups": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.more-event-group",
+      "description": "Επιπλέον venue bundle κωδικοί More."
     },
     "more_sync_log": {
       "type": "text",
