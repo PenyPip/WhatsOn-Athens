@@ -8,7 +8,7 @@
     "description": "Μία εμφάνιση = παράσταση θεάτρου + χώρος + ημερομηνία/ώρα (ανάλογα με Προβολή ταινίας)."
   },
   "options": {
-    "draftAndPublish": true
+    "draftAndPublish": false
   },
   "attributes": {
     "schedule_kind": {

@@ -2,7 +2,7 @@ import { Calendar, MapPin, Users } from "lucide-react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import type { StrapiVenue } from "@/lib/api";
-import { programHrefForVenue, venueKindLabel } from "@/lib/venueType";
+import { programHrefForVenue, venueKindLabel, venueOutdoorBadgeLabel } from "@/lib/venueType";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import { isValidExternalUrl, resolveGoogleMapsHref } from "@/lib/venueResolve";
 import {
@@ -114,7 +114,7 @@ const VenueCard = ({
             ) : null}
             {showSummerBadge ? (
               <div className={POSTER_BADGE_CORNER_TOP_RIGHT}>
-                <span className={POSTER_BADGE_TOP_RIGHT_AMBER}>θερινό</span>
+                <span className={POSTER_BADGE_TOP_RIGHT_AMBER}>{venueOutdoorBadgeLabel(venue)}</span>
               </div>
             ) : null}
           </>

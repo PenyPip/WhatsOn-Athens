@@ -910,7 +910,7 @@ export interface ApiTheaterPerformanceTheaterPerformance
     singularName: 'theater-performance';
   };
   options: {
-    draftAndPublish: true;
+    draftAndPublish: false;
   };
   attributes: {
     available_seats: Attribute.Integer;
@@ -928,7 +928,6 @@ export interface ApiTheaterPerformanceTheaterPerformance
       'api::hall.hall'
     >;
     price: Attribute.Decimal;
-    publishedAt: Attribute.DateTime;
     repeat_skip_days: Attribute.Component<'scheduling.skip-day', true>;
     repeat_until: Attribute.Date;
     schedule_kind: Attribute.Enumeration<['exact', 'week_block']> &

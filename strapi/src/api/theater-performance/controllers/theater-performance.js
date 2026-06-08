@@ -82,7 +82,6 @@ module.exports = createCoreController('api::theater-performance.theater-performa
       fields: PERFORMANCE_FIELDS,
       populate: PERFORMANCE_POPULATE,
       sort: ['datetime:asc'],
-      publicationState: 'preview',
       limit: 2000,
     });
 
@@ -109,7 +108,6 @@ module.exports = createCoreController('api::theater-performance.theater-performa
       fields: PERFORMANCE_FIELDS,
       populate: PERFORMANCE_POPULATE,
       sort: ['datetime:asc'],
-      publicationState: 'preview',
       limit: 2500,
     });
 

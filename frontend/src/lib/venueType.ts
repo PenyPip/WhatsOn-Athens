@@ -62,6 +62,11 @@ export function isTheaterVenue(venue: Pick<StrapiVenue, "type">): boolean {
   return venue.type === "theater";
 }
 
+/** Ετικέτα χώρου υπαίθριου: σινεμά «Θερινό», θέατρο «Ανοιχτό». */
+export function venueOutdoorBadgeLabel(venue: Pick<StrapiVenue, "type">): string {
+  return isCinemaVenue(venue) ? "Θερινό" : "Ανοιχτό";
+}
+
 export function isOtherVenue(venue: Pick<StrapiVenue, "type">): boolean {
   return venue.type === "other";
 }

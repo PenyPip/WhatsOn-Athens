@@ -55,6 +55,39 @@ module.exports = {
       rule: '20 4 * * *',
     },
   },
+  deletePastTheaterPerformancesDaily: {
+    task: async ({ strapi }) => {
+      try {
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const staleRows = await strapi.entityService.findMany(
+          'api::theater-performance.theater-performance',
+          {
+            filters: {
+              datetime: { $lt: todayStart.toISOString() },
+            },
+            fields: ['id', 'datetime'],
+            pagination: { pageSize: 2000 },
+          },
+        );
+        const list = Array.isArray(staleRows) ? staleRows : [];
+        const toDelete = list.map((row) => row.id).filter((id) => Number.isFinite(Number(id)));
+        if (!toDelete.length) return;
+        for (const id of toDelete) {
+          await strapi.entityService.delete('api::theater-performance.theater-performance', id);
+        }
+        strapi.log.info(
+          `[cron] deletePastTheaterPerformancesDaily: deleted ${toDelete.length} performance(s)`,
+        );
+      } catch (e) {
+        strapi.log.error('[cron] deletePastTheaterPerformancesDaily', e);
+      }
+    },
+    options: {
+      // Κάθε μέρα 04:20 — πριν τον συγχρονισμό More 06:45
+      rule: '20 4 * * *',
+    },
+  },
   syncMoreShowtimesDaily: {
     task: async ({ strapi }) => {
       if (process.env.MORE_SHOWTIME_SYNC_ENABLED === 'false') return;

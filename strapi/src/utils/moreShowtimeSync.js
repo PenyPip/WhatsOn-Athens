@@ -245,7 +245,6 @@ async function findPerformanceAt(strapi, { theaterShowId, venueId, datetime }) {
     },
     fields: ['id', 'sold_out'],
     limit: 1,
-    publicationState: 'preview',
   });
   return Array.isArray(rows) && rows.length ? rows[0] : null;
 }
@@ -378,7 +377,6 @@ async function upsertPerformanceFromEvent(strapi, report, {
       theater_show: theaterShowId,
       venue: venue.id,
       sold_out: soldOut,
-      publishedAt: new Date(),
     },
   });
 
