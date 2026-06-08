@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_cinema_rejected_more_codes",
+  "info": {
+    "displayName": "Απορριφθείς More κωδικός",
+    "description": "Πρόταση ταύτισης που απορρίφθηκε από admin — δεν εμφανίζεται ξανά."
+  },
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true,
+      "description": "Απορριφθείς κωδικός More (evg_*)."
+    }
+  }
+}

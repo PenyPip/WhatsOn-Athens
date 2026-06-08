@@ -730,8 +730,16 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'api::movie-genre.movie-genre'
     >;
     original_title: Attribute.String & Attribute.Required & Attribute.Unique;
+    pending_event_group_code: Attribute.String & Attribute.Private;
+    pending_match_score: Attribute.Decimal & Attribute.Private;
+    pending_more_title: Attribute.String & Attribute.Private;
     poster: Attribute.Media<'images'>;
     publishedAt: Attribute.DateTime;
+    rejected_more_codes: Attribute.Component<
+      'cinema.rejected-more-code',
+      true
+    > &
+      Attribute.Private;
     release_date: Attribute.Date;
     reviews: Attribute.Relation<
       'api::movie.movie',
@@ -996,6 +1004,11 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     pending_match_score: Attribute.Decimal & Attribute.Private;
     pending_more_title: Attribute.String & Attribute.Private;
     poster: Attribute.Media<'images'>;
+    rejected_more_codes: Attribute.Component<
+      'cinema.rejected-more-code',
+      true
+    > &
+      Attribute.Private;
     reviews: Attribute.Relation<
       'api::theater-show.theater-show',
       'oneToMany',

@@ -92,6 +92,28 @@
       "component": "cinema.more-event-group",
       "description": "Επιπλέον More κωδικοί της ίδιας ταινίας — για ευρύτερη ταύτιση/συγχρονισμό (άλλη έκδοση, γλώσσα κ.λπ.)."
     },
+    "pending_event_group_code": {
+      "type": "string",
+      "private": true,
+      "description": "Προτεινόμενος More κωδικός — αναμένει έγκριση admin."
+    },
+    "pending_more_title": {
+      "type": "string",
+      "private": true,
+      "description": "Τίτλος στο More για την προτεινόμενη ταύτιση."
+    },
+    "pending_match_score": {
+      "type": "decimal",
+      "private": true,
+      "description": "Score ταύτισης CMS↔More (0–1)."
+    },
+    "rejected_more_codes": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.rejected-more-code",
+      "private": true,
+      "description": "Απορριφθείσες προτάσεις ταύτισης — δεν εμφανίζονται ξανά."
+    },
     "showtimes": {
       "type": "relation",
       "relation": "oneToMany",

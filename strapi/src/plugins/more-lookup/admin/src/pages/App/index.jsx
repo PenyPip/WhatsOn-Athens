@@ -304,13 +304,23 @@ function SyncReportPanel({ report }) {
               detail="Νέες προβολές"
               last={(report.createdCinemaVenues ?? 0) <= 0}
             />
-            {(report.createdCinemaVenues ?? 0) > 0 ? (
-              <SyncMetricRow
-                label="Νέοι χώροι σινεμά"
-                value={`+${report.createdCinemaVenues}`}
-                detail="Δημιουργήθηκαν από More"
-                last
-              />
+            <SyncMetricRow
+              label="Νέοι χώροι σινεμά"
+              value={`+${report.createdCinemaVenues ?? 0}`}
+              detail={
+                (report.createdCinemaVenues ?? 0) > 0
+                  ? 'Δημιουργήθηκαν αυτόματα από More'
+                  : 'Αυτόματη δημιουργία όταν λείπει venue_id'
+              }
+              last={!(report.createdCinemaVenuesList?.length > 0)}
+            />
+            {report.createdCinemaVenuesList?.length > 0 ? (
+              <Typography variant="pi" textColor="neutral600" paddingTop={1}>
+                {report.createdCinemaVenuesList
+                  .slice(0, 8)
+                  .map((v) => v.name)
+                  .join(' · ')}
+              </Typography>
             ) : null}
           </SyncReportSection>
         </GridItem>
@@ -361,7 +371,8 @@ function SyncReportPanel({ report }) {
         <Box paddingBottom={errorCount ? 4 : 0}>
           <SyncReportSection title={`Λείπουν More venueId (${missingIds.length})`} tone="warning">
             <Typography variant="pi" textColor="neutral600" paddingBottom={3}>
-              Τα venueId δεν υπάρχουν ακόμα στους χώρους CMS — χρειάζεται ταύτιση ή δημιουργία χώρου.
+              Τα venueId δεν αντιστοιχούν ακόμα σε χώρο CMS. Στο sync δημιουργούνται αυτόματα σινεμά/θέατρα
+              (εκτός αν απενεργοποιηθεί με MORE_CINEMA_SYNC_AUTO_CREATE_VENUES / MORE_THEATER_SYNC_AUTO_CREATE_VENUES).
             </Typography>
             <Flex gap={2} wrap="wrap">
               {visibleMissingIds.map((id) => (
@@ -583,6 +594,82 @@ const App = () => {
     }
   };
 
+  const pruneMatchDisplayRow = (displayKey) => {
+    setResult((prev) => {
+      if (!prev?.matches?.length) return prev;
+      const matches = prev.matches
+        .map((row) => {
+          const codes = (row.suggestedEventGroupCodes || []).filter(
+            (code) => `${rowKey(row)}:${code}` !== displayKey,
+          );
+          const moreMatches = (row.moreMatches || []).filter(
+            (match) => `${rowKey(row)}:${match.suggestedEventGroupCode}` !== displayKey,
+          );
+          const best = moreMatches[0] || null;
+          return {
+            ...row,
+            moreMatches,
+            suggestedEventGroupCodes: codes,
+            suggestedEventGroupCode: best?.suggestedEventGroupCode ?? null,
+            moreTitle: best?.moreTitle ?? row.moreTitle,
+            score: Number(best?.score ?? 0),
+            matched: codes.length > 0,
+          };
+        })
+        .filter((row) => row.matched || (row.moreMatches || []).length > 0);
+      return { ...prev, matches };
+    });
+  };
+
+  const approveMatchCode = async (row) => {
+    setLoading(true);
+    try {
+      const res = await post('/api/more-lookup/approve', {
+        contentType: row.contentType,
+        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId,
+        movieId: row.movieId,
+        theaterShowId: row.theaterShowId,
+        eventGroupCode: row.displayCode,
+        overwriteExisting: Boolean(row.cmsEventGroupCode),
+      });
+      pruneMatchDisplayRow(row.displayKey);
+      toggleNotification({
+        type: 'success',
+        message: res?.data?.message || `Εγκρίθηκε ${row.displayCode}`,
+      });
+    } catch (error) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.errors?.[0]?.error ||
+        'Αποτυχία έγκρισης.';
+      toggleNotification({ type: 'warning', message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const rejectMatchCode = async (row) => {
+    setLoading(true);
+    try {
+      const res = await post('/api/more-lookup/reject', {
+        contentType: row.contentType,
+        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId,
+        movieId: row.movieId,
+        theaterShowId: row.theaterShowId,
+        eventGroupCode: row.displayCode,
+      });
+      pruneMatchDisplayRow(row.displayKey);
+      toggleNotification({
+        type: 'info',
+        message: res?.data?.message || `Απορρίφθηκε ${row.displayCode}`,
+      });
+    } catch (error) {
+      toggleNotification({ type: 'warning', message: 'Αποτυχία απόρριψης.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const rejectItem = async (row) => {
     setLoading(true);
     try {
@@ -591,6 +678,7 @@ const App = () => {
         cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId,
         movieId: row.movieId,
         theaterShowId: row.theaterShowId,
+        eventGroupCode: row.suggestedEventGroupCode,
       });
       setPendingApproval((prev) => prev.filter((r) => rowKey(r) !== rowKey(row)));
       toggleNotification({ type: 'info', message: 'Η πρόταση απορρίφθηκε.' });
@@ -782,8 +870,9 @@ const App = () => {
               ) : (
                 <Box paddingTop={1}>
                   <Typography variant="pi" textColor="neutral600">
-                    Χρειάζεται event_group_code ανά ταινία/παράσταση και χώρος με venue_id ή bundle.
-                    Δημιουργούνται μόνο νέες εγγραφές.
+                    Χρειάζεται event_group_code ανά ταινία/παράσταση. Αν λείπει σινεμά ή θέατρο στο CMS,
+                    δημιουργείται αυτόματα από More (venueId + όνομα) και μετά προστίθενται προβολές.
+                    Δημιουργούνται μόνο νέες εγγραφές προβολών.
                   </Typography>
                 </Box>
               )}
@@ -854,10 +943,10 @@ const App = () => {
             <Box padding={4}>
               <PanelHeader
                 title="Πίνακας 1 — Προτάσεις ταύτισης"
-                subtitle="Τι θα έγραφε το «Γράψε αυτόματα». Ταύτιση τίτλου + slug σελίδας More (/cinemas/… → data-code). Μόνο προβολή."
+                subtitle="Έγκριση γράφει τον κωδικό στο CMS · Απόρριψη τον αποκλείει από μελλοντικές προτάσεις. Το «Γράψε αυτόματα» εφαρμόζει μόνο όσα δεν απορρίφθηκαν."
               />
             </Box>
-            <Table colCount={8} rowCount={matchDisplayRows.length}>
+            <Table colCount={9} rowCount={matchDisplayRows.length}>
               <Thead>
                 <Tr>
                   <Th>
@@ -883,6 +972,9 @@ const App = () => {
                   </Th>
                   <Th>
                     <Typography variant="sigma">CMS τώρα</Typography>
+                  </Th>
+                  <Th>
+                    <Typography variant="sigma">Ενέργειες</Typography>
                   </Th>
                 </Tr>
               </Thead>
@@ -926,6 +1018,26 @@ const App = () => {
                         <Badge>κενό</Badge>
                       )}
                     </Td>
+                    <Td>
+                      <Flex gap={1} wrap="wrap">
+                        <Button
+                          size="S"
+                          variant="success"
+                          loading={loading}
+                          onClick={() => approveMatchCode(row)}
+                        >
+                          Έγκριση
+                        </Button>
+                        <Button
+                          size="S"
+                          variant="tertiary"
+                          loading={loading}
+                          onClick={() => rejectMatchCode(row)}
+                        >
+                          Απόρριψη
+                        </Button>
+                      </Flex>
+                    </Td>
                   </Tr>
                 ))}
               </Tbody>
@@ -938,7 +1050,7 @@ const App = () => {
             <Box padding={4}>
               <PanelHeader
                 title={`Πίνακας 2 — Προς έγκριση (${pendingApproval.length})`}
-                subtitle={`Διαφορετικός από τον πίνακα 1: χαμηλό score (< ${applyMinScore.toFixed(2)}), κυρίως θέατρο — χρειάζεται κλικ «Έγκριση»`}
+                subtitle={`Χαμηλό score (< ${applyMinScore.toFixed(2)}) — ταινίες & θέατρο που δεν εγγράφονται αυτόματα`}
                 action={
                   <Button size="S" variant="success" loading={loading} onClick={approveAllPending} disabled={loading}>
                     Έγκριση όλων

@@ -115,6 +115,13 @@
       "private": true,
       "description": "Score ταύτισης CMS↔More (0–1)."
     },
+    "rejected_more_codes": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.rejected-more-code",
+      "private": true,
+      "description": "Απορριφθείσες προτάσεις ταύτισης — δεν εμφανίζονται ξανά."
+    },
     "theater_performances": {
       "type": "relation",
       "relation": "oneToMany",

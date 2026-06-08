@@ -4,6 +4,7 @@ const {
   runMoreEventCodeLookup,
   applyMoreEventCodeMatches,
   approveMoreEventGroupCode,
+  rejectMoreEventGroupCode,
   loadPendingApprovalItems,
   clearCmsPending,
   DEFAULT_MIN_SCORE,
@@ -38,13 +39,39 @@ module.exports = {
       ctx.body = { ok: false, error: { message: 'Απαιτείται cmsId / movieId / theaterShowId' } };
       return;
     }
-    await clearCmsPending(strapi, contentType, cmsId);
-    ctx.body = {
-      ok: true,
-      contentType,
-      cmsId,
-      pendingRemaining: (await loadPendingApprovalItems(strapi)).length,
-    };
+
+    const eventGroupCode =
+      typeof body.eventGroupCode === 'string' ? body.eventGroupCode.trim() : '';
+
+    try {
+      if (eventGroupCode) {
+        const result = await rejectMoreEventGroupCode(strapi, {
+          contentType,
+          cmsId,
+          movieId: body.movieId,
+          theaterShowId: body.theaterShowId,
+          eventGroupCode,
+        });
+        ctx.body = {
+          ok: true,
+          ...result,
+          message: `Απορρίφθηκε ${eventGroupCode} για ${result.cmsTitle}`,
+          pendingRemaining: (await loadPendingApprovalItems(strapi)).length,
+        };
+        return;
+      }
+
+      await clearCmsPending(strapi, contentType, cmsId);
+      ctx.body = {
+        ok: true,
+        contentType,
+        cmsId,
+        pendingRemaining: (await loadPendingApprovalItems(strapi)).length,
+      };
+    } catch (e) {
+      ctx.status = 400;
+      ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+    }
   },
 
   async approve(ctx) {

@@ -617,6 +617,7 @@ async function syncMovieShowtimesFromMore(strapi, {
     createdCinemaVenuesList: [],
     byMovie: [],
     byVenue: [],
+    missingVenueIds: [],
   };
 
   const pendingVenueCreates = new Map();
@@ -649,6 +650,7 @@ async function syncMovieShowtimesFromMore(strapi, {
       created: 0,
       alreadyExists: 0,
       skipped: 0,
+      missingVenueIds: new Set(),
     };
 
     for (const code of codes) {
@@ -669,6 +671,8 @@ async function syncMovieShowtimesFromMore(strapi, {
           if (!venue) {
             report.skippedNoVenue += 1;
             movieStats.skipped += 1;
+            const missingId = normalizeMoreVenueId(event?.venueId);
+            if (missingId) movieStats.missingVenueIds.add(missingId);
             continue;
           }
 
@@ -690,8 +694,24 @@ async function syncMovieShowtimesFromMore(strapi, {
       }
     }
 
-    if (movieStats.created > 0 || movieStats.alreadyExists > 0) {
-      report.byMovie.push(movieStats);
+    if (movieStats.created > 0 || movieStats.alreadyExists > 0 || movieStats.skipped > 0) {
+      report.byMovie.push({
+        movieId: movieStats.movieId,
+        title: movieStats.title,
+        eventGroupCodes: movieStats.eventGroupCodes,
+        eventGroupCode: movieStats.eventGroupCode,
+        created: movieStats.created,
+        alreadyExists: movieStats.alreadyExists,
+        skipped: movieStats.skipped,
+        missingVenueIds: [...movieStats.missingVenueIds],
+      });
+      for (const vid of movieStats.missingVenueIds) {
+        report.missingVenueIds.push({
+          movieId: movie.id,
+          title: movie.title,
+          moreVenueId: vid,
+        });
+      }
     }
   }
 
@@ -1053,7 +1073,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     byVenue: movieReport.byVenue,
     byTheaterShow: theaterReport.byTheaterShow,
     byTheaterVenue: theaterReport.byTheaterVenue,
-    missingVenueIds: theaterReport.missingVenueIds,
+    missingVenueIds: [...movieReport.missingVenueIds, ...theaterReport.missingVenueIds],
+    missingCinemaVenueIds: movieReport.missingVenueIds,
+    missingTheaterVenueIds: theaterReport.missingVenueIds,
     movieNote: movieReport.note,
     theaterNote: theaterReport.note,
     durationMs: Date.now() - started,

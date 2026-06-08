@@ -35,6 +35,17 @@ export interface CinemaMoreEventGroup extends Schema.Component {
   };
 }
 
+export interface CinemaRejectedMoreCode extends Schema.Component {
+  collectionName: 'components_cinema_rejected_more_codes';
+  info: {
+    description: '\u03A0\u03C1\u03CC\u03C4\u03B1\u03C3\u03B7 \u03C4\u03B1\u03CD\u03C4\u03B9\u03C3\u03B7\u03C2 \u03C0\u03BF\u03C5 \u03B1\u03C0\u03BF\u03C1\u03C1\u03AF\u03C6\u03B8\u03B7\u03BA\u03B5 \u03B1\u03C0\u03CC admin \u2014 \u03B4\u03B5\u03BD \u03B5\u03BC\u03C6\u03B1\u03BD\u03AF\u03B6\u03B5\u03C4\u03B1\u03B9 \u03BE\u03B1\u03BD\u03AC.';
+    displayName: '\u0391\u03C0\u03BF\u03C1\u03C1\u03B9\u03C6\u03B8\u03B5\u03AF\u03C2 More \u03BA\u03C9\u03B4\u03B9\u03BA\u03CC\u03C2';
+  };
+  attributes: {
+    code: Attribute.String & Attribute.Required;
+  };
+}
+
 export interface HomeLayoutSection extends Schema.Component {
   collectionName: 'components_home_layout_sections';
   info: {
@@ -130,6 +141,7 @@ declare module '@strapi/types' {
     export interface Components {
       'cinema.day-price': CinemaDayPrice;
       'cinema.more-event-group': CinemaMoreEventGroup;
+      'cinema.rejected-more-code': CinemaRejectedMoreCode;
       'home.layout-section': HomeLayoutSection;
       'navigation.nav-item': NavigationNavItem;
       'scheduling.skip-day': SchedulingSkipDay;

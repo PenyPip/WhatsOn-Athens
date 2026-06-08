@@ -299,6 +299,12 @@ function scoreMatch(cmsMovie, moreEntry) {
   return best;
 }
 
+function isRejectedMoreCode(cms, code) {
+  const key = String(code || '').trim();
+  if (!key) return false;
+  return (cms.rejectedMoreCodes || []).includes(key);
+}
+
 function matchCmsItemsToMore(cmsItems, catalog, minScore = DEFAULT_MIN_SCORE) {
   const results = [];
 
@@ -313,11 +319,13 @@ function matchCmsItemsToMore(cmsItems, catalog, minScore = DEFAULT_MIN_SCORE) {
     const scored = [];
 
     for (const hit of findCatalogByCmsSlug(cms, catalog, config)) {
+      if (isRejectedMoreCode(cms, hit.more.code)) continue;
       if (hit.score < MIN_HINT_SCORE) continue;
       scored.push({ ...hit, matchMethod: 'more_page_slug' });
     }
 
     for (const more of pool) {
+      if (isRejectedMoreCode(cms, more.code)) continue;
       const score = scoreMatch(cms, more);
       if (score >= MIN_HINT_SCORE) {
         scored.push({
@@ -392,6 +400,24 @@ function filterMoreMovies(movies, query) {
   return filterMoreCatalog(movies, query);
 }
 
+function collectRejectedMoreCodes(entry) {
+  return (entry?.rejected_more_codes || [])
+    .map((group) => String(group?.code || '').trim())
+    .filter(Boolean);
+}
+
+function rejectedGroupsFromEntry(entry) {
+  return (entry?.rejected_more_codes || [])
+    .map((group) => {
+      const code = String(group.code || '').trim();
+      if (!code) return null;
+      const item = { code };
+      if (group.id != null) item.id = group.id;
+      return item;
+    })
+    .filter(Boolean);
+}
+
 function mapCmsLookupRow(row, contentType) {
   const eventGroupCodes = collectEventGroupCodes(row);
   return {
@@ -402,6 +428,7 @@ function mapCmsLookupRow(row, contentType) {
     slug: row.slug ?? '',
     eventGroupCode: row.event_group_code ?? '',
     eventGroupCodes,
+    rejectedMoreCodes: collectRejectedMoreCodes(row),
     pendingEventGroupCode: row.pending_event_group_code ?? '',
     pendingMoreTitle: row.pending_more_title ?? '',
     pendingMatchScore: row.pending_match_score ?? null,
@@ -410,8 +437,17 @@ function mapCmsLookupRow(row, contentType) {
 
 async function loadCmsMovies(strapi) {
   const rows = await strapi.entityService.findMany('api::movie.movie', {
-    fields: ['id', 'title', 'original_title', 'slug', 'event_group_code'],
-    populate: { more_event_groups: true },
+    fields: [
+      'id',
+      'title',
+      'original_title',
+      'slug',
+      'event_group_code',
+      'pending_event_group_code',
+      'pending_more_title',
+      'pending_match_score',
+    ],
+    populate: { more_event_groups: true, rejected_more_codes: true },
     publicationState: 'preview',
     pagination: { pageSize: 500 },
   });
@@ -430,7 +466,7 @@ async function loadCmsTheaterShows(strapi) {
       'pending_more_title',
       'pending_match_score',
     ],
-    populate: { more_event_groups: true },
+    populate: { more_event_groups: true, rejected_more_codes: true },
     publicationState: 'preview',
     pagination: { pageSize: 500 },
   });
@@ -602,7 +638,6 @@ function needsApproval(row, applyMinScore = DEFAULT_APPLY_MIN_SCORE) {
 }
 
 async function clearCmsPending(strapi, contentType, cmsId) {
-  if (contentType === 'movie') return;
   const config = CMS_LOOKUP_CONFIG[contentType];
   if (!config) return;
   await strapi.entityService.update(config.uid, cmsId, {
@@ -684,7 +719,7 @@ async function mergeEventGroupCodesIntoCms(strapi, contentType, entry, codes, op
     data.more_event_groups = moreGroups;
   }
 
-  if (contentType === 'theater_show') {
+  if (contentType === 'theater_show' || contentType === 'movie') {
     data.pending_event_group_code = null;
     data.pending_more_title = null;
     data.pending_match_score = null;
@@ -708,15 +743,13 @@ async function syncPendingApprovals(strapi, matches, applyMinScore = DEFAULT_APP
 
     if (needsApproval(row, applyMinScore)) {
       pendingIds.add(`${contentType}:${cmsId}`);
-      if (contentType !== 'movie') {
-        await strapi.entityService.update(CMS_LOOKUP_CONFIG[contentType].uid, cmsId, {
-          data: {
-            pending_event_group_code: row.suggestedEventGroupCode,
-            pending_more_title: row.moreTitle || null,
-            pending_match_score: row.score,
-          },
-        });
-      }
+      await strapi.entityService.update(CMS_LOOKUP_CONFIG[contentType].uid, cmsId, {
+        data: {
+          pending_event_group_code: row.suggestedEventGroupCode,
+          pending_more_title: row.moreTitle || null,
+          pending_match_score: row.score,
+        },
+      });
     } else if (row.cmsEventGroupCode || row.score >= applyMinScore) {
       await clearCmsPending(strapi, contentType, cmsId);
     }
@@ -725,7 +758,8 @@ async function syncPendingApprovals(strapi, matches, applyMinScore = DEFAULT_APP
 }
 
 async function loadPendingApprovalItems(strapi) {
-  const theaterShows = await strapi.entityService.findMany('api::theater-show.theater-show', {
+  const [movies, theaterShows] = await Promise.all([
+    strapi.entityService.findMany('api::movie.movie', {
       filters: { pending_event_group_code: { $notNull: true } },
       fields: [
         'id',
@@ -739,30 +773,102 @@ async function loadPendingApprovalItems(strapi) {
       publicationState: 'preview',
       pagination: { pageSize: 200 },
       sort: ['title:asc'],
-    });
+    }),
+    strapi.entityService.findMany('api::theater-show.theater-show', {
+      filters: { pending_event_group_code: { $notNull: true } },
+      fields: [
+        'id',
+        'title',
+        'slug',
+        'event_group_code',
+        'pending_event_group_code',
+        'pending_more_title',
+        'pending_match_score',
+      ],
+      publicationState: 'preview',
+      pagination: { pageSize: 200 },
+      sort: ['title:asc'],
+    }),
+  ]);
 
-  const theaterList = (Array.isArray(theaterShows) ? theaterShows : [])
-    .filter((m) => String(m.pending_event_group_code || '').trim())
-    .map((m) => ({
-      contentType: 'theater_show',
-      cmsId: m.id,
-      movieId: null,
-      theaterShowId: m.id,
-      cmsTitle: m.title ?? '',
-      cmsOriginalTitle: '',
-      cmsSlug: m.slug ?? '',
-      cmsEventGroupCode: m.event_group_code || null,
-      suggestedEventGroupCode: String(m.pending_event_group_code).trim(),
-      moreTitle: m.pending_more_title || null,
-      score: Number(m.pending_match_score) || 0,
-    }));
+  const mapPending = (rows, contentType) =>
+    (Array.isArray(rows) ? rows : [])
+      .filter((m) => String(m.pending_event_group_code || '').trim())
+      .map((m) => ({
+        contentType,
+        cmsId: m.id,
+        movieId: contentType === 'movie' ? m.id : null,
+        theaterShowId: contentType === 'theater_show' ? m.id : null,
+        cmsTitle: m.title ?? '',
+        cmsOriginalTitle: '',
+        cmsSlug: m.slug ?? '',
+        cmsEventGroupCode: m.event_group_code || null,
+        suggestedEventGroupCode: String(m.pending_event_group_code).trim(),
+        moreTitle: m.pending_more_title || null,
+        score: Number(m.pending_match_score) || 0,
+      }));
 
-  return theaterList.sort((a, b) => a.cmsTitle.localeCompare(b.cmsTitle, 'el'));
+  return [...mapPending(movies, 'movie'), ...mapPending(theaterShows, 'theater_show')].sort((a, b) =>
+    a.cmsTitle.localeCompare(b.cmsTitle, 'el'),
+  );
 }
 
 /** @deprecated */
 async function loadPendingApprovalMovies(strapi) {
   return loadPendingApprovalItems(strapi);
+}
+
+/**
+ * Απόρριψη προτεινόμενου κωδικού — αποθηκεύεται στη λίστα απορριφθέντων.
+ */
+async function rejectMoreEventGroupCode(strapi, options = {}) {
+  const contentType =
+    options.contentType ||
+    (options.theaterShowId != null ? 'theater_show' : 'movie');
+  const config = CMS_LOOKUP_CONFIG[contentType];
+  if (!config) throw new Error(`Άγνωστος τύπος CMS: ${contentType}`);
+
+  const id = Number(options.cmsId ?? options.movieId ?? options.theaterShowId);
+  if (!Number.isFinite(id)) {
+    throw new Error('Άκυρο cmsId');
+  }
+
+  const code = String(options.eventGroupCode || '').trim();
+  if (!code) throw new Error('Απαιτείται eventGroupCode');
+
+  const entry = await strapi.entityService.findOne(config.uid, id, {
+    fields: ['id', 'title', 'pending_event_group_code'],
+    populate: { rejected_more_codes: true },
+    publicationState: 'preview',
+  });
+  if (!entry) {
+    throw new Error(contentType === 'movie' ? 'Η ταινία δεν βρέθηκε' : 'Η παράσταση δεν βρέθηκε');
+  }
+
+  const rejected = rejectedGroupsFromEntry(entry);
+  if (!rejected.some((group) => group.code === code)) {
+    rejected.push({ code });
+  }
+
+  const data = { rejected_more_codes: rejected };
+  const pending = String(entry.pending_event_group_code || '').trim();
+  if (pending === code) {
+    data.pending_event_group_code = null;
+    data.pending_more_title = null;
+    data.pending_match_score = null;
+  }
+
+  await strapi.entityService.update(config.uid, id, { data });
+
+  return {
+    ok: true,
+    contentType,
+    cmsId: id,
+    movieId: contentType === 'movie' ? id : null,
+    theaterShowId: contentType === 'theater_show' ? id : null,
+    cmsTitle: entry.title,
+    eventGroupCode: code,
+  };
 }
 
 /**
@@ -954,6 +1060,7 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
         cmsSlug: row.cms.slug,
         cmsEventGroupCode: cmsCode,
         cmsEventGroupCodes: cmsCodes,
+        cmsRejectedMoreCodes: row.cms.rejectedMoreCodes || [],
         moreTitle: row.more?.title ?? null,
         suggestedEventGroupCode: suggestedCode,
         suggestedEventGroupCodes: suggestedCodes,
@@ -1044,6 +1151,8 @@ function skipCodeReason(row, code, score, verify, options) {
       ? [row.cmsEventGroupCode]
       : [];
   if (cmsCodes.includes(code)) return 'already_set';
+  const rejected = row.cmsRejectedMoreCodes || [];
+  if (rejected.includes(code)) return 'rejected';
   return null;
 }
 
@@ -1217,6 +1326,7 @@ module.exports = {
   runMoreEventCodeLookup,
   applyMoreEventCodeMatches,
   approveMoreEventGroupCode,
+  rejectMoreEventGroupCode,
   loadPendingApprovalItems,
   loadPendingApprovalMovies,
   loadCmsMovies,
