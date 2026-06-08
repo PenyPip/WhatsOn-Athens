@@ -1,5 +1,4 @@
-import { useMemo } from "react";
-import { ChevronDown } from "lucide-react";
+import { useMemo, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
 import PageHeaderReveal from "@/components/PageHeaderReveal";
 import VenueCard from "@/components/VenueCard";
@@ -41,9 +40,51 @@ function activeAreaFilter(areaParam: VenueAreaKey | null): VenueAreaFilter {
   return areaParam ?? "athens";
 }
 
-const VENUES_FILTER_LABEL = "text-xs font-medium text-muted-foreground";
-const VENUES_FILTER_SELECT =
-  "h-10 w-full min-w-0 appearance-none rounded-md border border-input bg-background py-2 pl-3 pr-9 text-sm text-foreground shadow-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2";
+const filterBtn =
+  "rounded-full border px-3.5 py-1.5 text-sm font-medium transition-all";
+const filterBtnActive = "border-[#13143E] bg-[#13143E] text-white";
+const filterBtnIdle =
+  "border-border bg-card text-muted-foreground hover:border-foreground/40 hover:text-foreground";
+
+function FilterButtonGroup({
+  label,
+  ariaLabel,
+  children,
+}: {
+  label: string;
+  ariaLabel: string;
+  children: ReactNode;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-2" role="group" aria-label={ariaLabel}>
+      <span className="w-full text-xs font-semibold uppercase tracking-wider text-muted-foreground sm:mr-1 sm:w-auto">
+        {label}
+      </span>
+      {children}
+    </div>
+  );
+}
+
+function FilterButton({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={cn(filterBtn, active ? filterBtnActive : filterBtnIdle)}
+    >
+      {children}
+    </button>
+  );
+}
 
 const Venues = () => {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -114,84 +155,37 @@ const Venues = () => {
       </div>
 
       <div className="container">
-        <div
-          className="mb-4 flex flex-wrap items-center gap-2"
-          role="group"
-          aria-label="Πόλη"
-        >
-          <span className="mr-1 w-full text-sm uppercase tracking-wider text-muted-foreground sm:w-auto">
-            Πόλη:
-          </span>
-          {VENUE_AREA_FILTER_OPTIONS.filter((o) => o.value !== "other").map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setAreaUi(value)}
-              aria-pressed={areaUi === value}
-              className={cn(
-                "rounded border px-4 py-1.5 text-sm font-medium transition-all",
-                areaUi === value
-                  ? "border-[#13143E] bg-[#13143E] text-white"
-                  : "border-border bg-card text-muted-foreground hover:border-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <div className="mb-6 space-y-4 rounded-xl border border-border/15 bg-muted/20 p-4 md:mb-8 md:p-5">
+          <FilterButtonGroup label="Πόλη" ariaLabel="Πόλη">
+            {VENUE_AREA_FILTER_OPTIONS.filter((o) => o.value !== "other").map(({ value, label }) => (
+              <FilterButton key={value} active={areaUi === value} onClick={() => setAreaUi(value)}>
+                {label}
+              </FilterButton>
+            ))}
+          </FilterButtonGroup>
 
-        <div
-          className="mb-4 flex flex-wrap items-center gap-2"
-          role="group"
-          aria-label="Τύπος χώρου"
-        >
-          <span className="mr-1 w-full text-sm uppercase tracking-wider text-muted-foreground sm:w-auto">
-            Τύπος:
-          </span>
-          {VENUE_KIND_FILTER_OPTIONS.map(({ value, label }) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setKindUi(value)}
-              aria-pressed={kindFilter === value}
-              className={cn(
-                "rounded border px-4 py-1.5 text-sm font-medium transition-all",
-                kindFilter === value
-                  ? "border-[#13143E] bg-[#13143E] text-white"
-                  : "border-border bg-card text-muted-foreground hover:border-foreground hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+          <FilterButtonGroup label="Τύπος" ariaLabel="Τύπος χώρου">
+            {VENUE_KIND_FILTER_OPTIONS.map(({ value, label }) => (
+              <FilterButton key={value} active={kindFilter === value} onClick={() => setKindUi(value)}>
+                {label}
+              </FilterButton>
+            ))}
+          </FilterButtonGroup>
 
-        {areaUi === "athens" || areaUi === "all" ? (
-          <div className="mb-6 w-full max-w-[18rem] space-y-1.5 md:mb-8">
-            <label htmlFor="venues-filter-district" className={VENUES_FILTER_LABEL}>
-              Περιοχή Αθήνας
-            </label>
-            <div className="relative">
-              <select
-                id="venues-filter-district"
-                value={districtUi}
-                onChange={(e) => setDistrictUi(e.target.value as AthensDistrictFilter)}
-                className={VENUES_FILTER_SELECT}
-                aria-label="Περιοχή Αθήνας"
-              >
-                {ATHENS_DISTRICT_FILTER_OPTIONS.map(({ value, label }) => (
-                  <option key={value} value={value}>
-                    {label}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown
-                className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"
-                aria-hidden
-              />
-            </div>
-          </div>
-        ) : null}
+          {areaUi === "athens" || areaUi === "all" ? (
+            <FilterButtonGroup label="Περιοχή" ariaLabel="Περιοχή Αθήνας">
+              {ATHENS_DISTRICT_FILTER_OPTIONS.map(({ value, label }) => (
+                <FilterButton
+                  key={value}
+                  active={districtUi === value}
+                  onClick={() => setDistrictUi(value)}
+                >
+                  {label}
+                </FilterButton>
+              ))}
+            </FilterButtonGroup>
+          ) : null}
+        </div>
 
         {isLoading ? (
           <LoadingState message="Φόρτωση χώρων..." />

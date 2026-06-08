@@ -4,8 +4,8 @@
   "info": {
     "singularName": "theater-performance",
     "pluralName": "theater-performances",
-    "displayName": "Θεατρική παράσταση",
-    "description": "Μία εμφάνιση = παράσταση θεάτρου + χώρος + ημερομηνία/ώρα (ανάλογα με Προβολή ταινίας)."
+    "displayName": "Παράσταση",
+    "description": "Μία εμφάνιση = Θέατρο + χώρος + ημερομηνία/ώρα (ανάλογα με Προβολή ταινίας)."
   },
   "options": {
     "draftAndPublish": false
@@ -42,7 +42,7 @@
     },
     "price": {
       "type": "decimal",
-      "description": "Προαιρετική τιμή για αυτή την εμφάνιση (€). Αλλιώς από/έως στην παράσταση θεάτρου."
+      "description": "Προαιρετική τιμή για αυτή την εμφάνιση (€). Αλλιώς από/έως στο Θέατρο."
     },
     "sold_out": {
       "type": "boolean",

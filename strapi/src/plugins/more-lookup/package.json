@@ -4,8 +4,8 @@
   "private": true,
   "strapi": {
     "name": "more-lookup",
-    "displayName": "More κωδικοί ταινίας",
-    "description": "Αναζήτηση More.com event_group_code και ταύτιση με ταινίες CMS",
+    "displayName": "More — κωδικοί & συγχρονισμός",
+    "description": "Ταύτιση More.com με ταινίες, θέατρο και χώρους · συγχρονισμός προβολών & παραστάσεων",
     "kind": "plugin"
   }
 }

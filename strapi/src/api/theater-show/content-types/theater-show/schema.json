@@ -4,8 +4,8 @@
   "info": {
     "singularName": "theater-show",
     "pluralName": "theater-shows",
-    "displayName": "Παράσταση θεάτρου",
-    "description": "Η παράσταση (έργο) — όχι ο χώρος. Οι εμφανίσεις ανά θέατρο: «Θεατρική παράσταση»."
+    "displayName": "Θέατρο",
+    "description": "Το έργο — όχι ο χώρος. Οι εμφανίσεις ανά χώρο: «Παράσταση»."
   },
   "attributes": {
     "title": {
@@ -84,7 +84,7 @@
     "on_tour": {
       "type": "boolean",
       "default": false,
-      "description": "Περιοδεία — εμφανίζεται στο τμήμα tours της αρχικής. Οι χώροι ορίζονται στις Θεατρικές παραστάσεις."
+      "description": "Περιοδεία — εμφανίζεται στο τμήμα tours της αρχικής. Οι χώροι ορίζονται στις Παραστάσεις."
     },
     "more_link": {
       "type": "string",
@@ -98,7 +98,7 @@
       "type": "component",
       "repeatable": true,
       "component": "cinema.more-event-group",
-      "description": "Επιπλέον More κωδικοί για την ίδια παράσταση."
+      "description": "Επιπλέον More κωδικοί για το ίδιο θέατρο."
     },
     "pending_event_group_code": {
       "type": "string",

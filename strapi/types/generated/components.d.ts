@@ -27,8 +27,8 @@ export interface CinemaDayPrice extends Schema.Component {
 export interface CinemaMoreEventGroup extends Schema.Component {
   collectionName: 'components_cinema_more_event_groups';
   info: {
-    description: '\u0395\u03C0\u03B9\u03C0\u03BB\u03AD\u03BF\u03BD More.com eventGroupCode \u03B1\u03BD\u03AC \u03C4\u03B1\u03B9\u03BD\u03AF\u03B1 (\u03C0.\u03C7. \u03B4\u03B9\u03B1\u03C6\u03BF\u03C1\u03B5\u03C4\u03B9\u03BA\u03AE \u03AD\u03BA\u03B4\u03BF\u03C3\u03B7/\u03B3\u03BB\u03CE\u03C3\u03C3\u03B1).';
-    displayName: 'More event group';
+    description: '\u0394\u03B5\u03C5\u03C4\u03B5\u03C1\u03B5\u03CD\u03C9\u03BD eventGroupCode (evg_*) \u2014 \u03C4\u03B1\u03B9\u03BD\u03AF\u03B1, \u03B8\u03AD\u03B1\u03C4\u03C1\u03BF \u03AE \u03C7\u03CE\u03C1\u03BF\u03C2. \u038C\u03C7\u03B9 venue bundle.';
+    displayName: '\u0395\u03C0\u03B9\u03C0\u03BB\u03AD\u03BF\u03BD More \u03BA\u03C9\u03B4\u03B9\u03BA\u03CC\u03C2';
   };
   attributes: {
     code: Attribute.String & Attribute.Required;

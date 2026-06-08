@@ -106,14 +106,14 @@ function WorkflowStep({ number, title, detail }) {
           {number}
         </Typography>
       </Flex>
-      <Box>
+      <Flex direction="column" alignItems="flex-start" gap={1} style={{ minWidth: 0 }}>
         <Typography fontWeight="semiBold" textColor="neutral800">
           {title}
         </Typography>
-        <Typography variant="pi" textColor="neutral600" paddingTop={1}>
+        <Typography variant="pi" textColor="neutral600">
           {detail}
         </Typography>
-      </Box>
+      </Flex>
     </Flex>
   );
 }
@@ -122,27 +122,29 @@ function StatBadge({ label, value, tone = 'neutral' }) {
   const bg = tone === 'success' ? 'success100' : tone === 'warning' ? 'warning100' : 'neutral100';
   return (
     <Box padding={3} background={bg} hasRadius style={{ minWidth: '7rem' }}>
-      <Typography variant="pi" textColor="neutral600">
-        {label}
-      </Typography>
-      <Typography fontWeight="bold" textColor="neutral800" paddingTop={1}>
-        {value}
-      </Typography>
+      <Flex direction="column" alignItems="flex-start" gap={1}>
+        <Typography variant="pi" textColor="neutral600">
+          {label}
+        </Typography>
+        <Typography fontWeight="bold" textColor="neutral800">
+          {value}
+        </Typography>
+      </Flex>
     </Box>
   );
 }
 
 function PanelHeader({ title, subtitle, action }) {
   return (
-    <Flex justifyContent="space-between" alignItems="flex-start" gap={3} wrap="wrap" paddingBottom={4}>
-      <Box style={{ flex: '1 1 12rem' }}>
+    <Flex justifyContent="space-between" alignItems="flex-start" gap={4} wrap="wrap" paddingBottom={4}>
+      <Flex direction="column" alignItems="flex-start" gap={2} style={{ flex: '1 1 12rem', minWidth: 0 }}>
         <Typography variant="delta">{title}</Typography>
         {subtitle ? (
-          <Typography variant="pi" textColor="neutral600" paddingTop={1}>
+          <Typography variant="pi" textColor="neutral600">
             {subtitle}
           </Typography>
         ) : null}
-      </Box>
+      </Flex>
       {action ? <Box style={{ flexShrink: 0 }}>{action}</Box> : null}
     </Flex>
   );
@@ -379,7 +381,8 @@ const App = () => {
               <Typography variant="sigma" textColor="neutral600" fontWeight="semiBold">
                 ΡΟΗ ΕΡΓΑΣΙΑΣ
               </Typography>
-              <Grid paddingTop={3} gap={3}>
+              <Box paddingTop={4}>
+              <Grid gap={3}>
                 <GridItem col={4} s={12}>
                   <WorkflowStep
                     number="1"
@@ -402,6 +405,7 @@ const App = () => {
                   />
                 </GridItem>
               </Grid>
+              </Box>
             </Box>
 
             <Box paddingTop={4} padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
@@ -430,9 +434,11 @@ const App = () => {
                     >
                       Αντικατάσταση υπάρχοντος κωδικού
                     </Checkbox>
-                    <Typography variant="pi" textColor="neutral500" paddingTop={1} paddingLeft={6}>
-                      Όταν υπάρχει ήδη διαφορετικός event_group_code
-                    </Typography>
+                    <Box paddingLeft={6} paddingTop={2}>
+                      <Typography variant="pi" textColor="neutral500">
+                        Όταν υπάρχει ήδη διαφορετικός event_group_code
+                      </Typography>
+                    </Box>
                   </Box>
                 </GridItem>
               </Grid>
@@ -451,16 +457,18 @@ const App = () => {
                   Γράψε αυτόματα
                 </Button>
               </Flex>
-              <Typography variant="pi" textColor="neutral500" paddingTop={3}>
-                Η ταύτιση δείχνει πλήρη κατάλογο More και προτάσεις. Το «Γράψε αυτόματα» εφαρμόζει
-                κωδικούς με score ≥ {applyMinScore.toFixed(2)} (κύριος + more_event_groups).
-              </Typography>
+              <Box paddingTop={4}>
+                <Typography variant="pi" textColor="neutral500">
+                  Η ταύτιση δείχνει πλήρη κατάλογο More και προτάσεις. Το «Γράψε αυτόματα» εφαρμόζει
+                  κωδικούς με score ≥ {applyMinScore.toFixed(2)} (κύριος + more_event_groups).
+                </Typography>
+              </Box>
             </Box>
 
             <Box paddingTop={4} padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
               <PanelHeader
                 title="Βήμα 2 — Συγχρονισμός προβολών"
-                subtitle="More API → Προβολή ταινίας / Θεατρική παράσταση · cron καθημερινά 06:45"
+                subtitle="More API → Προβολή ταινίας / Παράσταση · cron καθημερινά 06:45"
                 action={
                   showtimeSyncEnabled ? (
                     <Button variant="success" loading={loading} onClick={syncShowtimes} disabled={loading}>
@@ -474,10 +482,12 @@ const App = () => {
                   Απενεργοποιημένο (MORE_SHOWTIME_SYNC_ENABLED=false).
                 </Typography>
               ) : (
-                <Typography variant="pi" textColor="neutral600">
-                  Χρειάζεται event_group_code ανά ταινία/παράσταση και χώρος με venue_id ή bundle.
-                  Δημιουργούνται μόνο νέες εγγραφές.
-                </Typography>
+                <Box paddingTop={1}>
+                  <Typography variant="pi" textColor="neutral600">
+                    Χρειάζεται event_group_code ανά ταινία/παράσταση και χώρος με venue_id ή bundle.
+                    Δημιουργούνται μόνο νέες εγγραφές.
+                  </Typography>
+                </Box>
               )}
             </Box>
           </>
@@ -516,15 +526,16 @@ const App = () => {
 
         {syncReport ? (
           <Box paddingBottom={4} padding={4} background="primary100" hasRadius style={cardStyle}>
+            <Flex direction="column" alignItems="flex-start" gap={2}>
             <Typography fontWeight="semiBold" textColor="primary700">
               Αναφορά συγχρονισμού
             </Typography>
-            <Typography variant="pi" paddingTop={2}>
+            <Typography variant="pi">
               {syncReport.message ||
                 `Προβολές: +${syncReport.created} νέες · ${syncReport.alreadyExists} υπήρχαν · ${syncReport.skippedNoVenue} χωρίς venue_id`}
             </Typography>
             {syncReport.theaterShowsScanned != null ? (
-              <Typography variant="pi" textColor="neutral600" paddingTop={1}>
+              <Typography variant="pi" textColor="neutral600">
                 Θέατρο: {syncReport.theaterShowsScanned} παραστάσεις · +{syncReport.createdFromTheaterShows ?? 0}{' '}
                 από κωδικούς · +{syncReport.createdFromTheaterVenues ?? 0} από venue bundle
                 {(syncReport.createdCinemaVenues ?? 0) > 0
@@ -536,42 +547,45 @@ const App = () => {
               </Typography>
             ) : null}
             {syncReport.venueUpdatedStatuses?.updated ? (
-              <Typography variant="pi" textColor="neutral600" paddingTop={1}>
+              <Typography variant="pi" textColor="neutral600">
                 Updated σινεμά: {syncReport.venueUpdatedStatuses.complete} πλήρη ·{' '}
                 {syncReport.venueUpdatedStatuses.needs_manual} χειροκίνητα ·{' '}
                 {syncReport.venueUpdatedStatuses.no_new} χωρίς νέα
               </Typography>
             ) : null}
             {syncReport.missingVenueIds?.length ? (
-              <Typography variant="pi" textColor="danger600" paddingTop={2}>
+              <Typography variant="pi" textColor="danger600">
                 Λείπουν More venueId στο CMS:{' '}
                 {[...new Set(syncReport.missingVenueIds.map((m) => m.moreVenueId))].slice(0, 12).join(', ')}
               </Typography>
             ) : null}
             {syncReport.errors?.length ? (
-              <Typography variant="pi" textColor="danger600" paddingTop={2}>
+              <Typography variant="pi" textColor="danger600">
                 Σφάλματα: {syncReport.errors.length}
               </Typography>
             ) : null}
+            </Flex>
           </Box>
         ) : null}
 
         {applyResult ? (
           <Box paddingBottom={4} padding={4} background="success100" hasRadius style={cardStyle}>
-            <Typography fontWeight="semiBold">
-              Εγγραφή CMS · {applyResult.stats.applied} ενημερώθηκαν · {applyResult.stats.skipped}{' '}
-              παραλείφθηκαν
-            </Typography>
-            {applyResult.applied?.length ? (
-              <Typography variant="pi" textColor="neutral600" paddingTop={2}>
-                {applyResult.applied
-                  .slice(0, 20)
-                  .map((r) =>
-                    `${r.cmsTitle} → ${r.eventGroupCode}${r.addedAsSecondary ? ' (επιπλέον)' : ''}`,
-                  )
-                  .join(' · ')}
+            <Flex direction="column" alignItems="flex-start" gap={2}>
+              <Typography fontWeight="semiBold">
+                Εγγραφή CMS · {applyResult.stats.applied} ενημερώθηκαν · {applyResult.stats.skipped}{' '}
+                παραλείφθηκαν
               </Typography>
-            ) : null}
+              {applyResult.applied?.length ? (
+                <Typography variant="pi" textColor="neutral600">
+                  {applyResult.applied
+                    .slice(0, 20)
+                    .map((r) =>
+                      `${r.cmsTitle} → ${r.eventGroupCode}${r.addedAsSecondary ? ' (επιπλέον)' : ''}`,
+                    )
+                    .join(' · ')}
+                </Typography>
+              ) : null}
+            </Flex>
           </Box>
         ) : null}
 
@@ -749,15 +763,17 @@ const App = () => {
 
         {result?.unmatched?.length > 0 ? (
           <Box paddingBottom={4} padding={4} background="warning100" hasRadius style={cardStyle}>
-            <Typography fontWeight="semiBold">
-              Χωρίς πρόταση ({result.unmatched.length})
-            </Typography>
-            <Typography variant="pi" textColor="neutral600" paddingTop={2}>
-              {result.unmatched
-                .slice(0, 20)
-                .map((r) => r.cmsTitle)
-                .join(' · ')}
-            </Typography>
+            <Flex direction="column" alignItems="flex-start" gap={2}>
+              <Typography fontWeight="semiBold">
+                Χωρίς πρόταση ({result.unmatched.length})
+              </Typography>
+              <Typography variant="pi" textColor="neutral600">
+                {result.unmatched
+                  .slice(0, 20)
+                  .map((r) => r.cmsTitle)
+                  .join(' · ')}
+              </Typography>
+            </Flex>
           </Box>
         ) : null}
 
@@ -768,12 +784,14 @@ const App = () => {
                 title="Πίνακας 3 — Κατάλογος More"
                 subtitle={`Όλα από More (όχι ανά CMS ταινία). ${catalogFiltered.length} εμφανίζονται · ${catalogMissing} λείπουν από CMS`}
               />
-              <Checkbox
-                checked={catalogOnlyMissing}
-                onCheckedChange={(checked) => setCatalogOnlyMissing(checked === true)}
-              >
-                Μόνο κωδικοί που λείπουν από το CMS
-              </Checkbox>
+              <Box paddingTop={2}>
+                <Checkbox
+                  checked={catalogOnlyMissing}
+                  onCheckedChange={(checked) => setCatalogOnlyMissing(checked === true)}
+                >
+                  Μόνο κωδικοί που λείπουν από το CMS
+                </Checkbox>
+              </Box>
             </Box>
             <Table colCount={6} rowCount={catalogPageRows.length}>
               <Thead>

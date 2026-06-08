@@ -1647,10 +1647,10 @@ async function fetchShowtimesVenueCalendar(venueSlug: string, weeks = 3): Promis
   }
 }
 
-async function fetchTheaterPerformancesCalendar(weeks = 5): Promise<StrapiTheaterPerformance[]> {
+async function fetchTheaterPerformancesCalendar(): Promise<StrapiTheaterPerformance[]> {
   const rows = await fetchAPI<any[]>(
     "/theater-performances/home-calendar",
-    { weeks: String(weeks) },
+    {},
     { noPopulate: true },
   );
   return (Array.isArray(rows) ? rows : []).flatMap((x) => mapTheaterPerformance(x));
@@ -1658,12 +1658,11 @@ async function fetchTheaterPerformancesCalendar(weeks = 5): Promise<StrapiTheate
 
 async function fetchTheaterPerformancesVenueCalendar(
   venueSlug: string,
-  weeks = 3,
 ): Promise<StrapiTheaterPerformance[]> {
   try {
     const rows = await fetchAPI<any[]>(
       "/theater-performances/venue-calendar",
-      { venue: venueSlug, weeks: String(weeks) },
+      { venue: venueSlug },
       { noPopulate: true },
     );
     return (Array.isArray(rows) ? rows : []).flatMap((x) => mapTheaterPerformance(x));
@@ -1885,14 +1884,14 @@ export const api = {
     return fetchShowtimesCalendar(5);
   },
 
-  getTheaterPerformancesForHome: () => fetchTheaterPerformancesCalendar(5),
+  getTheaterPerformancesForHome: () => fetchTheaterPerformancesCalendar(),
 
   getTheaterPerformances: (options?: { venueSlug?: string }) => {
     const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";
     if (venueSlug) {
-      return fetchTheaterPerformancesVenueCalendar(venueSlug, 3);
+      return fetchTheaterPerformancesVenueCalendar(venueSlug);
     }
-    return fetchTheaterPerformancesCalendar(5);
+    return fetchTheaterPerformancesCalendar();
   },
 
   getUserReviews: () =>
