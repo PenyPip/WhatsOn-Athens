@@ -50,32 +50,143 @@ function slugFromMoreUrl(url, category = 'cinema') {
     .replace(/-/g, ' ');
 }
 
+/** Slug σελίδας More από URL (π.χ. /gr-el/tickets/cinemas/the-pout-pout-fish/). */
+function morePageSlugFromUrl(url) {
+  const s = String(url || '').trim();
+  const m =
+    s.match(/\/tickets\/cinemas?\/([^/?#]+)/i) ||
+    s.match(/\/tickets\/theater\/([^/?#]+)/i);
+  if (!m) return '';
+  return decodeURIComponent(m[1]).replace(/\/$/, '').toLowerCase();
+}
+
+/** Σύγκριση slug CMS ↔ More — αγνοεί παύλες/τόνους (the-pout-pout-fish ↔ thepout-poutfish). */
+function compactSlugKey(raw) {
+  return String(raw || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function evgCodeSlugRoot(code) {
+  return String(code || '')
+    .replace(/^evg_/i, '')
+    .split('_')[0]
+    .toLowerCase();
+}
+
+function resolveMorePagePathFromChunk(chunk, category) {
+  const urlContent = chunk.match(/itemprop="url"\s+content="([^"]+)"/i)?.[1]?.trim();
+  if (urlContent) return urlContent;
+
+  const pathPattern =
+    category === 'theater'
+      ? /href="(\/gr-el\/tickets\/theater\/[^"?#]+)/i
+      : /href="(\/gr-el\/tickets\/cinemas?\/[^"?#]+)/i;
+  return chunk.match(pathPattern)?.[1]?.trim() || '';
+}
+
 function parseMoreCatalogHtml(html, { category, classifyKind }) {
   const byCode = new Map();
 
-  for (const m of html.matchAll(/data-code="(evg_[a-z0-9_]+)"/gi)) {
+  for (const m of html.matchAll(/data-code="(evg_[a-z0-9_-]+)"/gi)) {
     const code = m[1];
     if (byCode.has(code)) continue;
 
     const chunk = html.slice(Math.max(0, m.index - 200), m.index + 4000);
-    const urlMatch = chunk.match(/itemprop="url"\s+content="([^"]+)"/i);
+    const pagePath = resolveMorePagePathFromChunk(chunk, category);
+    const morePathSlug = morePageSlugFromUrl(pagePath);
     const nameMatch = chunk.match(/itemprop="name"\s+content="([^"]+)"/i);
     const hMatch = chunk.match(/class="[^"]*title[^"]*"[^>]*>([^<]{2,120})</i);
 
     let title = nameMatch?.[1]?.trim() || hMatch?.[1]?.trim() || '';
-    if (!title && urlMatch?.[1]) title = slugFromMoreUrl(urlMatch[1], category);
+    if (!title && pagePath) title = slugFromMoreUrl(pagePath, category);
 
     const kind = classifyKind(code, title);
     byCode.set(code, {
       code,
       title: title || '(χωρίς τίτλο)',
-      moreUrl: urlMatch?.[1] ? `https://www.more.com${urlMatch[1]}` : null,
+      moreUrl: pagePath ? `https://www.more.com${pagePath}` : null,
+      morePathSlug,
+      codeSlugRoot: evgCodeSlugRoot(code),
       kind,
       category,
     });
   }
 
   return [...byCode.values()];
+}
+
+/** Ευρετήριο slug → καταχωρήσεις καταλόγου (σελίδα More + ρίζα evg_ κωδικού). */
+function buildCatalogSlugIndex(catalog) {
+  const index = new Map();
+
+  const add = (key, entry) => {
+    const k = compactSlugKey(key);
+    if (!k) return;
+    const list = index.get(k) || [];
+    if (!list.some((row) => row.code === entry.code)) list.push(entry);
+    index.set(k, list);
+  };
+
+  for (const entry of catalog) {
+    if (entry.morePathSlug) add(entry.morePathSlug, entry);
+    if (entry.codeSlugRoot) add(entry.codeSlugRoot, entry);
+    if (entry.code) add(evgCodeSlugRoot(entry.code), entry);
+  }
+
+  return index;
+}
+
+function cmsSlugLookupKeys(cms) {
+  const keys = new Set();
+  for (const raw of [cms.slug, cms.originalTitle, cms.title]) {
+    const k = compactSlugKey(raw);
+    if (k) keys.add(k);
+  }
+  return [...keys];
+}
+
+/**
+ * Ταύτιση μέσω σελίδας More στον κατάλογο (όχι στη σελίδα λεπτομέρειας ταινίας).
+ * Π.χ. CMS slug the-pout-pout-fish → /cinemas/the-pout-pout-fish/ → data-code evg_thepout-poutfish_…
+ */
+function scoreMatchByMorePagePath(cms, moreEntry) {
+  const cmsKeys = cmsSlugLookupKeys(cms);
+  if (!cmsKeys.length) return 0;
+
+  const pathKey = compactSlugKey(moreEntry.morePathSlug);
+  const codeKey = compactSlugKey(moreEntry.codeSlugRoot || evgCodeSlugRoot(moreEntry.code));
+
+  for (const cmsKey of cmsKeys) {
+    if (pathKey && cmsKey === pathKey) return 0.99;
+    if (codeKey && (cmsKey === codeKey || cmsKey.includes(codeKey) || codeKey.includes(cmsKey))) {
+      return 0.96;
+    }
+  }
+  return 0;
+}
+
+function findCatalogByCmsSlug(cms, catalog, config) {
+  const pool = catalog.filter((entry) => {
+    if (entry.category !== config.moreCategory) return false;
+    if (config.moreCategory === 'cinema') return entry.kind === 'movie';
+    return entry.kind === 'show';
+  });
+  const index = buildCatalogSlugIndex(pool);
+  const seen = new Set();
+  const hits = [];
+
+  for (const key of cmsSlugLookupKeys(cms)) {
+    for (const entry of index.get(key) || []) {
+      if (seen.has(entry.code)) continue;
+      seen.add(entry.code);
+      hits.push({ more: entry, score: scoreMatchByMorePagePath(cms, entry) || 0.98 });
+    }
+  }
+
+  return hits.sort((a, b) => b.score - a.score);
 }
 
 async function fetchText(url) {
@@ -153,12 +264,13 @@ async function verifyEventGroupCode(code) {
 }
 
 function scoreMatch(cmsMovie, moreEntry) {
+  let best = scoreMatchByMorePagePath(cmsMovie, moreEntry);
+
   const candidates = [cmsMovie.title, cmsMovie.originalTitle, cmsMovie.slug].filter(Boolean);
   const moreTitle = moreEntry.title;
   const moreCompact = compactText(moreTitle);
-  const slugPart = moreEntry.code.replace(/^evg_/i, '').split('_')[0];
+  const slugPart = evgCodeSlugRoot(moreEntry.code);
 
-  let best = 0;
   for (const c of candidates) {
     const nc = compactText(c);
     const nw = normalizeText(c);
@@ -178,8 +290,10 @@ function scoreMatch(cmsMovie, moreEntry) {
       }
     }
 
-    if (slugPart && nc.includes(slugPart.replace(/[^a-z0-9]/g, ''))) {
-      best = Math.max(best, 0.75);
+    const codeKey = compactSlugKey(slugPart);
+    const cmsKey = compactSlugKey(c);
+    if (codeKey && cmsKey && (cmsKey === codeKey || cmsKey.includes(codeKey) || codeKey.includes(cmsKey))) {
+      best = Math.max(best, 0.96);
     }
   }
   return best;
@@ -197,27 +311,47 @@ function matchCmsItemsToMore(cmsItems, catalog, minScore = DEFAULT_MIN_SCORE) {
     });
 
     const scored = [];
+
+    for (const hit of findCatalogByCmsSlug(cms, catalog, config)) {
+      if (hit.score < MIN_HINT_SCORE) continue;
+      scored.push({ ...hit, matchMethod: 'more_page_slug' });
+    }
+
     for (const more of pool) {
       const score = scoreMatch(cms, more);
       if (score >= MIN_HINT_SCORE) {
-        scored.push({ more, score });
+        scored.push({
+          more,
+          score,
+          matchMethod: score >= 0.96 && more.morePathSlug ? 'more_page_slug' : 'title',
+        });
       }
     }
-    scored.sort((a, b) => b.score - a.score);
 
-    const best = scored[0] || null;
+    scored.sort((a, b) => b.score - a.score);
+    const deduped = [];
+    const seenCodes = new Set();
+    for (const row of scored) {
+      if (seenCodes.has(row.more.code)) continue;
+      seenCodes.add(row.more.code);
+      deduped.push(row);
+    }
+
+    const best = deduped[0] || null;
     const bestScore = best?.score || 0;
-    const qualifying = scored.filter((row) => row.score >= minScore);
+    const qualifying = deduped.filter((row) => row.score >= minScore);
 
     results.push({
       cms,
       more: best?.more ?? null,
-      moreMatches: scored.map((row) => ({
+      moreMatches: deduped.map((row) => ({
         moreTitle: row.more.title,
         suggestedEventGroupCode: row.more.code,
         moreUrl: row.more.moreUrl,
+        morePathSlug: row.more.morePathSlug ?? null,
         moreCategory: row.more.category,
         score: Number(row.score.toFixed(3)),
+        matchMethod: row.matchMethod ?? 'title',
       })),
       suggestedEventGroupCodes: qualifying.map((row) => row.more.code),
       score: bestScore,
@@ -1097,4 +1231,7 @@ module.exports = {
   matchCmsItemsToMore,
   matchMoviesToMore,
   scoreMatch,
+  morePageSlugFromUrl,
+  compactSlugKey,
+  buildCatalogSlugIndex,
 };

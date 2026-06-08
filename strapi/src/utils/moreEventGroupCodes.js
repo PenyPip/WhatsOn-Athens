@@ -64,7 +64,7 @@ function classifyCinemaCatalogKind(code, title) {
 }
 
 function extractEvgCodeFromText(raw) {
-  const match = String(raw || '').match(/(evg_[a-z0-9_]+)/i);
+  const match = String(raw || '').match(/(evg_[a-z0-9_-]+)/i);
   return match ? match[1] : '';
 }
 

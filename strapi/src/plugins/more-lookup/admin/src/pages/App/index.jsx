@@ -80,6 +80,7 @@ function expandMatchRows(rows) {
         displayMoreTitle: match.moreTitle ?? row.moreTitle,
         displayScore: Number(match.score ?? row.score),
         displayVerify: match.verify ?? row.verify,
+        displayMatchMethod: match.matchMethod ?? null,
         codeRole: index === 0 ? 'κύριος' : 'επιπλέον',
       };
     });
@@ -853,7 +854,7 @@ const App = () => {
             <Box padding={4}>
               <PanelHeader
                 title="Πίνακας 1 — Προτάσεις ταύτισης"
-                subtitle="Τι θα έγραφε το «Γράψε αυτόματα» (κύριος + επιπλέον κωδικοί). Μόνο προβολή — δεν αλλάζει το CMS."
+                subtitle="Τι θα έγραφε το «Γράψε αυτόματα». Ταύτιση τίτλου + slug σελίδας More (/cinemas/… → data-code). Μόνο προβολή."
               />
             </Box>
             <Table colCount={8} rowCount={matchDisplayRows.length}>
@@ -904,7 +905,12 @@ const App = () => {
                       <Typography fontWeight="bold">{row.displayCode}</Typography>
                     </Td>
                     <Td>
-                      <Typography>{row.displayScore.toFixed(2)}</Typography>
+                      <Flex direction="column" alignItems="flex-start" gap={1}>
+                        <Typography>{row.displayScore.toFixed(2)}</Typography>
+                        {row.displayMatchMethod === 'more_page_slug' ? (
+                          <Badge>slug More</Badge>
+                        ) : null}
+                      </Flex>
                     </Td>
                     <Td>
                       <Typography variant="pi">
