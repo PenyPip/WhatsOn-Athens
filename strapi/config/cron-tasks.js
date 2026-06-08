@@ -54,8 +54,8 @@ module.exports = {
       // Κάθε μέρα 04:20 (ώρα server)
       rule: '20 4 * * *',
     },
-  },
-  syncMoreShowtimesDaily: {
+  }
+  /*syncMoreShowtimesDaily: {
     task: async ({ strapi }) => {
       if (process.env.MORE_SHOWTIME_SYNC_ENABLED === 'false') return;
       try {
@@ -71,4 +71,5 @@ module.exports = {
       rule: '45 6 * * *',
     },
   },
+*/
 };

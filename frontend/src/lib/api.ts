@@ -1165,6 +1165,7 @@ function mapTheaterPerformance(raw: unknown): StrapiTheaterPerformance[] {
   const weekEnd =
     typeof s.week_end === "string" && s.week_end.trim() ? s.week_end.trim().slice(0, 10) : undefined;
   const price = parseShowtimePrice(s.price);
+  const soldOut = s.sold_out === true || s.sold_out === "true" || s.sold_out === 1;
 
   const toRow = (datetime: string, index: number): StrapiTheaterPerformance => ({
     id: `${baseId}-${index}`,
@@ -1179,6 +1180,7 @@ function mapTheaterPerformance(raw: unknown): StrapiTheaterPerformance[] {
     hallName,
     availableSeats: Number.isFinite(seatsNum) ? seatsNum : 0,
     price,
+    soldOut,
     theaterShowId,
     theaterShowSlug,
     theaterShowTitle,
@@ -1454,6 +1456,7 @@ export interface StrapiTheaterPerformance {
   hallName?: string;
   availableSeats: number;
   price?: number;
+  soldOut?: boolean;
   theaterShowId?: number;
   theaterShowSlug?: string;
   theaterShowTitle?: string;

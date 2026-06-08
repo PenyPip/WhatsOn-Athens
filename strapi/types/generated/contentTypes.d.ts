@@ -934,6 +934,7 @@ export interface ApiTheaterPerformanceTheaterPerformance
     schedule_kind: Attribute.Enumeration<['exact', 'week_block']> &
       Attribute.Required &
       Attribute.DefaultTo<'exact'>;
+    sold_out: Attribute.Boolean & Attribute.DefaultTo<false>;
     theater_show: Attribute.Relation<
       'api::theater-performance.theater-performance',
       'manyToOne',

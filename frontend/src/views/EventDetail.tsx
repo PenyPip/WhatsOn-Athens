@@ -437,6 +437,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const theaterShow = !isMovie ? (event as StrapiTheaterShow) : null;
 
   const theaterPerformancePriceLabel = (p: StrapiTheaterPerformance): string | null => {
+    if (p.soldOut || theaterShow?.soldOut) return null;
     if (p.price != null && Number.isFinite(p.price)) {
       const rounded = Math.round(p.price * 100) / 100;
       return `${rounded % 1 === 0 ? rounded.toFixed(0) : rounded.toFixed(2).replace(/\.?0+$/, "")}€`;
@@ -488,6 +489,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                       slot={p}
                       hallName={p.hallName}
                       priceLabel={theaterPerformancePriceLabel(p)}
+                      soldOut={Boolean(p.soldOut || theaterShow?.soldOut)}
                       emphasized
                     />
                   ))}

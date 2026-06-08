@@ -44,6 +44,11 @@
       "type": "decimal",
       "description": "Προαιρετική τιμή για αυτή την εμφάνιση (€). Αλλιώς από/έως στην παράσταση θεάτρου."
     },
+    "sold_out": {
+      "type": "boolean",
+      "default": false,
+      "description": "Sold out για αυτή την ημερομηνία/ώρα. Ενημερώνεται από More sync (soldOut)."
+    },
     "theater_show": {
       "type": "relation",
       "relation": "manyToOne",

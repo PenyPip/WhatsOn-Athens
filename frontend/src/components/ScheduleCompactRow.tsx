@@ -6,6 +6,7 @@ type ScheduleCompactRowProps = {
   slot: ScheduleSlot;
   hallName?: string;
   priceLabel?: string | null;
+  soldOut?: boolean;
   emphasized?: boolean;
 };
 
@@ -14,6 +15,7 @@ export default function ScheduleCompactRow({
   slot,
   hallName,
   priceLabel,
+  soldOut = false,
   emphasized = false,
 }: ScheduleCompactRowProps) {
   if (showtimeIsWeekBlock(slot)) {
@@ -55,14 +57,20 @@ export default function ScheduleCompactRow({
           </span>
           <span
             className={cn(
-              "inline-flex shrink-0 items-center gap-1.5 font-semibold tabular-nums text-[#13143E]",
+              "inline-flex shrink-0 items-center gap-1.5 font-semibold tabular-nums",
+              soldOut ? "text-muted-foreground line-through" : "text-[#13143E]",
               emphasized ? "text-base" : "text-lg",
             )}
           >
             {d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false })}
           </span>
+          {soldOut ? (
+            <span className="shrink-0 rounded bg-rose-600/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">
+              Sold out
+            </span>
+          ) : null}
         </div>
-        {priceLabel ? (
+        {soldOut ? null : priceLabel ? (
           <span className="shrink-0 text-sm font-semibold tabular-nums text-[#13143E]">{priceLabel}</span>
         ) : null}
       </div>

@@ -135,7 +135,12 @@ async function showtimeExistsAt(strapi, { movieId, venueId, datetime }) {
   return Array.isArray(rows) && rows.length > 0;
 }
 
-async function performanceExistsAt(strapi, { theaterShowId, venueId, datetime }) {
+function parseMoreSoldOut(event) {
+  const raw = event?.soldOut ?? event?.sold_out;
+  return raw === true || raw === 'true' || raw === 1;
+}
+
+async function findPerformanceAt(strapi, { theaterShowId, venueId, datetime }) {
   const t = datetime.getTime();
   const rows = await strapi.entityService.findMany('api::theater-performance.theater-performance', {
     filters: {
@@ -146,9 +151,11 @@ async function performanceExistsAt(strapi, { theaterShowId, venueId, datetime })
         $lte: new Date(t + 60_000).toISOString(),
       },
     },
+    fields: ['id', 'sold_out'],
     limit: 1,
+    publicationState: 'preview',
   });
-  return Array.isArray(rows) && rows.length > 0;
+  return Array.isArray(rows) && rows.length ? rows[0] : null;
 }
 
 async function buildEventIdIndex(items, eventsCache, mapItem) {
@@ -249,13 +256,24 @@ async function upsertPerformanceFromEvent(strapi, report, {
     return 'horizon';
   }
 
-  const exists = await performanceExistsAt(strapi, {
+  const soldOut = parseMoreSoldOut(event);
+
+  const existing = await findPerformanceAt(strapi, {
     theaterShowId,
     venueId: venue.id,
     datetime,
   });
 
-  if (exists) {
+  if (existing) {
+    const currentSoldOut = existing.sold_out === true;
+    if (currentSoldOut !== soldOut) {
+      await strapi.entityService.update('api::theater-performance.theater-performance', existing.id, {
+        data: { sold_out: soldOut },
+      });
+      report.updatedSoldOut += 1;
+      if (statsTarget) statsTarget.updatedSoldOut = (statsTarget.updatedSoldOut || 0) + 1;
+      return 'updated_sold_out';
+    }
     report.alreadyExists += 1;
     if (statsTarget) statsTarget.alreadyExists += 1;
     return 'exists';
@@ -267,6 +285,7 @@ async function upsertPerformanceFromEvent(strapi, report, {
       datetime: datetime.toISOString(),
       theater_show: theaterShowId,
       venue: venue.id,
+      sold_out: soldOut,
     },
   });
 
@@ -279,6 +298,7 @@ function emptySyncCounters() {
   return {
     created: 0,
     alreadyExists: 0,
+    updatedSoldOut: 0,
     skippedPast: 0,
     skippedHorizon: 0,
     skippedNoVenue: 0,
@@ -683,6 +703,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     createdFromTheaterShows: theaterReport.createdFromTheaterShows,
     createdFromTheaterVenues: theaterReport.createdFromTheaterVenues,
     alreadyExists: movieReport.alreadyExists + theaterReport.alreadyExists,
+    updatedSoldOut: theaterReport.updatedSoldOut,
     skippedPast: movieReport.skippedPast + theaterReport.skippedPast,
     skippedHorizon: movieReport.skippedHorizon + theaterReport.skippedHorizon,
     skippedNoVenue: movieReport.skippedNoVenue + theaterReport.skippedNoVenue,
@@ -703,6 +724,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     `Νέες: ${created} (ταινίες: ${report.createdFromMovies} · σινεμά bundle: ${report.createdFromVenues}` +
     ` · θέατρο: ${report.createdFromTheaterShows} · θέατρο bundle: ${report.createdFromTheaterVenues})` +
     ` · υπήρχαν: ${report.alreadyExists}` +
+    (report.updatedSoldOut ? ` · sold out ενημ.: ${report.updatedSoldOut}` : '') +
     ` · χωρίς venue_id: ${report.skippedNoVenue}` +
     ` · άγνωστο eventId: ${report.skippedUnknownEventId}`;
 
