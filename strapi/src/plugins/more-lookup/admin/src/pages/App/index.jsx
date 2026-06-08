@@ -118,18 +118,293 @@ function WorkflowStep({ number, title, detail }) {
   );
 }
 
-function StatBadge({ label, value, tone = 'neutral' }) {
-  const bg = tone === 'success' ? 'success100' : tone === 'warning' ? 'warning100' : 'neutral100';
+function StatBadge({ label, value, tone = 'neutral', hint }) {
+  const bg =
+    tone === 'success'
+      ? 'success100'
+      : tone === 'warning'
+        ? 'warning100'
+        : tone === 'danger'
+          ? 'danger100'
+          : 'neutral100';
+  const valueColor =
+    tone === 'danger' ? 'danger700' : tone === 'success' ? 'success700' : 'neutral800';
   return (
-    <Box padding={3} background={bg} hasRadius style={{ minWidth: '7rem' }}>
+    <Box padding={3} background={bg} hasRadius style={{ minWidth: '7rem', flex: '1 1 8rem' }}>
       <Flex direction="column" alignItems="flex-start" gap={1}>
         <Typography variant="pi" textColor="neutral600">
           {label}
         </Typography>
-        <Typography fontWeight="bold" textColor="neutral800">
+        <Typography fontWeight="bold" textColor={valueColor}>
           {value}
         </Typography>
+        {hint ? (
+          <Typography variant="pi" textColor="neutral500">
+            {hint}
+          </Typography>
+        ) : null}
       </Flex>
+    </Box>
+  );
+}
+
+function SyncMetricRow({ label, value, detail, last }) {
+  return (
+    <Flex
+      justifyContent="space-between"
+      alignItems="baseline"
+      gap={3}
+      paddingTop={2}
+      paddingBottom={2}
+      style={last ? undefined : { borderBottom: '1px solid #eaeaef' }}
+    >
+      <Typography variant="pi" textColor="neutral600">
+        {label}
+      </Typography>
+      <Flex direction="column" alignItems="flex-end" gap={1}>
+        <Typography fontWeight="semiBold" textColor="neutral800">
+          {value}
+        </Typography>
+        {detail ? (
+          <Typography variant="pi" textColor="neutral500">
+            {detail}
+          </Typography>
+        ) : null}
+      </Flex>
+    </Flex>
+  );
+}
+
+function SyncReportSection({ title, children, tone = 'neutral' }) {
+  const bg =
+    tone === 'warning' ? 'warning100' : tone === 'danger' ? 'danger100' : 'neutral0';
+  return (
+    <Box
+      padding={4}
+      background={bg}
+      hasRadius
+      style={{ border: '1px solid #eaeaef', height: '100%' }}
+    >
+      <Typography variant="sigma" textColor="neutral600" fontWeight="semiBold">
+        {title}
+      </Typography>
+      <Box paddingTop={2}>{children}</Box>
+    </Box>
+  );
+}
+
+function formatSyncErrorLine(err) {
+  if (!err || typeof err !== 'object') return String(err ?? '—');
+  const parts = [];
+  if (err.title) parts.push(err.title);
+  else if (err.name) parts.push(err.name);
+  if (err.code) parts.push(`κωδικός ${err.code}`);
+  if (err.moreVenueId) parts.push(`venueId ${err.moreVenueId}`);
+  if (err.action) parts.push(err.action);
+  const head = parts.length ? parts.join(' · ') : 'Σφάλμα';
+  const msg = err.error || err.message || '';
+  return msg ? `${head}: ${msg}` : head;
+}
+
+function SyncReportPanel({ report }) {
+  const [showAllMissingIds, setShowAllMissingIds] = React.useState(false);
+  const [showErrors, setShowErrors] = React.useState(false);
+
+  const created = Number(report.created ?? 0);
+  const alreadyExists = Number(report.alreadyExists ?? 0);
+  const skippedNoVenue = Number(report.skippedNoVenue ?? 0);
+  const skippedUnknown = Number(report.skippedUnknownEventId ?? 0);
+  const skippedPast = Number(report.skippedPast ?? 0);
+  const errorCount = Array.isArray(report.errors) ? report.errors.length : 0;
+
+  const missingIds = [
+    ...new Set(
+      (report.missingVenueIds ?? [])
+        .map((m) => (m?.moreVenueId != null ? String(m.moreVenueId).trim() : ''))
+        .filter(Boolean),
+    ),
+  ];
+  const visibleMissingIds = showAllMissingIds ? missingIds : missingIds.slice(0, 12);
+
+  const durationSec =
+    report.durationMs != null ? `${(Number(report.durationMs) / 1000).toFixed(1)}s` : null;
+
+  const venueStatus = report.venueUpdatedStatuses;
+  const hasVenueStatus = Number(venueStatus?.updated ?? 0) > 0;
+
+  return (
+    <Box padding={5} background="primary100" hasRadius style={cardStyle}>
+      <Flex justifyContent="space-between" alignItems="flex-start" gap={4} wrap="wrap" paddingBottom={4}>
+        <Flex direction="column" alignItems="flex-start" gap={2}>
+          <Typography variant="delta" textColor="primary700">
+            Αναφορά συγχρονισμού
+          </Typography>
+          <Typography variant="pi" textColor="primary600">
+            Προβολές ταινίας & παραστάσεις από More API
+          </Typography>
+        </Flex>
+        {durationSec ? (
+          <Badge background="primary200" textColor="primary700">
+            {durationSec}
+          </Badge>
+        ) : null}
+      </Flex>
+
+      <Flex gap={3} wrap="wrap" paddingBottom={4}>
+        <StatBadge
+          label="Νέες εγγραφές"
+          value={created}
+          tone={created > 0 ? 'success' : 'neutral'}
+          hint="Σύνολο στο CMS"
+        />
+        <StatBadge label="Ήδη υπήρχαν" value={alreadyExists} />
+        <StatBadge
+          label="Χωρίς venue_id"
+          value={skippedNoVenue}
+          tone={skippedNoVenue > 0 ? 'warning' : 'neutral'}
+        />
+        <StatBadge
+          label="Άγνωστο eventId"
+          value={skippedUnknown}
+          tone={skippedUnknown > 0 ? 'warning' : 'neutral'}
+        />
+        {skippedPast > 0 ? (
+          <StatBadge label="Παρελθούσες" value={skippedPast} tone="neutral" hint="Παραλείφθηκαν" />
+        ) : null}
+        <StatBadge
+          label="Σφάλματα"
+          value={errorCount}
+          tone={errorCount > 0 ? 'danger' : 'neutral'}
+        />
+      </Flex>
+
+      <Grid gap={4} paddingBottom={missingIds.length || errorCount ? 4 : 0}>
+        <GridItem col={6} s={12}>
+          <SyncReportSection title="Ταινίες">
+            <SyncMetricRow label="Σκανάρισμα ταινιών" value={report.moviesScanned ?? '—'} />
+            <SyncMetricRow
+              label="Από κωδικούς ταινίας"
+              value={`+${report.createdFromMovies ?? 0}`}
+              detail="Νέες προβολές"
+            />
+            <SyncMetricRow
+              label="Από bundle σινεμά"
+              value={`+${report.createdFromVenues ?? 0}`}
+              detail="Νέες προβολές"
+              last={(report.createdCinemaVenues ?? 0) <= 0}
+            />
+            {(report.createdCinemaVenues ?? 0) > 0 ? (
+              <SyncMetricRow
+                label="Νέοι χώροι σινεμά"
+                value={`+${report.createdCinemaVenues}`}
+                detail="Δημιουργήθηκαν από More"
+                last
+              />
+            ) : null}
+          </SyncReportSection>
+        </GridItem>
+        <GridItem col={6} s={12}>
+          <SyncReportSection title="Θέατρο">
+            <SyncMetricRow label="Σκανάρισμα έργων" value={report.theaterShowsScanned ?? '—'} />
+            <SyncMetricRow
+              label="Από κωδικούς θεάτρου"
+              value={`+${report.createdFromTheaterShows ?? 0}`}
+              detail="Νέες παραστάσεις"
+            />
+            <SyncMetricRow
+              label="Από bundle θεάτρου"
+              value={`+${report.createdFromTheaterVenues ?? 0}`}
+              detail="Νέες παραστάσεις"
+              last={
+                (report.createdTheaterVenues ?? 0) <= 0 && (report.updatedSoldOut ?? 0) <= 0
+              }
+            />
+            {(report.createdTheaterVenues ?? 0) > 0 ? (
+              <SyncMetricRow
+                label="Νέοι χώροι θεάτρου"
+                value={`+${report.createdTheaterVenues}`}
+                detail="Δημιουργήθηκαν από More"
+                last={(report.updatedSoldOut ?? 0) <= 0}
+              />
+            ) : null}
+            {(report.updatedSoldOut ?? 0) > 0 ? (
+              <SyncMetricRow label="Sold out ενημερώσεις" value={report.updatedSoldOut} last />
+            ) : null}
+          </SyncReportSection>
+        </GridItem>
+      </Grid>
+
+      {hasVenueStatus ? (
+        <Box paddingBottom={missingIds.length || errorCount ? 4 : 0}>
+          <SyncReportSection title="Κατάσταση σινεμά (updated)">
+            <Flex gap={3} wrap="wrap" paddingTop={1}>
+              <StatBadge label="Πλήρη" value={venueStatus.complete ?? 0} tone="success" />
+              <StatBadge label="Χειροκίνητα" value={venueStatus.needs_manual ?? 0} tone="warning" />
+              <StatBadge label="Χωρίς νέα" value={venueStatus.no_new ?? 0} />
+            </Flex>
+          </SyncReportSection>
+        </Box>
+      ) : null}
+
+      {missingIds.length > 0 ? (
+        <Box paddingBottom={errorCount ? 4 : 0}>
+          <SyncReportSection title={`Λείπουν More venueId (${missingIds.length})`} tone="warning">
+            <Typography variant="pi" textColor="neutral600" paddingBottom={3}>
+              Τα venueId δεν υπάρχουν ακόμα στους χώρους CMS — χρειάζεται ταύτιση ή δημιουργία χώρου.
+            </Typography>
+            <Flex gap={2} wrap="wrap">
+              {visibleMissingIds.map((id) => (
+                <Badge key={id} background="warning200" textColor="warning700">
+                  {id}
+                </Badge>
+              ))}
+            </Flex>
+            {missingIds.length > 12 ? (
+              <Box paddingTop={3}>
+                <Button
+                  size="S"
+                  variant="tertiary"
+                  onClick={() => setShowAllMissingIds((v) => !v)}
+                >
+                  {showAllMissingIds ? 'Λιγότερα' : `Όλα (${missingIds.length})`}
+                </Button>
+              </Box>
+            ) : null}
+          </SyncReportSection>
+        </Box>
+      ) : null}
+
+      {errorCount > 0 ? (
+        <SyncReportSection title={`Σφάλματα (${errorCount})`} tone="danger">
+          <Box paddingBottom={showErrors ? 3 : 0}>
+            <Button size="S" variant="tertiary" onClick={() => setShowErrors((v) => !v)}>
+              {showErrors ? 'Απόκρυψη λεπτομερειών' : 'Εμφάνιση λεπτομερειών'}
+            </Button>
+          </Box>
+          {showErrors ? (
+            <ul style={{ margin: 0, paddingLeft: '1.25rem', maxHeight: '16rem', overflowY: 'auto' }}>
+              {report.errors.slice(0, 40).map((err, i) => (
+                <li key={`sync-err-${i}`} style={{ marginBottom: '0.5rem' }}>
+                  <Typography variant="pi" textColor="danger700">
+                    {formatSyncErrorLine(err)}
+                  </Typography>
+                </li>
+              ))}
+              {errorCount > 40 ? (
+                <li style={{ listStyle: 'none', marginLeft: '-1.25rem' }}>
+                  <Typography variant="pi" textColor="neutral500" paddingTop={2}>
+                    … και {errorCount - 40} ακόμα
+                  </Typography>
+                </li>
+              ) : null}
+            </ul>
+          ) : (
+            <Typography variant="pi" textColor="neutral600">
+              Πάτησε για λίστα με τίτλους / κωδικούς και μηνύματα σφάλματος.
+            </Typography>
+          )}
+        </SyncReportSection>
+      ) : null}
     </Box>
   );
 }
@@ -525,46 +800,8 @@ const App = () => {
         ) : null}
 
         {syncReport ? (
-          <Box paddingBottom={4} padding={4} background="primary100" hasRadius style={cardStyle}>
-            <Flex direction="column" alignItems="flex-start" gap={2}>
-            <Typography fontWeight="semiBold" textColor="primary700">
-              Αναφορά συγχρονισμού
-            </Typography>
-            <Typography variant="pi">
-              {syncReport.message ||
-                `Προβολές: +${syncReport.created} νέες · ${syncReport.alreadyExists} υπήρχαν · ${syncReport.skippedNoVenue} χωρίς venue_id`}
-            </Typography>
-            {syncReport.theaterShowsScanned != null ? (
-              <Typography variant="pi" textColor="neutral600">
-                Θέατρο: {syncReport.theaterShowsScanned} παραστάσεις · +{syncReport.createdFromTheaterShows ?? 0}{' '}
-                από κωδικούς · +{syncReport.createdFromTheaterVenues ?? 0} από venue bundle
-                {(syncReport.createdCinemaVenues ?? 0) > 0
-                  ? ` · +${syncReport.createdCinemaVenues} νέα σινεμά από More`
-                  : ''}
-                {(syncReport.createdTheaterVenues ?? 0) > 0
-                  ? ` · +${syncReport.createdTheaterVenues} νέοι χώροι θεάτρου από More`
-                  : ''}
-              </Typography>
-            ) : null}
-            {syncReport.venueUpdatedStatuses?.updated ? (
-              <Typography variant="pi" textColor="neutral600">
-                Updated σινεμά: {syncReport.venueUpdatedStatuses.complete} πλήρη ·{' '}
-                {syncReport.venueUpdatedStatuses.needs_manual} χειροκίνητα ·{' '}
-                {syncReport.venueUpdatedStatuses.no_new} χωρίς νέα
-              </Typography>
-            ) : null}
-            {syncReport.missingVenueIds?.length ? (
-              <Typography variant="pi" textColor="danger600">
-                Λείπουν More venueId στο CMS:{' '}
-                {[...new Set(syncReport.missingVenueIds.map((m) => m.moreVenueId))].slice(0, 12).join(', ')}
-              </Typography>
-            ) : null}
-            {syncReport.errors?.length ? (
-              <Typography variant="pi" textColor="danger600">
-                Σφάλματα: {syncReport.errors.length}
-              </Typography>
-            ) : null}
-            </Flex>
+          <Box paddingBottom={4}>
+            <SyncReportPanel report={syncReport} />
           </Box>
         ) : null}
 
