@@ -319,6 +319,12 @@ const App = () => {
                 από κωδικούς · +{syncReport.createdFromTheaterVenues ?? 0} από venue bundle
               </Typography>
             ) : null}
+            {syncReport.missingVenueIds?.length ? (
+              <Typography variant="pi" textColor="danger600" paddingTop={2}>
+                Λείπουν More venueId στο CMS:{' '}
+                {[...new Set(syncReport.missingVenueIds.map((m) => m.moreVenueId))].slice(0, 12).join(', ')}
+              </Typography>
+            ) : null}
             {syncReport.errors?.length ? (
               <Typography variant="pi" textColor="danger600" paddingTop={2}>
                 Σφάλματα: {syncReport.errors.length}
