@@ -9,7 +9,6 @@ import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { cn } from "@/lib/utils";
 import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
-import { theaterScheduleSummary } from "@/lib/theaterSchedule";
 import { performanceOverlapsDateRange, theaterPerformanceSummary } from "@/lib/theaterPerformances";
 
 function ymdToMs(ymd: string): number {
@@ -159,9 +158,7 @@ const TheaterPage = () => {
               {filteredShows.map((show, i) => {
                 const priceLine = theaterPriceLabel(resolveTheaterTicketPrices(show));
                 const showPerformances = performancesByShowSlug.get(show.slug) ?? [];
-                const scheduleLine =
-                  theaterPerformanceSummary(showPerformances) ??
-                  theaterScheduleSummary(show.weeklySchedule, 3);
+                const scheduleLine = theaterPerformanceSummary(showPerformances);
                 return (
                 <EventCard
                   key={show.id}

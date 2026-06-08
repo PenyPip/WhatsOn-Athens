@@ -105,7 +105,6 @@ export const staticPageSeo = {
 export function theaterPageDescription(show: StrapiTheaterShow): string {
   const bits: string[] = [];
   if (show.genre?.trim()) bits.push(show.genre.trim());
-  if (show.venue?.trim()) bits.push(show.venue.trim());
   const synopsis = (show.synopsis ?? "").trim();
   if (synopsis) {
     return truncateDescription(

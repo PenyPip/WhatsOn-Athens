@@ -71,3 +71,20 @@ export default function TheaterTicketPrices({ show, variant = "card", className 
   const prices = resolveTheaterTicketPrices(show);
   return <TheaterTicketPricesDisplay prices={prices} variant={variant} className={className} />;
 }
+
+/** Τιμές εισιτηρίων στο hero (χωρίς εβδομαδιαίο πρόγραμμα). */
+export function TheaterTicketHeroPreview({
+  show,
+  className,
+}: {
+  show: Pick<StrapiTheaterShow, "ticketPrice" | "ticketPriceFrom" | "ticketPriceTo">;
+  className?: string;
+}) {
+  const prices = resolveTheaterTicketPrices(show);
+  if (!theaterHasTicketPrices(prices)) return null;
+  return (
+    <div className={cn("mt-4", className)}>
+      <TheaterTicketPricesDisplay prices={prices} variant="hero" />
+    </div>
+  );
+}

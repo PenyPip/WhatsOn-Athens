@@ -49,12 +49,6 @@
       "type": "date",
       "description": "Τελευταία ημέρα εμφάνισης (μετά δεν φαίνεται στη λίστα / αναζήτηση)."
     },
-    "weekly_schedule": {
-      "type": "component",
-      "repeatable": true,
-      "component": "theater.weekly-slot",
-      "description": "Εβδομαδιαίες μέρες/ώρες."
-    },
     "ticket_price_from": {
       "type": "decimal",
       "description": "Τιμή από (€)."
@@ -89,7 +83,7 @@
     "on_tour": {
       "type": "boolean",
       "default": false,
-      "description": "Περιοδεία — εμφανίζεται στο τμήμα tours της αρχικής. Δεν απαιτείται χώρος (venue)."
+      "description": "Περιοδεία — εμφανίζεται στο τμήμα tours της αρχικής. Οι χώροι ορίζονται στις Θεατρικές παραστάσεις."
     },
     "more_link": {
       "type": "string",
@@ -119,13 +113,6 @@
       "type": "decimal",
       "private": true,
       "description": "Score ταύτισης CMS↔More (0–1)."
-    },
-    "venue": {
-      "type": "relation",
-      "relation": "manyToOne",
-      "target": "api::venue.venue",
-      "inversedBy": "theater_shows",
-      "description": "Προαιρετικό — κύριος/προεπιλεγμένος χώρος. Για συγκεκριμένες ημερομηνίες χρησιμοποίησε «Θεατρικές παραστάσεις»."
     },
     "theater_performances": {
       "type": "relation",

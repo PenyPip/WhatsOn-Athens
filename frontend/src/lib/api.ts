@@ -104,22 +104,6 @@ const MOVIE_GENRE_LABELS: Record<string, string> = {
   other: "Άλλο",
 };
 
-const WEEKDAY_ORDER = [
-  "monday",
-  "tuesday",
-  "wednesday",
-  "thursday",
-  "friday",
-  "saturday",
-  "sunday",
-] as const;
-
-type TheaterWeekday = (typeof WEEKDAY_ORDER)[number];
-
-function theaterWeekdayIsValid(value: string): value is TheaterWeekday {
-  return (WEEKDAY_ORDER as readonly string[]).includes(value);
-}
-
 /** Fallback εμφάνισης · αν `genre` από το mapMovie είναι κενό αλλά υπάρχουν slug στον τύπο. */
 export function movieGenreSlugsToDisplayLine(slugs: string[] | undefined | null): string {
   if (!slugs?.length) return "";
@@ -600,32 +584,6 @@ function parseOptionalDecimal(raw: unknown): number | undefined {
   return Number.isFinite(n) ? n : undefined;
 }
 
-function mapTheaterWeeklySchedule(raw: unknown): TheaterWeeklySlot[] {
-  if (!Array.isArray(raw)) return [];
-  const out: TheaterWeeklySlot[] = [];
-  for (const item of raw) {
-    if (!item || typeof item !== "object") continue;
-    const node = item as Record<string, unknown>;
-    const attrs =
-      node.attributes && typeof node.attributes === "object"
-        ? (node.attributes as Record<string, unknown>)
-        : node;
-    const weekdayRaw = typeof attrs.weekday === "string" ? attrs.weekday.trim().toLowerCase() : "";
-    if (!theaterWeekdayIsValid(weekdayRaw)) continue;
-    const timeRaw = typeof attrs.time === "string" ? attrs.time.trim() : "";
-    if (!timeRaw) continue;
-    out.push({
-      weekday: weekdayRaw,
-      time: timeRaw,
-    });
-  }
-  return out.sort((a, b) => {
-    const dayDiff = WEEKDAY_ORDER.indexOf(a.weekday) - WEEKDAY_ORDER.indexOf(b.weekday);
-    if (dayDiff !== 0) return dayDiff;
-    return a.time.localeCompare(b.time);
-  });
-}
-
 function mapMovie(
   raw: unknown,
   hydrate?: {
@@ -694,13 +652,6 @@ function mapMovie(
 
 function mapTheaterShow(raw: unknown): StrapiTheaterShow {
   const s = unwrapStrapiEntry(raw);
-  const vAttrs = strapiRelationAttrs(s.venue as unknown);
-  const venue =
-    typeof vAttrs?.name === "string" && vAttrs.name
-      ? vAttrs.name
-      : typeof s.venue === "string"
-        ? s.venue
-        : "";
 
   return {
     id: s.id,
@@ -711,7 +662,6 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     cast: normalizeCastFromStrapi(s.cast),
     genre: s.genre,
     duration: s.duration,
-    venue,
     synopsis: s.synopsis,
     posterUrl: strapiMediaUrl(s.poster, "medium") ?? undefined,
     isPremiere: s.is_premiere,
@@ -721,7 +671,6 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     moreLink: typeof s.more_link === "string" ? s.more_link.trim() : "",
     runStart: parseTheaterRunDate(s.run_start) ?? undefined,
     runEnd: parseTheaterRunDate(s.run_end) ?? undefined,
-    weeklySchedule: mapTheaterWeeklySchedule(s.weekly_schedule),
     ticketPrice: parseOptionalDecimal(s.ticket_price),
     ticketPriceFrom: parseOptionalDecimal(s.ticket_price_from),
     ticketPriceTo: parseOptionalDecimal(s.ticket_price_to),
@@ -1280,7 +1229,6 @@ export interface StrapiTheaterShow {
   cast: string[];
   genre: string;
   duration: number;
-  venue: string;
   synopsis: string;
   posterUrl?: string;
   isPremiere?: boolean;
@@ -1293,18 +1241,11 @@ export interface StrapiTheaterShow {
   /** Περίοδος εμφάνισης (YYYY-MM-DD). Κενό = χωρίς όριο. */
   runStart?: string;
   runEnd?: string;
-  /** Εβδομαδιαίο πρόγραμμα: μέρες/ώρες + τιμές από CMS. */
-  weeklySchedule: TheaterWeeklySlot[];
   /** (Παλιό) μοναδική τιμή. */
   ticketPrice?: number;
   /** Τιμή από–έως (€). */
   ticketPriceFrom?: number;
   ticketPriceTo?: number;
-}
-
-export interface TheaterWeeklySlot {
-  weekday: TheaterWeekday;
-  time: string;
 }
 
 export interface StrapiCuisine {
@@ -1536,10 +1477,7 @@ const MOVIE_HOME_LIST_POPULATE: Record<string, string> = {
 
 const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
   "populate[poster]": "*",
-  "populate[venue][fields][0]": "name",
   "populate[cast]": "*",
-  "populate[weekly_schedule][fields][0]": "weekday",
-  "populate[weekly_schedule][fields][1]": "time",
 };
 
 /** Χωρίς fields[] — μόνο έγκυρα πεδία schema (όχι editorial_review/author: δεν υπάρχουν στο Restaurant). */

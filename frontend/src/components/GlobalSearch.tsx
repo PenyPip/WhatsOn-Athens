@@ -43,7 +43,7 @@ function cmpVenueNames(a: StrapiVenue, b: StrapiVenue): number {
 }
 
 function theaterShowMatches(show: StrapiTheaterShow, q: string): boolean {
-  const hay = [show.title ?? "", show.slug ?? "", show.director ?? "", show.genre ?? "", show.venue ?? ""].join(" ");
+  const hay = [show.title ?? "", show.slug ?? "", show.director ?? "", show.genre ?? ""].join(" ");
   return textMatchesSearch(hay, q);
 }
 
@@ -285,11 +285,9 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                           <Theater className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
                           <span className="min-w-0 flex-1">
                             <span className="block truncate font-medium">{s.title || "Παράσταση"}</span>
-                            {(s.director || s.venue) && (
-                              <span className="mt-0.5 block truncate text-xs text-white/45">
-                                {[s.director, s.venue].filter(Boolean).join(" · ")}
-                              </span>
-                            )}
+                            {s.director ? (
+                              <span className="mt-0.5 block truncate text-xs text-white/45">{s.director}</span>
+                            ) : null}
                           </span>
                         </button>
                       </li>

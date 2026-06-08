@@ -95,7 +95,6 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         genre: s.genre,
         duration: s.duration,
         director: s.director,
-        venue: s.venue,
         posterUrl: s.posterUrl,
         onTour: s.onTour,
       })),

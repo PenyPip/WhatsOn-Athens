@@ -125,29 +125,6 @@ export interface SharedCastName extends Schema.Component {
   };
 }
 
-export interface TheaterWeeklySlot extends Schema.Component {
-  collectionName: 'components_theater_weekly_slots';
-  info: {
-    description: '\u03A3\u03C4\u03B1\u03B8\u03B5\u03C1\u03AE \u03B7\u03BC\u03AD\u03C1\u03B1/\u03CE\u03C1\u03B1 \u03B3\u03B9\u03B1 \u03B5\u03C0\u03B1\u03BD\u03B1\u03BB\u03B1\u03BC\u03B2\u03B1\u03BD\u03CC\u03BC\u03B5\u03BD\u03B5\u03C2 \u03C0\u03B1\u03C1\u03B1\u03C3\u03C4\u03AC\u03C3\u03B5\u03B9\u03C2.';
-    displayName: '\u0395\u03B2\u03B4\u03BF\u03BC\u03B1\u03B4\u03B9\u03B1\u03AF\u03B1 \u03CE\u03C1\u03B1 \u03C0\u03B1\u03C1\u03AC\u03C3\u03C4\u03B1\u03C3\u03B7\u03C2';
-  };
-  attributes: {
-    time: Attribute.Time & Attribute.Required;
-    weekday: Attribute.Enumeration<
-      [
-        'monday',
-        'tuesday',
-        'wednesday',
-        'thursday',
-        'friday',
-        'saturday',
-        'sunday'
-      ]
-    > &
-      Attribute.Required;
-  };
-}
-
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
@@ -158,7 +135,6 @@ declare module '@strapi/types' {
       'scheduling.skip-day': SchedulingSkipDay;
       'shared.article-tag': SharedArticleTag;
       'shared.cast-name': SharedCastName;
-      'theater.weekly-slot': TheaterWeeklySlot;
     }
   }
 }

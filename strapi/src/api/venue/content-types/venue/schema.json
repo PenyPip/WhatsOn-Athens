@@ -100,12 +100,6 @@
       "private": true,
       "description": "Μόνο admin — χειροκίνητο περιεχόμενο (links, σημειώσεις)."
     },
-    "theater_shows": {
-      "type": "relation",
-      "relation": "oneToMany",
-      "target": "api::theater-show.theater-show",
-      "mappedBy": "venue"
-    },
     "showtimes": {
       "type": "relation",
       "relation": "oneToMany",

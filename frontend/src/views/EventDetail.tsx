@@ -72,7 +72,7 @@ import { formatTheaterRunPeriod } from "@/lib/theaterRunDates";
 import { isTouringTheaterShow } from "@/lib/theaterTours";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
-import TheaterWeeklySchedule, { TheaterScheduleHeroPreview } from "@/components/TheaterWeeklySchedule";
+import { TheaterTicketHeroPreview } from "@/components/TheaterTicketPrices";
 import ScheduleCompactRow from "@/components/ScheduleCompactRow";
 import { groupTheaterPerformancesByVenue } from "@/lib/theaterPerformances";
 import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
@@ -373,10 +373,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       });
     }
     if (theaterEarly) {
-      return buildTheaterDetailJsonLd({ show: theaterEarly, slug });
+      return buildTheaterDetailJsonLd({ show: theaterEarly, slug, venueNames: performanceVenueNames });
     }
     return null;
-  }, [isLoading, event, slug, movieEarly, theaterEarly, genreLabel, eventShowtimes, venues]);
+  }, [isLoading, event, slug, movieEarly, theaterEarly, genreLabel, eventShowtimes, venues, performanceVenueNames]);
 
   usePageSeo(
     useMemo(() => {
@@ -841,10 +841,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 <span className="flex items-center gap-1">
                   <Users className="w-4 h-4" /> {performanceVenueNames.join(" · ")}
                 </span>
-              ) : theaterShow?.venue?.trim() ? (
-                <span className="flex items-center gap-1">
-                  <Users className="w-4 h-4" /> {theaterShow.venue}
-                </span>
               ) : theaterShow && isTouringTheaterShow(theaterShow) ? (
                 <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
                   Περιοδεία
@@ -855,20 +851,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               ) : null}
             </div>
 
-            {theaterShow &&
-            (hasTheaterPerformances ||
-              theaterShow.weeklySchedule?.length ||
-              theaterShow.ticketPrice != null ||
-              theaterShow.ticketPriceFrom != null ||
-              theaterShow.ticketPriceTo != null) ? (
-              <TheaterScheduleHeroPreview show={theaterShow} />
-            ) : null}
+            {theaterShow ? <TheaterTicketHeroPreview show={theaterShow} /> : null}
 
             <div
-              className={cn(
-                "flex flex-wrap gap-3",
-                hasTheaterPerformances || theaterShow?.weeklySchedule?.length ? "mt-6" : "mt-0",
-              )}
+              className={cn("flex flex-wrap gap-3", hasTheaterPerformances ? "mt-6" : "mt-0")}
             >
               {isMovie ? (
                 <a
@@ -883,13 +869,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   className="inline-flex items-center rounded bg-white px-6 py-3 text-base font-semibold text-[#13143E] transition-colors hover:bg-white/90"
                 >
                   Εμφανίσεις & τιμές
-                </a>
-              ) : theaterShow?.weeklySchedule?.length ? (
-                <a
-                  href="#theater-schedule"
-                  className="inline-flex items-center rounded bg-white px-6 py-3 text-base font-semibold text-[#13143E] transition-colors hover:bg-white/90"
-                >
-                  Πρόγραμμα & τιμές
                 </a>
               ) : null}
               {isMovie && trailerEmbedUrl ? (
@@ -1004,9 +983,6 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               ) : null}
             </section>
             {theaterPerformancesSection}
-            {theaterShow?.weeklySchedule?.length ? (
-              <TheaterWeeklySchedule show={theaterShow} id="theater-schedule" className="max-w-3xl" />
-            ) : null}
             {movieInfoAside}
           </>
         )}

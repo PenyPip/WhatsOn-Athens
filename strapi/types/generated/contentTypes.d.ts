@@ -1025,12 +1025,6 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
-    venue: Attribute.Relation<
-      'api::theater-show.theater-show',
-      'manyToOne',
-      'api::venue.venue'
-    >;
-    weekly_schedule: Attribute.Component<'theater.weekly-slot', true>;
   };
 }
 
@@ -1136,11 +1130,6 @@ export interface ApiVenueVenue extends Schema.CollectionType {
       'api::venue.venue',
       'oneToMany',
       'api::theater-performance.theater-performance'
-    >;
-    theater_shows: Attribute.Relation<
-      'api::venue.venue',
-      'oneToMany',
-      'api::theater-show.theater-show'
     >;
     type: Attribute.Enumeration<['cinema', 'theater', 'other']> &
       Attribute.Required &

@@ -26,11 +26,12 @@ function durationIsoMinutes(minutes: number): string | undefined {
 export type TheaterDetailJsonLdInput = {
   show: StrapiTheaterShow;
   slug: string;
+  venueNames?: string[];
 };
 
 /** JSON-LD: BreadcrumbList + TheaterEvent (παράσταση). */
 export function buildTheaterDetailJsonLd(input: TheaterDetailJsonLdInput): JsonLdObject {
-  const { show, slug } = input;
+  const { show, slug, venueNames = [] } = input;
   const pageUrl = absolutePageUrl(`/theater/${slug}`);
   const poster = resolvePublicAssetUrl(show.posterUrl);
   const synopsis = (show.synopsis ?? "").trim();
@@ -55,11 +56,11 @@ export function buildTheaterDetailJsonLd(input: TheaterDetailJsonLdInput): JsonL
     duration: durationIsoMinutes(show.duration),
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
     eventStatus: "https://schema.org/EventScheduled",
-    location: show.venue?.trim()
-      ? {
+    location: venueNames.length
+      ? venueNames.map((name) => ({
           "@type": "PerformingArtsTheater",
-          name: show.venue.trim(),
-        }
+          name: name.trim(),
+        }))
       : undefined,
     director: show.director?.trim()
       ? { "@type": "Person", name: show.director.trim() }
