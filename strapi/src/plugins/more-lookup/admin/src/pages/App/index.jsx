@@ -28,8 +28,11 @@ function rowKey(row) {
   return `${row.contentType || 'movie'}:${row.cmsId ?? row.movieId ?? row.theaterShowId}`;
 }
 
+const CATALOG_PAGE_SIZE = 50;
+
 const App = () => {
   const [query, setQuery] = useState('');
+  const [catalogPage, setCatalogPage] = useState(1);
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [applyMinScore, setApplyMinScore] = useState(0.45);
@@ -67,6 +70,10 @@ const App = () => {
   useEffect(() => {
     loadStatus();
   }, [loadStatus]);
+
+  useEffect(() => {
+    setCatalogPage(1);
+  }, [result]);
 
   const runLookup = async ({ matchCms, listAll }) => {
     setLoading(true);
@@ -124,6 +131,12 @@ const App = () => {
   const matches = result?.matches ?? [];
   const matchedRows = matches.filter((r) => r.matched);
   const catalog = result?.catalog ?? [];
+  const catalogPageCount = Math.max(1, Math.ceil(catalog.length / CATALOG_PAGE_SIZE));
+  const catalogPageSafe = Math.min(Math.max(1, catalogPage), catalogPageCount);
+  const catalogPageRows = catalog.slice(
+    (catalogPageSafe - 1) * CATALOG_PAGE_SIZE,
+    catalogPageSafe * CATALOG_PAGE_SIZE,
+  );
   const applyResult = result?.apply;
 
   const approveItem = async (row, overwrite = false) => {
@@ -549,9 +562,14 @@ const App = () => {
         {catalog.length > 0 ? (
           <Box paddingTop={6} background="neutral0" shadow="filterShadow" hasRadius>
             <Box padding={4}>
-              <Typography variant="delta">Κατάλογος More</Typography>
+              <Flex justifyContent="space-between" alignItems="center" gap={2} wrap="wrap">
+                <Typography variant="delta">Κατάλογος More</Typography>
+                <Typography variant="pi" textColor="neutral600">
+                  {catalog.length} εγγραφές · {CATALOG_PAGE_SIZE} ανά σελίδα
+                </Typography>
+              </Flex>
             </Box>
-            <Table colCount={4} rowCount={Math.min(catalog.length, 50)}>
+            <Table colCount={4} rowCount={catalogPageRows.length}>
               <Thead>
                 <Tr>
                   <Th>
@@ -569,7 +587,7 @@ const App = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {catalog.slice(0, 50).map((row) => (
+                {catalogPageRows.map((row) => (
                   <Tr key={row.eventGroupCode}>
                     <Td>
                       <Typography>{row.moreTitle}</Typography>
@@ -587,11 +605,35 @@ const App = () => {
                 ))}
               </Tbody>
             </Table>
-            {catalog.length > 50 ? (
+            {catalog.length > CATALOG_PAGE_SIZE ? (
               <Box padding={4}>
-                <Typography variant="pi" textColor="neutral600">
-                  Εμφανίζονται 50 από {catalog.length}. Χρησιμοποίησε φίλτρο τίτλου για στενότερη αναζήτηση.
-                </Typography>
+                <Flex justifyContent="space-between" alignItems="center" gap={3} wrap="wrap">
+                  <Typography variant="pi" textColor="neutral600">
+                    {(catalogPageSafe - 1) * CATALOG_PAGE_SIZE + 1}–
+                    {Math.min(catalogPageSafe * CATALOG_PAGE_SIZE, catalog.length)} από {catalog.length}
+                  </Typography>
+                  <Flex gap={2} alignItems="center">
+                    <Button
+                      size="S"
+                      variant="tertiary"
+                      disabled={catalogPageSafe <= 1}
+                      onClick={() => setCatalogPage((p) => Math.max(1, p - 1))}
+                    >
+                      Προηγούμενη
+                    </Button>
+                    <Typography variant="pi">
+                      Σελίδα {catalogPageSafe} / {catalogPageCount}
+                    </Typography>
+                    <Button
+                      size="S"
+                      variant="tertiary"
+                      disabled={catalogPageSafe >= catalogPageCount}
+                      onClick={() => setCatalogPage((p) => Math.min(catalogPageCount, p + 1))}
+                    >
+                      Επόμενη
+                    </Button>
+                  </Flex>
+                </Flex>
               </Box>
             ) : null}
           </Box>
