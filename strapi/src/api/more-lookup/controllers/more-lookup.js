@@ -180,12 +180,15 @@ module.exports = {
 
     const body = ctx.request.body ?? {};
     const movieId = body.movieId ?? ctx.query?.movieId;
+    const theaterShowId = body.theaterShowId ?? ctx.query?.theaterShowId;
     const adminEmail = ctx.state?.admin?.email || 'unknown';
     strapi.log.info(`[more-showtime-sync] manual run by ${adminEmail}`);
 
     try {
       const report = await syncShowtimesFromMore(strapi, {
         movieId: movieId != null && String(movieId).trim() ? Number(movieId) : undefined,
+        theaterShowId:
+          theaterShowId != null && String(theaterShowId).trim() ? Number(theaterShowId) : undefined,
       });
       ctx.body = report;
     } catch (e) {

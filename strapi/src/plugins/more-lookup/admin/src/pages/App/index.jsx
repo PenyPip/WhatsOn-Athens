@@ -204,13 +204,13 @@ const App = () => {
       setSyncReport(res.data);
       toggleNotification({
         type: res?.data?.created > 0 ? 'success' : 'info',
-        message: res?.data?.message || 'Συγχρονισμός προβολών ολοκληρώθηκε.',
+        message: res?.data?.message || 'Συγχρονισμός ολοκληρώθηκε.',
       });
     } catch (error) {
       const message =
         error?.response?.data?.error?.message ||
         error?.response?.data?.message ||
-        'Αποτυχία συγχρονισμού προβολών.';
+        'Αποτυχία συγχρονισμού.';
       toggleNotification({ type: 'warning', message });
     } finally {
       setLoading(false);
@@ -284,10 +284,11 @@ const App = () => {
         </Box>
 
         <Box paddingTop={4} padding={6} background="neutral0" shadow="filterShadow" hasRadius>
-          <Typography variant="delta">Συγχρονισμός προβολών (cron)</Typography>
+          <Typography variant="delta">Συγχρονισμός προβολών & θεατρικών παραστάσεων (cron)</Typography>
           <Typography variant="omega" textColor="neutral600" paddingTop={2}>
-            Για κάθε ταινία με <strong>event_group_code</strong> καλεί το More API και δημιουργεί{' '}
-            <strong>Προβολή ταινίας</strong> όταν ο χώρος έχει <strong>venue_id</strong> ή{' '}
+            Για κάθε ταινία ή <strong>παράσταση θεάτρου</strong> με <strong>event_group_code</strong>{' '}
+            καλεί το More API και δημιουργεί <strong>Προβολή ταινίας</strong> ή{' '}
+            <strong>Θεατρική παράσταση</strong> όταν ο χώρος έχει <strong>venue_id</strong> ή{' '}
             <strong>venue bundle</strong> (<code>event_group_code</code> στον χώρο, π.χ.{' '}
             <code>evg_aiglecinema_…</code>). Μόνο προσθήκη νέων · cron 06:45.
           </Typography>
@@ -300,7 +301,7 @@ const App = () => {
           ) : (
             <Flex paddingTop={4}>
               <Button variant="success" loading={loading} onClick={syncShowtimes}>
-                Συγχρονισμός προβολών τώρα
+                Συγχρονισμός τώρα
               </Button>
             </Flex>
           )}
@@ -312,6 +313,12 @@ const App = () => {
               {syncReport.message ||
                 `Προβολές: +${syncReport.created} νέες · ${syncReport.alreadyExists} υπήρχαν · ${syncReport.skippedNoVenue} χωρίς venue_id`}
             </Typography>
+            {syncReport.theaterShowsScanned != null ? (
+              <Typography variant="pi" textColor="neutral600" paddingTop={1}>
+                Θέατρο: {syncReport.theaterShowsScanned} παραστάσεις · +{syncReport.createdFromTheaterShows ?? 0}{' '}
+                από κωδικούς · +{syncReport.createdFromTheaterVenues ?? 0} από venue bundle
+              </Typography>
+            ) : null}
             {syncReport.errors?.length ? (
               <Typography variant="pi" textColor="danger600" paddingTop={2}>
                 Σφάλματα: {syncReport.errors.length}
