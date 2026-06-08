@@ -7,6 +7,9 @@ import {
   Typography,
   Button,
   Flex,
+  Grid,
+  GridItem,
+  Divider,
   TextInput,
   Table,
   Thead,
@@ -32,8 +35,12 @@ function catalogKindLabel(row) {
 }
 
 function catalogCmsStatusLabel(row) {
-  if (row.cmsStatus === 'in_cms') return 'Στο CMS';
+  if (row.cmsStatus === 'in_cms') {
+    if (row.kind === 'venue_bundle') return 'Χώρος στο CMS';
+    return 'Στο CMS';
+  }
   if (row.cmsStatus === 'pending') return 'Προς έγκριση';
+  if (row.kind === 'venue_bundle') return 'Λείπει (χώρος)';
   return 'Λείπει';
 }
 
@@ -48,39 +55,96 @@ function formatCodeList(codes) {
   return list.join(' · ');
 }
 
+/** Μία γραμμή ανά κωδικό (κύριος + επιπλέον) για ξεκάθαρο πίνακα ταύτισης. */
+function expandMatchRows(rows) {
+  return rows.flatMap((row) => {
+    const codes =
+      row.suggestedEventGroupCodes?.length > 0
+        ? row.suggestedEventGroupCodes
+        : row.suggestedEventGroupCode
+          ? [row.suggestedEventGroupCode]
+          : [];
+    if (!codes.length) return [];
+
+    const byCode = new Map(
+      (row.moreMatches || []).map((match) => [match.suggestedEventGroupCode, match]),
+    );
+
+    return codes.map((code, index) => {
+      const match = byCode.get(code) || {};
+      return {
+        ...row,
+        displayKey: `${rowKey(row)}:${code}`,
+        displayCode: code,
+        displayMoreTitle: match.moreTitle ?? row.moreTitle,
+        displayScore: Number(match.score ?? row.score),
+        displayVerify: match.verify ?? row.verify,
+        codeRole: index === 0 ? 'κύριος' : 'επιπλέον',
+      };
+    });
+  });
+}
+
 const CATALOG_PAGE_SIZE = 50;
 
-function ActionRow({ title, description, children }) {
+const cardStyle = {
+  border: '1px solid #eaeaef',
+  borderRadius: '4px',
+};
+
+function WorkflowStep({ number, title, detail }) {
   return (
-    <Flex
-      gap={4}
-      padding={4}
-      alignItems="flex-start"
-      justifyContent="space-between"
-      wrap="wrap"
-      background="neutral100"
-      hasRadius
-    >
-      <Box style={{ flex: '1 1 16rem', minWidth: '14rem' }}>
+    <Flex gap={3} alignItems="flex-start" padding={3} background="neutral100" hasRadius style={{ height: '100%' }}>
+      <Flex
+        alignItems="center"
+        justifyContent="center"
+        background="primary100"
+        hasRadius
+        style={{ width: '2rem', height: '2rem', flexShrink: 0 }}
+      >
+        <Typography fontWeight="bold" textColor="primary600">
+          {number}
+        </Typography>
+      </Flex>
+      <Box>
         <Typography fontWeight="semiBold" textColor="neutral800">
           {title}
         </Typography>
         <Typography variant="pi" textColor="neutral600" paddingTop={1}>
-          {description}
+          {detail}
         </Typography>
       </Box>
-      <Flex alignItems="center" style={{ flexShrink: 0 }}>
-        {children}
-      </Flex>
     </Flex>
   );
 }
 
-function SectionIntro({ children }) {
+function StatBadge({ label, value, tone = 'neutral' }) {
+  const bg = tone === 'success' ? 'success100' : tone === 'warning' ? 'warning100' : 'neutral100';
   return (
-    <Typography variant="omega" textColor="neutral600">
-      {children}
-    </Typography>
+    <Box padding={3} background={bg} hasRadius style={{ minWidth: '7rem' }}>
+      <Typography variant="pi" textColor="neutral600">
+        {label}
+      </Typography>
+      <Typography fontWeight="bold" textColor="neutral800" paddingTop={1}>
+        {value}
+      </Typography>
+    </Box>
+  );
+}
+
+function PanelHeader({ title, subtitle, action }) {
+  return (
+    <Flex justifyContent="space-between" alignItems="flex-start" gap={3} wrap="wrap" paddingBottom={4}>
+      <Box style={{ flex: '1 1 12rem' }}>
+        <Typography variant="delta">{title}</Typography>
+        {subtitle ? (
+          <Typography variant="pi" textColor="neutral600" paddingTop={1}>
+            {subtitle}
+          </Typography>
+        ) : null}
+      </Box>
+      {action ? <Box style={{ flexShrink: 0 }}>{action}</Box> : null}
+    </Flex>
   );
 }
 
@@ -184,6 +248,7 @@ const App = () => {
 
   const matches = result?.matches ?? [];
   const matchedRows = matches.filter((r) => r.matched);
+  const matchDisplayRows = expandMatchRows(matchedRows);
   const catalog = result?.catalog ?? [];
   const catalogFiltered = catalogOnlyMissing
     ? catalog.filter((row) => !row.inCms)
@@ -195,6 +260,14 @@ const App = () => {
     catalogPageSafe * CATALOG_PAGE_SIZE,
   );
   const applyResult = result?.apply;
+  const catalogInCms = result?.stats?.catalogInCms ?? catalog.filter((row) => row.inCms).length;
+  const catalogMissing = result?.stats?.catalogMissing ?? catalog.filter((row) => !row.inCms).length;
+  const hasResults =
+    Boolean(result) ||
+    Boolean(syncReport) ||
+    matchedRows.length > 0 ||
+    pendingApproval.length > 0 ||
+    (catalog.length > 0 && (!catalogOnlyMissing || catalogFiltered.length > 0));
 
   const approveItem = async (row, overwrite = false) => {
     setLoading(true);
@@ -302,105 +375,151 @@ const App = () => {
           </Box>
         ) : (
           <>
-            <Box padding={6} background="neutral0" shadow="filterShadow" hasRadius>
-              <Typography variant="delta">Τι κάνει αυτή η σελίδα</Typography>
-              <Box paddingTop={3}>
-                <SectionIntro>
-                  Το More.com δίνει σε κάθε ταινία/παράσταση έναν κωδικό{' '}
-                  <strong>event_group_code</strong> (π.χ. <code>evg_arkoudotrupa_…</code>). Με αυτόν
-                  συγχρονίζονται οι ώρες προβολής. Εδώ:
-                </SectionIntro>
-                <Box paddingTop={2} paddingLeft={2}>
-                  <Typography variant="pi" textColor="neutral600">
-                    1. Βρίσκεις/ταυτίζεις κωδικούς CMS ↔ More
-                    <br />
-                    2. Τους γράφεις στο πεδίο <strong>event_group_code</strong> της ταινίας ή της
-                    παράστασης
-                    <br />
-                    3. Τρέχεις συγχρονισμό για νέες προβολές / θεατρικές παραστάσεις
-                  </Typography>
-                </Box>
-              </Box>
+            <Box padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
+              <Typography variant="sigma" textColor="neutral600" fontWeight="semiBold">
+                ΡΟΗ ΕΡΓΑΣΙΑΣ
+              </Typography>
+              <Grid paddingTop={3} gap={3}>
+                <GridItem col={4} s={12}>
+                  <WorkflowStep
+                    number="1"
+                    title="Ταύτιση"
+                    detail="Σύγκριση CMS ↔ More · προτάσεις κωδικών"
+                  />
+                </GridItem>
+                <GridItem col={4} s={12}>
+                  <WorkflowStep
+                    number="2"
+                    title="Εγγραφή"
+                    detail="Αυτόματη ή χειροκίνητη στο event_group_code"
+                  />
+                </GridItem>
+                <GridItem col={4} s={12}>
+                  <WorkflowStep
+                    number="3"
+                    title="Sync"
+                    detail="Νέες προβολές / παραστάσεις από More API"
+                  />
+                </GridItem>
+              </Grid>
             </Box>
 
-            <Box paddingTop={4} padding={6} background="neutral0" shadow="filterShadow" hasRadius>
-              <Typography variant="delta">Βήμα 1 — Κωδικοί More</Typography>
-              <Box paddingTop={2} paddingBottom={4} maxWidth="32rem">
-                <TextInput
-                  label="Φίλτρο τίτλου (προαιρετικό)"
-                  name="query"
-                  hint="Περιορίζει ταύτιση ή κατάλογο — π.χ. «Αρκουδότρυπα»"
-                  placeholder="π.χ. Αρκουδότρυπα"
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                />
-              </Box>
+            <Box paddingTop={4} padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
+              <PanelHeader
+                title="Βήμα 1 — Κωδικοί More"
+                subtitle="Ταύτιση και εγγραφή event_group_code · δεν αλλάζει τίποτα χωρίς «Γράψε αυτόματα»"
+              />
+              <Grid gap={4}>
+                <GridItem col={7} s={12}>
+                  <TextInput
+                    label="Φίλτρο τίτλου"
+                    name="query"
+                    hint="Προαιρετικό — π.χ. «Αρκουδότρυπα»"
+                    placeholder="Αναζήτηση τίτλου…"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                    disabled={loading}
+                  />
+                </GridItem>
+                <GridItem col={5} s={12}>
+                  <Box paddingTop={6}>
+                    <Checkbox
+                      checked={overwriteExisting}
+                      onCheckedChange={(checked) => setOverwriteExisting(checked === true)}
+                      disabled={loading}
+                    >
+                      Αντικατάσταση υπάρχοντος κωδικού
+                    </Checkbox>
+                    <Typography variant="pi" textColor="neutral500" paddingTop={1} paddingLeft={6}>
+                      Όταν υπάρχει ήδη διαφορετικός event_group_code
+                    </Typography>
+                  </Box>
+                </GridItem>
+              </Grid>
 
-              <Flex direction="column" gap={3}>
-                <ActionRow
-                  title="1. Ταύτιση με CMS (μόνο προβολή)"
-                  description="Συγκρίνει ταινίες και παραστάσεις θεάτρου με τον πλήρη κατάλογο More. Δείχνει προτάσεις, «Προς έγκριση» και πίνακα καταλόγου (με φίλτρο «μόνο μη περασμένα») — δεν αλλάζει τίποτα στο CMS."
+              <Flex gap={3} paddingTop={4} wrap="wrap">
+                <Button loading={loading} onClick={runLookup} disabled={loading} style={{ minWidth: '11rem' }}>
+                  Εκτέλεση ταύτισης
+                </Button>
+                <Button
+                  variant="success"
+                  loading={loading}
+                  onClick={applyToCms}
+                  disabled={loading}
+                  style={{ minWidth: '11rem' }}
                 >
-                  <Button loading={loading} onClick={runLookup}>
-                    Εκτέλεση ταύτισης
-                  </Button>
-                </ActionRow>
-
-                <ActionRow
-                  title="2. Αυτόματη εγγραφή στο CMS"
-                  description={`Γράφει όλους τους κωδικούς με score ≥ ${applyMinScore.toFixed(2)} (κύριος + επιπλέον more_event_groups). Για χαμηλότερο score: χειροκίνητα ή «Προς έγκριση» (θέατρο).`}
-                >
-                  <Button variant="success" loading={loading} onClick={applyToCms}>
-                    Γράψε αυτόματα
-                  </Button>
-                </ActionRow>
+                  Γράψε αυτόματα
+                </Button>
               </Flex>
-
-              <Box paddingTop={4} padding={3} background="neutral100" hasRadius>
-                <Checkbox
-                  checked={overwriteExisting}
-                  onCheckedChange={(checked) => setOverwriteExisting(checked === true)}
-                >
-                  Αντικατάσταση υπάρχοντος event_group_code (όταν υπάρχει ήδη διαφορετικός κωδικός)
-                </Checkbox>
-              </Box>
+              <Typography variant="pi" textColor="neutral500" paddingTop={3}>
+                Η ταύτιση δείχνει πλήρη κατάλογο More και προτάσεις. Το «Γράψε αυτόματα» εφαρμόζει
+                κωδικούς με score ≥ {applyMinScore.toFixed(2)} (κύριος + more_event_groups).
+              </Typography>
             </Box>
 
-            <Box paddingTop={4} padding={6} background="neutral0" shadow="filterShadow" hasRadius>
-              <Typography variant="delta">Βήμα 2 — Συγχρονισμός προβολών</Typography>
-              <Box paddingTop={2}>
-                <SectionIntro>
-                  Για κάθε ταινία/παράσταση με <strong>event_group_code</strong> καλεί το More API και
-                  δημιουργεί <strong>Προβολή ταινίας</strong> ή <strong>Θεατρική παράσταση</strong>.
-                  Χρειάζεται χώρος με <strong>venue_id</strong> ή venue bundle — αλλιώς δημιουργείται
-                  σινεμά/θέατρο αυτόματα όπου επιτρέπεται. Μόνο νέες εγγραφές · cron καθημερινά 06:45.
-                </SectionIntro>
-              </Box>
-              {!showtimeSyncEnabled ? (
-                <Box paddingTop={3}>
-                  <Typography textColor="danger600">
-                    Απενεργοποιημένο (MORE_SHOWTIME_SYNC_ENABLED=false).
-                  </Typography>
-                </Box>
-              ) : (
-                <Box paddingTop={4}>
-                  <ActionRow
-                    title="Συγχρονισμός τώρα"
-                    description="Ίδια λογική με το cron — χειροκίνητο trigger για άμεσο αποτέλεσμα. Το report εμφανίζεται από κάτω."
-                  >
-                    <Button variant="success" loading={loading} onClick={syncShowtimes}>
+            <Box paddingTop={4} padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
+              <PanelHeader
+                title="Βήμα 2 — Συγχρονισμός προβολών"
+                subtitle="More API → Προβολή ταινίας / Θεατρική παράσταση · cron καθημερινά 06:45"
+                action={
+                  showtimeSyncEnabled ? (
+                    <Button variant="success" loading={loading} onClick={syncShowtimes} disabled={loading}>
                       Τρέξε sync
                     </Button>
-                  </ActionRow>
-                </Box>
+                  ) : null
+                }
+              />
+              {!showtimeSyncEnabled ? (
+                <Typography textColor="danger600">
+                  Απενεργοποιημένο (MORE_SHOWTIME_SYNC_ENABLED=false).
+                </Typography>
+              ) : (
+                <Typography variant="pi" textColor="neutral600">
+                  Χρειάζεται event_group_code ανά ταινία/παράσταση και χώρος με venue_id ή bundle.
+                  Δημιουργούνται μόνο νέες εγγραφές.
+                </Typography>
               )}
             </Box>
           </>
         )}
 
+        {hasResults ? (
+          <Box paddingTop={6}>
+            <Divider />
+            <Box paddingTop={5} paddingBottom={2}>
+              <Typography variant="delta">Αποτελέσματα</Typography>
+            </Box>
+          </Box>
+        ) : null}
+
+        {result?.stats ? (
+          <Flex gap={3} wrap="wrap" paddingBottom={4}>
+            {result.stats.matched != null ? (
+              <StatBadge
+                label="Ταύτιση CMS"
+                value={`${result.stats.matched}/${(result.stats.cmsMovies ?? 0) + (result.stats.cmsTheaterShows ?? 0)}`}
+                tone="success"
+              />
+            ) : null}
+            {result.stats.catalogMissing != null ? (
+              <StatBadge label="Λείπουν από CMS" value={catalogMissing} tone={catalogMissing > 0 ? 'warning' : 'success'} />
+            ) : null}
+            {result.stats.catalogInCms != null ? (
+              <StatBadge label="Στο CMS" value={catalogInCms} />
+            ) : null}
+            {result.stats.pendingApproval != null ? (
+              <StatBadge label="Προς έγκριση" value={result.stats.pendingApproval} />
+            ) : null}
+            <StatBadge label="Διάρκεια" value={`${result.durationMs}ms`} />
+          </Flex>
+        ) : null}
+
         {syncReport ? (
-          <Box paddingTop={4} padding={4} background="primary100" hasRadius>
-            <Typography variant="pi" fontWeight="bold">
+          <Box paddingBottom={4} padding={4} background="primary100" hasRadius style={cardStyle}>
+            <Typography fontWeight="semiBold" textColor="primary700">
+              Αναφορά συγχρονισμού
+            </Typography>
+            <Typography variant="pi" paddingTop={2}>
               {syncReport.message ||
                 `Προβολές: +${syncReport.created} νέες · ${syncReport.alreadyExists} υπήρχαν · ${syncReport.skippedNoVenue} χωρίς venue_id`}
             </Typography>
@@ -437,45 +556,34 @@ const App = () => {
           </Box>
         ) : null}
 
-        {result?.stats ? (
-          <Box paddingTop={4}>
-            <Typography variant="pi" textColor="neutral600">
-              {result.durationMs}ms · More σινεμά: {result.stats.moreMovies} · θέατρο:{' '}
-              {result.stats.moreTheaterShows ?? '—'} · venue bundles: {result.stats.venueBundles}
-              {result.stats.matched != null
-                ? ` · ταύτιση CMS: ${result.stats.matched}/${(result.stats.cmsMovies ?? 0) + (result.stats.cmsTheaterShows ?? 0)}`
-                : ''}
-            </Typography>
-          </Box>
-        ) : null}
-
         {applyResult ? (
-          <Box paddingTop={4} padding={4} background="success100" hasRadius>
-            <Typography variant="pi" fontWeight="bold">
-              Εγγραφή CMS: {applyResult.stats.applied} ενημερώθηκαν · {applyResult.stats.skipped}{' '}
+          <Box paddingBottom={4} padding={4} background="success100" hasRadius style={cardStyle}>
+            <Typography fontWeight="semiBold">
+              Εγγραφή CMS · {applyResult.stats.applied} ενημερώθηκαν · {applyResult.stats.skipped}{' '}
               παραλείφθηκαν
             </Typography>
             {applyResult.applied?.length ? (
               <Typography variant="pi" textColor="neutral600" paddingTop={2}>
                 {applyResult.applied
-                  .slice(0, 15)
-                  .map((r) => `${r.cmsTitle} → ${r.eventGroupCode}`)
+                  .slice(0, 20)
+                  .map((r) =>
+                    `${r.cmsTitle} → ${r.eventGroupCode}${r.addedAsSecondary ? ' (επιπλέον)' : ''}`,
+                  )
                   .join(' · ')}
               </Typography>
             ) : null}
           </Box>
         ) : null}
 
-        {matchedRows.length > 0 ? (
-          <Box paddingTop={6} background="neutral0" shadow="filterShadow" hasRadius>
+        {matchDisplayRows.length > 0 ? (
+          <Box paddingBottom={6} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
             <Box padding={4}>
-              <Typography variant="delta">Αποτελέσματα ταύτισης (CMS → More)</Typography>
-              <Typography variant="pi" textColor="neutral600" paddingTop={1}>
-                Προτάσεις κωδικού ανά εγγραφή CMS · Score = βεβαιότητα ταύτισης · API = επαλήθευση
-                από More
-              </Typography>
+              <PanelHeader
+                title="Πίνακας 1 — Προτάσεις ταύτισης"
+                subtitle="Τι θα έγραφε το «Γράψε αυτόματα» (κύριος + επιπλέον κωδικοί). Μόνο προβολή — δεν αλλάζει το CMS."
+              />
             </Box>
-            <Table colCount={7} rowCount={matchedRows.length}>
+            <Table colCount={8} rowCount={matchDisplayRows.length}>
               <Thead>
                 <Tr>
                   <Th>
@@ -483,6 +591,9 @@ const App = () => {
                   </Th>
                   <Th>
                     <Typography variant="sigma">CMS τίτλος</Typography>
+                  </Th>
+                  <Th>
+                    <Typography variant="sigma">Ρόλος</Typography>
                   </Th>
                   <Th>
                     <Typography variant="sigma">More τίτλος</Typography>
@@ -497,13 +608,13 @@ const App = () => {
                     <Typography variant="sigma">API</Typography>
                   </Th>
                   <Th>
-                    <Typography variant="sigma">CMS</Typography>
+                    <Typography variant="sigma">CMS τώρα</Typography>
                   </Th>
                 </Tr>
               </Thead>
               <Tbody>
-                {matchedRows.map((row) => (
-                  <Tr key={rowKey(row)}>
+                {matchDisplayRows.map((row) => (
+                  <Tr key={row.displayKey}>
                     <Td>
                       <Badge>{cmsTypeLabel(row.contentType)}</Badge>
                     </Td>
@@ -511,33 +622,27 @@ const App = () => {
                       <Typography textColor="neutral800">{row.cmsTitle}</Typography>
                     </Td>
                     <Td>
-                      <Typography textColor="neutral600">{row.moreTitle}</Typography>
-                      {(row.moreMatches?.length ?? 0) > 1 ? (
-                        <Typography variant="pi" textColor="neutral500" paddingTop={1}>
-                          +{(row.moreMatches?.length ?? 0) - 1} ακόμα στο More
-                        </Typography>
-                      ) : null}
+                      <Badge>{row.codeRole}</Badge>
                     </Td>
                     <Td>
-                      <Typography fontWeight="bold">
-                        {formatCodeList(row.suggestedEventGroupCodes || [row.suggestedEventGroupCode])}
-                      </Typography>
+                      <Typography textColor="neutral600">{row.displayMoreTitle}</Typography>
                     </Td>
                     <Td>
-                      <Typography>{row.score.toFixed(2)}</Typography>
+                      <Typography fontWeight="bold">{row.displayCode}</Typography>
+                    </Td>
+                    <Td>
+                      <Typography>{row.displayScore.toFixed(2)}</Typography>
                     </Td>
                     <Td>
                       <Typography variant="pi">
-                        {row.verify?.ok
-                          ? `${row.verify.eventCount} ev / ${row.verify.venueCount} venues`
-                          : row.verify?.error || '—'}
+                        {row.displayVerify?.ok
+                          ? `${row.displayVerify.eventCount} ev / ${row.displayVerify.venueCount} venues`
+                          : row.displayVerify?.error || '—'}
                       </Typography>
                     </Td>
                     <Td>
                       {(row.cmsEventGroupCodes?.length ?? 0) > 0 ? (
-                        <Badge>
-                          {formatCodeList(row.cmsEventGroupCodes)}
-                        </Badge>
+                        <Badge>{formatCodeList(row.cmsEventGroupCodes)}</Badge>
                       ) : (
                         <Badge>κενό</Badge>
                       )}
@@ -550,21 +655,17 @@ const App = () => {
         ) : null}
 
         {pendingApproval.length > 0 ? (
-          <Box paddingTop={6} background="neutral0" shadow="filterShadow" hasRadius>
+          <Box paddingBottom={6} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
             <Box padding={4}>
-              <Flex justifyContent="space-between" alignItems="center" wrap="wrap" gap={2}>
-                <Typography variant="delta">
-                  Προς έγκριση ({pendingApproval.length})
-                </Typography>
-                <Button size="S" variant="success" loading={loading} onClick={approveAllPending}>
-                  Έγκριση όλων
-                </Button>
-              </Flex>
-              <Typography variant="pi" textColor="neutral600" paddingTop={2}>
-                Χαμηλό score (&lt; {applyMinScore.toFixed(2)}) — μόνο για <strong>θέατρο</strong>:
-                έλεγξε και πάτα Έγκριση. Για <strong>ταινίες</strong> γράψε τον κωδικό χειροκίνητα στο
-                CMS ή τρέξε «Γράψε αυτόματα» αν το score είναι αρκετό.
-              </Typography>
+              <PanelHeader
+                title={`Πίνακας 2 — Προς έγκριση (${pendingApproval.length})`}
+                subtitle={`Διαφορετικός από τον πίνακα 1: χαμηλό score (< ${applyMinScore.toFixed(2)}), κυρίως θέατρο — χρειάζεται κλικ «Έγκριση»`}
+                action={
+                  <Button size="S" variant="success" loading={loading} onClick={approveAllPending} disabled={loading}>
+                    Έγκριση όλων
+                  </Button>
+                }
+              />
             </Box>
             <Table colCount={7} rowCount={pendingApproval.length}>
               <Thead>
@@ -647,9 +748,9 @@ const App = () => {
         ) : null}
 
         {result?.unmatched?.length > 0 ? (
-          <Box paddingTop={4} padding={4} background="neutral100" hasRadius>
-            <Typography variant="pi" fontWeight="bold">
-              Χωρίς καμία πρόταση ({result.unmatched.length})
+          <Box paddingBottom={4} padding={4} background="warning100" hasRadius style={cardStyle}>
+            <Typography fontWeight="semiBold">
+              Χωρίς πρόταση ({result.unmatched.length})
             </Typography>
             <Typography variant="pi" textColor="neutral600" paddingTop={2}>
               {result.unmatched
@@ -661,25 +762,18 @@ const App = () => {
         ) : null}
 
         {catalog.length > 0 && (!catalogOnlyMissing || catalogFiltered.length > 0) ? (
-          <Box paddingTop={6} background="neutral0" shadow="filterShadow" hasRadius>
+          <Box paddingBottom={6} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
             <Box padding={4}>
-              <Flex justifyContent="space-between" alignItems="center" gap={2} wrap="wrap">
-                <Typography variant="delta">Κατάλογος More</Typography>
-                <Typography variant="pi" textColor="neutral600">
-                  {catalogFiltered.length}
-                  {catalogOnlyMissing ? ' μη περασμένα' : ''} · {catalog.length} σύνολο · στο CMS:{' '}
-                  {result?.stats?.catalogInCms ?? catalog.filter((row) => row.inCms).length} · λείπουν:{' '}
-                  {result?.stats?.catalogMissing ?? catalog.filter((row) => !row.inCms).length}
-                </Typography>
-              </Flex>
-              <Box paddingTop={3}>
-                <Checkbox
-                  checked={catalogOnlyMissing}
-                  onCheckedChange={(checked) => setCatalogOnlyMissing(checked === true)}
-                >
-                  Εμφάνιση μόνο κωδικών που λείπουν από το CMS (μόνο στον πίνακα καταλόγου)
-                </Checkbox>
-              </Box>
+              <PanelHeader
+                title="Πίνακας 3 — Κατάλογος More"
+                subtitle={`Όλα από More (όχι ανά CMS ταινία). ${catalogFiltered.length} εμφανίζονται · ${catalogMissing} λείπουν από CMS`}
+              />
+              <Checkbox
+                checked={catalogOnlyMissing}
+                onCheckedChange={(checked) => setCatalogOnlyMissing(checked === true)}
+              >
+                Μόνο κωδικοί που λείπουν από το CMS
+              </Checkbox>
             </Box>
             <Table colCount={6} rowCount={catalogPageRows.length}>
               <Thead>
