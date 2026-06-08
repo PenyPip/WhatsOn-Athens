@@ -330,6 +330,9 @@ const App = () => {
               <Typography variant="pi" textColor="neutral600" paddingTop={1}>
                 Θέατρο: {syncReport.theaterShowsScanned} παραστάσεις · +{syncReport.createdFromTheaterShows ?? 0}{' '}
                 από κωδικούς · +{syncReport.createdFromTheaterVenues ?? 0} από venue bundle
+                {(syncReport.createdTheaterVenues ?? 0) > 0
+                  ? ` · +${syncReport.createdTheaterVenues} νέοι χώροι από More`
+                  : ''}
               </Typography>
             ) : null}
             {syncReport.missingVenueIds?.length ? (

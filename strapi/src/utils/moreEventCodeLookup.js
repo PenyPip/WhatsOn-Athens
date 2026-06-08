@@ -123,7 +123,15 @@ async function verifyEventGroupCode(code) {
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     });
     if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
-    const events = await res.json();
+    const raw = await res.text();
+    const trimmed = raw.trim();
+    if (!trimmed) return { ok: false, error: 'κενή απάντηση More API' };
+    let events;
+    try {
+      events = JSON.parse(trimmed);
+    } catch (e) {
+      return { ok: false, error: e?.message || 'invalid JSON' };
+    }
     if (!Array.isArray(events)) return { ok: false, error: 'not array' };
 
     const venues = new Map();
