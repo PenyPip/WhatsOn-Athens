@@ -1,5 +1,16 @@
 import type { Attribute, Schema } from '@strapi/strapi';
 
+export interface CinemaMoreEventGroup extends Schema.Component {
+  collectionName: 'components_cinema_more_event_groups';
+  info: {
+    description: '\u0395\u03C0\u03B9\u03C0\u03BB\u03AD\u03BF\u03BD More.com eventGroupCode \u03B1\u03BD\u03AC \u03C4\u03B1\u03B9\u03BD\u03AF\u03B1 (\u03C0.\u03C7. \u03B4\u03B9\u03B1\u03C6\u03BF\u03C1\u03B5\u03C4\u03B9\u03BA\u03AE \u03AD\u03BA\u03B4\u03BF\u03C3\u03B7/\u03B3\u03BB\u03CE\u03C3\u03C3\u03B1).';
+    displayName: 'More event group';
+  };
+  attributes: {
+    code: Attribute.String & Attribute.Required;
+  };
+}
+
 export interface CinemaDayPrice extends Schema.Component {
   collectionName: 'components_cinema_day_prices';
   info: {
@@ -21,6 +32,17 @@ export interface CinemaDayPrice extends Schema.Component {
       ]
     > &
       Attribute.Required;
+  };
+}
+
+export interface CinemaMoreEventGroup extends Schema.Component {
+  collectionName: 'components_cinema_more_event_groups';
+  info: {
+    description: '\u0395\u03C0\u03B9\u03C0\u03BB\u03AD\u03BF\u03BD More.com eventGroupCode \u03B1\u03BD\u03AC \u03C4\u03B1\u03B9\u03BD\u03AF\u03B1 (\u03C0.\u03C7. \u03B4\u03B9\u03B1\u03C6\u03BF\u03C1\u03B5\u03C4\u03B9\u03BA\u03AE \u03AD\u03BA\u03B4\u03BF\u03C3\u03B7/\u03B3\u03BB\u03CE\u03C3\u03C3\u03B1).';
+    displayName: 'More event group';
+  };
+  attributes: {
+    code: Attribute.String & Attribute.Required;
   };
 }
 
@@ -141,6 +163,8 @@ declare module '@strapi/types' {
   export module Shared {
     export interface Components {
       'cinema.day-price': CinemaDayPrice;
+      'cinema.more-event-group': CinemaMoreEventGroup;
+      'cinema.more-event-group': CinemaMoreEventGroup;
       'home.layout-section': HomeLayoutSection;
       'navigation.nav-item': NavigationNavItem;
       'scheduling.skip-day': SchedulingSkipDay;

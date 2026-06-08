@@ -719,9 +719,11 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'api::editorial-review.editorial-review'
     >;
     event_group_code: Attribute.String;
+    more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
     imdb_rating: Attribute.Decimal;
     is_dubbed: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
+    more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
     most_talked_about: Attribute.Boolean & Attribute.DefaultTo<false>;
     movie_genres: Attribute.Relation<
       'api::movie.movie',
@@ -729,6 +731,9 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'api::movie-genre.movie-genre'
     >;
     original_title: Attribute.String & Attribute.Required & Attribute.Unique;
+    pending_event_group_code: Attribute.String & Attribute.Private;
+    pending_match_score: Attribute.Decimal & Attribute.Private;
+    pending_more_title: Attribute.String & Attribute.Private;
     poster: Attribute.Media<'images'>;
     publishedAt: Attribute.DateTime;
     release_date: Attribute.Date;
@@ -1048,6 +1053,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     image: Attribute.Media<'images'>;
     info: Attribute.Text & Attribute.Private;
     more_link: Attribute.String;
+    more_sync_log: Attribute.Text & Attribute.Private;
     name: Attribute.String & Attribute.Required;
     publishedAt: Attribute.DateTime;
     seats_total: Attribute.Integer;
@@ -1074,6 +1080,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    venue_id: Attribute.String;
   };
 }
 

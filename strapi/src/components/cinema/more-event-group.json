@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_cinema_more_event_groups",
+  "info": {
+    "displayName": "More event group",
+    "description": "Επιπλέον More.com eventGroupCode ανά ταινία (π.χ. διαφορετική έκδοση/γλώσσα)."
+  },
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true,
+      "description": "Per-movie κωδικός More (evg_*). Όχι venue bundle."
+    }
+  }
+}

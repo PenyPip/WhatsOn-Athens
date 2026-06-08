@@ -39,6 +39,15 @@
       "type": "string",
       "description": "URL ιστοσελίδας/κρατήσεων του χώρου (σινεμά ή θέατρο) — εμφανίζεται ως «Περισσότερα» / κράτηση."
     },
+    "venue_id": {
+      "type": "string",
+      "description": "More.com venueId (π.χ. 3345 για Αίγλη). Χρησιμοποιείται από cron συγχρονισμού προβολών."
+    },
+    "more_sync_log": {
+      "type": "text",
+      "private": true,
+      "description": "Τελευταίο report cron/agent συγχρονισμού More (JSON)."
+    },
     "seats_total": {
       "type": "integer"
     },
