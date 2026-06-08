@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
+import './more-lookup-admin.css';
 import {
   Layout,
   HeaderLayout,
@@ -90,6 +91,15 @@ const CATALOG_PAGE_SIZE = 50;
 const cardStyle = {
   border: '1px solid #eaeaef',
   borderRadius: '4px',
+};
+
+const actionButtonStyle = {
+  minWidth: '11rem',
+  minHeight: '2.5rem',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  lineHeight: 1.25,
 };
 
 function WorkflowStep({ number, title, detail }) {
@@ -644,6 +654,7 @@ const App = () => {
         subtitle="Σύνδεση CMS (ταινίες, θέατρο) με More.com και εισαγωγή προβολών"
       />
       <ContentLayout>
+        <div className="more-lookup-page">
         {!enabled ? (
           <Box padding={6} background="neutral0" shadow="filterShadow" hasRadius>
             <Typography textColor="danger600">
@@ -718,8 +729,13 @@ const App = () => {
                 </GridItem>
               </Grid>
 
-              <Flex gap={3} paddingTop={4} wrap="wrap">
-                <Button loading={loading} onClick={runLookup} disabled={loading} style={{ minWidth: '11rem' }}>
+              <Flex gap={3} paddingTop={4} wrap="wrap" alignItems="center">
+                <Button
+                  loading={loading}
+                  onClick={runLookup}
+                  disabled={loading}
+                  style={actionButtonStyle}
+                >
                   Εκτέλεση ταύτισης
                 </Button>
                 <Button
@@ -727,7 +743,7 @@ const App = () => {
                   loading={loading}
                   onClick={applyToCms}
                   disabled={loading}
-                  style={{ minWidth: '11rem' }}
+                  style={actionButtonStyle}
                 >
                   Γράψε αυτόματα
                 </Button>
@@ -746,7 +762,13 @@ const App = () => {
                 subtitle="More API → Προβολή ταινίας / Παράσταση · cron καθημερινά 06:45"
                 action={
                   showtimeSyncEnabled ? (
-                    <Button variant="success" loading={loading} onClick={syncShowtimes} disabled={loading}>
+                    <Button
+                      variant="success"
+                      loading={loading}
+                      onClick={syncShowtimes}
+                      disabled={loading}
+                      style={actionButtonStyle}
+                    >
                       Τρέξε sync
                     </Button>
                   ) : null
@@ -1121,6 +1143,7 @@ const App = () => {
             ) : null}
           </Box>
         ) : null}
+        </div>
       </ContentLayout>
     </Layout>
   );

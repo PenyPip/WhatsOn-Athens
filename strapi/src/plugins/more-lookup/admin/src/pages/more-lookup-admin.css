@@ -1,0 +1,22 @@
+/* Στοίχιση κειμένου / loader στα κουμπιά Strapi DS (ειδικά με loading + ελληνικά). */
+.more-lookup-page button {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem;
+  line-height: 1.25 !important;
+  min-height: 2.5rem;
+}
+
+.more-lookup-page button > span {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 0.5rem;
+  line-height: 1.25 !important;
+}
+
+.more-lookup-page button svg {
+  flex-shrink: 0;
+  margin: 0 !important;
+}
