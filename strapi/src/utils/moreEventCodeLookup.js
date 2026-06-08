@@ -8,7 +8,11 @@ const FETCH_TIMEOUT_MS = 25_000;
 const MIN_HINT_SCORE = 0.45;
 const DEFAULT_MIN_SCORE = MIN_HINT_SCORE;
 const DEFAULT_APPLY_MIN_SCORE = Number(process.env.MORE_LOOKUP_APPLY_MIN_SCORE || MIN_HINT_SCORE);
-const { collectEventGroupCodes } = require('./moreEventGroupCodes');
+const {
+  collectEventGroupCodes,
+  collectVenueBundleCodes,
+  collectTheaterVenueBundleCodes,
+} = require('./moreEventGroupCodes');
 
 const CMS_LOOKUP_CONFIG = {
   movie: {
@@ -309,6 +313,88 @@ async function loadAllCmsItems(strapi) {
     loadCmsTheaterShows(strapi),
   ]);
   return [...movies, ...theaterShows];
+}
+
+async function loadCmsVenues(strapi) {
+  const rows = await strapi.entityService.findMany('api::venue.venue', {
+    fields: ['id', 'name', 'type', 'event_group_code', 'more_link'],
+    populate: { more_event_groups: true },
+    publicationState: 'preview',
+    pagination: { pageSize: 500 },
+  });
+  return Array.isArray(rows) ? rows : [];
+}
+
+function collectVenueMoreCodes(venue) {
+  const codes = new Set([
+    ...collectVenueBundleCodes(venue),
+    ...collectTheaterVenueBundleCodes(venue),
+  ]);
+  const direct = String(venue?.event_group_code ?? '').trim();
+  if (direct && /^evg_/i.test(direct)) codes.add(direct);
+  const fromLink = String(venue?.more_link ?? '').match(/(evg_[a-z0-9_]+)/i);
+  if (fromLink?.[1]) codes.add(fromLink[1]);
+  return [...codes];
+}
+
+function buildCmsEventGroupCodeIndex(cmsItems, cmsVenues) {
+  const byCode = new Map();
+
+  const add = (code, ref) => {
+    const key = String(code || '').trim();
+    if (!key) return;
+    if (!byCode.has(key)) byCode.set(key, []);
+    byCode.get(key).push(ref);
+  };
+
+  for (const item of cmsItems) {
+    for (const code of collectEventGroupCodes(item)) {
+      add(code, {
+        contentType: item.contentType,
+        cmsId: item.id,
+        cmsTitle: item.title,
+        inCms: true,
+      });
+    }
+    const pending = String(item.pendingEventGroupCode || '').trim();
+    if (pending) {
+      add(pending, {
+        contentType: item.contentType,
+        cmsId: item.id,
+        cmsTitle: item.title,
+        pending: true,
+        inCms: false,
+      });
+    }
+  }
+
+  for (const venue of cmsVenues) {
+    for (const code of collectVenueMoreCodes(venue)) {
+      add(code, {
+        contentType: 'venue',
+        cmsId: venue.id,
+        cmsTitle: venue.name,
+        venueType: venue.type,
+        inCms: true,
+      });
+    }
+  }
+
+  return byCode;
+}
+
+function annotateCatalogWithCmsStatus(entries, cmsCodeIndex) {
+  return entries.map((entry) => {
+    const refs = cmsCodeIndex.get(entry.eventGroupCode) || [];
+    const inCms = refs.some((ref) => ref.inCms);
+    const pendingOnly = refs.length > 0 && refs.every((ref) => ref.pending);
+    return {
+      ...entry,
+      inCms,
+      cmsRefs: refs,
+      cmsStatus: inCms ? 'in_cms' : pendingOnly ? 'pending' : 'missing',
+    };
+  });
 }
 
 function cmsHasEventGroupCode(cms, code) {
@@ -690,6 +776,12 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
   }
 
   if (!matchCms || query?.trim() || listAll) {
+    const [cmsItems, cmsVenues] = await Promise.all([
+      loadAllCmsItems(strapi),
+      loadCmsVenues(strapi),
+    ]);
+    const cmsCodeIndex = buildCmsEventGroupCodeIndex(cmsItems, cmsVenues);
+
     const withVerify = await attachVerification(
       catalogRows.map((e) => ({
         moreTitle: e.title,
@@ -700,8 +792,10 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
       })),
       skipVerify,
     );
-    result.catalog = withVerify;
-    result.stats.catalogShown = withVerify.length;
+    result.catalog = annotateCatalogWithCmsStatus(withVerify, cmsCodeIndex);
+    result.stats.catalogShown = result.catalog.length;
+    result.stats.catalogInCms = result.catalog.filter((row) => row.inCms).length;
+    result.stats.catalogMissing = result.catalog.filter((row) => !row.inCms).length;
   }
 
   result.durationMs = Date.now() - started;

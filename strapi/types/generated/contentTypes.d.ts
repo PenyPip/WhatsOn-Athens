@@ -1134,7 +1134,9 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     type: Attribute.Enumeration<['cinema', 'theater', 'other']> &
       Attribute.Required &
       Attribute.DefaultTo<'cinema'>;
-    updated: Attribute.Boolean & Attribute.Private & Attribute.DefaultTo<false>;
+    updated: Attribute.Enumeration<['no_new', 'complete', 'needs_manual']> &
+      Attribute.Private &
+      Attribute.DefaultTo<'no_new'>;
     updatedAt: Attribute.DateTime;
     updatedBy: Attribute.Relation<
       'api::venue.venue',

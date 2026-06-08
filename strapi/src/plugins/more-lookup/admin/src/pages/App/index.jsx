@@ -21,7 +21,20 @@ import { useFetchClient, useNotification } from '@strapi/helper-plugin';
 
 function cmsTypeLabel(contentType) {
   if (contentType === 'theater_show') return 'Θέατρο';
+  if (contentType === 'venue') return 'Χώρος';
   return 'Ταινία';
+}
+
+function catalogKindLabel(row) {
+  if (row.kind === 'venue_bundle') return 'Σινεμά bundle';
+  if (row.category === 'theater') return 'Θέατρο';
+  return 'Ταινία';
+}
+
+function catalogCmsStatusLabel(row) {
+  if (row.cmsStatus === 'in_cms') return 'Στο CMS';
+  if (row.cmsStatus === 'pending') return 'Προς έγκριση';
+  return 'Λείπει';
 }
 
 function rowKey(row) {
@@ -33,6 +46,7 @@ const CATALOG_PAGE_SIZE = 50;
 const App = () => {
   const [query, setQuery] = useState('');
   const [catalogPage, setCatalogPage] = useState(1);
+  const [catalogOnlyMissing, setCatalogOnlyMissing] = useState(false);
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [applyMinScore, setApplyMinScore] = useState(0.45);
@@ -73,7 +87,7 @@ const App = () => {
 
   useEffect(() => {
     setCatalogPage(1);
-  }, [result]);
+  }, [result, catalogOnlyMissing]);
 
   const runLookup = async ({ matchCms, listAll }) => {
     setLoading(true);
@@ -131,9 +145,12 @@ const App = () => {
   const matches = result?.matches ?? [];
   const matchedRows = matches.filter((r) => r.matched);
   const catalog = result?.catalog ?? [];
-  const catalogPageCount = Math.max(1, Math.ceil(catalog.length / CATALOG_PAGE_SIZE));
+  const catalogFiltered = catalogOnlyMissing
+    ? catalog.filter((row) => !row.inCms)
+    : catalog;
+  const catalogPageCount = Math.max(1, Math.ceil(catalogFiltered.length / CATALOG_PAGE_SIZE));
   const catalogPageSafe = Math.min(Math.max(1, catalogPage), catalogPageCount);
-  const catalogPageRows = catalog.slice(
+  const catalogPageRows = catalogFiltered.slice(
     (catalogPageSafe - 1) * CATALOG_PAGE_SIZE,
     catalogPageSafe * CATALOG_PAGE_SIZE,
   );
@@ -330,9 +347,19 @@ const App = () => {
               <Typography variant="pi" textColor="neutral600" paddingTop={1}>
                 Θέατρο: {syncReport.theaterShowsScanned} παραστάσεις · +{syncReport.createdFromTheaterShows ?? 0}{' '}
                 από κωδικούς · +{syncReport.createdFromTheaterVenues ?? 0} από venue bundle
-                {(syncReport.createdTheaterVenues ?? 0) > 0
-                  ? ` · +${syncReport.createdTheaterVenues} νέοι χώροι από More`
+                {(syncReport.createdCinemaVenues ?? 0) > 0
+                  ? ` · +${syncReport.createdCinemaVenues} νέα σινεμά από More`
                   : ''}
+                {(syncReport.createdTheaterVenues ?? 0) > 0
+                  ? ` · +${syncReport.createdTheaterVenues} νέοι χώροι θεάτρου από More`
+                  : ''}
+              </Typography>
+            ) : null}
+            {syncReport.venueUpdatedStatuses?.updated ? (
+              <Typography variant="pi" textColor="neutral600" paddingTop={1}>
+                Updated σινεμά: {syncReport.venueUpdatedStatuses.complete} πλήρη ·{' '}
+                {syncReport.venueUpdatedStatuses.needs_manual} χειροκίνητα ·{' '}
+                {syncReport.venueUpdatedStatuses.no_new} χωρίς νέα
               </Typography>
             ) : null}
             {syncReport.missingVenueIds?.length ? (
@@ -568,18 +595,35 @@ const App = () => {
               <Flex justifyContent="space-between" alignItems="center" gap={2} wrap="wrap">
                 <Typography variant="delta">Κατάλογος More</Typography>
                 <Typography variant="pi" textColor="neutral600">
-                  {catalog.length} εγγραφές · {CATALOG_PAGE_SIZE} ανά σελίδα
+                  {catalogFiltered.length}
+                  {catalogOnlyMissing ? ' μη περασμένα' : ''} · {catalog.length} σύνολο · στο CMS:{' '}
+                  {result?.stats?.catalogInCms ?? catalog.filter((row) => row.inCms).length} · λείπουν:{' '}
+                  {result?.stats?.catalogMissing ?? catalog.filter((row) => !row.inCms).length}
                 </Typography>
               </Flex>
+              <Box paddingTop={3}>
+                <Checkbox
+                  checked={catalogOnlyMissing}
+                  onCheckedChange={(checked) => setCatalogOnlyMissing(checked === true)}
+                >
+                  Μόνο μη περασμένα στο CMS
+                </Checkbox>
+              </Box>
             </Box>
-            <Table colCount={4} rowCount={catalogPageRows.length}>
+            <Table colCount={6} rowCount={catalogPageRows.length}>
               <Thead>
                 <Tr>
                   <Th>
-                    <Typography variant="sigma">Ταινία More</Typography>
+                    <Typography variant="sigma">Τύπος</Typography>
+                  </Th>
+                  <Th>
+                    <Typography variant="sigma">Τίτλος More</Typography>
                   </Th>
                   <Th>
                     <Typography variant="sigma">event_group_code</Typography>
+                  </Th>
+                  <Th>
+                    <Typography variant="sigma">CMS</Typography>
                   </Th>
                   <Th>
                     <Typography variant="sigma">events</Typography>
@@ -593,10 +637,25 @@ const App = () => {
                 {catalogPageRows.map((row) => (
                   <Tr key={row.eventGroupCode}>
                     <Td>
+                      <Badge>{catalogKindLabel(row)}</Badge>
+                    </Td>
+                    <Td>
                       <Typography>{row.moreTitle}</Typography>
                     </Td>
                     <Td>
                       <Typography fontWeight="bold">{row.eventGroupCode}</Typography>
+                    </Td>
+                    <Td>
+                      {row.inCms ? (
+                        <Badge>
+                          {catalogCmsStatusLabel(row)}
+                          {row.cmsRefs?.[0]?.cmsTitle ? `: ${row.cmsRefs[0].cmsTitle}` : ''}
+                        </Badge>
+                      ) : row.cmsStatus === 'pending' ? (
+                        <Badge>Προς έγκριση</Badge>
+                      ) : (
+                        <Badge>Λείπει</Badge>
+                      )}
                     </Td>
                     <Td>
                       <Typography>{row.verify?.ok ? row.verify.eventCount : '—'}</Typography>
@@ -608,12 +667,13 @@ const App = () => {
                 ))}
               </Tbody>
             </Table>
-            {catalog.length > CATALOG_PAGE_SIZE ? (
+            {catalogFiltered.length > CATALOG_PAGE_SIZE ? (
               <Box padding={4}>
                 <Flex justifyContent="space-between" alignItems="center" gap={3} wrap="wrap">
                   <Typography variant="pi" textColor="neutral600">
                     {(catalogPageSafe - 1) * CATALOG_PAGE_SIZE + 1}–
-                    {Math.min(catalogPageSafe * CATALOG_PAGE_SIZE, catalog.length)} από {catalog.length}
+                    {Math.min(catalogPageSafe * CATALOG_PAGE_SIZE, catalogFiltered.length)} από{' '}
+                    {catalogFiltered.length}
                   </Typography>
                   <Flex gap={2} alignItems="center">
                     <Button

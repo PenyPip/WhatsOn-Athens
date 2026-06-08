@@ -1,7 +1,7 @@
 'use strict';
 
 /**
- * Κάθε Δευτέρα 06:00 (ώρα server) — `venue.updated` → false για όλα τα σινεμά.
+ * Κάθε Δευτέρα 06:00 (ώρα server) — `venue.updated` → no_new για όλα τα σινεμά.
  * Ο administrator το ξαναενεργοποιεί χειροκίνητα όταν ολοκληρώσει το πρόγραμμα της εβδομάδας.
  */
 module.exports = {

@@ -6,11 +6,42 @@ const {
   collectVenueBundleCodes,
   collectTheaterVenueBundleCodes,
 } = require('./moreEventGroupCodes');
+const {
+  createVenueSyncStatsTracker,
+  applyCinemaVenueUpdatedStatuses,
+  migrateVenueUpdatedBooleanToEnum,
+} = require('../api/venue/services/venue-updated-status');
 
 const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 120);
 
-/** Κατά sync θεάτρου: δημιουργία χώρου από More αν λείπει (venueId / venueName). */
+/** Κατά sync: δημιουργία χώρου από More αν λείπει (venueId / venueName). */
 const AUTO_CREATE_THEATER_VENUES = process.env.MORE_THEATER_SYNC_AUTO_CREATE_VENUES !== 'false';
+const AUTO_CREATE_CINEMA_VENUES = process.env.MORE_CINEMA_SYNC_AUTO_CREATE_VENUES !== 'false';
+
+const VENUE_AUTO_CREATE = {
+  theater: {
+    isEnabled: () => AUTO_CREATE_THEATER_VENUES,
+    venueType: 'theater',
+    findTypeFilter: { $ne: 'cinema' },
+    defaultNamePrefix: 'Θέατρο More',
+    info: 'Αυτόματη δημιουργία από More theater sync.',
+    slugPrefix: 'theater',
+    countKey: 'createdTheaterVenues',
+    listKey: 'createdTheaterVenuesList',
+    logTag: 'more-theater-sync',
+  },
+  cinema: {
+    isEnabled: () => AUTO_CREATE_CINEMA_VENUES,
+    venueType: 'cinema',
+    findTypeFilter: 'cinema',
+    defaultNamePrefix: 'Σινεμά More',
+    info: 'Αυτόματη δημιουργία από More cinema sync.',
+    slugPrefix: 'cinema',
+    countKey: 'createdCinemaVenues',
+    listKey: 'createdCinemaVenuesList',
+    logTag: 'more-cinema-sync',
+  },
+};
 
 /** More eventDate συχνά χωρίς timezone — θεωρούμε ώρα Αθήνας (+03:00). */
 function parseMoreEventDatetime(raw) {
@@ -134,18 +165,21 @@ function registerVenueInLookup(lookup, venue) {
   if (nameKey) lookup.byName.set(nameKey, venue);
 }
 
-function buildVenueDataFromMoreEvent(event) {
+function buildVenueDataFromMoreEvent(event, config) {
   const moreVenueId = normalizeMoreVenueId(event?.venueId);
   const name = String(event?.venueName || '').trim();
-  const venueName = name || (moreVenueId ? `Θέατρο More ${moreVenueId}` : '');
+  const venueName = name || (moreVenueId ? `${config.defaultNamePrefix} ${moreVenueId}` : '');
 
   const data = {
     name: venueName,
-    type: 'theater',
+    type: config.venueType,
     publishedAt: new Date().toISOString(),
-    info: 'Αυτόματη δημιουργία από More theater sync.',
+    info: config.info,
   };
   if (moreVenueId) data.venue_id = moreVenueId;
+  if (config.venueType === 'cinema' && /θεριν|summer/i.test(venueName)) {
+    data.summer_outdoor = true;
+  }
 
   const mapUrl = String(event?.venueMapUrl || event?.venueMapURL || '').trim();
   if (mapUrl && /google\.com\/maps/i.test(mapUrl)) {
@@ -155,8 +189,8 @@ function buildVenueDataFromMoreEvent(event) {
   const lat = event?.venueLatitude ?? event?.venueLat;
   const lng = event?.venueLongitude ?? event?.venueLng;
   if (!data.google_maps_url && lat != null && lng != null) {
-    const la = Number(lat);
-    const lo = Number(lng);
+    const la = Number(String(lat).replace(',', '.'));
+    const lo = Number(String(lng).replace(',', '.'));
     if (Number.isFinite(la) && Number.isFinite(lo)) {
       data.google_maps_url = `https://www.google.com/maps?q=${la},${lo}`;
     }
@@ -165,12 +199,16 @@ function buildVenueDataFromMoreEvent(event) {
   return { data, moreVenueId, venueName };
 }
 
-async function findTheaterVenueByMoreId(strapi, moreVenueId) {
+async function findVenueByMoreId(strapi, moreVenueId, config) {
   if (!moreVenueId) return null;
+  const typeFilter =
+    typeof config.findTypeFilter === 'string'
+      ? config.findTypeFilter
+      : { $ne: 'cinema' };
   const rows = await strapi.entityService.findMany('api::venue.venue', {
     filters: {
       venue_id: moreVenueId,
-      type: { $ne: 'cinema' },
+      type: typeFilter,
     },
     fields: ['id', 'name', 'slug', 'venue_id', 'summer_outdoor', 'type'],
     publicationState: 'preview',
@@ -179,21 +217,24 @@ async function findTheaterVenueByMoreId(strapi, moreVenueId) {
   return Array.isArray(rows) && rows.length ? rows[0] : null;
 }
 
-async function createTheaterVenueFromMore(strapi, event, report) {
-  const { data, moreVenueId, venueName } = buildVenueDataFromMoreEvent(event);
+async function createVenueFromMore(strapi, event, report, config) {
+  const { data, moreVenueId, venueName } = buildVenueDataFromMoreEvent(event, config);
   if (!venueName) return null;
+
+  if (!Array.isArray(report[config.listKey])) report[config.listKey] = [];
+  if (typeof report[config.countKey] !== 'number') report[config.countKey] = 0;
 
   try {
     const created = await strapi.entityService.create('api::venue.venue', { data });
-    report.createdTheaterVenues += 1;
-    report.createdTheaterVenuesList.push({
+    report[config.countKey] += 1;
+    report[config.listKey].push({
       id: created.id,
       name: created.name,
       slug: created.slug,
       moreVenueId: moreVenueId || null,
     });
     strapi.log.info(
-      `[more-theater-sync] created venue ${created.id} ${created.name} (moreVenueId=${moreVenueId || '—'})`,
+      `[${config.logTag}] created venue ${created.id} ${created.name} (moreVenueId=${moreVenueId || '—'})`,
     );
     return created;
   } catch (e) {
@@ -202,22 +243,23 @@ async function createTheaterVenueFromMore(strapi, event, report) {
       try {
         const slugSuffix = String(moreVenueId).replace(/\W+/g, '-');
         const created = await strapi.entityService.create('api::venue.venue', {
-          data: { ...data, slug: `theater-${slugSuffix}` },
+          data: { ...data, slug: `${config.slugPrefix}-${slugSuffix}` },
         });
-        report.createdTheaterVenues += 1;
-        report.createdTheaterVenuesList.push({
+        report[config.countKey] += 1;
+        report[config.listKey].push({
           id: created.id,
           name: created.name,
           slug: created.slug,
           moreVenueId,
         });
         strapi.log.info(
-          `[more-theater-sync] created venue ${created.id} ${created.name} (slug fallback, moreVenueId=${moreVenueId})`,
+          `[${config.logTag}] created venue ${created.id} ${created.name} (slug fallback, moreVenueId=${moreVenueId})`,
         );
         return created;
       } catch (e2) {
         report.errors.push({
           action: 'create_venue',
+          venueType: config.venueType,
           moreVenueId,
           name: venueName,
           error: e2?.message || String(e2),
@@ -227,6 +269,7 @@ async function createTheaterVenueFromMore(strapi, event, report) {
     }
     report.errors.push({
       action: 'create_venue',
+      venueType: config.venueType,
       moreVenueId,
       name: venueName,
       error: msg,
@@ -236,19 +279,19 @@ async function createTheaterVenueFromMore(strapi, event, report) {
 }
 
 /**
- * Επιστρέφει θεατρικό venue από lookup ή το δημιουργεί από More event.
+ * Επιστρέφει venue από lookup ή το δημιουργεί από More event.
  * @param {Map<string, Promise<object|null>>} pendingVenueCreates
  */
-async function ensureTheaterVenueFromMoreEvent(strapi, lookup, event, report, pendingVenueCreates) {
+async function ensureVenueFromMoreEvent(strapi, lookup, event, report, pendingVenueCreates, config) {
   const existing = resolveVenueFromMoreEvent(lookup, event);
   if (existing) return existing;
 
-  if (!AUTO_CREATE_THEATER_VENUES) return null;
+  if (!config.isEnabled()) return null;
 
   const moreVenueId = normalizeMoreVenueId(event?.venueId);
   const nameKey = normalizeVenueName(event?.venueName);
-  const pendingKey = moreVenueId || (nameKey ? `name:${nameKey}` : null);
-  if (!pendingKey) return null;
+  const pendingKey = `${config.venueType}:${moreVenueId || (nameKey ? `name:${nameKey}` : '')}`;
+  if (pendingKey === `${config.venueType}:`) return null;
 
   if (pendingVenueCreates.has(pendingKey)) {
     return pendingVenueCreates.get(pendingKey);
@@ -256,14 +299,14 @@ async function ensureTheaterVenueFromMoreEvent(strapi, lookup, event, report, pe
 
   const promise = (async () => {
     if (moreVenueId) {
-      const fromDb = await findTheaterVenueByMoreId(strapi, moreVenueId);
+      const fromDb = await findVenueByMoreId(strapi, moreVenueId, config);
       if (fromDb) {
         registerVenueInLookup(lookup, fromDb);
         return fromDb;
       }
     }
 
-    const created = await createTheaterVenueFromMore(strapi, event, report);
+    const created = await createVenueFromMore(strapi, event, report, config);
     if (created) {
       registerVenueInLookup(lookup, created);
     }
@@ -276,6 +319,14 @@ async function ensureTheaterVenueFromMoreEvent(strapi, lookup, event, report, pe
   } finally {
     pendingVenueCreates.delete(pendingKey);
   }
+}
+
+function ensureTheaterVenueFromMoreEvent(strapi, lookup, event, report, pendingVenueCreates) {
+  return ensureVenueFromMoreEvent(strapi, lookup, event, report, pendingVenueCreates, VENUE_AUTO_CREATE.theater);
+}
+
+function ensureCinemaVenueFromMoreEvent(strapi, lookup, event, report, pendingVenueCreates) {
+  return ensureVenueFromMoreEvent(strapi, lookup, event, report, pendingVenueCreates, VENUE_AUTO_CREATE.cinema);
 }
 
 async function loadVenueByMoreId(strapi, venueType) {
@@ -562,25 +613,31 @@ async function syncMovieShowtimesFromMore(strapi, {
     venuesWithBundleCode: venuesWithBundle.length,
     createdFromMovies: 0,
     createdFromVenues: 0,
+    createdCinemaVenues: 0,
+    createdCinemaVenuesList: [],
     byMovie: [],
     byVenue: [],
   };
 
+  const pendingVenueCreates = new Map();
+  const venueSyncTracker = createVenueSyncStatsTracker();
+
+  if (!movies.length && !venuesWithBundle.length) {
+    report.note = 'Δεν υπάρχουν ταινίες με per-movie event_group_code ούτε σινεμά με venue bundle.';
+    return report;
+  }
+
   if (!movies.length) {
-    report.note = 'Δεν υπάρχουν ταινίες με per-movie event_group_code.';
-    return report;
-  }
-
-  if (!venueLookup.byMoreId.size && !venuesWithBundle.length) {
     report.note =
-      'Δεν υπάρχουν σινεμά με venue_id ή venue bundle event_group_code (π.χ. evg_aiglecinema_…).';
-    return report;
+      'Δεν υπάρχουν ταινίες με per-movie event_group_code — συγχρονισμός μόνο από venue bundle σινεμά.';
   }
 
-  const eventIdIndex = await buildEventIdIndex(movies, eventsCache, (movie) => ({
-    movieId: movie.id,
-    movieTitle: movie.title,
-  }));
+  const eventIdIndex = movies.length
+    ? await buildEventIdIndex(movies, eventsCache, (movie) => ({
+        movieId: movie.id,
+        movieTitle: movie.title,
+      }))
+    : new Map();
 
   for (const movie of movies) {
     const codes = collectEventGroupCodes(movie);
@@ -599,13 +656,23 @@ async function syncMovieShowtimesFromMore(strapi, {
         const events = await eventsCache.get(code);
 
         for (const event of events) {
-          const venue = resolveVenueFromMoreEvent(venueLookup, event);
+          let venue = resolveVenueFromMoreEvent(venueLookup, event);
+          if (!venue) {
+            venue = await ensureCinemaVenueFromMoreEvent(
+              strapi,
+              venueLookup,
+              event,
+              report,
+              pendingVenueCreates,
+            );
+          }
           if (!venue) {
             report.skippedNoVenue += 1;
             movieStats.skipped += 1;
             continue;
           }
 
+          venueSyncTracker.touch(venue.id);
           const result = await upsertShowtimeFromEvent(strapi, report, {
             event,
             movieId: movie.id,
@@ -613,6 +680,7 @@ async function syncMovieShowtimesFromMore(strapi, {
             now,
             statsTarget: movieStats,
           });
+          venueSyncTracker.recordUpsertResult(venue.id, result);
           if (result === 'created') report.createdFromMovies += 1;
         }
       } catch (e) {
@@ -636,7 +704,10 @@ async function syncMovieShowtimesFromMore(strapi, {
       alreadyExists: 0,
       skipped: 0,
       skippedUnknownEventId: 0,
+      skippedVenueMismatch: 0,
     };
+
+    venueSyncTracker.touch(venue.id);
 
     for (const code of venue.bundleCodes) {
       try {
@@ -649,6 +720,7 @@ async function syncMovieShowtimesFromMore(strapi, {
             report.skippedUnknownEventId += 1;
             venueStats.skippedUnknownEventId += 1;
             venueStats.skipped += 1;
+            venueSyncTracker.record(venue.id, { skippedUnknownEventId: 1 });
             continue;
           }
 
@@ -657,6 +729,8 @@ async function syncMovieShowtimesFromMore(strapi, {
             const expected = String(venue.venue_id).trim();
             if (expected && moreVenueId && moreVenueId !== expected) {
               venueStats.skipped += 1;
+              venueStats.skippedVenueMismatch += 1;
+              venueSyncTracker.record(venue.id, { skippedVenueMismatch: 1 });
               continue;
             }
           }
@@ -668,10 +742,13 @@ async function syncMovieShowtimesFromMore(strapi, {
             now,
             statsTarget: venueStats,
           });
+          venueSyncTracker.recordUpsertResult(venue.id, result);
           if (result === 'created') report.createdFromVenues += 1;
         }
       } catch (e) {
         const msg = e?.message || String(e);
+        venueStats.errors = (venueStats.errors || 0) + 1;
+        venueSyncTracker.record(venue.id, { errors: 1 });
         report.errors.push({
           venueId: venue.id,
           name: venue.name,
@@ -689,6 +766,13 @@ async function syncMovieShowtimesFromMore(strapi, {
     ) {
       report.byVenue.push(venueStats);
     }
+  }
+
+  if (venueSyncTracker.entries().length > 0) {
+    await migrateVenueUpdatedBooleanToEnum(strapi);
+    report.venueUpdatedStatuses = await applyCinemaVenueUpdatedStatuses(strapi, venueSyncTracker, {
+      autoCreatedVenueIds: (report.createdCinemaVenuesList || []).map((v) => v.id),
+    });
   }
 
   return report;
@@ -954,6 +1038,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     createdFromTheaterVenues: theaterReport.createdFromTheaterVenues,
     createdTheaterVenues: theaterReport.createdTheaterVenues,
     createdTheaterVenuesList: theaterReport.createdTheaterVenuesList,
+    createdCinemaVenues: movieReport.createdCinemaVenues,
+    createdCinemaVenuesList: movieReport.createdCinemaVenuesList,
+    venueUpdatedStatuses: movieReport.venueUpdatedStatuses,
     alreadyExists: movieReport.alreadyExists + theaterReport.alreadyExists,
     updatedSoldOut: theaterReport.updatedSoldOut,
     skippedPast: movieReport.skippedPast + theaterReport.skippedPast,
@@ -976,6 +1063,12 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     `Νέες: ${created} (ταινίες: ${report.createdFromMovies} · σινεμά bundle: ${report.createdFromVenues}` +
     ` · θέατρο: ${report.createdFromTheaterShows} · θέατρο bundle: ${report.createdFromTheaterVenues})` +
     ` · υπήρχαν: ${report.alreadyExists}` +
+    (report.createdCinemaVenues
+      ? ` · νέα σινεμά: ${report.createdCinemaVenues}`
+      : '') +
+    (report.venueUpdatedStatuses?.updated
+      ? ` · updated: ${report.venueUpdatedStatuses.complete} πλήρη · ${report.venueUpdatedStatuses.needs_manual} χειροκίνητα · ${report.venueUpdatedStatuses.no_new} χωρίς νέα`
+      : '') +
     (report.createdTheaterVenues
       ? ` · νέοι χώροι θεάτρου: ${report.createdTheaterVenues}`
       : '') +

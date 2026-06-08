@@ -1,8 +1,12 @@
 'use strict';
 
+const {
+  VENUE_UPDATED_STATUS,
+  migrateVenueUpdatedBooleanToEnum,
+} = require('./venue-updated-status');
+
 /**
- * Όλο το αυτόματο program sync καταργήθηκε.
- * Ο administrator διαχειρίζεται χειροκίνητα μόνο το `updated`.
+ * Το `updated` ενημερώνεται αυτόματα από More sync (σινεμά) και χειροκίνητα από administrator.
  */
 
 async function syncVenueProgramStatus() {
@@ -22,13 +26,14 @@ async function scheduleVenueProgramSyncFromShowtime() {
 }
 
 async function resetCinemaManualCompleted(strapi) {
+  await migrateVenueUpdatedBooleanToEnum(strapi);
   const result = await strapi.db.query('api::venue.venue').updateMany({
     where: { type: 'cinema' },
-    data: { updated: false },
+    data: { updated: VENUE_UPDATED_STATUS.NO_NEW },
   });
   const count = typeof result?.count === 'number' ? result.count : 0;
   if (count > 0) {
-    strapi.log.info(`[whatson] venue updated → false (Δευτέρα πρωί): ${count} σινεμά`);
+    strapi.log.info(`[whatson] venue updated → no_new (Δευτέρα πρωί): ${count} σινεμά`);
   }
   return count;
 }

@@ -17,9 +17,20 @@ const SyncProgramPage = () => {
           </Typography>
           <Box paddingTop={4}>
             <Typography>
-              Το πεδίο «updated» ενημερώνεται χειροκίνητα από administrator. Κάθε Δευτέρα 06:00 (ώρα server)
-              επανέρχεται αυτόματα σε false για όλα τα σινεμά.
+              Το πεδίο «updated» (σινεμά) ενημερώνεται από τον More sync και χειροκίνητα από administrator:
             </Typography>
+            <Box paddingTop={2}>
+              <Typography variant="pi" textColor="neutral600">
+                · <strong>no_new</strong> — δεν βρέθηκαν καινούργιες προβολές
+                <br />
+                · <strong>complete</strong> — νέες προβολές και πλήρης συγχρονισμός
+                <br />
+                · <strong>needs_manual</strong> — απαιτεί χειροκίνητη δουλειά (λείπουν ταινίες, νέο
+                auto-create σινεμά κ.λπ.)
+                <br />
+                Κάθε Δευτέρα 06:00 επανέρχεται σε <strong>no_new</strong>.
+              </Typography>
+            </Box>
           </Box>
         </Box>
       </ContentLayout>
