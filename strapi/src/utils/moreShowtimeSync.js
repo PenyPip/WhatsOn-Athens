@@ -7,7 +7,6 @@ const {
   collectTheaterVenueBundleCodes,
 } = require('./moreEventGroupCodes');
 
-const DEFAULT_HORIZON_DAYS = Number(process.env.MORE_SHOWTIME_SYNC_HORIZON_DAYS || 56);
 const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 120);
 
 /** More eventDate συχνά χωρίς timezone — θεωρούμε ώρα Αθήνας (+03:00). */
@@ -271,7 +270,6 @@ async function upsertShowtimeFromEvent(strapi, report, {
   movieId,
   venue,
   now,
-  horizonEnd,
   statsTarget,
 }) {
   const datetime = parseMoreEventDatetime(event.eventDate);
@@ -285,12 +283,6 @@ async function upsertShowtimeFromEvent(strapi, report, {
     report.skippedPast += 1;
     if (statsTarget) statsTarget.skipped += 1;
     return 'past';
-  }
-
-  if (datetime > horizonEnd) {
-    report.skippedHorizon += 1;
-    if (statsTarget) statsTarget.skipped += 1;
-    return 'horizon';
   }
 
   const exists = await showtimeExistsAt(strapi, {
@@ -325,7 +317,6 @@ async function upsertPerformanceFromEvent(strapi, report, {
   theaterShowId,
   venue,
   now,
-  horizonEnd,
   statsTarget,
 }) {
   const datetime = parseMoreEventDatetime(event.eventDate);
@@ -339,12 +330,6 @@ async function upsertPerformanceFromEvent(strapi, report, {
     report.skippedPast += 1;
     if (statsTarget) statsTarget.skipped += 1;
     return 'past';
-  }
-
-  if (datetime > horizonEnd) {
-    report.skippedHorizon += 1;
-    if (statsTarget) statsTarget.skipped += 1;
-    return 'horizon';
   }
 
   const soldOut = parseMoreSoldOut(event);
@@ -391,7 +376,6 @@ function emptySyncCounters() {
     alreadyExists: 0,
     updatedSoldOut: 0,
     skippedPast: 0,
-    skippedHorizon: 0,
     skippedNoVenue: 0,
     skippedUnknownEventId: 0,
     skippedInvalidDate: 0,
@@ -405,7 +389,6 @@ async function syncMovieShowtimesFromMore(strapi, {
   venuesWithBundle,
   eventsCache,
   now,
-  horizonEnd,
 }) {
   const report = {
     ...emptySyncCounters(),
@@ -463,7 +446,6 @@ async function syncMovieShowtimesFromMore(strapi, {
             movieId: movie.id,
             venue,
             now,
-            horizonEnd,
             statsTarget: movieStats,
           });
           if (result === 'created') report.createdFromMovies += 1;
@@ -519,7 +501,6 @@ async function syncMovieShowtimesFromMore(strapi, {
             movieId: mapped.movieId,
             venue,
             now,
-            horizonEnd,
             statsTarget: venueStats,
           });
           if (result === 'created') report.createdFromVenues += 1;
@@ -554,7 +535,6 @@ async function syncTheaterPerformancesFromMore(strapi, {
   venuesWithBundle,
   eventsCache,
   now,
-  horizonEnd,
 }) {
   const report = {
     ...emptySyncCounters(),
@@ -616,7 +596,6 @@ async function syncTheaterPerformancesFromMore(strapi, {
             theaterShowId: show.id,
             venue,
             now,
-            horizonEnd,
             statsTarget: showStats,
           });
           if (result === 'created') report.createdFromTheaterShows += 1;
@@ -688,7 +667,6 @@ async function syncTheaterPerformancesFromMore(strapi, {
             theaterShowId: mapped.theaterShowId,
             venue,
             now,
-            horizonEnd,
             statsTarget: venueStats,
           });
           if (result === 'created') report.createdFromTheaterVenues += 1;
@@ -723,13 +701,11 @@ async function syncTheaterPerformancesFromMore(strapi, {
  * - παραστάσεις θεάτρου → Θεατρική παράσταση (venue_id ή θεατρικό venue bundle)
  *
  * @param {object} strapi
- * @param {{ horizonDays?: number, movieId?: number, theaterShowId?: number }} options
+ * @param {{ movieId?: number, theaterShowId?: number }} options
  */
 async function syncShowtimesFromMore(strapi, options = {}) {
   const started = Date.now();
-  const horizonDays = options.horizonDays ?? DEFAULT_HORIZON_DAYS;
   const now = new Date();
-  const horizonEnd = new Date(now.getTime() + horizonDays * 24 * 60 * 60 * 1000);
 
   const cinemaVenueLookup = await loadVenueByMoreId(strapi, 'cinema');
   const cinemaVenuesWithBundle = await loadVenuesWithBundleCodes(
@@ -774,7 +750,6 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     venuesWithBundle: cinemaVenuesWithBundle,
     eventsCache,
     now,
-    horizonEnd,
   });
 
   const theaterReport = await syncTheaterPerformancesFromMore(strapi, {
@@ -783,7 +758,6 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     venuesWithBundle: theaterVenuesWithBundle,
     eventsCache,
     now,
-    horizonEnd,
   });
 
   const created =
@@ -795,7 +769,6 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   const report = {
     ok: movieReport.errors.length === 0 && theaterReport.errors.length === 0,
     at: new Date().toISOString(),
-    horizonDays,
     moviesScanned: movieReport.moviesScanned,
     theaterShowsScanned: theaterReport.theaterShowsScanned,
     venuesWithMoreId: movieReport.venuesWithMoreId,
@@ -810,7 +783,6 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     alreadyExists: movieReport.alreadyExists + theaterReport.alreadyExists,
     updatedSoldOut: theaterReport.updatedSoldOut,
     skippedPast: movieReport.skippedPast + theaterReport.skippedPast,
-    skippedHorizon: movieReport.skippedHorizon + theaterReport.skippedHorizon,
     skippedNoVenue: movieReport.skippedNoVenue + theaterReport.skippedNoVenue,
     skippedUnknownEventId:
       movieReport.skippedUnknownEventId + theaterReport.skippedUnknownEventId,
@@ -847,5 +819,4 @@ async function syncShowtimesFromMore(strapi, options = {}) {
 module.exports = {
   syncShowtimesFromMore,
   parseMoreEventDatetime,
-  DEFAULT_HORIZON_DAYS,
 };

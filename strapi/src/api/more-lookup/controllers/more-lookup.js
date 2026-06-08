@@ -9,7 +9,7 @@ const {
   DEFAULT_MIN_SCORE,
   DEFAULT_APPLY_MIN_SCORE,
 } = require('../../../utils/moreEventCodeLookup');
-const { syncShowtimesFromMore, DEFAULT_HORIZON_DAYS } = require('../../../utils/moreShowtimeSync');
+const { syncShowtimesFromMore } = require('../../../utils/moreShowtimeSync');
 
 module.exports = {
   async status(ctx) {
@@ -19,7 +19,6 @@ module.exports = {
       showtimeSyncEnabled: process.env.MORE_SHOWTIME_SYNC_ENABLED !== 'false',
       minScore: DEFAULT_MIN_SCORE,
       applyMinScore: DEFAULT_APPLY_MIN_SCORE,
-      showtimeHorizonDays: DEFAULT_HORIZON_DAYS,
       pendingApprovalCount: pending.length,
     };
   },
