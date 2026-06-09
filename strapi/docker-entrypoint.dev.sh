@@ -18,6 +18,19 @@ if [ "$needs_ci" -eq 1 ]; then
   rm -rf node_modules
   npm ci --no-audit --no-fund --include=optional
   sh scripts/install-swc-native.sh
+else
+  LOCK_STAMP="/cms/node_modules/.package-lock-hash"
+  if command -v md5sum >/dev/null 2>&1; then
+    CURRENT_LOCK=$(md5sum package-lock.json | awk '{print $1}')
+  else
+    CURRENT_LOCK=$(md5 -q package-lock.json)
+  fi
+  if [ ! -f "$LOCK_STAMP" ] || [ "$(cat "$LOCK_STAMP" 2>/dev/null)" != "$CURRENT_LOCK" ]; then
+    echo "[strapi-dev] Ενημέρωση dependencies (package-lock άλλαξε)…"
+    npm ci --no-audit --no-fund --include=optional
+    sh scripts/install-swc-native.sh
+    echo "$CURRENT_LOCK" > "$LOCK_STAMP"
+  fi
 fi
 
 exec "$@"
