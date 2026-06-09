@@ -1,5 +1,7 @@
 'use strict';
 
+const { fetchMore } = require('./moreHttp');
+
 const MORE_CINEMA_WARMUP = 'https://www.more.com/gr-el/tickets/cinema/';
 const USER_AGENT = 'Mozilla/5.0 (compatible; whatson-more-venue-scrape/1.0)';
 const FETCH_TIMEOUT_MS = Number(process.env.MORE_VENUE_SCRAPE_TIMEOUT_MS || 22_000);
@@ -46,7 +48,7 @@ async function fetchText(url, cookie = '') {
       Accept: 'text/html,application/xhtml+xml',
     };
     if (cookie) headers.Cookie = cookie;
-    const res = await fetch(url, { signal: controller.signal, headers, redirect: 'follow' });
+    const res = await fetchMore(url, { signal: controller.signal, headers, redirect: 'follow' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return { text: await res.text(), cookie: cookiesFromResponse(res) || cookie };
   } finally {

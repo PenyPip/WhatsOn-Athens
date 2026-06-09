@@ -1,5 +1,7 @@
 'use strict';
 
+const { fetchMore } = require('./moreHttp');
+
 const MORE_GETEVENTS = 'https://www.more.com/_api/playdetails/getevents';
 const USER_AGENT = 'whatson-more-sync/1.0';
 const FETCH_TIMEOUT_MS = 20_000;
@@ -29,7 +31,7 @@ async function fetchMoreEventsByGroupCode(eventGroupCode) {
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
   try {
-    const res = await fetch(url, {
+    const res = await fetchMore(url, {
       signal: controller.signal,
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     });

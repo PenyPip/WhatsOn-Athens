@@ -5,10 +5,15 @@
     "singularName": "venue",
     "pluralName": "venues",
     "displayName": "Χώροι",
-    "description": "Σινεμά, θέατρα και άλλοι χώροι. Διάλεξε τύπο (Σινεμά / Θέατρο) ή χρησιμοποίησε τα shortcuts «Σινεμά» / «Θέατρα» στο αριστερό μενού."
+    "description": "Σινεμά, θέατρα και άλλοι χώροι. Διαχείριση από το μενού «Χώροι» (Σινεμά / Θέατρα / Άλλοι / Όλοι) — όχι από το γενικό Content Manager."
   },
   "options": {
     "draftAndPublish": true
+  },
+  "pluginOptions": {
+    "content-manager": {
+      "visible": false
+    }
   },
   "attributes": {
     "name": {

@@ -15,7 +15,7 @@ const {
   getMoreShowtimeSyncJob,
   startMoreShowtimeSyncJob,
 } = require('../../../utils/moreShowtimeSyncJob');
-const { getMoreLookupJob, startMoreLookupJob } = require('../../../utils/moreLookupJob');
+const { getMoreProxyStatus } = require('../../../utils/moreHttp');
 
 module.exports = {
   async status(ctx) {
@@ -25,6 +25,7 @@ module.exports = {
       showtimeSyncEnabled: process.env.MORE_SHOWTIME_SYNC_ENABLED !== 'false',
       showtimeSyncJob: getMoreShowtimeSyncJob(),
       lookupJob: getMoreLookupJob(),
+      moreProxy: getMoreProxyStatus(),
       minScore: DEFAULT_MIN_SCORE,
       applyMinScore: DEFAULT_APPLY_MIN_SCORE,
       pendingApprovalCount: pending.length,

@@ -26,6 +26,7 @@ const {
   SCRAPE_ENABLED,
 } = require('./moreVenueProgramScrape');
 const { findBestCmsMatchByPlayTitle } = require('./morePlayTitleMatch');
+const { fetchMore } = require('./moreHttp');
 
 const CMS_LOOKUP_CONFIG = {
   movie: {
@@ -204,7 +205,7 @@ async function fetchText(url) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(url, {
+    const res = await fetchMore(url, {
       signal: controller.signal,
       headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,application/json' },
     });
@@ -268,7 +269,7 @@ async function verifyEventGroupCode(code) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), 12_000);
   try {
-    const res = await fetch(url, {
+    const res = await fetchMore(url, {
       signal: controller.signal,
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     });
