@@ -4,11 +4,16 @@ import PageHeaderReveal from "@/components/PageHeaderReveal";
 import VenueCard from "@/components/VenueCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
-import { useShowtimes, useVenues } from "@/hooks/useStrapi";
+import { useShowtimes, useTheaterPerformances, useVenues } from "@/hooks/useStrapi";
 import { buildVenueShowtimeRangeMap, formatVenueShowtimeRangeLabel } from "@/lib/venueShowtimeRange";
+import {
+  buildVenueTheaterPerformanceRangeMap,
+  formatVenueTheaterPerformanceRangeLabel,
+} from "@/lib/venueTheaterPerformanceRange";
 import {
   isCinemaVenue,
   isPublicVenueListing,
+  isTheaterVenue,
   parseVenueKindFilterParam,
   venueMatchesKindFilter,
   VENUE_KIND_FILTER_OPTIONS,
@@ -102,10 +107,15 @@ const Venues = () => {
 
   const { data: venues, isLoading } = useVenues();
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes();
+  const { data: theaterPerformances, isLoading: theaterPerformancesLoading } = useTheaterPerformances();
 
   const showtimeRanges = useMemo(
     () => buildVenueShowtimeRangeMap(venues ?? [], showtimes ?? []),
     [venues, showtimes],
+  );
+  const theaterRanges = useMemo(
+    () => buildVenueTheaterPerformanceRangeMap(venues ?? [], theaterPerformances ?? []),
+    [venues, theaterPerformances],
   );
 
   const setAreaUi = (next: VenueAreaFilter) => {
@@ -207,12 +217,23 @@ const Venues = () => {
                   venue={venue}
                   layout="grid"
                   variant="page"
-                  showProgramDates={isCinemaVenue(venue)}
-                  programDatesLoading={showtimesLoading}
+                  showProgramDates={isCinemaVenue(venue) || isTheaterVenue(venue)}
+                  programDatesLoading={
+                    isCinemaVenue(venue)
+                      ? showtimesLoading
+                      : isTheaterVenue(venue)
+                        ? theaterPerformancesLoading
+                        : false
+                  }
                   programDatesLabel={
                     isCinemaVenue(venue)
                       ? formatVenueShowtimeRangeLabel(showtimeRanges.get(venue.id) ?? null)
-                      : undefined
+                      : isTheaterVenue(venue)
+                        ? formatVenueTheaterPerformanceRangeLabel(theaterRanges.get(venue.id) ?? null)
+                        : undefined
+                  }
+                  programEmptyLabel={
+                    isTheaterVenue(venue) ? "Δεν υπάρχουν επερχόμενες εμφανίσεις" : undefined
                   }
                 />
               </div>

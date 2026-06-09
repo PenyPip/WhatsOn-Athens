@@ -16,6 +16,13 @@ const {
   classifyCinemaCatalogKind,
   extractEvgCodeFromText,
 } = require('./moreEventGroupCodes');
+const {
+  createVenueScrapeCache,
+  findCmsVenueForBundleCode,
+  normalizeMoreUrl,
+  SCRAPE_ENABLED,
+} = require('./moreVenueProgramScrape');
+const { findBestCmsMatchByPlayTitle } = require('./morePlayTitleMatch');
 
 const CMS_LOOKUP_CONFIG = {
   movie: {
@@ -1033,6 +1040,72 @@ async function attachVerification(entries, skipVerify) {
 }
 
 /**
+ * Venue bundle γραμμές καταλόγου: scrape more_link → eventId + play-title → ταύτιση CMS.
+ */
+async function enrichCatalogWithVenueProgramScrape(catalog, cmsVenues, cmsItems) {
+  if (!SCRAPE_ENABLED || !Array.isArray(catalog) || !catalog.length) return catalog;
+
+  const scrapeCache = createVenueScrapeCache();
+  const movies = cmsItems.filter((item) => item.contentType === 'movie');
+  const shows = cmsItems.filter((item) => item.contentType === 'theater_show');
+  const out = [];
+
+  for (const row of catalog) {
+    if (row.kind !== 'venue_bundle') {
+      out.push(row);
+      continue;
+    }
+
+    const cmsVenue = findCmsVenueForBundleCode(row.eventGroupCode, cmsVenues);
+    const rawLink = cmsVenue?.more_link || cmsVenue?.moreLink || row.moreUrl;
+    const moreLink = normalizeMoreUrl(rawLink);
+    if (!moreLink) {
+      out.push(row);
+      continue;
+    }
+
+    const scrape = await scrapeCache.get(moreLink);
+    if (!scrape?.ok) {
+      out.push({
+        ...row,
+        venueScrape: {
+          ok: false,
+          moreLink,
+          error: scrape?.error || 'scrape_failed',
+        },
+      });
+      continue;
+    }
+
+    const pool =
+      row.category === 'theater'
+        ? shows.map((s) => ({ ...s, contentType: 'theater_show' }))
+        : movies.map((m) => ({ ...m, contentType: 'movie' }));
+
+    const events = (scrape.events || []).map((ev) => ({
+      eventId: ev.eventId,
+      playTitle: ev.playTitle,
+      eventDate: ev.eventDate,
+      cmsMatch: ev.playTitle ? findBestCmsMatchByPlayTitle(ev.playTitle, pool) : null,
+    }));
+
+    out.push({
+      ...row,
+      venueScrape: {
+        ok: true,
+        moreLink: scrape.moreLink,
+        eventCount: events.length,
+        resolvedCount: events.filter((e) => e.cmsMatch).length,
+        uniqueTitles: scrape.uniqueTitles || [],
+        events: events.slice(0, 48),
+      },
+    });
+  }
+
+  return out;
+}
+
+/**
  * @param {object} strapi
  * @param {{ query?: string, matchCms?: boolean, listAll?: boolean, skipVerify?: boolean, minScore?: number, catalogLimit?: number }} options
  */
@@ -1192,8 +1265,12 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
       })),
       skipVerify,
     );
-    result.catalog = annotateCatalogWithCmsStatus(withVerify, cmsCodeIndex);
+    const annotated = annotateCatalogWithCmsStatus(withVerify, cmsCodeIndex);
+    result.catalog = await enrichCatalogWithVenueProgramScrape(annotated, cmsVenues, cmsItems);
     result.stats.catalogShown = result.catalog.length;
+    result.stats.catalogVenueScrapeResolved = result.catalog
+      .filter((row) => row.venueScrape?.ok)
+      .reduce((sum, row) => sum + (row.venueScrape.resolvedCount || 0), 0);
     result.stats.catalogInCms = result.catalog.filter((row) => row.inCms).length;
     result.stats.catalogMissing = result.catalog.filter((row) => !row.inCms).length;
   }
@@ -1400,6 +1477,8 @@ module.exports = {
   CMS_LOOKUP_CONFIG,
   fetchMoreCatalog,
   verifyEventGroupCode,
+  scrapeMoreVenueProgram: require('./moreVenueProgramScrape').scrapeMoreVenueProgram,
+  enrichCatalogWithVenueProgramScrape,
   runMoreEventCodeLookup,
   applyMoreEventCodeMatches,
   approveMoreEventGroupCode,

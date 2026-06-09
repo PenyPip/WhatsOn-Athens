@@ -9,6 +9,7 @@ import {
   type MappedHomepage,
 } from "@/config/home";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
+import { parseTheaterVenueProgramPath } from "@/lib/theaterVenuePath";
 import { SHOWTIMES_CALENDAR_QUERY_KEY, THEATER_PERFORMANCES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 import { finalizeBootstrapCache, minifyDehydratedState } from "@/lib/slimDehydrate";
 
@@ -23,6 +24,7 @@ function matchMovieSlug(path: string): string | null {
 }
 
 function matchTheaterSlug(path: string): string | null {
+  if (parseTheaterVenueProgramPath(path)) return null;
   const m = path.match(/^\/theater\/([^/]+)$/);
   return m?.[1] ?? null;
 }
@@ -96,6 +98,19 @@ async function prefetchMoviesList(qc: QueryClient) {
 }
 
 /** Πρόγραμμα ενός σινεμά — showtimes venue μόνο · ταινίες client-side. */
+async function prefetchTheaterVenueProgram(qc: QueryClient, venueSlug: string) {
+  await Promise.all([
+    qc.prefetchQuery({
+      queryKey: ["theaterPerformances", venueSlug],
+      queryFn: () => api.getTheaterPerformances({ venueSlug }),
+      ...queryDefaults,
+    }),
+    qc.prefetchQuery({ queryKey: VENUES_PROGRAM_QUERY_KEY, queryFn: api.getVenuesForProgram, ...queryDefaults }),
+    qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }),
+  ]);
+  finalizeBootstrapCache(qc);
+}
+
 async function prefetchMoviesVenueProgram(qc: QueryClient, venueSlug: string) {
   await Promise.all([
     qc.prefetchQuery({
@@ -173,6 +188,8 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
       await prefetchMoviesList(qc);
     } else if (matchMoviesVenueSlug(normalized)) {
       await prefetchMoviesVenueProgram(qc, matchMoviesVenueSlug(normalized)!);
+    } else if (parseTheaterVenueProgramPath(normalized)) {
+      await prefetchTheaterVenueProgram(qc, parseTheaterVenueProgramPath(normalized)!);
     } else if (movieSlug) {
       await prefetchMovieDetail(qc, movieSlug);
     } else if (normalized === "/theater") {
@@ -192,6 +209,11 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
         qc.prefetchQuery({
           queryKey: SHOWTIMES_CALENDAR_QUERY_KEY,
           queryFn: () => api.getShowtimesForHome(),
+          ...queryDefaults,
+        }),
+        qc.prefetchQuery({
+          queryKey: THEATER_PERFORMANCES_CALENDAR_QUERY_KEY,
+          queryFn: () => api.getTheaterPerformancesForHome(),
           ...queryDefaults,
         }),
       ]);

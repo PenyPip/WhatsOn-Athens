@@ -1,6 +1,6 @@
-import type { StrapiShowtime, StrapiVenue } from "@/lib/api";
+import type { StrapiShowtime, StrapiTheaterPerformance, StrapiVenue } from "@/lib/api";
 import { cinemaPathSlugFromMoreLink, moviesVenueProgramPath } from "@/lib/moviesVenuePath";
-import { isCinemaVenue } from "@/lib/venueType";
+import { isCinemaVenue, programHrefForVenue } from "@/lib/venueType";
 
 /** Κανονικοποίηση ονόματος — ίδιο σινεμά αν υπάρχουν «Θερινό» / θερινό σινεμά κ.λπ. */
 export function normalizeCinemaGroupName(name: string): string {
@@ -229,8 +229,41 @@ export function venueFromShowtimesBySlug(
 
 export function moviesHrefForVenue(venue: StrapiVenue | undefined): string | undefined {
   if (!venue || !isCinemaVenue(venue)) return undefined;
-  const slug = venue.slug?.trim();
-  return slug ? moviesVenueProgramPath(slug) : undefined;
+  return programHrefForVenue(venue);
+}
+
+/** Σύνδεσμος προγράμματος (σινεμά ή θέατρο). */
+export function venueProgramHref(venue: StrapiVenue | undefined): string | undefined {
+  if (!venue) return undefined;
+  return programHrefForVenue(venue);
+}
+
+/** Ελάχιστο venue από θεατρικές εμφανίσεις (όταν η λίστα venues έχει κοπεί). */
+export function venueFromPerformancesBySlug(
+  performances: StrapiTheaterPerformance[],
+  slug: string,
+): StrapiVenue | null {
+  const want = normalizeProgramVenueSlug(slug);
+  if (!want) return null;
+  for (const p of performances) {
+    if (normalizeProgramVenueSlug(p.venueSlug) !== want) continue;
+    const name = typeof p.venue === "string" ? p.venue.trim() : "";
+    if (!name && p.venueId == null) continue;
+    return {
+      id: p.venueId ?? 0,
+      documentId: "",
+      slug: p.venueSlug ?? slug.trim(),
+      name: name || slug.trim(),
+      address: "",
+      city: "",
+      googleMapsUrl: "",
+      seatsTotal: 0,
+      type: "theater",
+      summerOutdoor: false,
+      moreLink: "",
+    };
+  }
+  return null;
 }
 
 function moviesHrefFromVenueSlug(slug: string | undefined): string | undefined {

@@ -7,6 +7,11 @@ const {
   collectTheaterVenueBundleCodes,
 } = require('./moreEventGroupCodes');
 const {
+  createVenueScrapeCache,
+  SCRAPE_ENABLED,
+} = require('./moreVenueProgramScrape');
+const { findBestCmsMatchByPlayTitle } = require('./morePlayTitleMatch');
+const {
   createVenueSyncStatsTracker,
   applyCinemaVenueUpdatedStatuses,
   migrateVenueUpdatedBooleanToEnum,
@@ -595,8 +600,97 @@ function emptySyncCounters() {
     skippedNoVenue: 0,
     skippedUnknownEventId: 0,
     skippedInvalidDate: 0,
+    resolvedViaVenueScrape: 0,
     errors: [],
   };
+}
+
+async function loadCmsEntriesForPlayTitleMatch(strapi, uid, fields) {
+  return findAllEntities(strapi, uid, {
+    fields,
+    publicationState: 'preview',
+    pageSize: 200,
+  });
+}
+
+async function resolveCinemaMovieFromEventId({
+  eventId,
+  eventIdIndex,
+  supplementalIndex,
+  scrapeCache,
+  venue,
+  moviesForTitle,
+  report,
+}) {
+  const primary = eventIdIndex.get(eventId);
+  if (primary) return primary;
+
+  const cached = supplementalIndex.get(eventId);
+  if (cached) return cached;
+
+  const link = venue?.more_link || venue?.moreLink;
+  if (!SCRAPE_ENABLED || !link || !moviesForTitle?.length) return null;
+
+  const scrape = await scrapeCache.get(link);
+  const row = scrape?.byEventId?.get(eventId);
+  if (!row?.playTitle) return null;
+
+  const match = findBestCmsMatchByPlayTitle(
+    row.playTitle,
+    moviesForTitle.map((m) => ({ ...m, contentType: 'movie' })),
+  );
+  if (!match) return null;
+
+  const mapped = {
+    movieId: match.cmsId,
+    movieTitle: match.cmsTitle,
+    viaScrape: true,
+    playTitle: row.playTitle,
+    matchScore: match.score,
+  };
+  supplementalIndex.set(eventId, mapped);
+  report.resolvedViaVenueScrape = (report.resolvedViaVenueScrape || 0) + 1;
+  return mapped;
+}
+
+async function resolveTheaterShowFromEventId({
+  eventId,
+  eventIdIndex,
+  supplementalIndex,
+  scrapeCache,
+  venue,
+  showsForTitle,
+  report,
+}) {
+  const primary = eventIdIndex.get(eventId);
+  if (primary) return primary;
+
+  const cached = supplementalIndex.get(eventId);
+  if (cached) return cached;
+
+  const link = venue?.more_link || venue?.moreLink;
+  if (!SCRAPE_ENABLED || !link || !showsForTitle?.length) return null;
+
+  const scrape = await scrapeCache.get(link);
+  const row = scrape?.byEventId?.get(eventId);
+  if (!row?.playTitle) return null;
+
+  const match = findBestCmsMatchByPlayTitle(
+    row.playTitle,
+    showsForTitle.map((s) => ({ ...s, contentType: 'theater_show' })),
+  );
+  if (!match) return null;
+
+  const mapped = {
+    theaterShowId: match.cmsId,
+    showTitle: match.cmsTitle,
+    viaScrape: true,
+    playTitle: row.playTitle,
+    matchScore: match.score,
+  };
+  supplementalIndex.set(eventId, mapped);
+  report.resolvedViaVenueScrape = (report.resolvedViaVenueScrape || 0) + 1;
+  return mapped;
 }
 
 async function syncMovieShowtimesFromMore(strapi, {
@@ -622,6 +716,16 @@ async function syncMovieShowtimesFromMore(strapi, {
 
   const pendingVenueCreates = new Map();
   const venueSyncTracker = createVenueSyncStatsTracker();
+  const scrapeCache = createVenueScrapeCache();
+  const supplementalEventIndex = new Map();
+  const moviesForTitle = venuesWithBundle.length
+    ? await loadCmsEntriesForPlayTitleMatch(strapi, 'api::movie.movie', [
+        'id',
+        'title',
+        'slug',
+        'original_title',
+      ])
+    : [];
 
   if (!movies.length && !venuesWithBundle.length) {
     report.note = 'Δεν υπάρχουν ταινίες με per-movie event_group_code ούτε σινεμά με venue bundle.';
@@ -735,7 +839,15 @@ async function syncMovieShowtimesFromMore(strapi, {
 
         for (const event of events) {
           const eventId = String(event.eventId ?? '').trim();
-          const mapped = eventIdIndex.get(eventId);
+          const mapped = await resolveCinemaMovieFromEventId({
+            eventId,
+            eventIdIndex,
+            supplementalIndex: supplementalEventIndex,
+            scrapeCache,
+            venue,
+            moviesForTitle,
+            report,
+          });
           if (!mapped) {
             report.skippedUnknownEventId += 1;
             venueStats.skippedUnknownEventId += 1;
@@ -825,6 +937,15 @@ async function syncTheaterPerformancesFromMore(strapi, {
   }
 
   const pendingVenueCreates = new Map();
+  const scrapeCache = createVenueScrapeCache();
+  const supplementalEventIndex = new Map();
+  const showsForTitle = venuesWithBundle.length
+    ? await loadCmsEntriesForPlayTitleMatch(strapi, 'api::theater-show.theater-show', [
+        'id',
+        'title',
+        'slug',
+      ])
+    : [];
 
   const eventIdIndex = await buildEventIdIndex(theaterShows, eventsCache, (show) => ({
     theaterShowId: show.id,
@@ -921,7 +1042,15 @@ async function syncTheaterPerformancesFromMore(strapi, {
 
         for (const event of events) {
           const eventId = String(event.eventId ?? '').trim();
-          const mapped = eventIdIndex.get(eventId);
+          const mapped = await resolveTheaterShowFromEventId({
+            eventId,
+            eventIdIndex,
+            supplementalIndex: supplementalEventIndex,
+            scrapeCache,
+            venue,
+            showsForTitle,
+            report,
+          });
           if (!mapped) {
             report.skippedUnknownEventId += 1;
             venueStats.skippedUnknownEventId += 1;
@@ -1072,6 +1201,8 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     skippedNoVenue: movieReport.skippedNoVenue + theaterReport.skippedNoVenue,
     skippedUnknownEventId:
       movieReport.skippedUnknownEventId + theaterReport.skippedUnknownEventId,
+    resolvedViaVenueScrape:
+      (movieReport.resolvedViaVenueScrape || 0) + (theaterReport.resolvedViaVenueScrape || 0),
     skippedInvalidDate: movieReport.skippedInvalidDate + theaterReport.skippedInvalidDate,
     errors: [...movieReport.errors, ...theaterReport.errors],
     byMovie: movieReport.byMovie,
@@ -1104,7 +1235,10 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     (report.missingVenueIds?.length
       ? ` · λείπουν ${report.missingVenueIds.length} More venueId από CMS`
       : '') +
-    ` · άγνωστο eventId: ${report.skippedUnknownEventId}`;
+    ` · άγνωστο eventId: ${report.skippedUnknownEventId}` +
+    (report.resolvedViaVenueScrape
+      ? ` · scrape→ταινία/παράσταση: ${report.resolvedViaVenueScrape}`
+      : '');
 
   strapi.log.info(
     `[more-showtime-sync] movies=${report.moviesScanned} evgCodes=${report.movieEventGroupCodesTotal} (${report.moviesWithMultipleEventGroupCodes} με επιπλέον more_event_groups) theater=${report.theaterShowsScanned} created=${report.created} exists=${report.alreadyExists} unknownEventId=${report.skippedUnknownEventId} (${report.durationMs}ms)`,

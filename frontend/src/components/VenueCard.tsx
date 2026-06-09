@@ -36,6 +36,7 @@ export interface VenueCardProps {
   showProgramDates?: boolean;
   programDatesLabel?: string | null;
   programDatesLoading?: boolean;
+  programEmptyLabel?: string;
   className?: string;
 }
 
@@ -48,6 +49,7 @@ const VenueCard = ({
   showProgramDates = false,
   programDatesLabel,
   programDatesLoading = false,
+  programEmptyLabel = "Δεν υπάρχουν επερχόμενες προβολές",
   className,
 }: VenueCardProps) => {
   const programHref = moviesHref ?? programHrefForVenue(venue);
@@ -170,7 +172,7 @@ const VenueCard = ({
               </p>
             ) : (
               <p className={cn("text-xs leading-relaxed", isSpotlight ? "text-white/45" : "text-muted-foreground")}>
-                Δεν υπάρχουν επερχόμενες προβολές
+                {programEmptyLabel}
               </p>
             )
           ) : null}

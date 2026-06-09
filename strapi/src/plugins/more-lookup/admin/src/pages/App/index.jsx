@@ -35,6 +35,70 @@ function catalogKindLabel(row) {
   return 'Ταινία';
 }
 
+const CATALOG_KIND_FILTERS = [
+  { id: 'all', label: 'Όλα' },
+  { id: 'movie', label: 'Ταινίες' },
+  { id: 'theater', label: 'Θέατρο' },
+  { id: 'venue', label: 'Σινεμά (χώροι)' },
+];
+
+const CMS_MATCH_FILTERS = [
+  { id: 'all', label: 'Όλα' },
+  { id: 'movie', label: 'Ταινίες' },
+  { id: 'theater_show', label: 'Θέατρο' },
+];
+
+function catalogMatchesKindFilter(row, filter) {
+  if (filter === 'all') return true;
+  if (filter === 'movie') return row.kind === 'movie' && row.category === 'cinema';
+  if (filter === 'theater') {
+    return row.category === 'theater' && row.kind !== 'venue_bundle';
+  }
+  if (filter === 'venue') return row.kind === 'venue_bundle';
+  return true;
+}
+
+function matchesCmsContentFilter(row, filter) {
+  if (filter === 'all') return true;
+  return row.contentType === filter;
+}
+
+function TypeFilterBar({ label, value, options, onChange }) {
+  return (
+    <Box className="more-lookup-type-filters">
+      {label ? (
+        <Typography variant="pi" textColor="neutral600" paddingBottom={2} fontWeight="semiBold">
+          {label}
+        </Typography>
+      ) : null}
+      <Flex gap={1} wrap="wrap">
+        {options.map((opt) => (
+          <Button
+            key={opt.id}
+            size="S"
+            variant={value === opt.id ? 'default' : 'tertiary'}
+            onClick={() => onChange(opt.id)}
+          >
+            {opt.label}
+            {opt.count != null ? ` (${opt.count})` : ''}
+          </Button>
+        ))}
+      </Flex>
+    </Box>
+  );
+}
+
+function venueScrapeSummary(row) {
+  const vs = row.venueScrape;
+  if (!vs) return '—';
+  if (!vs.ok) return vs.error || 'αποτυχία';
+  const resolved = vs.resolvedCount ?? 0;
+  const total = vs.eventCount ?? 0;
+  const titles = (vs.uniqueTitles || []).slice(0, 3).join(', ');
+  const suffix = titles ? ` · ${titles}${(vs.uniqueTitles?.length || 0) > 3 ? '…' : ''}` : '';
+  return `${resolved}/${total} eventId→CMS${suffix}`;
+}
+
 function catalogCmsStatusLabel(row) {
   if (row.cmsStatus === 'in_cms') {
     if (row.kind === 'venue_bundle') return 'Χώρος στο CMS';
@@ -264,6 +328,7 @@ function SyncReportPanel({ report }) {
   const alreadyExists = Number(report.alreadyExists ?? 0);
   const skippedNoVenue = Number(report.skippedNoVenue ?? 0);
   const skippedUnknown = Number(report.skippedUnknownEventId ?? 0);
+  const resolvedViaScrape = Number(report.resolvedViaVenueScrape ?? 0);
   const skippedPast = Number(report.skippedPast ?? 0);
   const errorCount = Array.isArray(report.errors) ? report.errors.length : 0;
 
@@ -318,6 +383,14 @@ function SyncReportPanel({ report }) {
           value={skippedUnknown}
           tone={skippedUnknown > 0 ? 'warning' : 'neutral'}
         />
+        {resolvedViaScrape > 0 ? (
+          <StatBadge
+            label="Scrape→CMS"
+            value={resolvedViaScrape}
+            tone="success"
+            hint="Άγνωστα eventId από more_link"
+          />
+        ) : null}
         {skippedPast > 0 ? (
           <StatBadge label="Παρελθούσες" value={skippedPast} tone="neutral" hint="Παραλείφθηκαν" />
         ) : null}
@@ -497,6 +570,8 @@ const App = () => {
   const [query, setQuery] = useState('');
   const [catalogPage, setCatalogPage] = useState(1);
   const [catalogOnlyMissing, setCatalogOnlyMissing] = useState(true);
+  const [catalogKindFilter, setCatalogKindFilter] = useState('all');
+  const [matchContentFilter, setMatchContentFilter] = useState('all');
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [applyMinScore, setApplyMinScore] = useState(0.45);
@@ -537,7 +612,7 @@ const App = () => {
 
   useEffect(() => {
     setCatalogPage(1);
-  }, [result, catalogOnlyMissing]);
+  }, [result, catalogOnlyMissing, catalogKindFilter, matchContentFilter]);
 
   const runLookup = async () => {
     setLoading(true);
@@ -592,8 +667,11 @@ const App = () => {
   };
 
   const matches = result?.matches ?? [];
-  const matchedRows = matches.filter((r) => r.matched);
+  const matchedRows = matches
+    .filter((r) => r.matched)
+    .filter((r) => matchesCmsContentFilter(r, matchContentFilter));
   const matchDisplayRows = expandMatchRows(matchedRows);
+  const pendingFiltered = pendingApproval.filter((r) => matchesCmsContentFilter(r, matchContentFilter));
   const approvedQueueCount =
     result?.stats?.approvedQueue ??
     (result?.approvedQueue || []).reduce(
@@ -601,9 +679,27 @@ const App = () => {
       0,
     );
   const catalog = result?.catalog ?? [];
-  const catalogFiltered = catalogOnlyMissing
-    ? catalog.filter((row) => !row.inCms)
-    : catalog;
+  const catalogScope = catalog.filter((row) => !catalogOnlyMissing || !row.inCms);
+  const catalogFilterOptions = CATALOG_KIND_FILTERS.map((opt) => ({
+    ...opt,
+    count: catalogScope.filter((row) => catalogMatchesKindFilter(row, opt.id)).length,
+  }));
+  const matchFilterOptions = CMS_MATCH_FILTERS.map((opt) => ({
+    ...opt,
+    count:
+      opt.id === 'all'
+        ? (result?.matches ?? []).filter((r) => r.matched).length
+        : (result?.matches ?? []).filter((r) => r.matched && matchesCmsContentFilter(r, opt.id)).length,
+  }));
+  const pendingFilterOptions = CMS_MATCH_FILTERS.map((opt) => ({
+    ...opt,
+    count:
+      opt.id === 'all'
+        ? pendingApproval.length
+        : pendingApproval.filter((r) => matchesCmsContentFilter(r, opt.id)).length,
+  }));
+  const catalogFiltered = catalogScope.filter((row) => catalogMatchesKindFilter(row, catalogKindFilter));
+  const catalogMissingFiltered = catalogFiltered.filter((row) => !row.inCms).length;
   const catalogPageCount = Math.max(1, Math.ceil(catalogFiltered.length / CATALOG_PAGE_SIZE));
   const catalogPageSafe = Math.min(Math.max(1, catalogPage), catalogPageCount);
   const catalogPageRows = catalogFiltered.slice(
@@ -1004,6 +1100,14 @@ const App = () => {
             {result.stats.catalogInCms != null ? (
               <StatBadge label="Στο CMS" value={catalogInCms} />
             ) : null}
+            {result.stats.catalogVenueScrapeResolved > 0 ? (
+              <StatBadge
+                label="Scrape venue"
+                value={result.stats.catalogVenueScrapeResolved}
+                tone="success"
+                hint="eventId→CMS από more_link"
+              />
+            ) : null}
             {result.stats.pendingApproval != null ? (
               <StatBadge label="Προς έγκριση" value={result.stats.pendingApproval} />
             ) : null}
@@ -1041,14 +1145,29 @@ const App = () => {
           </Box>
         ) : null}
 
-        {matchDisplayRows.length > 0 ? (
+        {matchDisplayRows.length > 0 || (result?.matches ?? []).some((r) => r.matched) ? (
           <Box paddingBottom={6} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
             <Box padding={4}>
               <PanelHeader
                 title="Πίνακας 1 — Προτάσεις ταύτισης"
-                subtitle="Πρώτα «Έγκρ.» ανά γραμμή · μετά «Γράψε αυτόματα». Δεν εμφανίζονται κωδικοί που υπάρχουν ήδη στο CMS."
+                subtitle={`Πρώτα «Έγκρ.» ανά γραμμή · μετά «Γράψε αυτόματα». ${matchDisplayRows.length} εμφανίζονται`}
               />
+              <Box paddingTop={3}>
+                <TypeFilterBar
+                  label="Τύπος CMS"
+                  value={matchContentFilter}
+                  options={matchFilterOptions}
+                  onChange={setMatchContentFilter}
+                />
+              </Box>
             </Box>
+            {matchDisplayRows.length === 0 ? (
+              <Box padding={4} paddingTop={0}>
+                <Typography variant="pi" textColor="neutral600">
+                  Δεν υπάρχουν προτάσεις με το τρέχον φίλτρο τύπου.
+                </Typography>
+              </Box>
+            ) : (
             <Box className="more-lookup-match-table more-lookup-match-table--matches">
             <Table colCount={7} rowCount={matchDisplayRows.length}>
               <Thead>
@@ -1122,6 +1241,7 @@ const App = () => {
               </Tbody>
             </Table>
             </Box>
+            )}
           </Box>
         ) : null}
 
@@ -1129,7 +1249,7 @@ const App = () => {
           <Box paddingBottom={6} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
             <Box padding={4}>
               <PanelHeader
-                title={`Πίνακας 2 — Προς έγκριση (${pendingApproval.length})`}
+                title={`Πίνακας 2 — Προς έγκριση (${pendingFiltered.length}/${pendingApproval.length})`}
                 subtitle={`Χαμηλό score (< ${applyMinScore.toFixed(2)}) — «Έγκρ.» → ουρά, μετά «Γράψε αυτόματα»`}
                 action={
                   <Button size="S" variant="success" loading={loading} onClick={approveAllPending} disabled={loading}>
@@ -1137,9 +1257,24 @@ const App = () => {
                   </Button>
                 }
               />
+              <Box paddingTop={3}>
+                <TypeFilterBar
+                  label="Τύπος CMS"
+                  value={matchContentFilter}
+                  options={pendingFilterOptions}
+                  onChange={setMatchContentFilter}
+                />
+              </Box>
             </Box>
+            {pendingFiltered.length === 0 ? (
+              <Box padding={4} paddingTop={0}>
+                <Typography variant="pi" textColor="neutral600">
+                  Δεν υπάρχουν εγγραφές προς έγκριση με το τρέχον φίλτρο τύπου.
+                </Typography>
+              </Box>
+            ) : (
             <Box className="more-lookup-match-table more-lookup-match-table--pending">
-            <Table colCount={6} rowCount={pendingApproval.length}>
+            <Table colCount={6} rowCount={pendingFiltered.length}>
               <Thead>
                 <Tr>
                   <Th className="more-lookup-col-actions">
@@ -1163,7 +1298,7 @@ const App = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {pendingApproval.map((row) => (
+                {pendingFiltered.map((row) => (
                   <Tr key={rowKey(row)}>
                     <Td className="more-lookup-col-actions">
                       <MatchRowActions
@@ -1192,6 +1327,7 @@ const App = () => {
               </Tbody>
             </Table>
             </Box>
+            )}
           </Box>
         ) : null}
 
@@ -1211,23 +1347,38 @@ const App = () => {
           </Box>
         ) : null}
 
-        {catalog.length > 0 && (!catalogOnlyMissing || catalogFiltered.length > 0) ? (
+        {catalog.length > 0 ? (
           <Box paddingBottom={6} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
             <Box padding={4}>
               <PanelHeader
                 title="Πίνακας 3 — Κατάλογος More"
-                subtitle={`Όλα από More (όχι ανά CMS ταινία). ${catalogFiltered.length} εμφανίζονται · ${catalogMissing} λείπουν από CMS`}
+                subtitle={`Κατάλογος More · ${catalogFiltered.length} εμφανίζονται · ${catalogMissingFiltered} λείπουν (με φίλτρα)`}
               />
-              <Box paddingTop={2}>
-                <Checkbox
-                  checked={catalogOnlyMissing}
-                  onCheckedChange={(checked) => setCatalogOnlyMissing(checked === true)}
-                >
-                  Μόνο κωδικοί που λείπουν από το CMS
-                </Checkbox>
-              </Box>
+              <Flex gap={4} wrap="wrap" paddingTop={3} alignItems="flex-end">
+                <TypeFilterBar
+                  label="Τύπος More"
+                  value={catalogKindFilter}
+                  options={catalogFilterOptions}
+                  onChange={setCatalogKindFilter}
+                />
+                <Box paddingBottom={1} className="more-lookup-catalog-missing-toggle">
+                  <Checkbox
+                    checked={catalogOnlyMissing}
+                    onCheckedChange={(checked) => setCatalogOnlyMissing(checked === true)}
+                  >
+                    Μόνο κωδικοί που λείπουν από το CMS
+                  </Checkbox>
+                </Box>
+              </Flex>
             </Box>
-            <Table colCount={6} rowCount={catalogPageRows.length}>
+            {catalogFiltered.length === 0 ? (
+              <Box padding={4} paddingTop={0}>
+                <Typography variant="pi" textColor="neutral600">
+                  Δεν υπάρχουν εγγραφές με τα τρέχοντα φίλτρα.
+                </Typography>
+              </Box>
+            ) : (
+            <Table colCount={7} rowCount={catalogPageRows.length}>
               <Thead>
                 <Tr>
                   <Th>
@@ -1247,6 +1398,9 @@ const App = () => {
                   </Th>
                   <Th>
                     <Typography variant="sigma">venues</Typography>
+                  </Th>
+                  <Th>
+                    <Typography variant="sigma">Scrape</Typography>
                   </Th>
                 </Tr>
               </Thead>
@@ -1280,10 +1434,16 @@ const App = () => {
                     <Td>
                       <Typography>{row.verify?.ok ? row.verify.venueCount : '—'}</Typography>
                     </Td>
+                    <Td>
+                      <Typography variant="pi" title={row.venueScrape?.moreLink || ''}>
+                        {row.kind === 'venue_bundle' ? venueScrapeSummary(row) : '—'}
+                      </Typography>
+                    </Td>
                   </Tr>
                 ))}
               </Tbody>
             </Table>
+            )}
             {catalogFiltered.length > CATALOG_PAGE_SIZE ? (
               <Box padding={4}>
                 <Flex justifyContent="space-between" alignItems="center" gap={3} wrap="wrap">

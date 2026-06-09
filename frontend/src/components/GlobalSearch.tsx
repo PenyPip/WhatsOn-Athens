@@ -16,7 +16,7 @@ import type { StrapiMovie, StrapiTheaterShow, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre, showtimeIsUpcoming } from "@/lib/homeMovieFilters";
 import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
-import { isPublicVenueListing, venueKindLabel } from "@/lib/venueType";
+import { isPublicVenueListing, programHrefForVenue, venueKindLabel } from "@/lib/venueType";
 import { textMatchesSearch } from "@/lib/searchTokens";
 import { cn } from "@/lib/utils";
 
@@ -156,10 +156,11 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   );
 
   const runVenue = useCallback(
-    (slug: string) => {
-      if (!slug?.trim()) return;
+    (venue: StrapiVenue) => {
+      const href = programHrefForVenue(venue);
+      if (!href) return;
       close();
-      navigate(`/movies/venue/${encodeURIComponent(slug.trim())}`);
+      navigate(href);
     },
     [close, navigate],
   );
@@ -309,7 +310,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                           aria-selected="false"
                           className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
                           onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => runVenue(v.slug ?? "")}
+                          onClick={() => runVenue(v)}
                         >
                           <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
                           <span className="min-w-0 flex-1">

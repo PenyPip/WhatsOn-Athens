@@ -76,6 +76,7 @@ import {
   isValidExternalUrl,
   moviesHrefForShowtimes,
   resolveCinemaGroupFromShowtimes,
+  venueProgramHref,
 } from "@/lib/venueResolve";
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
@@ -450,7 +451,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 className="flex min-h-0 flex-col rounded-lg border border-border/80 bg-card/50 p-3 sm:p-4"
               >
                 <div className="mb-2 border-b border-border/60 pb-2">
-                  <CinemaVenueLinks venueName={venueName} venue={venue} compact />
+                  <CinemaVenueLinks
+                    venueName={venueName}
+                    venue={venue}
+                    programHref={venueProgramHref(venue)}
+                    showProgramButton={Boolean(venueProgramHref(venue))}
+                    compact
+                  />
                 </div>
                 <ShowtimesExpandable listClassName="min-h-0 flex-1">
                   {slots.map((p) => (

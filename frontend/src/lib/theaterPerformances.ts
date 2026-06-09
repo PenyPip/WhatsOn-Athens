@@ -85,6 +85,51 @@ export function theaterPerformanceSummary(
   return parts.join(" · ") + extra;
 }
 
+export type TheaterVenueShowGroup = {
+  key: string;
+  theaterShowSlug: string;
+  theaterShowTitle: string;
+  posterUrl?: string | null;
+  soldOut?: boolean;
+  slots: StrapiTheaterPerformance[];
+};
+
+/** Ομαδοποίηση εμφανίσεων χώρου ανά παράσταση (σελίδα /theater/venue/…). */
+export function groupPerformancesByShowAtVenue(
+  performances: StrapiTheaterPerformance[],
+): TheaterVenueShowGroup[] {
+  const m = new Map<string, StrapiTheaterPerformance[]>();
+  for (const p of performances) {
+    if (!showtimeIsUpcoming(p)) continue;
+    const slug = p.theaterShowSlug?.trim();
+    const key = slug || (p.theaterShowId != null ? `id:${p.theaterShowId}` : `row:${p.id}`);
+    const list = m.get(key) ?? [];
+    list.push(p);
+    m.set(key, list);
+  }
+
+  return [...m.entries()]
+    .map(([key, slots]) => {
+      const sorted = [...slots].sort(
+        (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime(),
+      );
+      const head = sorted[0];
+      return {
+        key,
+        theaterShowSlug: head.theaterShowSlug?.trim() || "",
+        theaterShowTitle: head.theaterShowTitle?.trim() || "Παράσταση",
+        posterUrl: head.theaterShowPosterUrl ?? null,
+        soldOut: head.theaterShowSoldOut,
+        slots: sorted,
+      };
+    })
+    .sort((a, b) => {
+      const ta = a.slots[0] ? new Date(a.slots[0].datetime).getTime() : 0;
+      const tb = b.slots[0] ? new Date(b.slots[0].datetime).getTime() : 0;
+      return ta - tb;
+    });
+}
+
 export function performanceOverlapsDateRange(
   p: ScheduleSlot,
   fromYmd: string,

@@ -1,4 +1,6 @@
 import type { StrapiVenue } from "@/lib/api";
+import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
+import { theaterVenueProgramPath } from "@/lib/theaterVenuePath";
 
 /** Τύπος χώρου στο CMS (`venue.type`). */
 export type VenueKind = "cinema" | "theater" | "other";
@@ -73,10 +75,13 @@ export function isOtherVenue(venue: Pick<StrapiVenue, "type">): boolean {
 
 export function programHrefForVenue(venue: Pick<StrapiVenue, "slug" | "type">): string | undefined {
   const slug = venue.slug?.trim();
-  if (!slug || !isCinemaVenue(venue)) return undefined;
-  return `/movies/venue/${encodeURIComponent(slug)}`;
+  if (!slug) return undefined;
+  if (isCinemaVenue(venue)) return moviesVenueProgramPath(slug);
+  if (isTheaterVenue(venue)) return theaterVenueProgramPath(slug);
+  return undefined;
 }
 
 export function programLinkLabelForVenue(venue: Pick<StrapiVenue, "type">): string {
+  if (isTheaterVenue(venue)) return "Πρόγραμμα παραστάσεων σε αυτόν τον χώρο";
   return "Πρόγραμμα ταινιών σε αυτόν τον χώρο";
 }

@@ -10,54 +10,68 @@
     {
       "slug": "ethniko-theatro",
       "name": "Εθνικό Θέατρο",
+      "venueType": "theater",
       "address": "Αγίου Κωνσταντίνου 22-24, Αθήνα",
       "googleMapsUrl": "https://maps.app.goo.gl/ethniko",
-      "moviesHref": "/movies/venue/ethniko-theatro",
+      "programHref": "/theater/venue/ethniko-theatro",
+      "theaterHref": "/theater/venue/ethniko-theatro",
       "venuesHref": "/venues"
     },
     {
       "slug": "megaro-mousikis",
       "name": "Μέγαρο Μουσικής Αθηνών",
+      "venueType": "theater",
       "address": "Βασ. Σοφίας & Κοκκάλη, Αθήνα",
       "googleMapsUrl": "https://maps.app.goo.gl/megaro",
-      "moviesHref": "/movies/venue/megaro-mousikis",
+      "programHref": "/theater/venue/megaro-mousikis",
+      "theaterHref": "/theater/venue/megaro-mousikis",
       "venuesHref": "/venues"
     },
     {
       "slug": "olympion",
       "name": "Ολύμπιον",
+      "venueType": "cinema",
       "address": "Πλατεία Αριστοτέλους 10, Θεσσαλονίκη",
       "googleMapsUrl": "https://maps.app.goo.gl/olympion",
+      "programHref": "/movies/venue/olympion",
       "moviesHref": "/movies/venue/olympion",
       "venuesHref": "/venues"
     },
     {
       "slug": "theatro-pallas",
       "name": "Θέατρο Παλλάς",
+      "venueType": "theater",
       "address": "Βουκουρεστίου 5, Αθήνα",
       "googleMapsUrl": "https://maps.app.goo.gl/pallas",
-      "moviesHref": "/movies/venue/theatro-pallas",
+      "programHref": "/theater/venue/theatro-pallas",
+      "theaterHref": "/theater/venue/theatro-pallas",
       "venuesHref": "/venues"
     },
     {
       "slug": "village-the-mall",
       "name": "Village Cinemas @ The Mall",
+      "venueType": "cinema",
       "address": "Ανδρέα Παπανδρέου 35, Μαρούσι",
       "googleMapsUrl": "https://maps.app.goo.gl/village",
+      "programHref": "/movies/venue/village-the-mall",
       "moviesHref": "/movies/venue/village-the-mall",
       "venuesHref": "/venues"
     },
     {
       "slug": "snfcc",
       "name": "Ίδρυμα Σταύρος Νιάρχος",
+      "venueType": "theater",
       "address": "Λεωφ. Συγγρού 364, Καλλιθέα",
       "googleMapsUrl": "https://maps.app.goo.gl/snfcc",
-      "moviesHref": "/movies/venue/snfcc",
+      "programHref": "/theater/venue/snfcc",
+      "theaterHref": "/theater/venue/snfcc",
       "venuesHref": "/venues"
     },
     {
       "slug": "venue",
       "name": "Αλεξάνδρα",
+      "venueType": "cinema",
+      "programHref": "/movies/venue/venue",
       "moviesHref": "/movies/venue/venue",
       "venuesHref": "/venues"
     }

@@ -163,7 +163,7 @@ async function buildCrawlEnrichment() {
         sort: "sort_order:asc",
       }),
       fetchCollection("venues", {
-        extraFields: ["name", "address", "google_maps_url"],
+        extraFields: ["name", "address", "google_maps_url", "type"],
       }),
       fetchCollection("movies", {
         extraFields: ["title", "synopsis", "original_title", "director", "imdb_rating", "critic_score"],
@@ -210,12 +210,22 @@ async function buildCrawlEnrichment() {
         if (!slug) return null;
         const name = pickString(a, "name") || slug;
         const googleMapsUrl = pickString(a, "google_maps_url");
+        const venueType = (pickString(a, "type") || "cinema").toLowerCase();
+        const programHref =
+          venueType === "theater"
+            ? `/theater/venue/${encodeURIComponent(slug)}`
+            : venueType === "cinema"
+              ? `/movies/venue/${encodeURIComponent(slug)}`
+              : undefined;
         return {
           slug,
           name,
+          venueType,
           address: pickString(a, "address") || undefined,
           googleMapsUrl: googleMapsUrl || undefined,
-          moviesHref: `/movies/venue/${encodeURIComponent(slug)}`,
+          programHref,
+          moviesHref: venueType === "cinema" ? `/movies/venue/${encodeURIComponent(slug)}` : undefined,
+          theaterHref: venueType === "theater" ? programHref : undefined,
           venuesHref: "/venues",
         };
       })
@@ -442,12 +452,12 @@ async function main() {
 
   const crawlEnrichmentForSitemap = await buildCrawlEnrichment();
   const venueProgramUrls = (crawlEnrichmentForSitemap.venues ?? [])
-    .filter((v) => isIndexableSlug(v.slug))
+    .filter((v) => isIndexableSlug(v.slug) && v.programHref)
     .map((v) => ({
-    path: `/movies/venue/${encodeURIComponent(v.slug)}`,
-    lastmod: new Date().toISOString().slice(0, 10),
-    priority: "0.85",
-    changefreq: "daily",
+      path: v.programHref,
+      lastmod: new Date().toISOString().slice(0, 10),
+      priority: "0.85",
+      changefreq: "daily",
     }));
 
   const staticWithDates = STATIC_ROUTES.map((r) => ({

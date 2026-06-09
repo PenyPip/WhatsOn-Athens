@@ -11,6 +11,9 @@ import Index from "./views/Index";
 const GoogleAnalytics = lazy(() => import("@/components/GoogleAnalytics"));
 const Movies = lazy(() => import(/* webpackChunkName: "movies" */ "./views/Movies"));
 const TheaterPage = lazy(() => import(/* webpackChunkName: "theater" */ "./views/Theater"));
+const TheaterVenueProgram = lazy(() =>
+  import(/* webpackChunkName: "theater-venue" */ "./views/TheaterVenueProgram"),
+);
 const EventDetail = lazy(() => import(/* webpackChunkName: "event-detail" */ "./views/EventDetail"));
 const Venues = lazy(() => import(/* webpackChunkName: "venues" */ "./views/Venues"));
 const Dining = lazy(() => import(/* webpackChunkName: "dining" */ "./views/Dining"));
@@ -45,6 +48,7 @@ function AppRoutes() {
       <Route path="/movies/venue/:venueSlug" element={<LazyPage><Movies /></LazyPage>} />
       <Route path="/movies/:slug" element={<LazyPage><EventDetail type="movie" /></LazyPage>} />
       <Route path="/theater" element={<LazyPage><TheaterPage /></LazyPage>} />
+      <Route path="/theater/venue/:venueSlug" element={<LazyPage><TheaterVenueProgram /></LazyPage>} />
       <Route path="/theater/:slug" element={<LazyPage><EventDetail type="theater" /></LazyPage>} />
       <Route path="/venues" element={<LazyPage><Venues /></LazyPage>} />
       <Route path="/dining" element={<LazyPage><Dining /></LazyPage>} />

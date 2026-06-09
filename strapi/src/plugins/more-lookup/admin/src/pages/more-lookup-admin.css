@@ -127,3 +127,23 @@
   line-height: 1.1 !important;
   white-space: nowrap;
 }
+
+/* Φίλτρα τύπου (ταινίες / θέατρο) — Πίνακας 3 και πίνακες ταύτισης */
+.more-lookup-type-filters {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px solid #dcdce4;
+  background: #f6f6f9;
+}
+
+.more-lookup-type-filters button {
+  min-height: 2rem !important;
+  font-weight: 600 !important;
+}
+
+.more-lookup-catalog-missing-toggle {
+  padding: 0.65rem 0.75rem;
+  border-radius: 0.5rem;
+  border: 1px dashed #dcdce4;
+  background: #fafafa;
+}
