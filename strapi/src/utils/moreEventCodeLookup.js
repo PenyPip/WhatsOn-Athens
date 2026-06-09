@@ -5,6 +5,9 @@ const MORE_THEATER_URL = 'https://www.more.com/gr-el/tickets/theater/';
 const MORE_GETEVENTS = 'https://www.more.com/_api/playdetails/getevents';
 const USER_AGENT = 'whatson-more-lookup/1.0';
 const FETCH_TIMEOUT_MS = 25_000;
+const VERIFY_CONCURRENCY = Number(process.env.MORE_LOOKUP_VERIFY_CONCURRENCY || 8);
+const SCRAPE_LOOKUP_ENABLED = process.env.MORE_LOOKUP_VENUE_SCRAPE !== 'false';
+const SCRAPE_LOOKUP_MAX = Number(process.env.MORE_LOOKUP_VENUE_SCRAPE_MAX || 20);
 const MIN_HINT_SCORE = 0.45;
 const DEFAULT_MIN_SCORE = MIN_HINT_SCORE;
 const DEFAULT_APPLY_MIN_SCORE = Number(process.env.MORE_LOOKUP_APPLY_MIN_SCORE || MIN_HINT_SCORE);
@@ -228,6 +231,36 @@ async function fetchMoreCatalog() {
   });
 
   return [...cinema, ...theater].sort((a, b) => a.title.localeCompare(b.title, 'el'));
+}
+
+async function verifyEventGroupCodesParallel(codes, options = {}) {
+  const concurrency = Number(options.concurrency ?? VERIFY_CONCURRENCY);
+  const unique = [...new Set((codes || []).map((c) => String(c || '').trim()).filter(Boolean))];
+  const map = new Map();
+  if (!unique.length) return map;
+
+  let cursor = 0;
+  let done = 0;
+  const onProgress = options.onProgress;
+
+  async function worker() {
+    while (cursor < unique.length) {
+      const idx = cursor;
+      cursor += 1;
+      const code = unique[idx];
+      if (!code || map.has(code)) continue;
+      const verify = await verifyEventGroupCode(code);
+      map.set(code, verify);
+      done += 1;
+      if (onProgress && (done === unique.length || done % 12 === 0)) {
+        onProgress(`Επαλήθευση More API: ${done}/${unique.length}`);
+      }
+    }
+  }
+
+  const workers = Math.min(Math.max(1, concurrency), unique.length);
+  await Promise.all(Array.from({ length: workers }, () => worker()));
+  return map;
 }
 
 async function verifyEventGroupCode(code) {
@@ -1026,33 +1059,58 @@ async function loadApprovedQueueItems(strapi) {
   return [...mapQueue(movies, 'movie'), ...mapQueue(theaterShows, 'theater_show')];
 }
 
-async function attachVerification(entries, skipVerify) {
+async function attachVerification(entries, skipVerify, options = {}) {
   if (skipVerify) {
     return entries.map((e) => ({ ...e, verify: null }));
   }
-  const out = [];
-  for (const entry of entries) {
+  const codes = entries.map((e) => e.eventGroupCode || e.code).filter(Boolean);
+  const verified = await verifyEventGroupCodesParallel(codes, options);
+  return entries.map((entry) => {
     const code = entry.eventGroupCode || entry.code || null;
-    const verify = code ? await verifyEventGroupCode(code) : null;
-    out.push({ ...entry, verify });
-  }
-  return out;
+    return { ...entry, verify: code ? verified.get(code) ?? null : null };
+  });
 }
 
 /**
  * Venue bundle γραμμές καταλόγου: scrape more_link → eventId + play-title → ταύτιση CMS.
  */
-async function enrichCatalogWithVenueProgramScrape(catalog, cmsVenues, cmsItems) {
-  if (!SCRAPE_ENABLED || !Array.isArray(catalog) || !catalog.length) return catalog;
+async function enrichCatalogWithVenueProgramScrape(catalog, cmsVenues, cmsItems, options = {}) {
+  if (!SCRAPE_ENABLED || !SCRAPE_LOOKUP_ENABLED || !Array.isArray(catalog) || !catalog.length) {
+    return catalog;
+  }
 
+  const maxScrapes = Number(options.maxScrapes ?? SCRAPE_LOOKUP_MAX);
+  const onProgress = options.onProgress;
   const scrapeCache = createVenueScrapeCache();
   const movies = cmsItems.filter((item) => item.contentType === 'movie');
   const shows = cmsItems.filter((item) => item.contentType === 'theater_show');
-  const out = [];
 
+  const nonBundles = [];
+  const bundles = [];
   for (const row of catalog) {
-    if (row.kind !== 'venue_bundle') {
-      out.push(row);
+    if (row.kind !== 'venue_bundle') nonBundles.push(row);
+    else bundles.push(row);
+  }
+
+  const orderedBundles = [
+    ...bundles.filter((row) => !row.inCms),
+    ...bundles.filter((row) => row.inCms),
+  ];
+
+  const out = [...nonBundles];
+  let scrapeCount = 0;
+
+  for (const row of orderedBundles) {
+    if (scrapeCount >= maxScrapes) {
+      out.push({
+        ...row,
+        venueScrape: {
+          ok: false,
+          skipped: true,
+          error: 'scrape_limit',
+          hint: `Όριο ${maxScrapes} venue scrape ανά ταύτιση`,
+        },
+      });
       continue;
     }
 
@@ -1062,6 +1120,11 @@ async function enrichCatalogWithVenueProgramScrape(catalog, cmsVenues, cmsItems)
     if (!moreLink) {
       out.push(row);
       continue;
+    }
+
+    scrapeCount += 1;
+    if (onProgress) {
+      onProgress(`Scrape χώρων: ${scrapeCount}/${Math.min(maxScrapes, orderedBundles.length)}…`);
     }
 
     const scrape = await scrapeCache.get(moreLink);
@@ -1102,12 +1165,18 @@ async function enrichCatalogWithVenueProgramScrape(catalog, cmsVenues, cmsItems)
     });
   }
 
+  out.sort((a, b) => {
+    const ai = catalog.findIndex((r) => r.eventGroupCode === a.eventGroupCode);
+    const bi = catalog.findIndex((r) => r.eventGroupCode === b.eventGroupCode);
+    return ai - bi;
+  });
+
   return out;
 }
 
 /**
  * @param {object} strapi
- * @param {{ query?: string, matchCms?: boolean, listAll?: boolean, skipVerify?: boolean, minScore?: number, catalogLimit?: number }} options
+ * @param {{ query?: string, matchCms?: boolean, listAll?: boolean, skipVerify?: boolean, minScore?: number, catalogLimit?: number, onProgress?: function }} options
  */
 async function runMoreEventCodeLookup(strapi, options = {}) {
   const started = Date.now();
@@ -1120,8 +1189,13 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
     applyMinScore = DEFAULT_APPLY_MIN_SCORE,
     catalogLimit = 25,
     syncPending = true,
+    onProgress = null,
   } = options;
+  const progress = (msg) => {
+    if (typeof onProgress === 'function' && msg) onProgress(msg);
+  };
 
+  progress('Λήψη καταλόγου More (ταινίες & θέατρο)…');
   const catalog = await fetchMoreCatalog();
   const cinemaMovies = catalog.filter((e) => e.category === 'cinema' && e.kind === 'movie');
   const moreTheaterShows = catalog.filter((e) => e.category === 'theater' && e.kind === 'show');
@@ -1157,6 +1231,7 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
   };
 
   if (matchCms) {
+    progress('Ταύτιση CMS ↔ More…');
     const cmsItems = await loadAllCmsItems(strapi);
     const rawMatches = matchCmsItemsToMore(cmsItems, catalog, minScore);
 
@@ -1168,12 +1243,9 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
       }
     }
 
-    const verified = new Map();
-    if (!skipVerify) {
-      for (const code of codesToVerify) {
-        verified.set(code, await verifyEventGroupCode(code));
-      }
-    }
+    const verified = skipVerify
+      ? new Map()
+      : await verifyEventGroupCodesParallel([...codesToVerify], { onProgress: progress });
 
     result.matches = rawMatches.map((row) => {
       const suggestedCode = row.more?.code ?? null;
@@ -1249,6 +1321,7 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
   }
 
   {
+    progress('Κατάλογος More & σύγκριση CMS…');
     const [cmsItems, cmsVenues] = await Promise.all([
       loadAllCmsItems(strapi),
       loadCmsVenues(strapi),
@@ -1264,9 +1337,12 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
         category: e.category,
       })),
       skipVerify,
+      { onProgress: progress },
     );
     const annotated = annotateCatalogWithCmsStatus(withVerify, cmsCodeIndex);
-    result.catalog = await enrichCatalogWithVenueProgramScrape(annotated, cmsVenues, cmsItems);
+    result.catalog = await enrichCatalogWithVenueProgramScrape(annotated, cmsVenues, cmsItems, {
+      onProgress: progress,
+    });
     result.stats.catalogShown = result.catalog.length;
     result.stats.catalogVenueScrapeResolved = result.catalog
       .filter((row) => row.venueScrape?.ok)
@@ -1313,11 +1389,13 @@ function skipCodeReason(row, code, score, verify, options) {
 async function applyMoreEventCodeMatches(strapi, options = {}) {
   const started = Date.now();
   const overwriteExisting = options.overwriteExisting === true;
+  const onProgress = options.onProgress;
 
   const lookup = await runMoreEventCodeLookup(strapi, {
     query: options.query ?? null,
     matchCms: true,
     skipVerify: false,
+    onProgress,
   });
 
   const queue = await loadApprovedQueueItems(strapi);

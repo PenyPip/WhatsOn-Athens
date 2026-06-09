@@ -644,6 +644,8 @@ const App = () => {
   const [syncReport, setSyncReport] = useState(null);
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncProgress, setSyncProgress] = useState(null);
+  const [lookupLoading, setLookupLoading] = useState(false);
+  const [lookupProgress, setLookupProgress] = useState(null);
   const [pendingApproval, setPendingApproval] = useState([]);
   const { get, post } = useFetchClient();
   const toggleNotification = useNotification();
@@ -671,6 +673,44 @@ const App = () => {
     }
     throw new Error('Το sync ξεπέρασε το χρονικό όριο αναμονής (~20 λεπτά).');
   }, [get]);
+
+  const pollLookupJob = useCallback(async () => {
+    for (let attempt = 0; attempt < 480; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      const res = await get('/api/more-lookup/run/status');
+      const data = res?.data;
+      if (data?.progress) setLookupProgress(data.progress);
+      if (data?.status === 'completed' && data?.result) return data.result;
+      if (data?.status === 'failed') {
+        throw new Error(data?.error || 'Αποτυχία ταύτισης');
+      }
+      if (data?.status !== 'running' && data?.status !== 'started') break;
+    }
+    throw new Error('Η ταύτιση ξεπέρασε το χρονικό όριο αναμονής (~20 λεπτά).');
+  }, [get]);
+
+  const resumeLookupIfRunning = useCallback(async () => {
+    try {
+      const res = await get('/api/more-lookup/run/status');
+      const data = res?.data;
+      if (data?.status !== 'running' && data?.status !== 'started') return;
+      setLookupLoading(true);
+      setLookupProgress(data.progress || 'Ταύτιση σε εξέλιξη…');
+      const lookupResult = await pollLookupJob();
+      setResult(lookupResult);
+      setPendingApproval(lookupResult?.pendingApproval ?? []);
+      toggleNotification({
+        type: 'success',
+        message: lookupResult?.message || 'Η ταύτιση ολοκληρώθηκε.',
+      });
+    } catch (error) {
+      const message = error?.message || 'Αποτυχία ταύτισης.';
+      toggleNotification({ type: 'warning', message });
+    } finally {
+      setLookupLoading(false);
+      setLookupProgress(null);
+    }
+  }, [get, pollLookupJob, toggleNotification]);
 
   const resumeSyncIfRunning = useCallback(async () => {
     try {
@@ -706,11 +746,12 @@ const App = () => {
         setApplyMinScore(res.data.applyMinScore);
       }
       await loadPending();
+      await resumeLookupIfRunning();
       await resumeSyncIfRunning();
     } catch {
       setEnabled(true);
     }
-  }, [get, loadPending, resumeSyncIfRunning]);
+  }, [get, loadPending, resumeLookupIfRunning, resumeSyncIfRunning]);
 
   useEffect(() => {
     loadStatus();
@@ -720,55 +761,72 @@ const App = () => {
     setCatalogPage(1);
   }, [result, catalogOnlyMissing, catalogKindFilter, matchContentFilter]);
 
+  const finishLookupJob = async (postBody) => {
+    const res = await post('/api/more-lookup/run', postBody);
+    const data = res?.data;
+    if (data?.status === 'completed' && data?.result) return data.result;
+    if (data?.status === 'running' || data?.status === 'started') {
+      setLookupProgress(data.progress || 'Ταύτιση σε εξέλιξη…');
+      return pollLookupJob();
+    }
+    return data;
+  };
+
   const runLookup = async () => {
-    setLoading(true);
+    setLookupLoading(true);
+    setLookupProgress('Έναρξη ταύτισης…');
     setResult(null);
     try {
-      const res = await post('/api/more-lookup/run', {
+      const lookupResult = await finishLookupJob({
         query: query.trim() || undefined,
         matchCms: true,
       });
-      setResult(res.data);
-      setPendingApproval(res?.data?.pendingApproval ?? []);
+      setResult(lookupResult);
+      setPendingApproval(lookupResult?.pendingApproval ?? []);
       toggleNotification({
         type: 'success',
-        message: res?.data?.message || 'Η αναζήτηση ολοκληρώθηκε.',
+        message: lookupResult?.message || 'Η αναζήτηση ολοκληρώθηκε.',
       });
     } catch (error) {
       const message =
         error?.response?.data?.error?.message ||
+        error?.message ||
         error?.response?.data?.message ||
         'Αποτυχία αναζήτησης More.';
       toggleNotification({ type: 'warning', message });
     } finally {
-      setLoading(false);
+      setLookupLoading(false);
+      setLookupProgress(null);
     }
   };
 
   const applyToCms = async () => {
-    setLoading(true);
+    setLookupLoading(true);
+    setLookupProgress('Έναρξη εγγραφής CMS…');
     try {
-      const res = await post('/api/more-lookup/run', {
+      const lookupResult = await finishLookupJob({
         query: query.trim() || undefined,
         apply: true,
         overwriteExisting,
       });
-      setResult(res.data);
-      setPendingApproval(res?.data?.pendingApproval ?? []);
-      const applied = res?.data?.apply?.stats?.applied ?? 0;
-      const skipped = res?.data?.apply?.stats?.skipped ?? 0;
+      setResult(lookupResult);
+      setPendingApproval(lookupResult?.pendingApproval ?? []);
+      const applied = lookupResult?.apply?.stats?.applied ?? 0;
+      const skipped = lookupResult?.apply?.stats?.skipped ?? 0;
       toggleNotification({
         type: applied > 0 ? 'success' : 'warning',
-        message: res?.data?.message || `Εγγράφηκαν: ${applied} · παραλείφθηκαν: ${skipped}`,
+        message: lookupResult?.message || `Εγγράφηκαν: ${applied} · παραλείφθηκαν: ${skipped}`,
       });
     } catch (error) {
       const message =
         error?.response?.data?.error?.message ||
+        error?.message ||
         error?.response?.data?.message ||
         'Αποτυχία εγγραφής στο CMS.';
       toggleNotification({ type: 'warning', message });
     } finally {
-      setLoading(false);
+      setLookupLoading(false);
+      setLookupProgress(null);
     }
   };
 
@@ -1144,23 +1202,34 @@ const App = () => {
 
               <Flex gap={3} paddingTop={4} wrap="wrap" alignItems="center">
                 <Button
-                  loading={loading}
+                  loading={lookupLoading}
                   onClick={runLookup}
-                  disabled={loading}
+                  disabled={lookupLoading || syncLoading}
                   style={actionButtonStyle}
                 >
-                  Εκτέλεση ταύτισης
+                  {lookupLoading ? 'Ταύτιση…' : 'Εκτέλεση ταύτισης'}
                 </Button>
                 <Button
                   variant="success"
-                  loading={loading}
+                  loading={lookupLoading}
                   onClick={applyToCms}
-                  disabled={loading}
+                  disabled={lookupLoading || syncLoading}
                   style={actionButtonStyle}
                 >
                   Γράψε αυτόματα
                 </Button>
               </Flex>
+              {lookupLoading && lookupProgress ? (
+                <Box paddingTop={3}>
+                  <Typography variant="pi" textColor="primary700" fontWeight="semiBold">
+                    {lookupProgress}
+                  </Typography>
+                  <Typography variant="pi" textColor="neutral500" paddingTop={1}>
+                    Η ταύτιση τρέχει στο server — μπορεί να διαρκέσει 1–5 λεπτά (κατάλογος More +
+                    επαλήθευση API).
+                  </Typography>
+                </Box>
+              ) : null}
               <Box paddingTop={4}>
                 <Typography variant="pi" textColor="neutral500">
                   Η ταύτιση δείχνει μόνο κωδικούς που λείπουν από το CMS. Πάτα «Έγκρ.» ανά γραμμή, μετά

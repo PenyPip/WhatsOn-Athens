@@ -15,6 +15,7 @@ const {
   getMoreShowtimeSyncJob,
   startMoreShowtimeSyncJob,
 } = require('../../../utils/moreShowtimeSyncJob');
+const { getMoreLookupJob, startMoreLookupJob } = require('../../../utils/moreLookupJob');
 
 module.exports = {
   async status(ctx) {
@@ -23,6 +24,7 @@ module.exports = {
       enabled: process.env.MORE_LOOKUP_ENABLED !== 'false',
       showtimeSyncEnabled: process.env.MORE_SHOWTIME_SYNC_ENABLED !== 'false',
       showtimeSyncJob: getMoreShowtimeSyncJob(),
+      lookupJob: getMoreLookupJob(),
       minScore: DEFAULT_MIN_SCORE,
       applyMinScore: DEFAULT_APPLY_MIN_SCORE,
       pendingApprovalCount: pending.length,
@@ -156,47 +158,79 @@ module.exports = {
 
     const adminEmail = ctx.state?.admin?.email || 'unknown';
 
-    if (apply) {
-      strapi.log.info(`[more-lookup] apply by ${adminEmail} query=${query || '-'}`);
+    const wait = body.wait === true || ctx.query?.wait === 'true';
+    const lookupOptions = {
+      query: query || null,
+      matchCms,
+      listAll,
+      skipVerify,
+      apply,
+      overwriteExisting: body.overwriteExisting === true,
+    };
+
+    if (wait) {
+      if (apply) {
+        strapi.log.info(`[more-lookup] blocking apply by ${adminEmail} query=${query || '-'}`);
+        try {
+          const result = await applyMoreEventCodeMatches(strapi, {
+            query: query || null,
+            overwriteExisting: body.overwriteExisting === true,
+          });
+          result.pendingApproval = await loadPendingApprovalItems(strapi);
+          ctx.body = result;
+        } catch (e) {
+          strapi.log.error('[more-lookup] apply failed', e);
+          ctx.status = 500;
+          ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+        }
+        return;
+      }
+
+      strapi.log.info(`[more-lookup] blocking run by ${adminEmail} matchCms=${matchCms} query=${query || '-'}`);
       try {
-        const result = await applyMoreEventCodeMatches(strapi, {
+        const result = await runMoreEventCodeLookup(strapi, {
           query: query || null,
-          overwriteExisting: body.overwriteExisting === true,
+          matchCms,
+          listAll,
+          skipVerify,
+          syncPending: matchCms,
         });
-        result.pendingApproval = await loadPendingApprovalItems(strapi);
-        ctx.body = result;
+        ctx.body = {
+          ...result,
+          message: matchCms
+            ? `Ταύτιση: ${result.stats.matched} (ταινίες ${result.stats.cmsMovies} · θέατρο ${result.stats.cmsTheaterShows}) · ${result.stats.pendingApproval} προς έγκριση · κατάλογος: ${result.stats.catalogShown ?? result.catalog?.length ?? 0}`
+            : `Κατάλογος More: ${result.stats.catalogShown ?? result.catalog?.length ?? 0} εγγραφές`,
+        };
       } catch (e) {
-        strapi.log.error('[more-lookup] apply failed', e);
+        strapi.log.error('[more-lookup] run failed', e);
         ctx.status = 500;
-        ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+        ctx.body = {
+          ok: false,
+          error: { message: e?.message || String(e) },
+        };
       }
       return;
     }
 
-    strapi.log.info(`[more-lookup] run by ${adminEmail} matchCms=${matchCms} query=${query || '-'}`);
-
-    try {
-      const result = await runMoreEventCodeLookup(strapi, {
-        query: query || null,
-        matchCms,
-        listAll,
-        skipVerify,
-        syncPending: matchCms,
-      });
-      ctx.body = {
-        ...result,
-        message: matchCms
-          ? `Ταύτιση: ${result.stats.matched} (ταινίες ${result.stats.cmsMovies} · θέατρο ${result.stats.cmsTheaterShows}) · ${result.stats.pendingApproval} προς έγκριση · κατάλογος: ${result.stats.catalogShown ?? result.catalog?.length ?? 0}`
-          : `Κατάλογος More: ${result.stats.catalogShown ?? result.catalog?.length ?? 0} εγγραφές`,
-      };
-    } catch (e) {
-      strapi.log.error('[more-lookup] run failed', e);
-      ctx.status = 500;
-      ctx.body = {
-        ok: false,
-        error: { message: e?.message || String(e) },
-      };
+    const existing = getMoreLookupJob();
+    if (existing?.status === 'running') {
+      ctx.body = { ok: true, status: 'running', ...existing };
+      return;
     }
+
+    strapi.log.info(
+      `[more-lookup] background ${apply ? 'apply' : 'run'} by ${adminEmail} matchCms=${matchCms} query=${query || '-'}`,
+    );
+    const started = startMoreLookupJob(strapi, lookupOptions);
+    ctx.body = {
+      ok: true,
+      status: started.started ? 'started' : 'running',
+      ...started.job,
+    };
+  },
+
+  async runStatus(ctx) {
+    ctx.body = { ok: true, ...getMoreLookupJob() };
   },
 
   async syncShowtimesStatus(ctx) {

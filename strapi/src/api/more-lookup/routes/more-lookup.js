@@ -39,6 +39,15 @@ module.exports = {
       },
     },
     {
+      method: 'GET',
+      path: '/more-lookup/run/status',
+      handler: 'more-lookup.runStatus',
+      config: {
+        auth: false,
+        policies: ['global::is-admin'],
+      },
+    },
+    {
       method: 'POST',
       path: '/more-lookup/run',
       handler: 'more-lookup.run',
