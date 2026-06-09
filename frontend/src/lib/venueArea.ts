@@ -62,6 +62,14 @@ export function parseVenueAreaParam(raw: string | null | undefined): VenueAreaKe
   return (VENUE_AREA_KEYS as readonly string[]).includes(v) ? (v as VenueAreaKey) : null;
 }
 
+/** Φίλτρο πόλης σελίδας Χώροι — default Αθήνα, ρητό `area=all` για όλες τις πόλεις. */
+export function parseVenueAreaFilterParam(raw: string | null | undefined): VenueAreaFilter {
+  const v = raw?.trim().toLowerCase() ?? "";
+  if (v === "all") return "all";
+  if ((VENUE_AREA_KEYS as readonly string[]).includes(v)) return v as VenueAreaKey;
+  return "athens";
+}
+
 export function parseVenueDistrictParam(raw: string | null | undefined): AthensDistrictKey | null {
   const v = raw?.trim().toLowerCase() ?? "";
   return (ATHENS_DISTRICT_KEYS as readonly string[]).includes(v) ? (v as AthensDistrictKey) : null;

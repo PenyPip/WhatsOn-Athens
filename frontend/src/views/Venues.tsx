@@ -21,7 +21,7 @@ import {
 } from "@/lib/venueType";
 import {
   ATHENS_DISTRICT_FILTER_OPTIONS,
-  parseVenueAreaParam,
+  parseVenueAreaFilterParam,
   parseVenueDistrictParam,
   VENUE_AREA_FILTER_OPTIONS,
   venueMatchesAreaFilter,
@@ -39,10 +39,6 @@ function activeDistrictFilter(
   districtParam: AthensDistrictKey | null,
 ): AthensDistrictFilter {
   return districtParam ?? "all";
-}
-
-function activeAreaFilter(areaParam: VenueAreaKey | null): VenueAreaFilter {
-  return areaParam ?? "athens";
 }
 
 const filterBtn =
@@ -93,12 +89,13 @@ function FilterButton({
 
 const Venues = () => {
   const [searchParams, setSearchParams] = useSearchParams();
-  const areaFilter = parseVenueAreaParam(searchParams.get("area"));
-  const areaUi = activeAreaFilter(areaFilter);
+  const areaParam = searchParams.get("area");
+  const areaUi = parseVenueAreaFilterParam(areaParam);
   const districtFilter = parseVenueDistrictParam(searchParams.get("district"));
   const districtUi = activeDistrictFilter(districtFilter);
   const kindFilter = parseVenueKindFilterParam(searchParams.get("type"));
-  const hasListFilter = areaFilter !== null || districtFilter !== null || kindFilter !== "all";
+  const hasListFilter =
+    areaParam !== null || districtFilter !== null || kindFilter !== "all";
 
   usePageSeo({
     ...staticPageSeo.venues,
@@ -120,7 +117,7 @@ const Venues = () => {
 
   const setAreaUi = (next: VenueAreaFilter) => {
     const params = new URLSearchParams(searchParams);
-    if (next === "all" || next === "athens") params.delete("area");
+    if (next === "athens") params.delete("area");
     else params.set("area", next);
     if (next !== "athens" && next !== "all") params.delete("district");
     setSearchParams(params);
@@ -141,15 +138,14 @@ const Venues = () => {
   };
 
   const filteredVenues = useMemo(() => {
-    const areaKey: VenueAreaKey | null =
-      areaUi === "all" ? null : areaUi === "athens" && !areaFilter ? "athens" : areaFilter;
+    const areaKey: VenueAreaKey | null = areaUi === "all" ? null : areaUi;
     return [...(venues ?? [])]
       .filter(isPublicVenueListing)
       .filter((v) => venueMatchesAreaFilter(v, areaKey))
       .filter((v) => venueMatchesKindFilter(v, kindFilter))
       .filter((v) => venueMatchesDistrictFilter(v, districtFilter))
       .sort((a, b) => a.name.localeCompare(b.name, "el"));
-  }, [venues, areaFilter, areaUi, districtFilter, kindFilter]);
+  }, [venues, areaUi, districtFilter, kindFilter]);
 
   return (
     <div className="min-h-screen pt-36 pb-20 md:pb-8">
@@ -201,7 +197,7 @@ const Venues = () => {
           <LoadingState message="Φόρτωση χώρων..." />
         ) : filteredVenues.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            {areaFilter || districtFilter || kindFilter !== "all"
+            {hasListFilter
               ? "Δεν βρέθηκαν χώροι με αυτά τα κριτήρια."
               : "Δεν υπάρχουν καταχωρημένοι χώροι προς το παρόν."}
           </p>

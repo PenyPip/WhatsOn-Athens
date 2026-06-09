@@ -18,6 +18,76 @@ const {
 } = require('../api/venue/services/venue-updated-status');
 
 const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 120);
+const GOOGLE_MAPS_URL_MAX = 500;
+
+function compactSyncErrorMessage(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+
+  const dataTooLong = s.match(/Data too long for column '([^']+)'/i);
+  if (dataTooLong) {
+    return `Πολύ μεγάλη τιμή για το πεδίο «${dataTooLong[1]}»`;
+  }
+  if (/Duplicate entry/i.test(s)) {
+    return 'Διπλότυπη εγγραφή (unique constraint)';
+  }
+
+  const parts = s.split(' - ');
+  const tail = parts[parts.length - 1]?.trim() || '';
+  if (tail && tail.length < 240 && !/^insert into/i.test(tail)) {
+    if (tail !== s) return compactSyncErrorMessage(tail);
+    return tail;
+  }
+
+  if (/^insert into/i.test(s) && s.length > 120) {
+    return compactSyncErrorMessage(tail) || 'Σφάλμα εγγραφής στη βάση';
+  }
+
+  return s.length > 240 ? `${s.slice(0, 237)}…` : s;
+}
+
+function pushSyncError(report, dedup, entry) {
+  if (!Array.isArray(report.errors)) report.errors = [];
+  const msg = compactSyncErrorMessage(entry.error || entry.message || '');
+  const key = [
+    entry.action,
+    entry.venueType,
+    entry.name || entry.title,
+    entry.moreVenueId,
+    entry.movieId,
+    entry.theaterShowId,
+    entry.venueId,
+    entry.code,
+    msg,
+  ]
+    .filter((v) => v != null && v !== '')
+    .join('|');
+  if (dedup.has(key)) return;
+  dedup.add(key);
+  report.errors.push({ ...entry, error: msg });
+}
+
+/** Σύντομο maps URL — όχι embed (ξεπερνά VARCHAR). */
+function googleMapsUrlForVenueStorage(event) {
+  const lat = event?.venueLatitude ?? event?.venueLat;
+  const lng = event?.venueLongitude ?? event?.venueLng;
+  const la = lat != null ? Number(String(lat).replace(',', '.')) : NaN;
+  const lo = lng != null ? Number(String(lng).replace(',', '.')) : NaN;
+  if (Number.isFinite(la) && Number.isFinite(lo)) {
+    return `https://www.google.com/maps?q=${la},${lo}`;
+  }
+
+  const mapUrl = String(event?.venueMapUrl || event?.venueMapURL || '').trim();
+  if (!mapUrl || !/google\.com\/maps/i.test(mapUrl)) return undefined;
+
+  if (mapUrl.includes('/maps/embed')) {
+    const coords = mapUrl.match(/!3d(-?[\d.]+)!4d(-?[\d.]+)/);
+    if (coords) return `https://www.google.com/maps?q=${coords[1]},${coords[2]}`;
+    return undefined;
+  }
+
+  return mapUrl.length <= GOOGLE_MAPS_URL_MAX ? mapUrl : undefined;
+}
 
 /** Κατά sync: δημιουργία χώρου από More αν λείπει (venueId / venueName). */
 const AUTO_CREATE_THEATER_VENUES = process.env.MORE_THEATER_SYNC_AUTO_CREATE_VENUES !== 'false';
@@ -186,20 +256,8 @@ function buildVenueDataFromMoreEvent(event, config) {
     data.summer_outdoor = true;
   }
 
-  const mapUrl = String(event?.venueMapUrl || event?.venueMapURL || '').trim();
-  if (mapUrl && /google\.com\/maps/i.test(mapUrl)) {
-    data.google_maps_url = mapUrl;
-  }
-
-  const lat = event?.venueLatitude ?? event?.venueLat;
-  const lng = event?.venueLongitude ?? event?.venueLng;
-  if (!data.google_maps_url && lat != null && lng != null) {
-    const la = Number(String(lat).replace(',', '.'));
-    const lo = Number(String(lng).replace(',', '.'));
-    if (Number.isFinite(la) && Number.isFinite(lo)) {
-      data.google_maps_url = `https://www.google.com/maps?q=${la},${lo}`;
-    }
-  }
+  const mapsUrl = googleMapsUrlForVenueStorage(event);
+  if (mapsUrl) data.google_maps_url = mapsUrl;
 
   return { data, moreVenueId, venueName };
 }
@@ -222,7 +280,7 @@ async function findVenueByMoreId(strapi, moreVenueId, config) {
   return Array.isArray(rows) && rows.length ? rows[0] : null;
 }
 
-async function createVenueFromMore(strapi, event, report, config) {
+async function createVenueFromMore(strapi, event, report, config, errorDedup) {
   const { data, moreVenueId, venueName } = buildVenueDataFromMoreEvent(event, config);
   if (!venueName) return null;
 
@@ -262,7 +320,7 @@ async function createVenueFromMore(strapi, event, report, config) {
         );
         return created;
       } catch (e2) {
-        report.errors.push({
+        pushSyncError(report, errorDedup, {
           action: 'create_venue',
           venueType: config.venueType,
           moreVenueId,
@@ -272,7 +330,7 @@ async function createVenueFromMore(strapi, event, report, config) {
         return null;
       }
     }
-    report.errors.push({
+    pushSyncError(report, errorDedup, {
       action: 'create_venue',
       venueType: config.venueType,
       moreVenueId,
@@ -287,7 +345,16 @@ async function createVenueFromMore(strapi, event, report, config) {
  * Επιστρέφει venue από lookup ή το δημιουργεί από More event.
  * @param {Map<string, Promise<object|null>>} pendingVenueCreates
  */
-async function ensureVenueFromMoreEvent(strapi, lookup, event, report, pendingVenueCreates, config) {
+async function ensureVenueFromMoreEvent(
+  strapi,
+  lookup,
+  event,
+  report,
+  pendingVenueCreates,
+  failedVenueKeys,
+  errorDedup,
+  config,
+) {
   const existing = resolveVenueFromMoreEvent(lookup, event);
   if (existing) return existing;
 
@@ -297,6 +364,8 @@ async function ensureVenueFromMoreEvent(strapi, lookup, event, report, pendingVe
   const nameKey = normalizeVenueName(event?.venueName);
   const pendingKey = `${config.venueType}:${moreVenueId || (nameKey ? `name:${nameKey}` : '')}`;
   if (pendingKey === `${config.venueType}:`) return null;
+
+  if (failedVenueKeys.has(pendingKey)) return null;
 
   if (pendingVenueCreates.has(pendingKey)) {
     return pendingVenueCreates.get(pendingKey);
@@ -311,9 +380,11 @@ async function ensureVenueFromMoreEvent(strapi, lookup, event, report, pendingVe
       }
     }
 
-    const created = await createVenueFromMore(strapi, event, report, config);
+    const created = await createVenueFromMore(strapi, event, report, config, errorDedup);
     if (created) {
       registerVenueInLookup(lookup, created);
+    } else {
+      failedVenueKeys.add(pendingKey);
     }
     return created;
   })();
@@ -326,12 +397,46 @@ async function ensureVenueFromMoreEvent(strapi, lookup, event, report, pendingVe
   }
 }
 
-function ensureTheaterVenueFromMoreEvent(strapi, lookup, event, report, pendingVenueCreates) {
-  return ensureVenueFromMoreEvent(strapi, lookup, event, report, pendingVenueCreates, VENUE_AUTO_CREATE.theater);
+function ensureTheaterVenueFromMoreEvent(
+  strapi,
+  lookup,
+  event,
+  report,
+  pendingVenueCreates,
+  failedVenueKeys,
+  errorDedup,
+) {
+  return ensureVenueFromMoreEvent(
+    strapi,
+    lookup,
+    event,
+    report,
+    pendingVenueCreates,
+    failedVenueKeys,
+    errorDedup,
+    VENUE_AUTO_CREATE.theater,
+  );
 }
 
-function ensureCinemaVenueFromMoreEvent(strapi, lookup, event, report, pendingVenueCreates) {
-  return ensureVenueFromMoreEvent(strapi, lookup, event, report, pendingVenueCreates, VENUE_AUTO_CREATE.cinema);
+function ensureCinemaVenueFromMoreEvent(
+  strapi,
+  lookup,
+  event,
+  report,
+  pendingVenueCreates,
+  failedVenueKeys,
+  errorDedup,
+) {
+  return ensureVenueFromMoreEvent(
+    strapi,
+    lookup,
+    event,
+    report,
+    pendingVenueCreates,
+    failedVenueKeys,
+    errorDedup,
+    VENUE_AUTO_CREATE.cinema,
+  );
 }
 
 async function loadVenueByMoreId(strapi, venueType) {
@@ -715,6 +820,8 @@ async function syncMovieShowtimesFromMore(strapi, {
   };
 
   const pendingVenueCreates = new Map();
+  const failedVenueKeys = new Set();
+  const errorDedup = new Set();
   const venueSyncTracker = createVenueSyncStatsTracker();
   const scrapeCache = createVenueScrapeCache();
   const supplementalEventIndex = new Map();
@@ -770,6 +877,8 @@ async function syncMovieShowtimesFromMore(strapi, {
               event,
               report,
               pendingVenueCreates,
+              failedVenueKeys,
+              errorDedup,
             );
           }
           if (!venue) {
@@ -793,7 +902,12 @@ async function syncMovieShowtimesFromMore(strapi, {
         }
       } catch (e) {
         const msg = e?.message || String(e);
-        report.errors.push({ movieId: movie.id, title: movie.title, code, error: msg });
+        pushSyncError(report, errorDedup, {
+          movieId: movie.id,
+          title: movie.title,
+          code,
+          error: msg,
+        });
         strapi.log.warn(`[more-showtime-sync] movie ${movie.id} (${code}): ${msg}`);
       }
     }
@@ -881,7 +995,7 @@ async function syncMovieShowtimesFromMore(strapi, {
         const msg = e?.message || String(e);
         venueStats.errors = (venueStats.errors || 0) + 1;
         venueSyncTracker.record(venue.id, { errors: 1 });
-        report.errors.push({
+        pushSyncError(report, errorDedup, {
           venueId: venue.id,
           name: venue.name,
           code,
@@ -937,6 +1051,8 @@ async function syncTheaterPerformancesFromMore(strapi, {
   }
 
   const pendingVenueCreates = new Map();
+  const failedVenueKeys = new Set();
+  const errorDedup = new Set();
   const scrapeCache = createVenueScrapeCache();
   const supplementalEventIndex = new Map();
   const showsForTitle = venuesWithBundle.length
@@ -978,6 +1094,8 @@ async function syncTheaterPerformancesFromMore(strapi, {
               event,
               report,
               pendingVenueCreates,
+              failedVenueKeys,
+              errorDedup,
             );
           }
           if (!venue) {
@@ -999,7 +1117,12 @@ async function syncTheaterPerformancesFromMore(strapi, {
         }
       } catch (e) {
         const msg = e?.message || String(e);
-        report.errors.push({ theaterShowId: show.id, title: show.title, code, error: msg });
+        pushSyncError(report, errorDedup, {
+          theaterShowId: show.id,
+          title: show.title,
+          code,
+          error: msg,
+        });
         strapi.log.warn(`[more-theater-sync] show ${show.id} (${code}): ${msg}`);
       }
     }
@@ -1078,7 +1201,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
         }
       } catch (e) {
         const msg = e?.message || String(e);
-        report.errors.push({
+        pushSyncError(report, errorDedup, {
           venueId: venue.id,
           name: venue.name,
           code,

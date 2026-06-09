@@ -307,17 +307,62 @@ function SyncReportSection({ title, children, tone = 'neutral' }) {
   );
 }
 
-function formatSyncErrorLine(err) {
-  if (!err || typeof err !== 'object') return String(err ?? '—');
-  const parts = [];
-  if (err.title) parts.push(err.title);
-  else if (err.name) parts.push(err.name);
-  if (err.code) parts.push(`κωδικός ${err.code}`);
-  if (err.moreVenueId) parts.push(`venueId ${err.moreVenueId}`);
-  if (err.action) parts.push(err.action);
-  const head = parts.length ? parts.join(' · ') : 'Σφάλμα';
-  const msg = err.error || err.message || '';
-  return msg ? `${head}: ${msg}` : head;
+function compactSyncErrorMessage(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+
+  const dataTooLong = s.match(/Data too long for column '([^']+)'/i);
+  if (dataTooLong) return `Πολύ μεγάλη τιμή για το πεδίο «${dataTooLong[1]}»`;
+  if (/Duplicate entry/i.test(s)) return 'Διπλότυπη εγγραφή (unique constraint)';
+
+  const parts = s.split(' - ');
+  const tail = parts[parts.length - 1]?.trim() || '';
+  if (tail && tail.length < 240 && !/^insert into/i.test(tail)) {
+    if (tail !== s) return compactSyncErrorMessage(tail);
+    return tail;
+  }
+  if (/^insert into/i.test(s) && s.length > 120) {
+    return compactSyncErrorMessage(tail) || 'Σφάλμα εγγραφής στη βάση';
+  }
+  return s.length > 240 ? `${s.slice(0, 237)}…` : s;
+}
+
+function syncErrorContextLabel(err) {
+  if (!err || typeof err !== 'object') return 'Σφάλμα';
+  if (err.action === 'create_venue') {
+    const type = err.venueType === 'theater' ? 'θέατρο' : 'σινεμά';
+    return `Δημιουργία χώρου (${type})`;
+  }
+  if (err.title) return err.title;
+  if (err.name) return err.name;
+  return 'Σφάλμα';
+}
+
+function syncErrorMetaLines(err) {
+  if (!err || typeof err !== 'object') return [];
+  const lines = [];
+  if (err.moreVenueId) lines.push(`More venueId: ${err.moreVenueId}`);
+  if (err.code) lines.push(`Κωδικός: ${err.code}`);
+  if (err.movieId) lines.push(`Ταινία CMS #${err.movieId}`);
+  if (err.theaterShowId) lines.push(`Παράσταση CMS #${err.theaterShowId}`);
+  if (err.venueId) lines.push(`Χώρος CMS #${err.venueId}`);
+  return lines;
+}
+
+function groupSyncErrors(errors) {
+  const groups = new Map();
+  for (const err of errors || []) {
+    const msg = compactSyncErrorMessage(err?.error || err?.message || err);
+    const context = syncErrorContextLabel(err);
+    const key = `${context}|${msg}`;
+    const prev = groups.get(key);
+    if (prev) {
+      prev.count += 1;
+      continue;
+    }
+    groups.set(key, { context, message: msg, meta: syncErrorMetaLines(err), count: 1, sample: err });
+  }
+  return [...groups.values()].sort((a, b) => b.count - a.count);
 }
 
 function SyncReportPanel({ report }) {
@@ -331,6 +376,7 @@ function SyncReportPanel({ report }) {
   const resolvedViaScrape = Number(report.resolvedViaVenueScrape ?? 0);
   const skippedPast = Number(report.skippedPast ?? 0);
   const errorCount = Array.isArray(report.errors) ? report.errors.length : 0;
+  const errorGroups = React.useMemo(() => groupSyncErrors(report.errors), [report.errors]);
 
   const missingIds = [
     ...new Set(
@@ -517,33 +563,50 @@ function SyncReportPanel({ report }) {
 
       {errorCount > 0 ? (
         <SyncReportSection title={`Σφάλματα (${errorCount})`} tone="danger">
-          <Box paddingBottom={showErrors ? 3 : 0}>
-            <Button size="S" variant="tertiary" onClick={() => setShowErrors((v) => !v)}>
-              {showErrors ? 'Απόκρυψη λεπτομερειών' : 'Εμφάνιση λεπτομερειών'}
-            </Button>
-          </Box>
-          {showErrors ? (
-            <ul style={{ margin: 0, paddingLeft: '1.25rem', maxHeight: '16rem', overflowY: 'auto' }}>
-              {report.errors.slice(0, 40).map((err, i) => (
-                <li key={`sync-err-${i}`} style={{ marginBottom: '0.5rem' }}>
-                  <Typography variant="pi" textColor="danger700">
-                    {formatSyncErrorLine(err)}
+          <Typography variant="pi" textColor="neutral600" paddingBottom={3}>
+            {errorGroups.length} διαφορετικοί τύποι σφάλματος
+            {errorCount > errorGroups.length ? ` · ${errorCount} συνολικές εγγραφές στο log` : ''}
+          </Typography>
+          <Flex direction="column" gap={2} paddingBottom={showErrors ? 3 : 0}>
+            {errorGroups.slice(0, showErrors ? 40 : 6).map((group, i) => (
+              <Box
+                key={`sync-err-group-${i}`}
+                className="more-lookup-sync-error-card"
+                padding={3}
+                background="danger100"
+                hasRadius
+              >
+                <Flex justifyContent="space-between" alignItems="flex-start" gap={2} wrap="wrap">
+                  <Typography variant="pi" fontWeight="semiBold" textColor="danger700">
+                    {group.context}
+                    {group.sample?.name && group.context !== group.sample.name
+                      ? ` · ${group.sample.name}`
+                      : ''}
                   </Typography>
-                </li>
-              ))}
-              {errorCount > 40 ? (
-                <li style={{ listStyle: 'none', marginLeft: '-1.25rem' }}>
-                  <Typography variant="pi" textColor="neutral500" paddingTop={2}>
-                    … και {errorCount - 40} ακόμα
+                  {group.count > 1 ? (
+                    <Badge background="danger200" textColor="danger700">
+                      ×{group.count}
+                    </Badge>
+                  ) : null}
+                </Flex>
+                <Typography variant="pi" textColor="danger700" paddingTop={1}>
+                  {group.message}
+                </Typography>
+                {group.meta.length > 0 ? (
+                  <Typography variant="pi" textColor="neutral600" paddingTop={1}>
+                    {group.meta.join(' · ')}
                   </Typography>
-                </li>
-              ) : null}
-            </ul>
-          ) : (
-            <Typography variant="pi" textColor="neutral600">
-              Πάτησε για λίστα με τίτλους / κωδικούς και μηνύματα σφάλματος.
-            </Typography>
-          )}
+                ) : null}
+              </Box>
+            ))}
+          </Flex>
+          {errorGroups.length > 6 ? (
+            <Box paddingBottom={showErrors ? 0 : 2}>
+              <Button size="S" variant="tertiary" onClick={() => setShowErrors((v) => !v)}>
+                {showErrors ? 'Λιγότερα' : `Όλα (${errorGroups.length} τύποι)`}
+              </Button>
+            </Box>
+          ) : null}
         </SyncReportSection>
       ) : null}
     </Box>
