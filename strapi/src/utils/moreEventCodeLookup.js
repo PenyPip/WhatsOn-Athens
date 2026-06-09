@@ -4,7 +4,8 @@ const MORE_CINEMA_URL = 'https://www.more.com/gr-el/tickets/cinema/';
 const MORE_THEATER_URL = 'https://www.more.com/gr-el/tickets/theater/';
 const MORE_GETEVENTS = 'https://www.more.com/_api/playdetails/getevents';
 const USER_AGENT = 'whatson-more-lookup/1.0';
-const FETCH_TIMEOUT_MS = 25_000;
+const FETCH_TIMEOUT_MS = Number(process.env.MORE_LOOKUP_FETCH_TIMEOUT_MS || 45_000);
+const VERIFY_TIMEOUT_MS = Number(process.env.MORE_LOOKUP_VERIFY_TIMEOUT_MS || 20_000);
 const VERIFY_CONCURRENCY = Number(process.env.MORE_LOOKUP_VERIFY_CONCURRENCY || 8);
 const SCRAPE_LOOKUP_ENABLED = process.env.MORE_LOOKUP_VENUE_SCRAPE !== 'false';
 const SCRAPE_LOOKUP_MAX = Number(process.env.MORE_LOOKUP_VENUE_SCRAPE_MAX || 20);
@@ -28,7 +29,7 @@ const {
   SCRAPE_ENABLED,
 } = require('./moreVenueProgramScrape');
 const { findBestCmsMatchByPlayTitle } = require('./morePlayTitleMatch');
-const { fetchMore } = require('./moreHttp');
+const { fetchMore, formatMoreNetworkError } = require('./moreHttp');
 
 const CMS_LOOKUP_CONFIG = {
   movie: {
@@ -235,15 +236,38 @@ async function fetchText(url) {
     });
     if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
     return res.text();
+  } catch (e) {
+    throw formatMoreNetworkError(e, {
+      url,
+      timeoutMs: FETCH_TIMEOUT_MS,
+      label: 'κατάλογος More',
+    });
   } finally {
     clearTimeout(timer);
   }
 }
 
+async function fetchTextWithRetry(url) {
+  let lastErr;
+  for (let attempt = 0; attempt < 2; attempt += 1) {
+    try {
+      return await fetchText(url);
+    } catch (e) {
+      lastErr = e;
+      if (attempt === 0 && /timeout|aborted/i.test(String(e?.message || ''))) {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        continue;
+      }
+      throw e;
+    }
+  }
+  throw lastErr;
+}
+
 async function fetchMoreCatalog() {
   const [cinemaHtml, theaterHtml] = await Promise.all([
-    fetchText(MORE_CINEMA_URL),
-    fetchText(MORE_THEATER_URL),
+    fetchTextWithRetry(MORE_CINEMA_URL),
+    fetchTextWithRetry(MORE_THEATER_URL),
   ]);
 
   const cinema = parseMoreCatalogHtml(cinemaHtml, {
@@ -291,7 +315,7 @@ async function verifyEventGroupCodesParallel(codes, options = {}) {
 async function verifyEventGroupCode(code) {
   const url = `${MORE_GETEVENTS}?eventGroupCode=${encodeURIComponent(code)}`;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 12_000);
+  const timer = setTimeout(() => controller.abort(), VERIFY_TIMEOUT_MS);
   try {
     const res = await fetchMore(url, {
       signal: controller.signal,
@@ -323,7 +347,12 @@ async function verifyEventGroupCode(code) {
       sampleEventId: events[0]?.eventId ?? null,
     };
   } catch (e) {
-    return { ok: false, error: e?.message || String(e) };
+    const wrapped = formatMoreNetworkError(e, {
+      url,
+      timeoutMs: VERIFY_TIMEOUT_MS,
+      label: 'More API verify',
+    });
+    return { ok: false, error: wrapped.message };
   } finally {
     clearTimeout(timer);
   }

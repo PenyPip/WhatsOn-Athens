@@ -114,6 +114,20 @@ function rowKey(row) {
   return `${row.contentType || 'movie'}:${row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId}`;
 }
 
+function lookupErrorMessage(error) {
+  const raw =
+    error?.response?.data?.error?.message ||
+    error?.response?.data?.error ||
+    error?.message ||
+    error?.response?.data?.message ||
+    '';
+  const text = String(raw || 'Αποτυχία λειτουργίας More lookup.');
+  if (/aborted/i.test(text)) {
+    return 'Timeout σύνδεσης με more.com — το server δεν πρόλαβε απάντηση. Δοκίμασε ξανά ή όρισε MORE_HTTP_PROXY / MORE_LOOKUP_FETCH_TIMEOUT_MS.';
+  }
+  return text;
+}
+
 function formatCodeList(codes) {
   const list = Array.isArray(codes) ? codes.filter(Boolean) : [];
   if (!list.length) return '—';
@@ -705,8 +719,7 @@ const App = () => {
         message: lookupResult?.message || 'Η ταύτιση ολοκληρώθηκε.',
       });
     } catch (error) {
-      const message = error?.message || 'Αποτυχία ταύτισης.';
-      toggleNotification({ type: 'warning', message });
+      toggleNotification({ type: 'warning', message: lookupErrorMessage(error) });
     } finally {
       setLookupLoading(false);
       setLookupProgress(null);
@@ -789,12 +802,7 @@ const App = () => {
         message: lookupResult?.message || 'Η αναζήτηση ολοκληρώθηκε.',
       });
     } catch (error) {
-      const message =
-        error?.response?.data?.error?.message ||
-        error?.message ||
-        error?.response?.data?.message ||
-        'Αποτυχία αναζήτησης More.';
-      toggleNotification({ type: 'warning', message });
+      toggleNotification({ type: 'warning', message: lookupErrorMessage(error) });
     } finally {
       setLookupLoading(false);
       setLookupProgress(null);

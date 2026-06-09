@@ -1,6 +1,6 @@
 'use strict';
 
-const { fetchMore } = require('./moreHttp');
+const { fetchMore, formatMoreNetworkError } = require('./moreHttp');
 
 const MORE_CINEMA_WARMUP = 'https://www.more.com/gr-el/tickets/cinema/';
 const USER_AGENT = 'Mozilla/5.0 (compatible; whatson-more-venue-scrape/1.0)';
@@ -51,6 +51,12 @@ async function fetchText(url, cookie = '') {
     const res = await fetchMore(url, { signal: controller.signal, headers, redirect: 'follow' });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return { text: await res.text(), cookie: cookiesFromResponse(res) || cookie };
+  } catch (e) {
+    throw formatMoreNetworkError(e, {
+      url,
+      timeoutMs: FETCH_TIMEOUT_MS,
+      label: 'venue scrape More',
+    });
   } finally {
     clearTimeout(timer);
   }

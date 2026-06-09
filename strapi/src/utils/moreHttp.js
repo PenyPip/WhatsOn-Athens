@@ -78,8 +78,41 @@ async function fetchMore(url, options = {}) {
   return fetch(url, options);
 }
 
+/**
+ * Ανθρώπινο μήνυμα για timeout/δίκτυο προς More (AbortError → «operation was aborted»).
+ * @param {unknown} err
+ * @param {{ url?: string, timeoutMs?: number, label?: string }} [ctx]
+ */
+function formatMoreNetworkError(err, ctx = {}) {
+  const url = ctx.url ? String(ctx.url) : '';
+  const timeoutMs = Number(ctx.timeoutMs) || 0;
+  const label = ctx.label || 'More';
+  const name = String(err?.name || '');
+  const msg = String(err?.message || err || '');
+  const timeoutSec = timeoutMs > 0 ? Math.round(timeoutMs / 1000) : null;
+
+  if (name === 'AbortError' || /aborted/i.test(msg)) {
+    const hint = timeoutSec
+      ? `Timeout ${timeoutSec}s`
+      : 'Timeout σύνδεσης';
+    const proxyHint = resolveMoreProxyUrl()
+      ? ''
+      : ' · δοκίμασε MORE_HTTP_PROXY αν το more.com μπλοκάρει το server IP';
+    return new Error(
+      `${hint} — ${label}${url ? ` (${url})` : ''}${proxyHint}`,
+    );
+  }
+
+  if (/ECONNREFUSED|ENOTFOUND|ETIMEDOUT|ECONNRESET|fetch failed|socket hang up/i.test(msg)) {
+    return new Error(`Αδυναμία σύνδεσης με ${label}: ${msg}${url ? ` · ${url}` : ''}`);
+  }
+
+  return err instanceof Error ? err : new Error(msg || `Σφάλμα ${label}`);
+}
+
 module.exports = {
   fetchMore,
   isMoreProxyEnabled,
   getMoreProxyStatus,
+  formatMoreNetworkError,
 };
