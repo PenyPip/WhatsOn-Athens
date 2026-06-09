@@ -92,7 +92,7 @@ async function prefetchMoviesList(qc: QueryClient) {
     }),
     qc.prefetchQuery({ queryKey: VENUES_PROGRAM_QUERY_KEY, queryFn: api.getVenuesForProgram, ...queryDefaults }),
   ]);
-  finalizeBootstrapCache(qc, { trimHomeShowtimes: true, trimVenuesForShowtimes: true });
+  finalizeBootstrapCache(qc, { trimVenuesForShowtimes: true });
 }
 
 /** Πρόγραμμα ενός σινεμά — showtimes venue μόνο · ταινίες client-side. */

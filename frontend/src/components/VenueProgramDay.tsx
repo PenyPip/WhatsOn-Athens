@@ -461,7 +461,7 @@ export default function VenueProgramLayout({
 }) {
   const now = useMemo(() => new Date(), []);
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
-  const [showAllWeeks, setShowAllWeeks] = useState(false);
+  const [showAllWeeks, setShowAllWeeks] = useState(true);
 
   const { availableMovies, programWeeks, totalLines } = useMemo(() => {
     const allEntries = sections.flatMap((s) => s.entries);

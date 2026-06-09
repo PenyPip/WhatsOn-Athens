@@ -1612,21 +1612,21 @@ function upcomingShowtimeFilters(now = new Date()): Record<string, string> {
   };
 }
 
-async function fetchShowtimesCalendar(weeks = 5): Promise<StrapiShowtime[]> {
+async function fetchShowtimesCalendar(): Promise<StrapiShowtime[]> {
   const rows = await fetchAPI<any[]>(
     "/showtimes/home-calendar",
-    { weeks: String(weeks) },
+    {},
     { noPopulate: true },
   );
   return (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x));
 }
 
-async function fetchShowtimesVenueCalendar(venueSlug: string, weeks = 3): Promise<StrapiShowtime[]> {
+async function fetchShowtimesVenueCalendar(venueSlug: string): Promise<StrapiShowtime[]> {
   const venueFilter = { "filters[venue][slug][$eq]": venueSlug };
   try {
     const rows = await fetchAPI<any[]>(
       "/showtimes/venue-calendar",
-      { venue: venueSlug, weeks: String(weeks) },
+      { venue: venueSlug },
       { noPopulate: true },
     );
     return (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x));
@@ -1873,15 +1873,15 @@ export const api = {
       return row ? mapEvent(row) : undefined;
     }),
 
-  /** Ελαφρύ πρόγραμμα — ένα request, ~5 εβδομάδες (αρχική, /movies, λεπτομέρεια). */
-  getShowtimesForHome: () => fetchShowtimesCalendar(5),
+  /** Ελαφρύ πρόγραμμα — όλες οι επερχόμενες προβολές (χωρίς ανώτατο όριο ημερομηνίας). */
+  getShowtimesForHome: () => fetchShowtimesCalendar(),
 
   getShowtimes: (options?: { venueSlug?: string }) => {
     const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";
     if (venueSlug) {
-      return fetchShowtimesVenueCalendar(venueSlug, 3);
+      return fetchShowtimesVenueCalendar(venueSlug);
     }
-    return fetchShowtimesCalendar(5);
+    return fetchShowtimesCalendar();
   },
 
   getTheaterPerformancesForHome: () => fetchTheaterPerformancesCalendar(),
