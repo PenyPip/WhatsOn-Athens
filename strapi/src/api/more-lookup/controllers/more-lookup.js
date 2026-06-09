@@ -15,6 +15,10 @@ const {
   getMoreShowtimeSyncJob,
   startMoreShowtimeSyncJob,
 } = require('../../../utils/moreShowtimeSyncJob');
+const {
+  getMoreLookupJob,
+  startMoreLookupJob,
+} = require('../../../utils/moreLookupJob');
 const { getMoreProxyStatus } = require('../../../utils/moreHttp');
 
 module.exports = {
