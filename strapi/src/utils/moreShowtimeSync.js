@@ -9,6 +9,7 @@ const {
 const {
   createVenueScrapeCache,
   SCRAPE_ENABLED,
+  SCRAPE_ON_SYNC,
 } = require('./moreVenueProgramScrape');
 const { findBestCmsMatchByPlayTitle } = require('./morePlayTitleMatch');
 const {
@@ -140,28 +141,66 @@ function createEventsCache(fetchDelayMs) {
   let fetchIndex = 0;
   let totalFetches = 0;
 
+  async function fetchAndStore(key) {
+    let events = [];
+    try {
+      events = await fetchMoreEventsByGroupCode(key);
+    } catch (e) {
+      const msg = e?.message || String(e);
+      console.warn(`[more-showtime-sync] getevents failed (${key}): ${msg}`);
+      events = [];
+    }
+    cache.set(key, events);
+    return events;
+  }
+
   return {
     setTotalFetches(n) {
       totalFetches = n;
+    },
+    size() {
+      return cache.size;
     },
     async get(code) {
       const key = String(code || '').trim();
       if (!key) return [];
       if (cache.has(key)) return cache.get(key);
-      let events = [];
-      try {
-        events = await fetchMoreEventsByGroupCode(key);
-      } catch (e) {
-        const msg = e?.message || String(e);
-        console.warn(`[more-showtime-sync] getevents failed (${key}): ${msg}`);
-        events = [];
-      }
-      cache.set(key, events);
+      const events = await fetchAndStore(key);
       fetchIndex += 1;
       if (fetchIndex < totalFetches && fetchDelayMs > 0) {
         await sleep(fetchDelayMs);
       }
       return events;
+    },
+    /** Παράλληλο prefetch μοναδικών κωδικών — πολύ πιο γρήγορο από σειριακό sync. */
+    async prefetchAll(codes, options = {}) {
+      const concurrency = Number(
+        options.concurrency ?? process.env.MORE_SHOWTIME_SYNC_CONCURRENCY ?? 6,
+      );
+      const delayMs = Number(options.delayMs ?? fetchDelayMs);
+      const unique = [
+        ...new Set((codes || []).map((c) => String(c || '').trim()).filter(Boolean)),
+      ];
+      if (!unique.length) return { total: 0, fetched: 0 };
+
+      let cursor = 0;
+      let fetched = 0;
+
+      async function worker() {
+        while (cursor < unique.length) {
+          const idx = cursor;
+          cursor += 1;
+          const key = unique[idx];
+          if (!key || cache.has(key)) continue;
+          await fetchAndStore(key);
+          fetched += 1;
+          if (delayMs > 0) await sleep(delayMs);
+        }
+      }
+
+      const workers = Math.min(Math.max(1, concurrency), unique.length);
+      await Promise.all(Array.from({ length: workers }, () => worker()));
+      return { total: unique.length, fetched };
     },
   };
 }
@@ -734,7 +773,7 @@ async function resolveCinemaMovieFromEventId({
   if (cached) return cached;
 
   const link = venue?.more_link || venue?.moreLink;
-  if (!SCRAPE_ENABLED || !link || !moviesForTitle?.length) return null;
+  if (!SCRAPE_ENABLED || !SCRAPE_ON_SYNC || !link || !moviesForTitle?.length) return null;
 
   const scrape = await scrapeCache.get(link);
   const row = scrape?.byEventId?.get(eventId);
@@ -774,7 +813,7 @@ async function resolveTheaterShowFromEventId({
   if (cached) return cached;
 
   const link = venue?.more_link || venue?.moreLink;
-  if (!SCRAPE_ENABLED || !link || !showsForTitle?.length) return null;
+  if (!SCRAPE_ENABLED || !SCRAPE_ON_SYNC || !link || !showsForTitle?.length) return null;
 
   const scrape = await scrapeCache.get(link);
   const row = scrape?.byEventId?.get(eventId);
@@ -1231,9 +1270,23 @@ async function syncTheaterPerformancesFromMore(strapi, {
  * @param {object} strapi
  * @param {{ movieId?: number, theaterShowId?: number }} options
  */
+function collectAllSyncEventGroupCodes(movies, theaterShows, cinemaVenuesWithBundle, theaterVenuesWithBundle) {
+  const codes = [];
+  for (const movie of movies) codes.push(...collectEventGroupCodes(movie));
+  for (const show of theaterShows) codes.push(...collectEventGroupCodes(show));
+  for (const venue of cinemaVenuesWithBundle) codes.push(...venue.bundleCodes);
+  for (const venue of theaterVenuesWithBundle) codes.push(...venue.bundleCodes);
+  return codes;
+}
+
 async function syncShowtimesFromMore(strapi, options = {}) {
   const started = Date.now();
   const now = new Date();
+  const progress = (msg) => {
+    if (typeof options.onProgress === 'function') options.onProgress(msg);
+  };
+
+  progress('Φόρτωση χώρων και καταχωρήσεων CMS…');
 
   const cinemaVenueLookup = await loadVenueByMoreId(strapi, 'cinema');
   const cinemaVenuesWithBundle = await loadVenuesWithBundleCodes(
@@ -1271,8 +1324,19 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   );
 
   const eventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
-  eventsCache.setTotalFetches(
-    movieCodeCount + theaterCodeCount + cinemaVenueCodeCount + theaterVenueCodeCount,
+  const allCodes = collectAllSyncEventGroupCodes(
+    movies,
+    theaterShows,
+    cinemaVenuesWithBundle,
+    theaterVenuesWithBundle,
+  );
+  const uniqueCodeCount = new Set(allCodes.map((c) => String(c || '').trim()).filter(Boolean)).size;
+  eventsCache.setTotalFetches(uniqueCodeCount);
+
+  progress(`More API: prefetch ${uniqueCodeCount} κωδικών…`);
+  const prefetch = await eventsCache.prefetchAll(allCodes);
+  progress(
+    `More API: ${prefetch.fetched}/${prefetch.total} κωδικοί · συγχρονισμός ταινιών…`,
   );
 
   const movieReport = await syncMovieShowtimesFromMore(strapi, {
@@ -1283,6 +1347,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     now,
   });
 
+  progress('Συγχρονισμός θεάτρου…');
   const theaterReport = await syncTheaterPerformancesFromMore(strapi, {
     theaterShows,
     venueLookup: theaterVenueLookup,

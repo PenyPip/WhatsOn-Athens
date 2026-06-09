@@ -4,6 +4,8 @@ const MORE_CINEMA_WARMUP = 'https://www.more.com/gr-el/tickets/cinema/';
 const USER_AGENT = 'Mozilla/5.0 (compatible; whatson-more-venue-scrape/1.0)';
 const FETCH_TIMEOUT_MS = Number(process.env.MORE_VENUE_SCRAPE_TIMEOUT_MS || 22_000);
 const SCRAPE_ENABLED = process.env.MORE_VENUE_PROGRAM_SCRAPE !== 'false';
+/** Scrape κατά sync — αργό (HTML fetch). Default off· ενεργό μόνο στο lookup. */
+const SCRAPE_ON_SYNC = process.env.MORE_VENUE_SCRAPE_ON_SYNC === 'true';
 const SCRAPE_DELAY_MS = Number(process.env.MORE_VENUE_SCRAPE_DELAY_MS || 180);
 
 function sleep(ms) {
@@ -227,6 +229,7 @@ function findCmsVenueForBundleCode(eventGroupCode, cmsVenues) {
 
 module.exports = {
   SCRAPE_ENABLED,
+  SCRAPE_ON_SYNC,
   scrapeMoreVenueProgram,
   createVenueScrapeCache,
   findCmsVenueForBundleCode,

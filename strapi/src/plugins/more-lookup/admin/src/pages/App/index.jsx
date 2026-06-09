@@ -642,6 +642,8 @@ const App = () => {
   const [showtimeSyncEnabled, setShowtimeSyncEnabled] = useState(true);
   const [result, setResult] = useState(null);
   const [syncReport, setSyncReport] = useState(null);
+  const [syncLoading, setSyncLoading] = useState(false);
+  const [syncProgress, setSyncProgress] = useState(null);
   const [pendingApproval, setPendingApproval] = useState([]);
   const { get, post } = useFetchClient();
   const toggleNotification = useNotification();
@@ -655,6 +657,46 @@ const App = () => {
     }
   }, [get]);
 
+  const pollSyncJob = useCallback(async () => {
+    for (let attempt = 0; attempt < 480; attempt += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+      const res = await get('/api/more-lookup/sync-showtimes/status');
+      const data = res?.data;
+      if (data?.progress) setSyncProgress(data.progress);
+      if (data?.status === 'completed' && data?.report) return data.report;
+      if (data?.status === 'failed') {
+        throw new Error(data?.error || 'Αποτυχία συγχρονισμού');
+      }
+      if (data?.status !== 'running' && data?.status !== 'started') break;
+    }
+    throw new Error('Το sync ξεπέρασε το χρονικό όριο αναμονής (~20 λεπτά).');
+  }, [get]);
+
+  const resumeSyncIfRunning = useCallback(async () => {
+    try {
+      const res = await get('/api/more-lookup/sync-showtimes/status');
+      const data = res?.data;
+      if (data?.status !== 'running' && data?.status !== 'started') {
+        if (data?.status === 'completed' && data?.report) setSyncReport(data.report);
+        return;
+      }
+      setSyncLoading(true);
+      setSyncProgress(data.progress || 'Συγχρονισμός σε εξέλιξη…');
+      const report = await pollSyncJob();
+      setSyncReport(report);
+      toggleNotification({
+        type: report?.created > 0 ? 'success' : 'info',
+        message: report?.message || 'Συγχρονισμός ολοκληρώθηκε.',
+      });
+    } catch (error) {
+      const message = error?.message || 'Αποτυχία συγχρονισμού.';
+      toggleNotification({ type: 'warning', message });
+    } finally {
+      setSyncLoading(false);
+      setSyncProgress(null);
+    }
+  }, [get, pollSyncJob, toggleNotification]);
+
   const loadStatus = useCallback(async () => {
     try {
       const res = await get('/api/more-lookup/status');
@@ -664,10 +706,11 @@ const App = () => {
         setApplyMinScore(res.data.applyMinScore);
       }
       await loadPending();
+      await resumeSyncIfRunning();
     } catch {
       setEnabled(true);
     }
-  }, [get, loadPending]);
+  }, [get, loadPending, resumeSyncIfRunning]);
 
   useEffect(() => {
     loadStatus();
@@ -975,23 +1018,45 @@ const App = () => {
   };
 
   const syncShowtimes = async () => {
-    setLoading(true);
+    setSyncLoading(true);
+    setSyncProgress('Έναρξη συγχρονισμού…');
     setSyncReport(null);
     try {
       const res = await post('/api/more-lookup/sync-showtimes', {});
-      setSyncReport(res.data);
+      const data = res?.data;
+      if (data?.status === 'completed' && data?.report) {
+        setSyncReport(data.report);
+        toggleNotification({
+          type: data.report?.created > 0 ? 'success' : 'info',
+          message: data.report?.message || 'Συγχρονισμός ολοκληρώθηκε.',
+        });
+        return;
+      }
+      if (data?.status === 'running' || data?.status === 'started') {
+        setSyncProgress(data.progress || 'Συγχρονισμός σε εξέλιξη…');
+        const report = await pollSyncJob();
+        setSyncReport(report);
+        toggleNotification({
+          type: report?.created > 0 ? 'success' : 'info',
+          message: report?.message || 'Συγχρονισμός ολοκληρώθηκε.',
+        });
+        return;
+      }
+      setSyncReport(data);
       toggleNotification({
-        type: res?.data?.created > 0 ? 'success' : 'info',
-        message: res?.data?.message || 'Συγχρονισμός ολοκληρώθηκε.',
+        type: data?.created > 0 ? 'success' : 'info',
+        message: data?.message || 'Συγχρονισμός ολοκληρώθηκε.',
       });
     } catch (error) {
       const message =
         error?.response?.data?.error?.message ||
+        error?.message ||
         error?.response?.data?.message ||
         'Αποτυχία συγχρονισμού.';
       toggleNotification({ type: 'warning', message });
     } finally {
-      setLoading(false);
+      setSyncLoading(false);
+      setSyncProgress(null);
     }
   };
 
@@ -1112,12 +1177,12 @@ const App = () => {
                   showtimeSyncEnabled ? (
                     <Button
                       variant="success"
-                      loading={loading}
+                      loading={syncLoading}
                       onClick={syncShowtimes}
-                      disabled={loading}
+                      disabled={syncLoading || loading}
                       style={actionButtonStyle}
                     >
-                      Τρέξε sync
+                      {syncLoading ? 'Sync…' : 'Τρέξε sync'}
                     </Button>
                   ) : null
                 }
@@ -1133,6 +1198,17 @@ const App = () => {
                     δημιουργείται αυτόματα από More (venueId + όνομα) και μετά προστίθενται προβολές.
                     Δημιουργούνται μόνο νέες εγγραφές προβολών.
                   </Typography>
+                  {syncLoading && syncProgress ? (
+                    <Box paddingTop={3}>
+                      <Typography variant="pi" textColor="primary700" fontWeight="semiBold">
+                        {syncProgress}
+                      </Typography>
+                      <Typography variant="pi" textColor="neutral500" paddingTop={1}>
+                        Το sync τρέχει στο server — μπορείς να μείνεις στη σελίδα (2–10+ λεπτά ανάλογα με
+                        τους κωδικούς More).
+                      </Typography>
+                    </Box>
+                  ) : null}
                 </Box>
               )}
             </Box>

@@ -48,6 +48,15 @@ module.exports = {
       },
     },
     {
+      method: 'GET',
+      path: '/more-lookup/sync-showtimes/status',
+      handler: 'more-lookup.syncShowtimesStatus',
+      config: {
+        auth: false,
+        policies: ['global::is-admin'],
+      },
+    },
+    {
       method: 'POST',
       path: '/more-lookup/sync-showtimes',
       handler: 'more-lookup.syncShowtimes',

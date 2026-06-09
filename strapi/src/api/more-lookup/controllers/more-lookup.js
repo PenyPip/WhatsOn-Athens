@@ -11,6 +11,10 @@ const {
   DEFAULT_APPLY_MIN_SCORE,
 } = require('../../../utils/moreEventCodeLookup');
 const { syncShowtimesFromMore } = require('../../../utils/moreShowtimeSync');
+const {
+  getMoreShowtimeSyncJob,
+  startMoreShowtimeSyncJob,
+} = require('../../../utils/moreShowtimeSyncJob');
 
 module.exports = {
   async status(ctx) {
@@ -18,6 +22,7 @@ module.exports = {
     ctx.body = {
       enabled: process.env.MORE_LOOKUP_ENABLED !== 'false',
       showtimeSyncEnabled: process.env.MORE_SHOWTIME_SYNC_ENABLED !== 'false',
+      showtimeSyncJob: getMoreShowtimeSyncJob(),
       minScore: DEFAULT_MIN_SCORE,
       applyMinScore: DEFAULT_APPLY_MIN_SCORE,
       pendingApprovalCount: pending.length,
@@ -194,6 +199,10 @@ module.exports = {
     }
   },
 
+  async syncShowtimesStatus(ctx) {
+    ctx.body = { ok: true, ...getMoreShowtimeSyncJob() };
+  },
+
   async syncShowtimes(ctx) {
     if (process.env.MORE_SHOWTIME_SYNC_ENABLED === 'false') {
       ctx.status = 503;
@@ -207,20 +216,40 @@ module.exports = {
     const body = ctx.request.body ?? {};
     const movieId = body.movieId ?? ctx.query?.movieId;
     const theaterShowId = body.theaterShowId ?? ctx.query?.theaterShowId;
+    const wait = body.wait === true || ctx.query?.wait === 'true';
     const adminEmail = ctx.state?.admin?.email || 'unknown';
-    strapi.log.info(`[more-showtime-sync] manual run by ${adminEmail}`);
 
-    try {
-      const report = await syncShowtimesFromMore(strapi, {
-        movieId: movieId != null && String(movieId).trim() ? Number(movieId) : undefined,
-        theaterShowId:
-          theaterShowId != null && String(theaterShowId).trim() ? Number(theaterShowId) : undefined,
-      });
-      ctx.body = report;
-    } catch (e) {
-      strapi.log.error('[more-showtime-sync] failed', e);
-      ctx.status = 500;
-      ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+    const syncOptions = {
+      movieId: movieId != null && String(movieId).trim() ? Number(movieId) : undefined,
+      theaterShowId:
+        theaterShowId != null && String(theaterShowId).trim() ? Number(theaterShowId) : undefined,
+    };
+
+    if (wait) {
+      strapi.log.info(`[more-showtime-sync] blocking run by ${adminEmail}`);
+      try {
+        const report = await syncShowtimesFromMore(strapi, syncOptions);
+        ctx.body = report;
+      } catch (e) {
+        strapi.log.error('[more-showtime-sync] failed', e);
+        ctx.status = 500;
+        ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+      }
+      return;
     }
+
+    const existing = getMoreShowtimeSyncJob();
+    if (existing?.status === 'running') {
+      ctx.body = { ok: true, status: 'running', ...existing };
+      return;
+    }
+
+    strapi.log.info(`[more-showtime-sync] background run by ${adminEmail}`);
+    const started = startMoreShowtimeSyncJob(strapi, syncOptions);
+    ctx.body = {
+      ok: true,
+      status: started.started ? 'started' : 'running',
+      ...started.job,
+    };
   },
 };
