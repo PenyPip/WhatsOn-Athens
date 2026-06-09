@@ -332,6 +332,13 @@ function SyncReportPanel({ report }) {
         <GridItem col={6} s={12}>
           <SyncReportSection title="Ταινίες">
             <SyncMetricRow label="Σκανάρισμα ταινιών" value={report.moviesScanned ?? '—'} />
+            {report.movieEventGroupCodesTotal != null ? (
+              <SyncMetricRow
+                label="Κωδικοί More (σύνολο)"
+                value={report.movieEventGroupCodesTotal}
+                detail={`κύριος + more_event_groups${(report.moviesWithMultipleEventGroupCodes ?? 0) > 0 ? ` · ${report.moviesWithMultipleEventGroupCodes} ταινίες με 2+` : ''}`}
+              />
+            ) : null}
             <SyncMetricRow
               label="Από κωδικούς ταινίας"
               value={`+${report.createdFromMovies ?? 0}`}

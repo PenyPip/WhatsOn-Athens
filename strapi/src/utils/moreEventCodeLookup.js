@@ -10,6 +10,7 @@ const DEFAULT_MIN_SCORE = MIN_HINT_SCORE;
 const DEFAULT_APPLY_MIN_SCORE = Number(process.env.MORE_LOOKUP_APPLY_MIN_SCORE || MIN_HINT_SCORE);
 const {
   collectEventGroupCodes,
+  resolveEventGroupCodesFromEntry,
   collectVenueBundleCodes,
   collectTheaterVenueBundleCodes,
   classifyCinemaCatalogKind,
@@ -544,7 +545,7 @@ function buildCmsEventGroupCodeIndex(cmsItems, cmsVenues) {
   };
 
   for (const item of cmsItems) {
-    for (const code of collectEventGroupCodes(item)) {
+    for (const code of resolveEventGroupCodesFromEntry(item)) {
       add(code, {
         contentType: item.contentType,
         cmsId: item.id,
@@ -639,10 +640,7 @@ function annotateCatalogWithCmsStatus(entries, cmsCodeIndex) {
 
 function cmsHasEventGroupCode(cms, code) {
   if (!code) return false;
-  const codes = cms.eventGroupCodes?.length
-    ? cms.eventGroupCodes
-    : collectEventGroupCodes(cms);
-  return codes.includes(code);
+  return resolveEventGroupCodesFromEntry(cms).includes(code);
 }
 
 /** @deprecated */

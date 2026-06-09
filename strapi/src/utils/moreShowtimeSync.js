@@ -1002,6 +1002,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   );
 
   const movieCodeCount = movies.reduce((sum, movie) => sum + collectEventGroupCodes(movie).length, 0);
+  const moviesWithSecondaryCodes = movies.filter(
+    (movie) => collectEventGroupCodes(movie).length > 1,
+  ).length;
   const theaterCodeCount = theaterShows.reduce(
     (sum, show) => sum + collectEventGroupCodes(show).length,
     0,
@@ -1046,6 +1049,8 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     ok: true,
     at: new Date().toISOString(),
     moviesScanned: movieReport.moviesScanned,
+    movieEventGroupCodesTotal: movieCodeCount,
+    moviesWithMultipleEventGroupCodes: moviesWithSecondaryCodes,
     theaterShowsScanned: theaterReport.theaterShowsScanned,
     venuesWithMoreId: movieReport.venuesWithMoreId,
     venuesWithBundleCode: movieReport.venuesWithBundleCode,
@@ -1102,7 +1107,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     ` · άγνωστο eventId: ${report.skippedUnknownEventId}`;
 
   strapi.log.info(
-    `[more-showtime-sync] movies=${report.moviesScanned} theater=${report.theaterShowsScanned} created=${report.created} exists=${report.alreadyExists} unknownEventId=${report.skippedUnknownEventId} (${report.durationMs}ms)`,
+    `[more-showtime-sync] movies=${report.moviesScanned} evgCodes=${report.movieEventGroupCodesTotal} (${report.moviesWithMultipleEventGroupCodes} με επιπλέον more_event_groups) theater=${report.theaterShowsScanned} created=${report.created} exists=${report.alreadyExists} unknownEventId=${report.skippedUnknownEventId} (${report.durationMs}ms)`,
   );
 
   return report;

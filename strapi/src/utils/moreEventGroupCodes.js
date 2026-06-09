@@ -124,6 +124,18 @@ function collectTheaterVenueBundleCodes(venue) {
 }
 
 /**
+ * Όλοι οι κωδικοί εγγραφής CMS — primary + more_event_groups (ή προ-υπολογισμένο eventGroupCodes).
+ * @param {object} entry
+ * @returns {string[]}
+ */
+function resolveEventGroupCodesFromEntry(entry) {
+  if (Array.isArray(entry?.eventGroupCodes) && entry.eventGroupCodes.length) {
+    return entry.eventGroupCodes;
+  }
+  return collectEventGroupCodes(entry);
+}
+
+/**
  * Όλοι οι per-movie κωδικοί μιας ταινίας: πρωτεύων event_group_code + repeatable more_event_groups.
  * @param {object} movie
  * @returns {string[]}
@@ -156,6 +168,7 @@ module.exports = {
   looksLikeCinemaVenueCatalogTitle,
   extractEvgCodeFromText,
   collectEventGroupCodes,
+  resolveEventGroupCodesFromEntry,
   collectVenueBundleCodes,
   collectTheaterVenueBundleCodes,
 };
