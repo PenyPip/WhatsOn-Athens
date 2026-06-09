@@ -114,6 +114,13 @@
       "private": true,
       "description": "Απορριφθείσες προτάσεις ταύτισης — δεν εμφανίζονται ξανά."
     },
+    "approved_more_codes": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.approved-more-code",
+      "private": true,
+      "description": "Εγκεκριμένοι κωδικοί προς εγγραφή CMS (κουμπί «Γράψε αυτόματα»)."
+    },
     "showtimes": {
       "type": "relation",
       "relation": "oneToMany",

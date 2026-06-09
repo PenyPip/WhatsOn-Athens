@@ -697,6 +697,11 @@ export interface ApiMovieMovie extends Schema.CollectionType {
   };
   attributes: {
     age_rating: Attribute.String;
+    approved_more_codes: Attribute.Component<
+      'cinema.approved-more-code',
+      true
+    > &
+      Attribute.Private;
     articles: Attribute.Relation<
       'api::movie.movie',
       'oneToMany',
@@ -971,6 +976,11 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     singularName: 'theater-show';
   };
   attributes: {
+    approved_more_codes: Attribute.Component<
+      'cinema.approved-more-code',
+      true
+    > &
+      Attribute.Private;
     articles: Attribute.Relation<
       'api::theater-show.theater-show',
       'oneToMany',

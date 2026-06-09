@@ -37,10 +37,10 @@
   vertical-align: top;
 }
 
-/* Πίνακας 1: 8 στήλες */
+/* Πίνακας 1: 7 στήλες */
 .more-lookup-match-table--matches th:nth-child(1),
 .more-lookup-match-table--matches td:nth-child(1) {
-  width: 4.75rem;
+  width: 7.25rem;
 }
 
 .more-lookup-match-table--matches th:nth-child(2),
@@ -70,15 +70,10 @@
   width: 4.5rem;
 }
 
-.more-lookup-match-table--matches th:nth-child(8),
-.more-lookup-match-table--matches td:nth-child(8) {
-  width: 14%;
-}
-
-/* Πίνακας 2: 7 στήλες */
+/* Πίνακας 2: 6 στήλες */
 .more-lookup-match-table--pending th:nth-child(1),
 .more-lookup-match-table--pending td:nth-child(1) {
-  width: 4.75rem;
+  width: 7.25rem;
 }
 
 .more-lookup-match-table--pending th:nth-child(2),
@@ -100,11 +95,6 @@
 
 .more-lookup-match-table--pending th:nth-child(6),
 .more-lookup-match-table--pending td:nth-child(6) {
-  width: 16%;
-}
-
-.more-lookup-match-table--pending th:nth-child(7),
-.more-lookup-match-table--pending td:nth-child(7) {
   width: 3.75rem;
 }
 
@@ -122,16 +112,18 @@
 
 .more-lookup-row-actions {
   display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 0.25rem;
+  flex-direction: row;
+  align-items: center;
+  gap: 0.2rem;
+  flex-wrap: nowrap;
 }
 
 .more-lookup-match-table .more-lookup-row-actions button {
   min-width: 0 !important;
-  width: 100%;
-  min-height: 1.6rem !important;
-  padding: 0.2rem 0.35rem !important;
-  font-size: 0.68rem !important;
-  line-height: 1.15 !important;
+  flex: 1 1 0;
+  min-height: 1.55rem !important;
+  padding: 0.15rem 0.25rem !important;
+  font-size: 0.64rem !important;
+  line-height: 1.1 !important;
+  white-space: nowrap;
 }

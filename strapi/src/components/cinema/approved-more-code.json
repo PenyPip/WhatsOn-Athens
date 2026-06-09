@@ -1,0 +1,14 @@
+{
+  "collectionName": "components_cinema_approved_more_codes",
+  "info": {
+    "displayName": "Εγκεκριμένος More κωδικός",
+    "description": "Κωδικός που εγκρίθηκε από admin — εγγράφεται με «Γράψε αυτόματα»."
+  },
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true,
+      "description": "Εγκεκριμένος κωδικός More (evg_*)."
+    }
+  }
+}

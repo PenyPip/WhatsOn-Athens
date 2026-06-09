@@ -72,14 +72,21 @@ function EllipsisCell({ text, tone = 'neutral800', mono = false }) {
   );
 }
 
-function MatchRowActions({ loading, onApprove, onReject }) {
+function MatchRowActions({ loading, onApprove, onReject, queued = false }) {
   return (
     <div className="more-lookup-row-actions">
-      <Button size="S" variant="tertiary" loading={loading} onClick={onReject}>
-        Απόρριψη
+      <Button size="S" variant="tertiary" loading={loading} onClick={onReject} title="Απόρριψη">
+        Απόρ.
       </Button>
-      <Button size="S" variant="success" loading={loading} onClick={onApprove}>
-        Έγκριση
+      <Button
+        size="S"
+        variant={queued ? 'secondary' : 'success'}
+        loading={loading}
+        onClick={onApprove}
+        disabled={queued}
+        title={queued ? 'Στην ουρά εγγραφής' : 'Έγκριση'}
+      >
+        {queued ? 'Στην ουρά' : 'Έγκρ.'}
       </Button>
     </div>
   );
@@ -100,19 +107,22 @@ function expandMatchRows(rows) {
       (row.moreMatches || []).map((match) => [match.suggestedEventGroupCode, match]),
     );
 
-    return codes.map((code, index) => {
-      const match = byCode.get(code) || {};
-      return {
-        ...row,
-        displayKey: `${rowKey(row)}:${code}`,
-        displayCode: code,
-        displayMoreTitle: match.moreTitle ?? row.moreTitle,
-        displayScore: Number(match.score ?? row.score),
-        displayVerify: match.verify ?? row.verify,
-        displayMatchMethod: match.matchMethod ?? null,
-        codeRole: index === 0 ? 'κύριος' : 'επιπλέον',
-      };
-    });
+    return codes
+      .filter((code) => !(row.cmsEventGroupCodes || []).includes(code))
+      .map((code, index) => {
+        const match = byCode.get(code) || {};
+        return {
+          ...row,
+          displayKey: `${rowKey(row)}:${code}`,
+          displayCode: code,
+          displayMoreTitle: match.moreTitle ?? row.moreTitle,
+          displayScore: Number(match.score ?? row.score),
+          displayVerify: match.verify ?? row.verify,
+          displayMatchMethod: match.matchMethod ?? null,
+          codeRole: index === 0 ? 'κύριος' : 'επιπλέον',
+          isQueued: (row.cmsApprovedMoreCodes || []).includes(code),
+        };
+      });
   });
 }
 
@@ -561,7 +571,7 @@ const App = () => {
       const skipped = res?.data?.apply?.stats?.skipped ?? 0;
       toggleNotification({
         type: applied > 0 ? 'success' : 'warning',
-        message: res?.data?.message || `Αυτόματες: ${applied} · προς έγκριση: ${skipped}`,
+        message: res?.data?.message || `Εγγράφηκαν: ${applied} · παραλείφθηκαν: ${skipped}`,
       });
     } catch (error) {
       const message =
@@ -577,6 +587,12 @@ const App = () => {
   const matches = result?.matches ?? [];
   const matchedRows = matches.filter((r) => r.matched);
   const matchDisplayRows = expandMatchRows(matchedRows);
+  const approvedQueueCount =
+    result?.stats?.approvedQueue ??
+    (result?.approvedQueue || []).reduce(
+      (sum, row) => sum + (row.approvedEventGroupCodes?.length || 0),
+      0,
+    );
   const catalog = result?.catalog ?? [];
   const catalogFiltered = catalogOnlyMissing
     ? catalog.filter((row) => !row.inCms)
@@ -610,7 +626,7 @@ const App = () => {
       setPendingApproval((prev) => prev.filter((r) => rowKey(r) !== rowKey(row)));
       toggleNotification({
         type: 'success',
-        message: res?.data?.message || 'Η εγγραφή εγκρίθηκε.',
+        message: res?.data?.message || 'Προστέθηκε στην ουρά εγγραφής.',
       });
     } catch (error) {
       const message =
@@ -650,6 +666,25 @@ const App = () => {
     });
   };
 
+  const queueMatchRow = (displayKey, code) => {
+    setResult((prev) => {
+      if (!prev?.matches?.length) return prev;
+      return {
+        ...prev,
+        matches: prev.matches.map((matchRow) => {
+          const key = `${rowKey(matchRow)}:${code}`;
+          if (key !== displayKey) return matchRow;
+          const approved = [...new Set([...(matchRow.cmsApprovedMoreCodes || []), code])];
+          return { ...matchRow, cmsApprovedMoreCodes: approved };
+        }),
+        stats: {
+          ...prev.stats,
+          approvedQueue: (prev.stats?.approvedQueue ?? 0) + 1,
+        },
+      };
+    });
+  };
+
   const approveMatchCode = async (row) => {
     setLoading(true);
     try {
@@ -659,12 +694,19 @@ const App = () => {
         movieId: row.movieId,
         theaterShowId: row.theaterShowId,
         eventGroupCode: row.displayCode,
-        overwriteExisting: Boolean(row.cmsEventGroupCode),
       });
-      pruneMatchDisplayRow(row.displayKey);
+      if (res?.data?.alreadyPresent) {
+        pruneMatchDisplayRow(row.displayKey);
+      } else {
+        queueMatchRow(row.displayKey, row.displayCode);
+      }
       toggleNotification({
         type: 'success',
-        message: res?.data?.message || `Εγκρίθηκε ${row.displayCode}`,
+        message:
+          res?.data?.message ||
+          (res?.data?.queued
+            ? `Στην ουρά: ${row.displayCode}`
+            : `Εγκρίθηκε ${row.displayCode}`),
       });
     } catch (error) {
       const message =
@@ -677,6 +719,27 @@ const App = () => {
     }
   };
 
+  const unqueueMatchRow = (displayKey, code) => {
+    setResult((prev) => {
+      if (!prev?.matches?.length) return prev;
+      return {
+        ...prev,
+        matches: prev.matches.map((matchRow) => {
+          const key = `${rowKey(matchRow)}:${code}`;
+          if (key !== displayKey) return matchRow;
+          return {
+            ...matchRow,
+            cmsApprovedMoreCodes: (matchRow.cmsApprovedMoreCodes || []).filter((c) => c !== code),
+          };
+        }),
+        stats: {
+          ...prev.stats,
+          approvedQueue: Math.max(0, (prev.stats?.approvedQueue ?? 0) - 1),
+        },
+      };
+    });
+  };
+
   const rejectMatchCode = async (row) => {
     setLoading(true);
     try {
@@ -687,6 +750,7 @@ const App = () => {
         theaterShowId: row.theaterShowId,
         eventGroupCode: row.displayCode,
       });
+      if (row.isQueued) unqueueMatchRow(row.displayKey, row.displayCode);
       pruneMatchDisplayRow(row.displayKey);
       toggleNotification({
         type: 'info',
@@ -798,7 +862,7 @@ const App = () => {
                   <WorkflowStep
                     number="2"
                     title="Εγγραφή"
-                    detail="Αυτόματη ή χειροκίνητη στο event_group_code"
+                    detail="Έγκριση → ουρά · «Γράψε αυτόματα» → CMS"
                   />
                 </GridItem>
                 <GridItem col={4} s={12}>
@@ -815,7 +879,7 @@ const App = () => {
             <Box paddingTop={4} padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
               <PanelHeader
                 title="Βήμα 1 — Κωδικοί More"
-                subtitle="Ταύτιση και εγγραφή event_group_code · δεν αλλάζει τίποτα χωρίς «Γράψε αυτόματα»"
+                subtitle="Έγκριση → ουρά · «Γράψε αυτόματα» γράφει μόνο εγκεκριμένους κωδικούς"
               />
               <Grid gap={4}>
                 <GridItem col={7} s={12}>
@@ -868,8 +932,8 @@ const App = () => {
               </Flex>
               <Box paddingTop={4}>
                 <Typography variant="pi" textColor="neutral500">
-                  Η ταύτιση δείχνει πλήρη κατάλογο More και προτάσεις. Το «Γράψε αυτόματα» εφαρμόζει
-                  κωδικούς με score ≥ {applyMinScore.toFixed(2)} (κύριος + more_event_groups).
+                  Η ταύτιση δείχνει μόνο κωδικούς που λείπουν από το CMS. Πάτα «Έγκρ.» ανά γραμμή, μετά
+                  «Γράψε αυτόματα»{approvedQueueCount > 0 ? ` (${approvedQueueCount} στην ουρά)` : ''}.
                 </Typography>
               </Box>
             </Box>
@@ -936,6 +1000,9 @@ const App = () => {
             {result.stats.pendingApproval != null ? (
               <StatBadge label="Προς έγκριση" value={result.stats.pendingApproval} />
             ) : null}
+            {approvedQueueCount > 0 ? (
+              <StatBadge label="Ουρά εγγραφής" value={approvedQueueCount} tone="success" />
+            ) : null}
             <StatBadge label="Διάρκεια" value={`${result.durationMs}ms`} />
           </Flex>
         ) : null}
@@ -972,15 +1039,15 @@ const App = () => {
             <Box padding={4}>
               <PanelHeader
                 title="Πίνακας 1 — Προτάσεις ταύτισης"
-                subtitle="Έγκριση γράφει τον κωδικό στο CMS · Απόρριψη τον αποκλείει από μελλοντικές προτάσεις. Το «Γράψε αυτόματα» εφαρμόζει μόνο όσα δεν απορρίφθηκαν."
+                subtitle="Πρώτα «Έγκρ.» ανά γραμμή · μετά «Γράψε αυτόματα». Δεν εμφανίζονται κωδικοί που υπάρχουν ήδη στο CMS."
               />
             </Box>
             <Box className="more-lookup-match-table more-lookup-match-table--matches">
-            <Table colCount={8} rowCount={matchDisplayRows.length}>
+            <Table colCount={7} rowCount={matchDisplayRows.length}>
               <Thead>
                 <Tr>
                   <Th className="more-lookup-col-actions">
-                    <Typography variant="sigma">—</Typography>
+                    <Typography variant="sigma">Απόρ./Έγκρ.</Typography>
                   </Th>
                   <Th className="more-lookup-col-cms-title">
                     <Typography variant="sigma">CMS</Typography>
@@ -1000,9 +1067,6 @@ const App = () => {
                   <Th className="more-lookup-col-api">
                     <Typography variant="sigma">API</Typography>
                   </Th>
-                  <Th className="more-lookup-col-cms-now">
-                    <Typography variant="sigma">CMS τώρα</Typography>
-                  </Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -1011,6 +1075,7 @@ const App = () => {
                     <Td className="more-lookup-col-actions">
                       <MatchRowActions
                         loading={loading}
+                        queued={row.isQueued}
                         onReject={() => rejectMatchCode(row)}
                         onApprove={() => approveMatchCode(row)}
                       />
@@ -1045,17 +1110,6 @@ const App = () => {
                           : row.displayVerify?.error || '—'}
                       </Typography>
                     </Td>
-                    <Td className="more-lookup-col-cms-now">
-                      <EllipsisCell
-                        text={
-                          (row.cmsEventGroupCodes?.length ?? 0) > 0
-                            ? formatCodeList(row.cmsEventGroupCodes)
-                            : 'κενό'
-                        }
-                        tone="neutral600"
-                        mono={(row.cmsEventGroupCodes?.length ?? 0) > 0}
-                      />
-                    </Td>
                   </Tr>
                 ))}
               </Tbody>
@@ -1069,7 +1123,7 @@ const App = () => {
             <Box padding={4}>
               <PanelHeader
                 title={`Πίνακας 2 — Προς έγκριση (${pendingApproval.length})`}
-                subtitle={`Χαμηλό score (< ${applyMinScore.toFixed(2)}) — ταινίες & θέατρο που δεν εγγράφονται αυτόματα`}
+                subtitle={`Χαμηλό score (< ${applyMinScore.toFixed(2)}) — «Έγκρ.» → ουρά, μετά «Γράψε αυτόματα»`}
                 action={
                   <Button size="S" variant="success" loading={loading} onClick={approveAllPending} disabled={loading}>
                     Έγκριση όλων
@@ -1078,11 +1132,11 @@ const App = () => {
               />
             </Box>
             <Box className="more-lookup-match-table more-lookup-match-table--pending">
-            <Table colCount={7} rowCount={pendingApproval.length}>
+            <Table colCount={6} rowCount={pendingApproval.length}>
               <Thead>
                 <Tr>
                   <Th className="more-lookup-col-actions">
-                    <Typography variant="sigma">—</Typography>
+                    <Typography variant="sigma">Απόρ./Έγκρ.</Typography>
                   </Th>
                   <Th className="more-lookup-col-cms-title">
                     <Typography variant="sigma">CMS</Typography>
@@ -1095,9 +1149,6 @@ const App = () => {
                   </Th>
                   <Th className="more-lookup-col-score">
                     <Typography variant="sigma">Sc</Typography>
-                  </Th>
-                  <Th className="more-lookup-col-cms-now">
-                    <Typography variant="sigma">CMS τώρα</Typography>
                   </Th>
                   <Th className="more-lookup-col-type">
                     <Typography variant="sigma">Τύπος</Typography>
@@ -1125,13 +1176,6 @@ const App = () => {
                     </Td>
                     <Td className="more-lookup-col-score">
                       <Typography variant="pi">{Number(row.score).toFixed(2)}</Typography>
-                    </Td>
-                    <Td className="more-lookup-col-cms-now">
-                      <EllipsisCell
-                        text={row.cmsEventGroupCode || 'κενό'}
-                        tone="neutral600"
-                        mono={Boolean(row.cmsEventGroupCode)}
-                      />
                     </Td>
                     <Td className="more-lookup-col-type">
                       <Badge>{cmsTypeLabel(row.contentType)}</Badge>

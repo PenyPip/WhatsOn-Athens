@@ -112,7 +112,7 @@ module.exports = {
         });
         approved.push(result);
         strapi.log.info(
-          `[more-lookup] approved by ${adminEmail} ${result.contentType} ${result.cmsId} → ${result.eventGroupCode}`,
+          `[more-lookup] ${result.queued ? 'queued' : 'approved'} by ${adminEmail} ${result.contentType} ${result.cmsId} → ${result.eventGroupCode}`,
         );
       } catch (e) {
         errors.push({
@@ -127,7 +127,7 @@ module.exports = {
       ok: errors.length === 0,
       approved,
       errors,
-      message: `Εγκρίθηκαν ${approved.length} εγγραφές${errors.length ? ` · ${errors.length} σφάλματα` : ''}`,
+      message: `Στην ουρά: ${approved.length}${errors.length ? ` · ${errors.length} σφάλματα` : ''}`,
       pendingRemaining: (await loadPendingApprovalItems(strapi)).length,
     };
   },
