@@ -43,49 +43,80 @@ module.exports = {
 
   async reject(ctx) {
     const body = ctx.request.body ?? {};
-    const contentType =
-      body.contentType ||
-      (body.venueId != null ? 'venue' : body.theaterShowId != null ? 'theater_show' : 'movie');
-    const cmsId = Number(body.cmsId ?? body.movieId ?? body.theaterShowId ?? body.venueId);
-    if (!Number.isFinite(cmsId)) {
+
+    const items = Array.isArray(body.rejections)
+      ? body.rejections
+      : body.cmsId != null || body.movieId != null || body.theaterShowId != null || body.venueId != null
+        ? [{
+            contentType: body.contentType,
+            cmsId: body.cmsId,
+            movieId: body.movieId,
+            theaterShowId: body.theaterShowId,
+            venueId: body.venueId,
+            eventGroupCode: body.eventGroupCode,
+          }]
+        : [];
+
+    if (!items.length) {
       ctx.status = 400;
-      ctx.body = { ok: false, error: { message: 'Απαιτείται cmsId / movieId / theaterShowId / venueId' } };
+      ctx.body = { ok: false, error: { message: 'Απαιτείται cmsId ή rejections[]' } };
       return;
     }
 
-    const eventGroupCode =
-      typeof body.eventGroupCode === 'string' ? body.eventGroupCode.trim() : '';
+    const rejected = [];
+    const errors = [];
 
-    try {
-      if (eventGroupCode) {
-        const result = await rejectMoreEventGroupCode(strapi, {
-          contentType,
-          cmsId,
-          movieId: body.movieId,
-          theaterShowId: body.theaterShowId,
-          venueId: body.venueId,
-          eventGroupCode,
-        });
-        ctx.body = {
-          ok: true,
-          ...result,
-          message: `Απορρίφθηκε ${eventGroupCode} για ${result.cmsTitle}`,
-          pendingRemaining: (await loadPendingApprovalItems(strapi)).length,
-        };
-        return;
+    for (const item of items) {
+      const contentType =
+        item.contentType ||
+        (item.venueId != null ? 'venue' : item.theaterShowId != null ? 'theater_show' : 'movie');
+      const cmsId = Number(item.cmsId ?? item.movieId ?? item.theaterShowId ?? item.venueId);
+      if (!Number.isFinite(cmsId)) {
+        errors.push({ contentType, cmsId: item.cmsId, error: 'Άκυρο cmsId' });
+        continue;
       }
 
-      await clearCmsPending(strapi, contentType, cmsId);
-      ctx.body = {
-        ok: true,
-        contentType,
-        cmsId,
-        pendingRemaining: (await loadPendingApprovalItems(strapi)).length,
-      };
-    } catch (e) {
-      ctx.status = 400;
-      ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+      const eventGroupCode =
+        typeof item.eventGroupCode === 'string' ? item.eventGroupCode.trim() : '';
+
+      try {
+        if (eventGroupCode) {
+          const result = await rejectMoreEventGroupCode(strapi, {
+            contentType,
+            cmsId,
+            movieId: item.movieId,
+            theaterShowId: item.theaterShowId,
+            venueId: item.venueId,
+            eventGroupCode,
+          });
+          rejected.push(result);
+        } else {
+          await clearCmsPending(strapi, contentType, cmsId);
+          rejected.push({ ok: true, contentType, cmsId });
+        }
+      } catch (e) {
+        errors.push({
+          contentType,
+          cmsId,
+          eventGroupCode: eventGroupCode || null,
+          error: e?.message || String(e),
+        });
+      }
     }
+
+    const pendingRemaining = (await loadPendingApprovalItems(strapi)).length;
+    ctx.body = {
+      ok: errors.length === 0,
+      rejected,
+      errors,
+      message:
+        rejected.length > 0
+          ? `Απορρίφθηκαν ${rejected.length}${errors.length ? ` · ${errors.length} σφάλματα` : ''}`
+          : errors.length
+            ? `Αποτυχία απόρριψης (${errors.length})`
+            : 'Δεν υπάρχουν εγγραφές προς απόρριψη',
+      pendingRemaining,
+    };
   },
 
   async approve(ctx) {

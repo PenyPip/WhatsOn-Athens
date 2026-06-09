@@ -1056,11 +1056,11 @@ const App = () => {
   };
 
   const approveAllPending = async () => {
-    if (!pendingApproval.length) return;
+    if (!pendingFiltered.length) return;
     setLoading(true);
     try {
       const res = await post('/api/more-lookup/approve', {
-        approvals: pendingApproval.map((r) => ({
+        approvals: pendingFiltered.map((r) => ({
           contentType: r.contentType,
           cmsId: r.cmsId ?? r.movieId ?? r.theaterShowId ?? r.venueId,
           movieId: r.movieId,
@@ -1070,13 +1070,45 @@ const App = () => {
         })),
         overwriteExisting,
       });
-      setPendingApproval([]);
+      const rejectedKeys = new Set(pendingFiltered.map((r) => rowKey(r)));
+      setPendingApproval((prev) => prev.filter((r) => !rejectedKeys.has(rowKey(r))));
       toggleNotification({
         type: res?.data?.ok ? 'success' : 'warning',
         message: res?.data?.message || 'Ολοκληρώθηκε η μαζική έγκριση.',
       });
     } catch (error) {
       toggleNotification({ type: 'warning', message: 'Αποτυχία μαζικής έγκρισης.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const rejectAllPending = async () => {
+    if (!pendingFiltered.length) return;
+    setLoading(true);
+    try {
+      const res = await post('/api/more-lookup/reject', {
+        rejections: pendingFiltered.map((r) => ({
+          contentType: r.contentType,
+          cmsId: r.cmsId ?? r.movieId ?? r.theaterShowId ?? r.venueId,
+          movieId: r.movieId,
+          theaterShowId: r.theaterShowId,
+          venueId: r.venueId,
+          eventGroupCode: r.suggestedEventGroupCode,
+        })),
+      });
+      const rejectedKeys = new Set(pendingFiltered.map((r) => rowKey(r)));
+      setPendingApproval((prev) => prev.filter((r) => !rejectedKeys.has(rowKey(r))));
+      toggleNotification({
+        type: res?.data?.ok ? 'info' : 'warning',
+        message: res?.data?.message || 'Ολοκληρώθηκε η μαζική απόρριψη.',
+      });
+    } catch (error) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.errors?.[0]?.error ||
+        'Αποτυχία μαζικής απόρριψης.';
+      toggleNotification({ type: 'warning', message });
     } finally {
       setLoading(false);
     }
@@ -1510,9 +1542,26 @@ const App = () => {
                 title={`Πίνακας 2 — Προς έγκριση (${pendingFiltered.length}/${pendingApproval.length})`}
                 subtitle={`Χαμηλό score (< ${applyMinScore.toFixed(2)}) — «Έγκρ.» → ουρά, μετά «Γράψε αυτόματα»`}
                 action={
-                  <Button size="S" variant="success" loading={loading} onClick={approveAllPending} disabled={loading}>
-                    Έγκριση όλων
-                  </Button>
+                  <Flex gap={2} wrap="wrap">
+                    <Button
+                      size="S"
+                      variant="tertiary"
+                      loading={loading}
+                      onClick={rejectAllPending}
+                      disabled={loading || pendingFiltered.length === 0}
+                    >
+                      Απόρριψη όλων{pendingFiltered.length < pendingApproval.length ? ` (${pendingFiltered.length})` : ''}
+                    </Button>
+                    <Button
+                      size="S"
+                      variant="success"
+                      loading={loading}
+                      onClick={approveAllPending}
+                      disabled={loading || pendingFiltered.length === 0}
+                    >
+                      Έγκριση όλων{pendingFiltered.length < pendingApproval.length ? ` (${pendingFiltered.length})` : ''}
+                    </Button>
+                  </Flex>
                 }
               />
               <Box paddingTop={3}>
