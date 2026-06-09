@@ -1,4 +1,13 @@
+import type { Metadata } from "next";
 import Link from "next/link";
+import { formatPageTitle } from "@/lib/siteMetadata";
+import { staticPageSeo } from "@/lib/pageSeoCopy";
+
+export const metadata: Metadata = {
+  title: formatPageTitle(staticPageSeo.notFound.title),
+  description: staticPageSeo.notFound.description,
+  robots: { index: false, follow: false },
+};
 
 export default function NotFound() {
   return (

@@ -58,6 +58,35 @@
       "component": "cinema.more-event-group",
       "description": "Επιπλέον venue bundle κωδικοί More."
     },
+    "pending_event_group_code": {
+      "type": "string",
+      "private": true,
+      "description": "Προτεινόμενος More venue bundle κωδικός — αναμένει έγκριση admin."
+    },
+    "pending_more_title": {
+      "type": "string",
+      "private": true,
+      "description": "Τίτλος στο More για την προτεινόμενη ταύτιση χώρου."
+    },
+    "pending_match_score": {
+      "type": "decimal",
+      "private": true,
+      "description": "Score ταύτισης CMS↔More (0–1) για χώρο."
+    },
+    "rejected_more_codes": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.rejected-more-code",
+      "private": true,
+      "description": "Απορριφθείσες προτάσεις ταύτισης venue bundle."
+    },
+    "approved_more_codes": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.approved-more-code",
+      "private": true,
+      "description": "Εγκεκριμένοι venue bundle κωδικοί προς εγγραφή CMS."
+    },
     "more_sync_log": {
       "type": "text",
       "private": true,

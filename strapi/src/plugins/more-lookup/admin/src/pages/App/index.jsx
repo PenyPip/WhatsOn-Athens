@@ -46,6 +46,7 @@ const CMS_MATCH_FILTERS = [
   { id: 'all', label: 'Όλα' },
   { id: 'movie', label: 'Ταινίες' },
   { id: 'theater_show', label: 'Θέατρο' },
+  { id: 'venue', label: 'Σινεμά (χώροι)' },
 ];
 
 function catalogMatchesKindFilter(row, filter) {
@@ -110,7 +111,7 @@ function catalogCmsStatusLabel(row) {
 }
 
 function rowKey(row) {
-  return `${row.contentType || 'movie'}:${row.cmsId ?? row.movieId ?? row.theaterShowId}`;
+  return `${row.contentType || 'movie'}:${row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId}`;
 }
 
 function formatCodeList(codes) {
@@ -885,9 +886,11 @@ const App = () => {
     try {
       const res = await post('/api/more-lookup/approve', {
         contentType: row.contentType,
-        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId,
+        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId,
         movieId: row.movieId,
         theaterShowId: row.theaterShowId,
+        venueId: row.venueId,
+        eventGroupCode: row.suggestedEventGroupCode,
         overwriteExisting: overwrite,
       });
       setPendingApproval((prev) => prev.filter((r) => rowKey(r) !== rowKey(row)));
@@ -957,9 +960,10 @@ const App = () => {
     try {
       const res = await post('/api/more-lookup/approve', {
         contentType: row.contentType,
-        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId,
+        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId,
         movieId: row.movieId,
         theaterShowId: row.theaterShowId,
+        venueId: row.venueId,
         eventGroupCode: row.displayCode,
       });
       if (res?.data?.alreadyPresent) {
@@ -1012,9 +1016,10 @@ const App = () => {
     try {
       const res = await post('/api/more-lookup/reject', {
         contentType: row.contentType,
-        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId,
+        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId,
         movieId: row.movieId,
         theaterShowId: row.theaterShowId,
+        venueId: row.venueId,
         eventGroupCode: row.displayCode,
       });
       if (row.isQueued) unqueueMatchRow(row.displayKey, row.displayCode);
@@ -1035,9 +1040,10 @@ const App = () => {
     try {
       await post('/api/more-lookup/reject', {
         contentType: row.contentType,
-        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId,
+        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId,
         movieId: row.movieId,
         theaterShowId: row.theaterShowId,
+        venueId: row.venueId,
         eventGroupCode: row.suggestedEventGroupCode,
       });
       setPendingApproval((prev) => prev.filter((r) => rowKey(r) !== rowKey(row)));
@@ -1056,9 +1062,10 @@ const App = () => {
       const res = await post('/api/more-lookup/approve', {
         approvals: pendingApproval.map((r) => ({
           contentType: r.contentType,
-          cmsId: r.cmsId ?? r.movieId ?? r.theaterShowId,
+          cmsId: r.cmsId ?? r.movieId ?? r.theaterShowId ?? r.venueId,
           movieId: r.movieId,
           theaterShowId: r.theaterShowId,
+          venueId: r.venueId,
           eventGroupCode: r.suggestedEventGroupCode,
         })),
         overwriteExisting,
@@ -1070,6 +1077,46 @@ const App = () => {
       });
     } catch (error) {
       toggleNotification({ type: 'warning', message: 'Αποτυχία μαζικής έγκρισης.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const approveCatalogVenue = async (row) => {
+    if (!row.suggestedVenue?.cmsId || !row.eventGroupCode) return;
+    setLoading(true);
+    try {
+      const res = await post('/api/more-lookup/approve', {
+        contentType: 'venue',
+        cmsId: row.suggestedVenue.cmsId,
+        venueId: row.suggestedVenue.cmsId,
+        eventGroupCode: row.eventGroupCode,
+      });
+      setResult((prev) => {
+        if (!prev?.catalog?.length) return prev;
+        return {
+          ...prev,
+          catalog: prev.catalog.map((catRow) =>
+            catRow.eventGroupCode === row.eventGroupCode
+              ? { ...catRow, cmsStatus: 'pending', canApproveVenue: false }
+              : catRow,
+          ),
+          stats: {
+            ...prev.stats,
+            approvedQueue: (prev.stats?.approvedQueue ?? 0) + 1,
+          },
+        };
+      });
+      toggleNotification({
+        type: 'success',
+        message: res?.data?.message || `Στην ουρά: ${row.eventGroupCode} → ${row.suggestedVenue.cmsTitle}`,
+      });
+    } catch (error) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.errors?.[0]?.error ||
+        'Αποτυχία έγκρισης.';
+      toggleNotification({ type: 'warning', message });
     } finally {
       setLoading(false);
     }
@@ -1298,9 +1345,12 @@ const App = () => {
             {result.stats.matched != null ? (
               <StatBadge
                 label="Ταύτιση CMS"
-                value={`${result.stats.matched}/${(result.stats.cmsMovies ?? 0) + (result.stats.cmsTheaterShows ?? 0)}`}
+                value={`${result.stats.matched}/${(result.stats.cmsMovies ?? 0) + (result.stats.cmsTheaterShows ?? 0) + (result.stats.cmsCinemaVenues ?? 0)}`}
                 tone="success"
               />
+            ) : null}
+            {result.stats.venueMatched != null && result.stats.venueMatched > 0 ? (
+              <StatBadge label="Χώροι σινεμά" value={result.stats.venueMatched} tone="success" />
             ) : null}
             {result.stats.catalogMissing != null ? (
               <StatBadge label="Λείπουν από CMS" value={catalogMissing} tone={catalogMissing > 0 ? 'warning' : 'success'} />
@@ -1586,7 +1636,7 @@ const App = () => {
                 </Typography>
               </Box>
             ) : (
-            <Table colCount={7} rowCount={catalogPageRows.length}>
+            <Table colCount={8} rowCount={catalogPageRows.length}>
               <Thead>
                 <Tr>
                   <Th>
@@ -1610,6 +1660,9 @@ const App = () => {
                   <Th>
                     <Typography variant="sigma">Scrape</Typography>
                   </Th>
+                  <Th className="more-lookup-col-actions">
+                    <Typography variant="sigma">Έγκρ.</Typography>
+                  </Th>
                 </Tr>
               </Thead>
               <Tbody>
@@ -1632,6 +1685,10 @@ const App = () => {
                         </Badge>
                       ) : row.cmsStatus === 'pending' ? (
                         <Badge>Προς έγκριση</Badge>
+                      ) : row.suggestedVenue ? (
+                        <Badge>
+                          Πρόταση: {row.suggestedVenue.cmsTitle} (Sc {Number(row.suggestedVenue.score).toFixed(2)})
+                        </Badge>
                       ) : (
                         <Badge>Λείπει</Badge>
                       )}
@@ -1646,6 +1703,23 @@ const App = () => {
                       <Typography variant="pi" title={row.venueScrape?.moreLink || ''}>
                         {row.kind === 'venue_bundle' ? venueScrapeSummary(row) : '—'}
                       </Typography>
+                    </Td>
+                    <Td className="more-lookup-col-actions">
+                      {row.canApproveVenue && !row.inCms ? (
+                        <Button
+                          size="S"
+                          variant="success"
+                          loading={loading}
+                          onClick={() => approveCatalogVenue(row)}
+                          title={`Έγκριση για ${row.suggestedVenue.cmsTitle}`}
+                        >
+                          Έγκρ.
+                        </Button>
+                      ) : (
+                        <Typography variant="pi" textColor="neutral500">
+                          —
+                        </Typography>
+                      )}
                     </Td>
                   </Tr>
                 ))}

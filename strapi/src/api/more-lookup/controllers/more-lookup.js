@@ -40,11 +40,12 @@ module.exports = {
   async reject(ctx) {
     const body = ctx.request.body ?? {};
     const contentType =
-      body.contentType || (body.theaterShowId != null ? 'theater_show' : 'movie');
-    const cmsId = Number(body.cmsId ?? body.movieId ?? body.theaterShowId);
+      body.contentType ||
+      (body.venueId != null ? 'venue' : body.theaterShowId != null ? 'theater_show' : 'movie');
+    const cmsId = Number(body.cmsId ?? body.movieId ?? body.theaterShowId ?? body.venueId);
     if (!Number.isFinite(cmsId)) {
       ctx.status = 400;
-      ctx.body = { ok: false, error: { message: 'Απαιτείται cmsId / movieId / theaterShowId' } };
+      ctx.body = { ok: false, error: { message: 'Απαιτείται cmsId / movieId / theaterShowId / venueId' } };
       return;
     }
 
@@ -58,6 +59,7 @@ module.exports = {
           cmsId,
           movieId: body.movieId,
           theaterShowId: body.theaterShowId,
+          venueId: body.venueId,
           eventGroupCode,
         });
         ctx.body = {
@@ -89,12 +91,13 @@ module.exports = {
 
     const items = Array.isArray(body.approvals)
       ? body.approvals
-      : body.cmsId != null || body.movieId != null || body.theaterShowId != null
+      : body.cmsId != null || body.movieId != null || body.theaterShowId != null || body.venueId != null
         ? [{
             contentType: body.contentType,
             cmsId: body.cmsId,
             movieId: body.movieId,
             theaterShowId: body.theaterShowId,
+            venueId: body.venueId,
             eventGroupCode: body.eventGroupCode,
           }]
         : [];
@@ -115,6 +118,7 @@ module.exports = {
           cmsId: item.cmsId,
           movieId: item.movieId,
           theaterShowId: item.theaterShowId,
+          venueId: item.venueId,
           eventGroupCode: item.eventGroupCode,
           overwriteExisting,
         });
@@ -125,7 +129,7 @@ module.exports = {
       } catch (e) {
         errors.push({
           contentType: item.contentType,
-          cmsId: item.cmsId ?? item.movieId ?? item.theaterShowId,
+          cmsId: item.cmsId ?? item.movieId ?? item.theaterShowId ?? item.venueId,
           error: e?.message || String(e),
         });
       }

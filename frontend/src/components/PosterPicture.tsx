@@ -13,6 +13,7 @@ type PosterPictureProps = {
   fetchPriority?: "high" | "low" | "auto";
   decoding?: "async" | "sync" | "auto";
   onLoad?: () => void;
+  "aria-hidden"?: boolean;
 };
 
 /** Αφίσα με WebP όταν υπάρχει στο srcset — width/height για LCP/CLS. */
@@ -28,6 +29,7 @@ export default function PosterPicture({
   fetchPriority,
   decoding = "async",
   onLoad,
+  "aria-hidden": ariaHidden,
 }: PosterPictureProps) {
   const { fallbackSrc, fallbackSrcSet, webpSrc, webpSrcSet } = splitPosterSources(src, srcSet);
   const imgProps = {
@@ -40,6 +42,7 @@ export default function PosterPicture({
     onLoad,
     className,
     sizes,
+    ...(ariaHidden ? { "aria-hidden": true as const } : {}),
   };
 
   if (webpSrcSet || (webpSrc && webpSrc !== fallbackSrc)) {

@@ -10,6 +10,7 @@ import {
 } from "@/lib/siteMetadata";
 import { crawlPosterForPath } from "@/lib/crawlEnrichment";
 import { seoCopyForPath } from "@/lib/jsonLdPage";
+import { shouldNoIndexPath } from "@/lib/seoPathRules";
 
 /** Next.js metadata ανά path — canonical, og:url, αφίσα entity στο αρχικό HTML. */
 export function buildMetadataForPath(path: string): Metadata {
@@ -25,6 +26,7 @@ export function buildMetadataForPath(path: string): Metadata {
     /^\/(reviews|articles|events)\/[^/]+/.test(normalized);
   const imageSize = isDetailWithPoster && posterUrl ? posterOgImageSize : { width: 1200, height: 630 };
   const ogAlt = posterUrl ? `${title} — αφίσα` : siteSeo.ogImageAlt;
+  const noIndex = shouldNoIndexPath(normalized);
 
   return {
     metadataBase: getMetadataBase(),
@@ -32,6 +34,7 @@ export function buildMetadataForPath(path: string): Metadata {
       absolute: fullTitle,
     },
     description,
+    ...(noIndex ? { robots: { index: false, follow: false } } : {}),
     alternates: {
       canonical,
     },

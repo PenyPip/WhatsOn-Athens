@@ -1113,6 +1113,11 @@ export interface ApiVenueVenue extends Schema.CollectionType {
   };
   attributes: {
     address: Attribute.String;
+    approved_more_codes: Attribute.Component<
+      'cinema.approved-more-code',
+      true
+    > &
+      Attribute.Private;
     city: Attribute.Enumeration<['athens', 'thessaloniki', 'other']>;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -1143,7 +1148,15 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     more_link: Attribute.String;
     more_sync_log: Attribute.Text & Attribute.Private;
     name: Attribute.String & Attribute.Required;
+    pending_event_group_code: Attribute.String & Attribute.Private;
+    pending_match_score: Attribute.Decimal & Attribute.Private;
+    pending_more_title: Attribute.String & Attribute.Private;
     publishedAt: Attribute.DateTime;
+    rejected_more_codes: Attribute.Component<
+      'cinema.rejected-more-code',
+      true
+    > &
+      Attribute.Private;
     seats_total: Attribute.Integer;
     showtimes: Attribute.Relation<
       'api::venue.venue',

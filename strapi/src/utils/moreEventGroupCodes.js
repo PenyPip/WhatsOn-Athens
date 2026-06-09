@@ -136,6 +136,25 @@ function resolveEventGroupCodesFromEntry(entry) {
 }
 
 /**
+ * Venue bundle κωδικοί χώρου CMS (σινεμά: evg_* bundle · θέατρο: evg_* χώρου).
+ * @param {object} venue
+ * @returns {string[]}
+ */
+function collectVenueEventGroupCodes(venue) {
+  const type = String(venue?.type ?? venue?.venueType ?? '').trim();
+  if (type === 'cinema') return collectVenueBundleCodes(venue);
+  if (type === 'theater' || type === 'other') return collectTheaterVenueBundleCodes(venue);
+  return [...new Set([...collectVenueBundleCodes(venue), ...collectTheaterVenueBundleCodes(venue)])];
+}
+
+function resolveVenueEventGroupCodesFromEntry(entry) {
+  if (Array.isArray(entry?.eventGroupCodes) && entry.eventGroupCodes.length) {
+    return entry.eventGroupCodes;
+  }
+  return collectVenueEventGroupCodes(entry);
+}
+
+/**
  * Όλοι οι per-movie κωδικοί μιας ταινίας: πρωτεύων event_group_code + repeatable more_event_groups.
  * @param {object} movie
  * @returns {string[]}
@@ -171,4 +190,6 @@ module.exports = {
   resolveEventGroupCodesFromEntry,
   collectVenueBundleCodes,
   collectTheaterVenueBundleCodes,
+  collectVenueEventGroupCodes,
+  resolveVenueEventGroupCodesFromEntry,
 };

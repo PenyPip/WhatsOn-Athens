@@ -61,6 +61,7 @@ export function seoCopyForPath(path: string): { title: string; description: stri
     "/articles": staticPageSeo.articles,
     "/events": staticPageSeo.events,
     "/privacy": staticPageSeo.privacy,
+    "/profile": staticPageSeo.profile,
   };
   if (staticByPath[normalized]) {
     const s = staticByPath[normalized];

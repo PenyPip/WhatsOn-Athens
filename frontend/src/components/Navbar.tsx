@@ -196,8 +196,12 @@ const Navbar = () => {
             </div>
 
             {SHOW_PROFILE_IN_NAV ? (
-              <Link to="/profile" className="shrink-0 rounded-full p-2 transition-colors hover:bg-white/10">
-                <User className="h-5 w-5 text-white/60" />
+              <Link
+                to="/profile"
+                aria-label="Προφίλ"
+                className="shrink-0 rounded-full p-2 transition-colors hover:bg-white/10"
+              >
+                <User className="h-5 w-5 text-white/60" aria-hidden />
               </Link>
             ) : null}
           </div>

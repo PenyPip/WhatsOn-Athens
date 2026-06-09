@@ -5,6 +5,7 @@ import ServerJsonLd from "@/components/ServerJsonLd";
 import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
 import HomeStaticLcp from "@/components/HomeStaticLcp";
+import HomePageH1 from "@/components/HomePageH1";
 import { homeLcpDisplay } from "@/lib/homeHeroLcp";
 import { layoutShowsHero, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
 import { slimHomeBootstrapState } from "@/lib/rqBootstrap";
@@ -20,13 +21,20 @@ type PageProps = {
 /** Αρχική `/` — απαιτείται ρητά με `output: export` και optional catch-all. */
 const HOME_STATIC_PARAMS: SpaPathParams = { slug: [] };
 
+/** Paths εκτός sitemap που χρειάζονται static HTML (noindex). */
+const EXTRA_STATIC_PARAMS: SpaPathParams[] = [{ slug: ["profile"] }];
+
 /**
  * Catch-all για React Router: κάθε path — SSR HTML στο build (prefetch Strapi) + JSON-LD / metadata.
  */
 export function generateStaticParams(): SpaPathParams[] {
   const fromSitemap = spaPaths as SpaPathParams[];
   const hasHome = fromSitemap.some((p) => !p.slug?.length);
-  return hasHome ? fromSitemap : [HOME_STATIC_PARAMS, ...fromSitemap];
+  const base = hasHome ? fromSitemap : [HOME_STATIC_PARAMS, ...fromSitemap];
+  const extras = EXTRA_STATIC_PARAMS.filter(
+    (extra) => !base.some((p) => JSON.stringify(p.slug ?? []) === JSON.stringify(extra.slug ?? [])),
+  );
+  return [...base, ...extras];
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
@@ -61,6 +69,7 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
 
   return (
     <>
+      {path === "/" ? <HomePageH1 /> : null}
       {preloadPoster ? (
         <link rel="preload" as="image" href={preloadPoster} fetchPriority="high" />
       ) : null}

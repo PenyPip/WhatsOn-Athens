@@ -75,6 +75,7 @@ export default function TheaterVenueProgramLayout({
                       <PosterPicture
                         src={posterUrl}
                         alt=""
+                        aria-hidden
                         className="h-full w-full object-cover"
                         sizes="64px"
                       />
