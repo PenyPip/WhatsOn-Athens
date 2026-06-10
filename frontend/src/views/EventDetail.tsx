@@ -2,7 +2,7 @@ import { useParams, Link } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
-import { Clock, Globe, Users, ArrowLeft, MapPin, Play } from "lucide-react";
+import { Clock, Globe, ArrowLeft, MapPin, Play } from "lucide-react";
 import SharePageButton from "@/components/SharePageButton";
 import { Button } from "@/components/ui/button";
 import {
@@ -793,11 +793,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   <Globe className="w-4 h-4" /> {movie.language.trim()}
                 </span>
               ) : null}
-              {performanceVenueNames.length ? (
-                <span className="flex items-center gap-1">
-                  <Users className="w-4 h-4" /> {performanceVenueNames.join(" · ")}
-                </span>
-              ) : theaterShow && isTouringTheaterShow(theaterShow) ? (
+              {theaterShow && isTouringTheaterShow(theaterShow) ? (
                 <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
                   Περιοδεία
                 </span>
