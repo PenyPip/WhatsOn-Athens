@@ -52,7 +52,6 @@ function startMoreLookupJob(strapi, options = {}) {
     try {
       if (apply) {
         const result = await applyMoreEventCodeMatches(strapi, {
-          query: options.query ?? null,
           overwriteExisting: options.overwriteExisting === true,
           onProgress,
         });

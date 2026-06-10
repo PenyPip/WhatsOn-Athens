@@ -213,7 +213,6 @@ module.exports = {
         strapi.log.info(`[more-lookup] blocking apply by ${adminEmail} query=${query || '-'}`);
         try {
           const result = await applyMoreEventCodeMatches(strapi, {
-            query: query || null,
             overwriteExisting: body.overwriteExisting === true,
           });
           result.pendingApproval = await loadPendingApprovalItems(strapi);

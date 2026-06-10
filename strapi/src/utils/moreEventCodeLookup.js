@@ -1627,22 +1627,26 @@ function skipCodeReason(row, code, score, verify, options) {
 
 /**
  * Εγγραφή στο CMS μόνο εγκεκριμένων κωδικών (ουρά approved_more_codes).
+ * Δεν ξανατρέχει ταύτιση More — μόνο ό,τι είναι ήδη στην ουρά «Έγκρ.».
  * @param {object} strapi
- * @param {{ query?: string, overwriteExisting?: boolean }} options
+ * @param {{ overwriteExisting?: boolean, onProgress?: (msg: string) => void }} options
  */
 async function applyMoreEventCodeMatches(strapi, options = {}) {
   const started = Date.now();
   const overwriteExisting = options.overwriteExisting === true;
   const onProgress = options.onProgress;
 
-  const lookup = await runMoreEventCodeLookup(strapi, {
-    query: options.query ?? null,
-    matchCms: true,
-    skipVerify: false,
-    onProgress,
-  });
+  if (onProgress) onProgress('Φόρτωση ουράς εγκεκριμένων κωδικών…');
 
   const queue = await loadApprovedQueueItems(strapi);
+  if (onProgress) {
+    const queuedCodes = queue.reduce((sum, item) => sum + (item.approvedEventGroupCodes?.length || 0), 0);
+    onProgress(
+      queuedCodes > 0
+        ? `Εγγραφή CMS · ${queuedCodes} κωδικοί στην ουρά`
+        : 'Δεν υπάρχουν εγκεκριμένοι κωδικοί στην ουρά',
+    );
+  }
   const applied = [];
   const skipped = [];
   const codeTakenBy = new Map();
@@ -1769,14 +1773,18 @@ async function applyMoreEventCodeMatches(strapi, options = {}) {
     }
   }
 
-  lookup.approvedQueue = await loadApprovedQueueItems(strapi);
-  lookup.stats.approvedQueue = lookup.approvedQueue.reduce(
+  const approvedQueue = await loadApprovedQueueItems(strapi);
+  const pendingApproval = await loadPendingApprovalItems(strapi);
+  const approvedQueueCount = approvedQueue.reduce(
     (sum, item) => sum + (item.approvedEventGroupCodes?.length || 0),
     0,
   );
 
   return {
-    ...lookup,
+    ok: true,
+    pendingApproval,
+    approvedQueue,
+    stats: { approvedQueue: approvedQueueCount },
     apply: {
       overwriteExisting,
       applied,

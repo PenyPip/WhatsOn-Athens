@@ -724,6 +724,7 @@ const App = () => {
   const [syncProgress, setSyncProgress] = useState(null);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupProgress, setLookupProgress] = useState(null);
+  const [lookupJobKind, setLookupJobKind] = useState(null);
   const [pendingApproval, setPendingApproval] = useState([]);
   const [selectedPendingKeys, setSelectedPendingKeys] = useState(() => new Set());
   const [selectedMatchKeys, setSelectedMatchKeys] = useState(() => new Set());
@@ -754,19 +755,36 @@ const App = () => {
     throw new Error('Το sync ξεπέρασε το χρονικό όριο αναμονής (~20 λεπτά).');
   }, [get]);
 
+  const mergeApplyIntoResult = useCallback((applyResult) => {
+    if (!applyResult) return;
+    setResult((prev) => ({
+      ...(prev || {}),
+      apply: applyResult.apply ?? prev?.apply,
+      approvedQueue: applyResult.approvedQueue ?? prev?.approvedQueue,
+      stats: {
+        ...(prev?.stats || {}),
+        approvedQueue: applyResult.stats?.approvedQueue ?? prev?.stats?.approvedQueue,
+      },
+    }));
+    setPendingApproval(applyResult.pendingApproval ?? []);
+  }, []);
+
   const pollLookupJob = useCallback(async () => {
     for (let attempt = 0; attempt < 480; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 2500));
       const res = await get('/api/more-lookup/run/status');
       const data = res?.data;
+      if (data?.kind) setLookupJobKind(data.kind);
       if (data?.progress) setLookupProgress(data.progress);
       if (data?.status === 'completed' && data?.result) return data.result;
       if (data?.status === 'failed') {
-        throw new Error(data?.error || 'Αποτυχία ταύτισης');
+        throw new Error(
+          data?.error || (data?.kind === 'apply' ? 'Αποτυχία εγγραφής CMS' : 'Αποτυχία ταύτισης'),
+        );
       }
       if (data?.status !== 'running' && data?.status !== 'started') break;
     }
-    throw new Error('Η ταύτιση ξεπέρασε το χρονικό όριο αναμονής (~20 λεπτά).');
+    throw new Error('Η διαδικασία ξεπέρασε το χρονικό όριο αναμονής (~20 λεπτά).');
   }, [get]);
 
   const resumeLookupIfRunning = useCallback(async () => {
@@ -774,22 +792,32 @@ const App = () => {
       const res = await get('/api/more-lookup/run/status');
       const data = res?.data;
       if (data?.status !== 'running' && data?.status !== 'started') return;
+      const isApply = data.kind === 'apply';
+      setLookupJobKind(isApply ? 'apply' : 'run');
       setLookupLoading(true);
-      setLookupProgress(data.progress || 'Ταύτιση σε εξέλιξη…');
-      const lookupResult = await pollLookupJob();
-      setResult(lookupResult);
-      setPendingApproval(lookupResult?.pendingApproval ?? []);
+      setLookupProgress(
+        data.progress || (isApply ? 'Εγγραφή CMS σε εξέλιξη…' : 'Ταύτιση σε εξέλιξη…'),
+      );
+      const jobResult = await pollLookupJob();
+      if (isApply) {
+        mergeApplyIntoResult(jobResult);
+      } else {
+        setResult(jobResult);
+        setPendingApproval(jobResult?.pendingApproval ?? []);
+      }
       toggleNotification({
         type: 'success',
-        message: lookupResult?.message || 'Η ταύτιση ολοκληρώθηκε.',
+        message:
+          jobResult?.message || (isApply ? 'Η εγγραφή CMS ολοκληρώθηκε.' : 'Η ταύτιση ολοκληρώθηκε.'),
       });
     } catch (error) {
       toggleNotification({ type: 'warning', message: lookupErrorMessage(error) });
     } finally {
       setLookupLoading(false);
       setLookupProgress(null);
+      setLookupJobKind(null);
     }
-  }, [get, pollLookupJob, toggleNotification]);
+  }, [get, mergeApplyIntoResult, pollLookupJob, toggleNotification]);
 
   const resumeSyncIfRunning = useCallback(async () => {
     try {
@@ -853,6 +881,7 @@ const App = () => {
 
   const runLookup = async () => {
     setLookupLoading(true);
+    setLookupJobKind('run');
     setLookupProgress('Έναρξη ταύτισης…');
     setResult(null);
     try {
@@ -871,25 +900,25 @@ const App = () => {
     } finally {
       setLookupLoading(false);
       setLookupProgress(null);
+      setLookupJobKind(null);
     }
   };
 
   const applyToCms = async () => {
     setLookupLoading(true);
-    setLookupProgress('Έναρξη εγγραφής CMS…');
+    setLookupJobKind('apply');
+    setLookupProgress('Εγγραφή εγκεκριμένων κωδικών στο CMS…');
     try {
-      const lookupResult = await finishLookupJob({
-        query: query.trim() || undefined,
+      const applyResult = await finishLookupJob({
         apply: true,
         overwriteExisting,
       });
-      setResult(lookupResult);
-      setPendingApproval(lookupResult?.pendingApproval ?? []);
-      const applied = lookupResult?.apply?.stats?.applied ?? 0;
-      const skipped = lookupResult?.apply?.stats?.skipped ?? 0;
+      mergeApplyIntoResult(applyResult);
+      const applied = applyResult?.apply?.stats?.applied ?? 0;
+      const skipped = applyResult?.apply?.stats?.skipped ?? 0;
       toggleNotification({
         type: applied > 0 ? 'success' : 'warning',
-        message: lookupResult?.message || `Εγγράφηκαν: ${applied} · παραλείφθηκαν: ${skipped}`,
+        message: applyResult?.message || `Εγγράφηκαν: ${applied} · παραλείφθηκαν: ${skipped}`,
       });
     } catch (error) {
       const message =
@@ -901,6 +930,7 @@ const App = () => {
     } finally {
       setLookupLoading(false);
       setLookupProgress(null);
+      setLookupJobKind(null);
     }
   };
 
@@ -1515,15 +1545,17 @@ const App = () => {
                     {lookupProgress}
                   </Typography>
                   <Typography variant="pi" textColor="neutral500" paddingTop={1}>
-                    Η ταύτιση τρέχει στο server — μπορεί να διαρκέσει 1–5 λεπτά (κατάλογος More +
-                    επαλήθευση API).
+                    {lookupJobKind === 'apply'
+                      ? 'Γράφει μόνο τους ήδη εγκεκριμένους κωδικούς — χωρίς νέα αναζήτηση More.'
+                      : 'Η ταύτιση τρέχει στο server — μπορεί να διαρκέσει 1–5 λεπτά (κατάλογος More + επαλήθευση API).'}
                   </Typography>
                 </Box>
               ) : null}
               <Box paddingTop={4}>
                 <Typography variant="pi" textColor="neutral500">
                   Η ταύτιση δείχνει μόνο κωδικούς που λείπουν από το CMS. Πάτα «Έγκρ.» ανά γραμμή, μετά
-                  «Γράψε αυτόματα»{approvedQueueCount > 0 ? ` (${approvedQueueCount} στην ουρά)` : ''}.
+                  «Γράψε αυτόματα» (μόνο εγγραφή, χωρίς ξανά-ταύτιση)
+                  {approvedQueueCount > 0 ? ` · ${approvedQueueCount} στην ουρά` : ''}.
                 </Typography>
               </Box>
             </Box>

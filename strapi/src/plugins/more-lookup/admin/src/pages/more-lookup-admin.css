@@ -1,5 +1,5 @@
 /* Στοίχιση κειμένου / loader στα κουμπιά Strapi DS (ειδικά με loading + ελληνικά). */
-.more-lookup-page button {
+.more-lookup-page button:not(.more-lookup-select-checkbox) {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -8,7 +8,7 @@
   min-height: 2.5rem;
 }
 
-.more-lookup-page button > span {
+.more-lookup-page button:not(.more-lookup-select-checkbox) > span {
   display: inline-flex !important;
   align-items: center !important;
   justify-content: center !important;
@@ -16,7 +16,7 @@
   line-height: 1.25 !important;
 }
 
-.more-lookup-page button svg {
+.more-lookup-page button:not(.more-lookup-select-checkbox) svg {
   flex-shrink: 0;
   margin: 0 !important;
 }
@@ -38,21 +38,27 @@
 }
 
 .more-lookup-select-checkbox {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 1.125rem;
-  height: 1.125rem;
-  margin: 0 auto;
-  padding: 0;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  width: 1.125rem !important;
+  min-width: 1.125rem !important;
+  height: 1.125rem !important;
+  min-height: 1.125rem !important;
+  max-height: 1.125rem !important;
+  margin: 0.15rem auto 0 !important;
+  padding: 0 !important;
   border: 1px solid #8e8ea9;
   border-radius: 0.2rem;
   background: #ffffff;
   cursor: pointer;
-  flex-shrink: 0;
-  line-height: 1;
+  flex: 0 0 1.125rem !important;
+  flex-shrink: 0 !important;
+  gap: 0 !important;
+  line-height: 1 !important;
   box-sizing: border-box;
   vertical-align: middle;
+  align-self: flex-start;
 }
 
 .more-lookup-select-checkbox--on {
@@ -62,9 +68,10 @@
 }
 
 .more-lookup-select-checkbox-mark {
+  display: block !important;
   font-size: 0.7rem;
   font-weight: 700;
-  line-height: 1;
+  line-height: 1 !important;
   pointer-events: none;
   user-select: none;
 }
