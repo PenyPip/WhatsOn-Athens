@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { cn } from "@/lib/utils";
-import PageHeaderReveal from "@/components/PageHeaderReveal";
+import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_SUBTITLE_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useArticles } from "@/hooks/useStrapi";
@@ -36,15 +36,11 @@ export default function Articles() {
   }, [articles, filter]);
 
   return (
-    <div className="min-h-screen pt-36 pb-20 md:pb-8">
-      <div className="section-black py-10 -mt-28 pt-36 mb-8">
-        <div className="container">
-          <PageHeaderReveal>
-            <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Άρθρα</h1>
-            <p className="text-white/60 text-base">Όλα τα άρθρα, συγκρίσεις και πολιτιστικό περιεχόμενο.</p>
-          </PageHeaderReveal>
-        </div>
-      </div>
+    <div className={PAGE_LIST_SHELL_CLASS}>
+      <PageListHeader>
+        <h1 className={PAGE_LIST_TITLE_CLASS}>Άρθρα</h1>
+        <p className={PAGE_LIST_SUBTITLE_CLASS}>Όλα τα άρθρα, συγκρίσεις και πολιτιστικό περιεχόμενο.</p>
+      </PageListHeader>
 
       <div className={cn("container", ARTICLE_PAGE_CLASS)}>
         <div className="font-article-ui mb-8 flex flex-wrap items-center gap-2">

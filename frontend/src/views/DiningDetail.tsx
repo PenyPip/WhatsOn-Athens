@@ -16,6 +16,8 @@ import {
   restaurantMapsHref,
   restaurantWebsiteHref,
 } from "@/lib/restaurantLinks";
+import { cn } from "@/lib/utils";
+import { PAGE_BELOW_NAV_CLASS, PAGE_DETAIL_HERO_INNER_CLASS } from "@/components/PageListHeader";
 
 const DiningDetail = () => {
   const { slug } = useParams();
@@ -45,7 +47,7 @@ const DiningDetail = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen pt-36">
+      <div className={PAGE_BELOW_NAV_CLASS}>
         <LoadingState />
       </div>
     );
@@ -53,7 +55,7 @@ const DiningDetail = () => {
 
   if (!restaurant) {
     return (
-      <div className="min-h-screen pt-36 flex items-center justify-center">
+      <div className={cn(PAGE_BELOW_NAV_CLASS, "flex items-center justify-center")}>
         <div className="text-center">
           <h1 className="font-display text-2xl mb-2">Δεν βρέθηκε</h1>
           <Link to="/dining" className="text-primary text-sm">
@@ -86,7 +88,7 @@ const DiningDetail = () => {
           </>
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-[#111111] via-[#111111]/50 to-transparent" />
-        <div className="relative z-10 container h-full flex items-end pb-12 pt-36">
+        <div className={cn(PAGE_DETAIL_HERO_INNER_CLASS, "flex h-full items-end pb-12")}>
           <div className="animate-fade-in-up">
             <Link
               to="/dining"

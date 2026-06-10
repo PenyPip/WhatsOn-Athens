@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ExternalLink, MapPin } from "lucide-react";
 import Footer from "@/components/Footer";
 import LoadingState from "@/components/LoadingState";
-import PageHeaderReveal from "@/components/PageHeaderReveal";
+import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import TheaterVenueProgramLayout from "@/components/TheaterVenueProgramLayout";
 import {
   useTheaterPerformances,
@@ -93,10 +93,8 @@ const TheaterVenueProgram = () => {
   const wrongVenueType = venue && !isTheaterVenue(venue);
 
   return (
-    <div className="min-h-screen pb-20 md:pb-8">
-      <div className="section-black mb-6 max-md:-mt-16 max-md:py-5 max-md:pt-20 md:-mt-28 md:mb-8 md:py-10 md:pt-36">
-        <div className="container">
-          <PageHeaderReveal>
+    <div className={PAGE_LIST_SHELL_CLASS}>
+      <PageListHeader>
             <div className="mb-3">
               <Link
                 to="/theater"
@@ -105,7 +103,7 @@ const TheaterVenueProgram = () => {
                 ← Θέατρο
               </Link>
             </div>
-            <h1 className="font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl">
+            <h1 className={PAGE_LIST_TITLE_CLASS}>
               {venue?.name ?? "Πρόγραμμα χώρου"}
             </h1>
             {venue ? (
@@ -141,9 +139,7 @@ const TheaterVenueProgram = () => {
             ) : (
               <p className="text-sm text-white/60 md:text-base">Επερχόμενες παραστάσεις ανά χώρο</p>
             )}
-          </PageHeaderReveal>
-        </div>
-      </div>
+      </PageListHeader>
 
       <div className="container">
         {venueSlug && !venue && !venueLookupPending ? (

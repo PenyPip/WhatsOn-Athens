@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import EditorialCard from "@/components/EditorialCard";
-import PageHeaderReveal from "@/components/PageHeaderReveal";
+import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_SUBTITLE_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useEditorialReviews } from "@/hooks/useStrapi";
@@ -23,15 +23,11 @@ const Reviews = () => {
   }, [editorialReviews, category]);
 
   return (
-    <div className="min-h-screen pt-36 pb-20 md:pb-8">
-      <div className="section-black py-10 -mt-28 pt-36 mb-8">
-        <div className="container">
-          <PageHeaderReveal>
-            <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Κριτικές</h1>
-            <p className="text-white/60 text-base">Κριτικές από τη συντακτική ομάδα</p>
-          </PageHeaderReveal>
-        </div>
-      </div>
+    <div className={PAGE_LIST_SHELL_CLASS}>
+      <PageListHeader>
+        <h1 className={PAGE_LIST_TITLE_CLASS}>Κριτικές</h1>
+        <p className={PAGE_LIST_SUBTITLE_CLASS}>Κριτικές από τη συντακτική ομάδα</p>
+      </PageListHeader>
 
       <div className="container">
         <div className="flex flex-wrap items-center gap-2 mb-8">

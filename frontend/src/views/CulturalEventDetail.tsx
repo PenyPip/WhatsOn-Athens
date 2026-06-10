@@ -16,6 +16,8 @@ import {
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
 import { truncateDescription } from "@/lib/siteMetadata";
+import { cn } from "@/lib/utils";
+import { PAGE_BELOW_NAV_CLASS, PAGE_DETAIL_HERO_INNER_CLASS } from "@/components/PageListHeader";
 
 export default function CulturalEventDetail() {
   const { slug } = useParams();
@@ -52,7 +54,7 @@ export default function CulturalEventDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen pt-36">
+      <div className={PAGE_BELOW_NAV_CLASS}>
         <LoadingState />
       </div>
     );
@@ -60,7 +62,7 @@ export default function CulturalEventDetail() {
 
   if (!event || !title) {
     return (
-      <div className="flex min-h-screen items-center justify-center pt-36">
+      <div className={cn(PAGE_BELOW_NAV_CLASS, "flex items-center justify-center")}>
         <div className="text-center">
           <h1 className="mb-2 font-display text-2xl">Δεν βρέθηκε η εκδήλωση</h1>
           <Link to="/events" className="text-sm text-primary">
@@ -85,7 +87,7 @@ export default function CulturalEventDetail() {
           />
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-[#13143E]/85 to-[#13143E]/60" />
-        <div className="relative z-10 container pb-10 pt-32 md:pb-14 md:pt-36">
+        <div className={cn(PAGE_DETAIL_HERO_INNER_CLASS, "md:pb-14")}>
           <Link
             to="/events"
             className="mb-5 inline-flex items-center gap-1 text-sm text-white/55 transition-colors hover:text-white"

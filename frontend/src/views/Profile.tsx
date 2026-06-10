@@ -1,5 +1,5 @@
 import { User, Heart, Star } from "lucide-react";
-import PageHeaderReveal from "@/components/PageHeaderReveal";
+import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import Footer from "@/components/Footer";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
@@ -8,14 +8,10 @@ const Profile = () => {
   usePageSeo(staticPageSeo.profile);
 
   return (
-    <div className="min-h-screen pt-36 pb-20 md:pb-8">
-      <div className="section-black py-10 -mt-28 pt-36 mb-8">
-        <div className="container">
-          <PageHeaderReveal>
-            <h1 className="font-display text-3xl font-bold text-white">Προφίλ</h1>
-          </PageHeaderReveal>
-        </div>
-      </div>
+    <div className={PAGE_LIST_SHELL_CLASS}>
+      <PageListHeader>
+        <h1 className={PAGE_LIST_TITLE_CLASS}>Προφίλ</h1>
+      </PageListHeader>
 
       <div className="container max-w-2xl">
         <div className="card-elevated animate-fade-in-up p-8 text-center">

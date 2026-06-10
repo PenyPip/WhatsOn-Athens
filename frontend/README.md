@@ -16,9 +16,9 @@ npm run lint
 
 - `NEXT_PUBLIC_API_URL` (default `/api`)
 - `NEXT_PUBLIC_SITE_URL` — canonical / Open Graph base (π.χ. `https://the37n.gr`· στο dev default `http://localhost:3000`)
-- `SITEMAP_STRAPI_URL` — (μόνο build) URL Strapi για `npm run sitemap` / `npm run build` (default `http://127.0.0.1:1337`)
+- `SITEMAP_STRAPI_URL` — (μόνο build) βάση URL για Strapi API (`/api/...`). Τοπικά: `http://127.0.0.1:1337`. Στο Docker image: default `https://the37n.gr` (το `strapi` hostname δεν υπάρχει κατά το `docker build`).
 
-Το `npm run build` τρέχει πρώτα `scripts/generate-sitemap.mjs` (δημιουργεί `public/sitemap.xml` και `public/robots.txt`). Για build σε Docker, βεβαιώσου ότι το Strapi είναι προσβάσιμο ή τρέξε `npm run sitemap` τοπικά πριν το build.
+Το `npm run build` τρέχει πρώτα `scripts/generate-sitemap.mjs` (δημιουργεί `public/sitemap.xml`, `src/generated/spa-static-paths.json` και `spa-crawl-enrichment.json`). Με `SITEMAP_STRICT_MODE=1` (Docker production build) αποτυγχάνει αν λείπουν δυναμικές σελίδες.
 
 **SEO / SSR στο build:** κάθε σελίδα από `app/[[...slug]]` κάνει prefetch Strapi + server-render του React Router app (χωρίς lazy στις κύριες σελίδες — πλήρες HTML, όχι «Φόρτωση…»). `generateMetadata` + JSON-LD: canonical, Open Graph, **αφίσα entity** από `spa-crawl-enrichment.json` (τίτλοι/σύνοψη από Strapi στο `npm run build`). Απαιτείται προσβάσιμο Strapi κατά το build.
 

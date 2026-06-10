@@ -1,6 +1,6 @@
 import { useMemo, type ReactNode } from "react";
 import { useSearchParams } from "react-router-dom";
-import PageHeaderReveal from "@/components/PageHeaderReveal";
+import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_SUBTITLE_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import VenueCard from "@/components/VenueCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
@@ -148,17 +148,13 @@ const Venues = () => {
   }, [venues, areaUi, districtFilter, kindFilter]);
 
   return (
-    <div className="min-h-screen pt-36 pb-20 md:pb-8">
-      <div className="section-black py-10 -mt-28 pt-36 mb-8">
-        <div className="container">
-          <PageHeaderReveal>
-            <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Χώροι</h1>
-            <p className="text-white/50 text-sm">
-              Σινεμά, θέατρα και άλλοι πολιτιστικοί χώροι — Αθήνα, Θεσσαλονίκη και αλλού
-            </p>
-          </PageHeaderReveal>
-        </div>
-      </div>
+    <div className={PAGE_LIST_SHELL_CLASS}>
+      <PageListHeader>
+        <h1 className={PAGE_LIST_TITLE_CLASS}>Χώροι</h1>
+        <p className={PAGE_LIST_SUBTITLE_CLASS}>
+          Σινεμά, θέατρα και άλλοι πολιτιστικοί χώροι — Αθήνα, Θεσσαλονίκη και αλλού
+        </p>
+      </PageListHeader>
 
       <div className="container">
         <div className="mb-6 space-y-4 rounded-xl border border-border/15 bg-muted/20 p-4 md:mb-8 md:p-5">

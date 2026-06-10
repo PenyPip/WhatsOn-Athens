@@ -53,7 +53,7 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
 
   return (
     <div className={cn(ARTICLE_PAGE_CLASS, "min-h-screen bg-white pb-20 md:pb-0")}>
-      <div className={cn(ARTICLE_COLUMN_CLASS, "animate-fade-in-up pt-32 pb-16 md:pt-36 md:pb-24")}>
+      <div className={cn(ARTICLE_COLUMN_CLASS, "animate-fade-in-up pt-20 pb-16 md:pt-28 md:pb-24 lg:pt-32")}>
           <Link
             to="/articles"
             className="font-article-ui mb-10 inline-flex items-center gap-1.5 text-xs font-medium text-[#1C1D62]/55 transition-colors hover:text-[#7C2B76]"

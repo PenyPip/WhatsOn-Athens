@@ -34,18 +34,39 @@
 .more-lookup-match-table th,
 .more-lookup-match-table td {
   padding: 0.45rem 0.35rem !important;
-  vertical-align: top;
+  vertical-align: middle;
 }
 
 .more-lookup-select-checkbox {
-  width: 1rem;
-  height: 1rem;
-  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.125rem;
+  height: 1.125rem;
+  margin: 0 auto;
+  padding: 0;
+  border: 1px solid #8e8ea9;
+  border-radius: 0.2rem;
+  background: #ffffff;
   cursor: pointer;
-  accent-color: #4945ff;
   flex-shrink: 0;
-  position: relative;
-  z-index: 2;
+  line-height: 1;
+  box-sizing: border-box;
+  vertical-align: middle;
+}
+
+.more-lookup-select-checkbox--on {
+  background: #4945ff;
+  border-color: #4945ff;
+  color: #ffffff;
+}
+
+.more-lookup-select-checkbox-mark {
+  font-size: 0.7rem;
+  font-weight: 700;
+  line-height: 1;
+  pointer-events: none;
+  user-select: none;
 }
 
 .more-lookup-select-checkbox:disabled {
@@ -68,15 +89,15 @@
 .more-lookup-match-table .more-lookup-col-select {
   width: 2.75rem !important;
   min-width: 2.75rem !important;
+  max-width: 2.75rem !important;
   text-align: center;
-  overflow: visible !important;
-  position: relative;
-  z-index: 2;
+  overflow: hidden;
+  padding-top: 0.5rem !important;
+  padding-bottom: 0.5rem !important;
 }
 
 .more-lookup-match-table .more-lookup-col-select .more-lookup-select-checkbox {
-  display: inline-block;
-  vertical-align: middle;
+  display: inline-flex;
 }
 
 /* Πίνακας 1: 8 στήλες (επιλογή + 7) */

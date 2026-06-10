@@ -58,6 +58,7 @@ import { resolveImdbRating } from "@/lib/movieImdb";
 import { buildMovieDetailJsonLd } from "@/lib/jsonLdMovieDetail";
 import { buildTheaterDetailJsonLd } from "@/lib/jsonLdTheaterDetail";
 import JsonLd from "@/components/JsonLd";
+import { PAGE_BELOW_NAV_CLASS, PAGE_DETAIL_HERO_INNER_CLASS } from "@/components/PageListHeader";
 import GenreLinks from "@/components/GenreLinks";
 import CinemaVenueLinks from "@/components/CinemaVenueLinks";
 import VenueBookingLink from "@/components/VenueBookingLink";
@@ -386,7 +387,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen pt-36">
+      <div className={PAGE_BELOW_NAV_CLASS}>
         <LoadingState />
       </div>
     );
@@ -394,7 +395,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   if (!event) {
     return (
-      <div className="min-h-screen pt-36 flex items-center justify-center">
+      <div className={cn(PAGE_BELOW_NAV_CLASS, "flex items-center justify-center")}>
         <div className="text-center">
           <h1 className="font-display text-2xl mb-2">Δεν βρέθηκε</h1>
           <Link to="/" className="text-primary text-base">Αρχική</Link>
@@ -682,7 +683,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-[#13143E]/75 to-[#13143E]/35" />
 
-        <div className="relative z-10 container pb-6 pt-20 md:pb-10 md:pt-32 lg:pt-36">
+        <div className={PAGE_DETAIL_HERO_INNER_CLASS}>
           <div
             className={cn(
               "animate-fade-in-up",

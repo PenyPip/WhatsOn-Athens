@@ -7,6 +7,8 @@ import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { articleContentToHtml } from "@/lib/articleContent";
 import { truncateDescription } from "@/lib/siteMetadata";
+import { PAGE_BELOW_NAV_CLASS } from "@/components/PageListHeader";
+import { cn } from "@/lib/utils";
 
 export default function ArticleDetail() {
   const { slug } = useParams();
@@ -31,7 +33,7 @@ export default function ArticleDetail() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen pt-36">
+      <div className={PAGE_BELOW_NAV_CLASS}>
         <LoadingState />
       </div>
     );
@@ -39,7 +41,7 @@ export default function ArticleDetail() {
 
   if (!article) {
     return (
-      <div className="min-h-screen pt-36 flex items-center justify-center">
+      <div className={cn(PAGE_BELOW_NAV_CLASS, "flex items-center justify-center")}>
         <div className="text-center">
           <h1 className="font-display text-2xl mb-2">Δεν βρέθηκε άρθρο</h1>
           <Link to="/articles" className="text-primary text-sm">

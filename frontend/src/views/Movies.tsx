@@ -16,6 +16,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import EventCard from "@/components/EventCard";
 import MoviesGridSkeleton from "@/components/MoviesGridSkeleton";
 import Footer from "@/components/Footer";
+import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_SUBTITLE_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import { useMovies, useShowtimes, useVenuesForProgram, useVenueBySlug, useMovieGenres } from "@/hooks/useStrapi";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import {
@@ -844,15 +845,13 @@ const Movies = () => {
     (needsCatalogMovies && movies === undefined && moviesLoading);
 
   return (
-    <div className="min-h-screen pb-20 md:pb-8">
-      <div className="section-black mb-6 max-md:-mt-16 max-md:py-5 max-md:pt-20 md:-mt-28 md:mb-8 md:py-10 md:pt-36">
-        <div className="container">
-          <div>
-            <h1 className="font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl">
+    <div className={PAGE_LIST_SHELL_CLASS}>
+      <PageListHeader reveal={false}>
+            <h1 className={PAGE_LIST_TITLE_CLASS}>
               {pageH1}
             </h1>
             {!venueFilter && !pathFilters.section && !pathFilters.genreSlug ? (
-              <p className="text-sm text-white/60 md:text-base">
+              <p className={PAGE_LIST_SUBTITLE_CLASS}>
                 Τώρα στα σινεμά στην {AREA_LABELS[areaUiValue]}
               </p>
             ) : null}
@@ -888,9 +887,7 @@ const Movies = () => {
                 ) : null}
               </div>
             ) : null}
-          </div>
-        </div>
-      </div>
+      </PageListHeader>
 
       <div className="container">
         {venueSlug && !venueFilter && !venueLookupPending ? (

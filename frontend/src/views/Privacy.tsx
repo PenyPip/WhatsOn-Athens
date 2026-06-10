@@ -2,7 +2,7 @@
 
 import { Link } from "react-router-dom";
 import Footer from "@/components/Footer";
-import PageHeaderReveal from "@/components/PageHeaderReveal";
+import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import { Button } from "@/components/ui/button";
 import {
   clearCookieConsent,
@@ -26,16 +26,12 @@ const Privacy = () => {
   usePageSeo(staticPageSeo.privacy);
 
   return (
-    <div className="min-h-screen pt-36 pb-20 md:pb-8">
-      <div className="section-black py-10 -mt-28 pt-36 mb-8 md:pt-36">
-        <div className="container max-w-3xl">
-          <PageHeaderReveal>
-            <p className="text-xs uppercase tracking-[0.2em] text-amber-200/80 mb-2">Νομικά</p>
-            <h1 className="font-display text-3xl md:text-4xl font-bold text-white mb-2">Απόρρητο & cookies</h1>
-            <p className="text-white/45 text-sm">Τελευταία ενημέρωση: {LAST_UPDATED}</p>
-          </PageHeaderReveal>
-        </div>
-      </div>
+    <div className={PAGE_LIST_SHELL_CLASS}>
+      <PageListHeader containerClassName="max-w-3xl">
+        <p className="mb-2 text-xs uppercase tracking-[0.2em] text-amber-200/80">Νομικά</p>
+        <h1 className={PAGE_LIST_TITLE_CLASS}>Απόρρητο & cookies</h1>
+        <p className="text-sm text-white/45">Τελευταία ενημέρωση: {LAST_UPDATED}</p>
+      </PageListHeader>
 
       <article className="container max-w-3xl pb-16 prose prose-invert prose-sm md:prose-base max-w-none prose-headings:font-display prose-p:text-white/75 prose-li:text-white/75 prose-strong:text-white/90 prose-a:text-amber-200 hover:prose-a:text-amber-100">
         <section id="eisagogi" className="scroll-mt-28">

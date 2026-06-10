@@ -7,6 +7,8 @@ import Footer from "@/components/Footer";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { truncateDescription } from "@/lib/siteMetadata";
+import { PAGE_BELOW_NAV_CLASS } from "@/components/PageListHeader";
+import { cn } from "@/lib/utils";
 
 const ReviewDetail = () => {
   const { slug } = useParams();
@@ -30,7 +32,7 @@ const ReviewDetail = () => {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen pt-36">
+      <div className={PAGE_BELOW_NAV_CLASS}>
         <LoadingState />
       </div>
     );
@@ -38,7 +40,7 @@ const ReviewDetail = () => {
 
   if (!review) {
     return (
-      <div className="min-h-screen pt-36 flex items-center justify-center">
+      <div className={cn(PAGE_BELOW_NAV_CLASS, "flex items-center justify-center")}>
         <div className="text-center">
           <h1 className="font-display text-2xl mb-2">Δεν βρέθηκε</h1>
           <Link to="/reviews" className="text-primary text-sm">Πίσω στις κριτικές</Link>

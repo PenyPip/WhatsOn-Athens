@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import '../more-lookup-admin.css';
 import {
   Layout,
@@ -161,25 +161,40 @@ function formatCodeList(codes) {
 }
 
 function SelectCheckbox({ checked, onChange, disabled = false, indeterminate = false, ariaLabel }) {
-  const inputRef = useRef(null);
+  const isOn = Boolean(checked) || Boolean(indeterminate);
 
-  useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.indeterminate = indeterminate;
+  const handleToggle = (event) => {
+    event.preventDefault();
+    event.stopPropagation();
+    if (disabled) return;
+    // indeterminate → επιλογή όλων (όχι toggle off)
+    if (indeterminate) {
+      onChange(true);
+      return;
     }
-  }, [indeterminate, checked]);
+    onChange(!checked);
+  };
 
   return (
-    <input
-      ref={inputRef}
-      type="checkbox"
-      className="more-lookup-select-checkbox"
-      checked={Boolean(checked)}
-      onChange={(event) => onChange(event.target.checked)}
-      onClick={(event) => event.stopPropagation()}
-      disabled={disabled}
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={indeterminate ? 'mixed' : Boolean(checked)}
       aria-label={ariaLabel}
-    />
+      disabled={disabled}
+      className={[
+        'more-lookup-select-checkbox',
+        isOn ? 'more-lookup-select-checkbox--on' : '',
+        indeterminate ? 'more-lookup-select-checkbox--indeterminate' : '',
+      ]
+        .filter(Boolean)
+        .join(' ')}
+      onClick={handleToggle}
+    >
+      <span className="more-lookup-select-checkbox-mark" aria-hidden>
+        {indeterminate ? '−' : checked ? '✓' : ''}
+      </span>
+    </button>
   );
 }
 
@@ -710,8 +725,8 @@ const App = () => {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupProgress, setLookupProgress] = useState(null);
   const [pendingApproval, setPendingApproval] = useState([]);
-  const [selectedPendingKeys, setSelectedPendingKeys] = useState([]);
-  const [selectedMatchKeys, setSelectedMatchKeys] = useState([]);
+  const [selectedPendingKeys, setSelectedPendingKeys] = useState(() => new Set());
+  const [selectedMatchKeys, setSelectedMatchKeys] = useState(() => new Set());
   const { get, post } = useFetchClient();
   const toggleNotification = useNotification();
 
@@ -911,10 +926,10 @@ const App = () => {
     [matchDisplayRows],
   );
   const pendingSelectedVisibleCount = pendingVisibleKeys.filter((key) =>
-    selectedPendingKeys.includes(key),
+    selectedPendingKeys.has(key),
   ).length;
   const matchSelectedVisibleCount = matchVisibleKeys.filter((key) =>
-    selectedMatchKeys.includes(key),
+    selectedMatchKeys.has(key),
   ).length;
   const allPendingVisibleSelected =
     pendingVisibleKeys.length > 0 && pendingSelectedVisibleCount === pendingVisibleKeys.length;
@@ -928,16 +943,26 @@ const App = () => {
   useEffect(() => {
     setSelectedPendingKeys((prev) => {
       const visible = new Set(pendingVisibleKeys);
-      const next = prev.filter((key) => visible.has(key));
-      return next.length === prev.length ? prev : next;
+      let changed = false;
+      const next = new Set();
+      for (const key of prev) {
+        if (visible.has(key)) next.add(key);
+        else changed = true;
+      }
+      return changed ? next : prev;
     });
   }, [pendingVisibleKeys]);
 
   useEffect(() => {
     setSelectedMatchKeys((prev) => {
       const visible = new Set(matchVisibleKeys);
-      const next = prev.filter((key) => visible.has(key));
-      return next.length === prev.length ? prev : next;
+      let changed = false;
+      const next = new Set();
+      for (const key of prev) {
+        if (visible.has(key)) next.add(key);
+        else changed = true;
+      }
+      return changed ? next : prev;
     });
   }, [matchVisibleKeys]);
   const approvedQueueCount =
@@ -1159,23 +1184,29 @@ const App = () => {
   };
 
   const togglePendingSelection = (key, checked) => {
-    setSelectedPendingKeys((prev) =>
-      checked ? (prev.includes(key) ? prev : [...prev, key]) : prev.filter((item) => item !== key),
-    );
+    setSelectedPendingKeys((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(key);
+      else next.delete(key);
+      return next;
+    });
   };
 
   const toggleAllPendingSelection = (checked) => {
-    setSelectedPendingKeys(checked ? pendingVisibleKeys : []);
+    setSelectedPendingKeys(checked ? new Set(pendingVisibleKeys) : new Set());
   };
 
   const toggleMatchSelection = (key, checked) => {
-    setSelectedMatchKeys((prev) =>
-      checked ? (prev.includes(key) ? prev : [...prev, key]) : prev.filter((item) => item !== key),
-    );
+    setSelectedMatchKeys((prev) => {
+      const next = new Set(prev);
+      if (checked) next.add(key);
+      else next.delete(key);
+      return next;
+    });
   };
 
   const toggleAllMatchSelection = (checked) => {
-    setSelectedMatchKeys(checked ? matchVisibleKeys : []);
+    setSelectedMatchKeys(checked ? new Set(matchVisibleKeys) : new Set());
   };
 
   const approvePendingRows = async (rows, { clearSelection = false, bulkLabel = 'μαζική' } = {}) => {
@@ -1190,7 +1221,11 @@ const App = () => {
       setPendingApproval((prev) => prev.filter((r) => !approvedKeys.has(rowKey(r))));
       if (clearSelection) {
         const cleared = new Set(rows.map(pendingSelectionKey));
-        setSelectedPendingKeys((prev) => prev.filter((key) => !cleared.has(key)));
+        setSelectedPendingKeys((prev) => {
+          const next = new Set(prev);
+          for (const key of cleared) next.delete(key);
+          return next;
+        });
       }
       toggleNotification({
         type: res?.data?.ok ? 'success' : 'warning',
@@ -1214,7 +1249,11 @@ const App = () => {
       setPendingApproval((prev) => prev.filter((r) => !rejectedKeys.has(rowKey(r))));
       if (clearSelection) {
         const cleared = new Set(rows.map(pendingSelectionKey));
-        setSelectedPendingKeys((prev) => prev.filter((key) => !cleared.has(key)));
+        setSelectedPendingKeys((prev) => {
+          const next = new Set(prev);
+          for (const key of cleared) next.delete(key);
+          return next;
+        });
       }
       toggleNotification({
         type: res?.data?.ok ? 'info' : 'warning',
@@ -1233,14 +1272,14 @@ const App = () => {
 
   const approveSelectedPending = () => {
     const rows = pendingFiltered.filter((row) =>
-      selectedPendingKeys.includes(pendingSelectionKey(row)),
+      selectedPendingKeys.has(pendingSelectionKey(row)),
     );
     return approvePendingRows(rows, { clearSelection: true, bulkLabel: 'επιλεγμένων' });
   };
 
   const rejectSelectedPending = () => {
     const rows = pendingFiltered.filter((row) =>
-      selectedPendingKeys.includes(pendingSelectionKey(row)),
+      selectedPendingKeys.has(pendingSelectionKey(row)),
     );
     return rejectPendingRows(rows, { clearSelection: true, bulkLabel: 'επιλεγμένων' });
   };
@@ -1262,7 +1301,11 @@ const App = () => {
       });
       if (clearSelection) {
         const cleared = new Set(rows.map((row) => row.displayKey));
-        setSelectedMatchKeys((prev) => prev.filter((key) => !cleared.has(key)));
+        setSelectedMatchKeys((prev) => {
+          const next = new Set(prev);
+          for (const key of cleared) next.delete(key);
+          return next;
+        });
       }
       toggleNotification({
         type: res?.data?.ok ? 'info' : 'warning',
@@ -1276,7 +1319,7 @@ const App = () => {
   };
 
   const rejectSelectedMatches = () => {
-    const rows = matchDisplayRows.filter((row) => selectedMatchKeys.includes(row.displayKey));
+    const rows = matchDisplayRows.filter((row) => selectedMatchKeys.has(row.displayKey));
     return rejectMatchRows(rows, { clearSelection: true, bulkLabel: 'επιλεγμένων' });
   };
 
@@ -1674,12 +1717,12 @@ const App = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {matchDisplayRows.map((row) => (
-                  <Tr key={row.displayKey}>
+                {matchDisplayRows.map((row, rowIndex) => (
+                  <Tr key={`${row.displayKey}::${rowIndex}`}>
                     <Td className="more-lookup-col-select">
                       <SelectCheckbox
                         ariaLabel={`Επιλογή ${row.cmsTitle}`}
-                        checked={selectedMatchKeys.includes(row.displayKey)}
+                        checked={selectedMatchKeys.has(row.displayKey)}
                         onChange={(next) => toggleMatchSelection(row.displayKey, next)}
                         disabled={loading}
                       />
@@ -1828,14 +1871,14 @@ const App = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {pendingFiltered.map((row) => {
+                {pendingFiltered.map((row, rowIndex) => {
                   const selectionKey = pendingSelectionKey(row);
                   return (
-                  <Tr key={selectionKey}>
+                  <Tr key={`${selectionKey}::${rowIndex}`}>
                     <Td className="more-lookup-col-select">
                       <SelectCheckbox
                         ariaLabel={`Επιλογή ${row.cmsTitle}`}
-                        checked={selectedPendingKeys.includes(selectionKey)}
+                        checked={selectedPendingKeys.has(selectionKey)}
                         onChange={(next) => togglePendingSelection(selectionKey, next)}
                         disabled={loading}
                       />

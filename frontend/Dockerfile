@@ -24,11 +24,13 @@ FROM base AS builder
 
 ARG NEXT_PUBLIC_API_URL=/api
 ARG NEXT_PUBLIC_SITE_URL=https://the37n.gr
-ARG SITEMAP_STRAPI_URL=http://strapi:1337
+# Κατά το `docker build` το hostname `strapi` δεν υπάρχει — χρησιμοποιούμε το δημόσιο API.
+ARG SITEMAP_STRAPI_URL=https://the37n.gr
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV SITEMAP_STRAPI_URL=$SITEMAP_STRAPI_URL
+ENV SITEMAP_STRICT_MODE=1
 
 RUN npm run build
 

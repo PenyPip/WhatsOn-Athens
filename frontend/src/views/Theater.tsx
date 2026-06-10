@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import EventCard from "@/components/EventCard";
-import PageHeaderReveal from "@/components/PageHeaderReveal";
+import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_SUBTITLE_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import { useTheaterShows, useTheaterPerformances } from "@/hooks/useStrapi";
@@ -67,17 +67,13 @@ const TheaterPage = () => {
   const hasShows = allShows.length > 0;
 
   return (
-    <div className="min-h-screen pb-20 md:pb-8">
-      <div className="section-black mb-6 max-md:-mt-16 max-md:py-5 max-md:pt-20 md:-mt-28 md:mb-8 md:py-10 md:pt-36">
-        <div className="container">
-          <PageHeaderReveal>
-            <h1 className="font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl">Θέατρο</h1>
-            <p className="text-sm text-white/60 md:text-base">
-              Παραστάσεις, περιοδείες, πρόγραμμα και ημερομηνίες ανά παραγωγή.
-            </p>
-          </PageHeaderReveal>
-        </div>
-      </div>
+    <div className={PAGE_LIST_SHELL_CLASS}>
+      <PageListHeader>
+        <h1 className={PAGE_LIST_TITLE_CLASS}>Θέατρο</h1>
+        <p className={PAGE_LIST_SUBTITLE_CLASS}>
+          Παραστάσεις, περιοδείες, πρόγραμμα και ημερομηνίες ανά παραγωγή.
+        </p>
+      </PageListHeader>
 
       <div className="container">
         {isLoading ? (
