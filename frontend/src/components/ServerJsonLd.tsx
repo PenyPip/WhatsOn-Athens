@@ -4,5 +4,9 @@ import { buildPageJsonLd } from "@/lib/jsonLdPage";
 export default function ServerJsonLd({ path }: { path: string }) {
   const data = buildPageJsonLd(path);
   const json = JSON.stringify(data).replace(/</g, "\\u003c");
-  return <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: json }} />;
+  return (
+    <script type="application/ld+json" suppressHydrationWarning>
+      {json}
+    </script>
+  );
 }
