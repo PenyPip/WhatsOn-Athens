@@ -872,7 +872,10 @@ const App = () => {
     .filter((r) => r.matched)
     .filter((r) => matchesCmsContentFilter(r, matchContentFilter));
   const matchDisplayRows = expandMatchRows(matchedRows);
-  const pendingFiltered = pendingApproval.filter((r) => matchesCmsContentFilter(r, matchContentFilter));
+  const pendingFiltered = useMemo(
+    () => pendingApproval.filter((r) => matchesCmsContentFilter(r, matchContentFilter)),
+    [pendingApproval, matchContentFilter],
+  );
   const pendingVisibleKeys = useMemo(
     () => pendingFiltered.map(pendingSelectionKey),
     [pendingFiltered],
@@ -1395,8 +1398,8 @@ const App = () => {
                 <GridItem col={5} s={12}>
                   <Box paddingTop={6}>
                     <Checkbox
-                      checked={overwriteExisting}
-                      onCheckedChange={(checked) => setOverwriteExisting(checked === true)}
+                      value={overwriteExisting}
+                      onValueChange={setOverwriteExisting}
                       disabled={loading}
                     >
                       Αντικατάσταση υπάρχοντος κωδικού
@@ -1607,14 +1610,9 @@ const App = () => {
                   <Th className="more-lookup-col-select">
                     <Checkbox
                       aria-label="Επιλογή όλων των ορατών προτάσεων"
-                      checked={
-                        allMatchVisibleSelected
-                          ? true
-                          : someMatchVisibleSelected
-                            ? 'indeterminate'
-                            : false
-                      }
-                      onCheckedChange={(checked) => toggleAllMatchSelection(checked === true)}
+                      value={allMatchVisibleSelected}
+                      indeterminate={someMatchVisibleSelected}
+                      onValueChange={toggleAllMatchSelection}
                       disabled={loading || matchVisibleKeys.length === 0}
                     />
                   </Th>
@@ -1647,10 +1645,8 @@ const App = () => {
                     <Td className="more-lookup-col-select">
                       <Checkbox
                         aria-label={`Επιλογή ${row.cmsTitle}`}
-                        checked={selectedMatchKeys.includes(row.displayKey)}
-                        onCheckedChange={(checked) =>
-                          toggleMatchSelection(row.displayKey, checked === true)
-                        }
+                        value={selectedMatchKeys.includes(row.displayKey)}
+                        onValueChange={(next) => toggleMatchSelection(row.displayKey, next)}
                         disabled={loading}
                       />
                     </Td>
@@ -1771,14 +1767,9 @@ const App = () => {
                   <Th className="more-lookup-col-select">
                     <Checkbox
                       aria-label="Επιλογή όλων των ορατών εγγραφών προς έγκριση"
-                      checked={
-                        allPendingVisibleSelected
-                          ? true
-                          : somePendingVisibleSelected
-                            ? 'indeterminate'
-                            : false
-                      }
-                      onCheckedChange={(checked) => toggleAllPendingSelection(checked === true)}
+                      value={allPendingVisibleSelected}
+                      indeterminate={somePendingVisibleSelected}
+                      onValueChange={toggleAllPendingSelection}
                       disabled={loading || pendingVisibleKeys.length === 0}
                     />
                   </Th>
@@ -1810,10 +1801,8 @@ const App = () => {
                     <Td className="more-lookup-col-select">
                       <Checkbox
                         aria-label={`Επιλογή ${row.cmsTitle}`}
-                        checked={selectedPendingKeys.includes(selectionKey)}
-                        onCheckedChange={(checked) =>
-                          togglePendingSelection(selectionKey, checked === true)
-                        }
+                        value={selectedPendingKeys.includes(selectionKey)}
+                        onValueChange={(next) => togglePendingSelection(selectionKey, next)}
                         disabled={loading}
                       />
                     </Td>
@@ -1881,8 +1870,8 @@ const App = () => {
                 />
                 <Box paddingBottom={1} className="more-lookup-catalog-missing-toggle">
                   <Checkbox
-                    checked={catalogOnlyMissing}
-                    onCheckedChange={(checked) => setCatalogOnlyMissing(checked === true)}
+                    value={catalogOnlyMissing}
+                    onValueChange={setCatalogOnlyMissing}
                   >
                     Μόνο κωδικοί που λείπουν από το CMS
                   </Checkbox>
