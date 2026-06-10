@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import '../more-lookup-admin.css';
 import {
   Layout,
@@ -112,6 +112,32 @@ function catalogCmsStatusLabel(row) {
 
 function rowKey(row) {
   return `${row.contentType || 'movie'}:${row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId}`;
+}
+
+function pendingSelectionKey(row) {
+  return `${rowKey(row)}:${row.suggestedEventGroupCode || ''}`;
+}
+
+function mapPendingToApiRow(row) {
+  return {
+    contentType: row.contentType,
+    cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId,
+    movieId: row.movieId,
+    theaterShowId: row.theaterShowId,
+    venueId: row.venueId,
+    eventGroupCode: row.suggestedEventGroupCode,
+  };
+}
+
+function mapMatchToApiRow(row) {
+  return {
+    contentType: row.contentType,
+    cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId,
+    movieId: row.movieId,
+    theaterShowId: row.theaterShowId,
+    venueId: row.venueId,
+    eventGroupCode: row.displayCode,
+  };
 }
 
 function lookupErrorMessage(error) {
@@ -662,6 +688,8 @@ const App = () => {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupProgress, setLookupProgress] = useState(null);
   const [pendingApproval, setPendingApproval] = useState([]);
+  const [selectedPendingKeys, setSelectedPendingKeys] = useState([]);
+  const [selectedMatchKeys, setSelectedMatchKeys] = useState([]);
   const { get, post } = useFetchClient();
   const toggleNotification = useNotification();
 
@@ -845,6 +873,38 @@ const App = () => {
     .filter((r) => matchesCmsContentFilter(r, matchContentFilter));
   const matchDisplayRows = expandMatchRows(matchedRows);
   const pendingFiltered = pendingApproval.filter((r) => matchesCmsContentFilter(r, matchContentFilter));
+  const pendingVisibleKeys = useMemo(
+    () => pendingFiltered.map(pendingSelectionKey),
+    [pendingFiltered],
+  );
+  const matchVisibleKeys = useMemo(
+    () => matchDisplayRows.map((row) => row.displayKey),
+    [matchDisplayRows],
+  );
+  const pendingSelectedVisibleCount = pendingVisibleKeys.filter((key) =>
+    selectedPendingKeys.includes(key),
+  ).length;
+  const matchSelectedVisibleCount = matchVisibleKeys.filter((key) =>
+    selectedMatchKeys.includes(key),
+  ).length;
+  const allPendingVisibleSelected =
+    pendingVisibleKeys.length > 0 && pendingSelectedVisibleCount === pendingVisibleKeys.length;
+  const somePendingVisibleSelected =
+    pendingSelectedVisibleCount > 0 && !allPendingVisibleSelected;
+  const allMatchVisibleSelected =
+    matchVisibleKeys.length > 0 && matchSelectedVisibleCount === matchVisibleKeys.length;
+  const someMatchVisibleSelected =
+    matchSelectedVisibleCount > 0 && !allMatchVisibleSelected;
+
+  useEffect(() => {
+    const visible = new Set(pendingVisibleKeys);
+    setSelectedPendingKeys((prev) => prev.filter((key) => visible.has(key)));
+  }, [pendingVisibleKeys]);
+
+  useEffect(() => {
+    const visible = new Set(matchVisibleKeys);
+    setSelectedMatchKeys((prev) => prev.filter((key) => visible.has(key)));
+  }, [matchVisibleKeys]);
   const approvedQueueCount =
     result?.stats?.approvedQueue ??
     (result?.approvedQueue || []).reduce(
@@ -1063,26 +1123,43 @@ const App = () => {
     }
   };
 
-  const approveAllPending = async () => {
-    if (!pendingFiltered.length) return;
+  const togglePendingSelection = (key, checked) => {
+    setSelectedPendingKeys((prev) =>
+      checked ? (prev.includes(key) ? prev : [...prev, key]) : prev.filter((item) => item !== key),
+    );
+  };
+
+  const toggleAllPendingSelection = (checked) => {
+    setSelectedPendingKeys(checked ? pendingVisibleKeys : []);
+  };
+
+  const toggleMatchSelection = (key, checked) => {
+    setSelectedMatchKeys((prev) =>
+      checked ? (prev.includes(key) ? prev : [...prev, key]) : prev.filter((item) => item !== key),
+    );
+  };
+
+  const toggleAllMatchSelection = (checked) => {
+    setSelectedMatchKeys(checked ? matchVisibleKeys : []);
+  };
+
+  const approvePendingRows = async (rows, { clearSelection = false, bulkLabel = 'μαζική' } = {}) => {
+    if (!rows.length) return;
     setLoading(true);
     try {
       const res = await post('/api/more-lookup/approve', {
-        approvals: pendingFiltered.map((r) => ({
-          contentType: r.contentType,
-          cmsId: r.cmsId ?? r.movieId ?? r.theaterShowId ?? r.venueId,
-          movieId: r.movieId,
-          theaterShowId: r.theaterShowId,
-          venueId: r.venueId,
-          eventGroupCode: r.suggestedEventGroupCode,
-        })),
+        approvals: rows.map(mapPendingToApiRow),
         overwriteExisting,
       });
-      const rejectedKeys = new Set(pendingFiltered.map((r) => rowKey(r)));
-      setPendingApproval((prev) => prev.filter((r) => !rejectedKeys.has(rowKey(r))));
+      const approvedKeys = new Set(rows.map((r) => rowKey(r)));
+      setPendingApproval((prev) => prev.filter((r) => !approvedKeys.has(rowKey(r))));
+      if (clearSelection) {
+        const cleared = new Set(rows.map(pendingSelectionKey));
+        setSelectedPendingKeys((prev) => prev.filter((key) => !cleared.has(key)));
+      }
       toggleNotification({
         type: res?.data?.ok ? 'success' : 'warning',
-        message: res?.data?.message || 'Ολοκληρώθηκε η μαζική έγκριση.',
+        message: res?.data?.message || `Ολοκληρώθηκε η ${bulkLabel} έγκριση (${rows.length}).`,
       });
     } catch (error) {
       toggleNotification({ type: 'warning', message: 'Αποτυχία μαζικής έγκρισης.' });
@@ -1091,25 +1168,22 @@ const App = () => {
     }
   };
 
-  const rejectAllPending = async () => {
-    if (!pendingFiltered.length) return;
+  const rejectPendingRows = async (rows, { clearSelection = false, bulkLabel = 'μαζική' } = {}) => {
+    if (!rows.length) return;
     setLoading(true);
     try {
       const res = await post('/api/more-lookup/reject', {
-        rejections: pendingFiltered.map((r) => ({
-          contentType: r.contentType,
-          cmsId: r.cmsId ?? r.movieId ?? r.theaterShowId ?? r.venueId,
-          movieId: r.movieId,
-          theaterShowId: r.theaterShowId,
-          venueId: r.venueId,
-          eventGroupCode: r.suggestedEventGroupCode,
-        })),
+        rejections: rows.map(mapPendingToApiRow),
       });
-      const rejectedKeys = new Set(pendingFiltered.map((r) => rowKey(r)));
+      const rejectedKeys = new Set(rows.map((r) => rowKey(r)));
       setPendingApproval((prev) => prev.filter((r) => !rejectedKeys.has(rowKey(r))));
+      if (clearSelection) {
+        const cleared = new Set(rows.map(pendingSelectionKey));
+        setSelectedPendingKeys((prev) => prev.filter((key) => !cleared.has(key)));
+      }
       toggleNotification({
         type: res?.data?.ok ? 'info' : 'warning',
-        message: res?.data?.message || 'Ολοκληρώθηκε η μαζική απόρριψη.',
+        message: res?.data?.message || `Ολοκληρώθηκε η ${bulkLabel} απόρριψη (${rows.length}).`,
       });
     } catch (error) {
       const message =
@@ -1120,6 +1194,55 @@ const App = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const approveSelectedPending = () => {
+    const rows = pendingFiltered.filter((row) =>
+      selectedPendingKeys.includes(pendingSelectionKey(row)),
+    );
+    return approvePendingRows(rows, { clearSelection: true, bulkLabel: 'επιλεγμένων' });
+  };
+
+  const rejectSelectedPending = () => {
+    const rows = pendingFiltered.filter((row) =>
+      selectedPendingKeys.includes(pendingSelectionKey(row)),
+    );
+    return rejectPendingRows(rows, { clearSelection: true, bulkLabel: 'επιλεγμένων' });
+  };
+
+  const approveAllPending = () => approvePendingRows(pendingFiltered, { clearSelection: true });
+
+  const rejectAllPending = () => rejectPendingRows(pendingFiltered, { clearSelection: true });
+
+  const rejectMatchRows = async (rows, { clearSelection = false, bulkLabel = 'μαζική' } = {}) => {
+    if (!rows.length) return;
+    setLoading(true);
+    try {
+      const res = await post('/api/more-lookup/reject', {
+        rejections: rows.map(mapMatchToApiRow),
+      });
+      rows.forEach((row) => {
+        if (row.isQueued) unqueueMatchRow(row.displayKey, row.displayCode);
+        pruneMatchDisplayRow(row.displayKey);
+      });
+      if (clearSelection) {
+        const cleared = new Set(rows.map((row) => row.displayKey));
+        setSelectedMatchKeys((prev) => prev.filter((key) => !cleared.has(key)));
+      }
+      toggleNotification({
+        type: res?.data?.ok ? 'info' : 'warning',
+        message: res?.data?.message || `Ολοκληρώθηκε η ${bulkLabel} απόρριψη (${rows.length}).`,
+      });
+    } catch (error) {
+      toggleNotification({ type: 'warning', message: 'Αποτυχία μαζικής απόρριψης.' });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const rejectSelectedMatches = () => {
+    const rows = matchDisplayRows.filter((row) => selectedMatchKeys.includes(row.displayKey));
+    return rejectMatchRows(rows, { clearSelection: true, bulkLabel: 'επιλεγμένων' });
   };
 
   const approveCatalogVenue = async (row) => {
@@ -1449,6 +1572,17 @@ const App = () => {
               <PanelHeader
                 title="Πίνακας 1 — Προτάσεις ταύτισης"
                 subtitle={`Πρώτα «Έγκρ.» ανά γραμμή · μετά «Γράψε αυτόματα». ${matchDisplayRows.length} εμφανίζονται`}
+                action={
+                  <Button
+                    size="S"
+                    variant="tertiary"
+                    loading={loading}
+                    onClick={rejectSelectedMatches}
+                    disabled={loading || matchSelectedVisibleCount === 0}
+                  >
+                    Απόρριψη επιλεγμένων ({matchSelectedVisibleCount})
+                  </Button>
+                }
               />
               <Box paddingTop={3}>
                 <TypeFilterBar
@@ -1467,9 +1601,23 @@ const App = () => {
               </Box>
             ) : (
             <Box className="more-lookup-match-table more-lookup-match-table--matches">
-            <Table colCount={7} rowCount={matchDisplayRows.length}>
+            <Table colCount={8} rowCount={matchDisplayRows.length}>
               <Thead>
                 <Tr>
+                  <Th className="more-lookup-col-select">
+                    <Checkbox
+                      aria-label="Επιλογή όλων των ορατών προτάσεων"
+                      checked={
+                        allMatchVisibleSelected
+                          ? true
+                          : someMatchVisibleSelected
+                            ? 'indeterminate'
+                            : false
+                      }
+                      onCheckedChange={(checked) => toggleAllMatchSelection(checked === true)}
+                      disabled={loading || matchVisibleKeys.length === 0}
+                    />
+                  </Th>
                   <Th className="more-lookup-col-actions">
                     <Typography variant="sigma">Απόρ./Έγκρ.</Typography>
                   </Th>
@@ -1496,6 +1644,16 @@ const App = () => {
               <Tbody>
                 {matchDisplayRows.map((row) => (
                   <Tr key={row.displayKey}>
+                    <Td className="more-lookup-col-select">
+                      <Checkbox
+                        aria-label={`Επιλογή ${row.cmsTitle}`}
+                        checked={selectedMatchKeys.includes(row.displayKey)}
+                        onCheckedChange={(checked) =>
+                          toggleMatchSelection(row.displayKey, checked === true)
+                        }
+                        disabled={loading}
+                      />
+                    </Td>
                     <Td className="more-lookup-col-actions">
                       <MatchRowActions
                         loading={loading}
@@ -1555,6 +1713,24 @@ const App = () => {
                       size="S"
                       variant="tertiary"
                       loading={loading}
+                      onClick={rejectSelectedPending}
+                      disabled={loading || pendingSelectedVisibleCount === 0}
+                    >
+                      Απόρριψη επιλεγμένων ({pendingSelectedVisibleCount})
+                    </Button>
+                    <Button
+                      size="S"
+                      variant="success"
+                      loading={loading}
+                      onClick={approveSelectedPending}
+                      disabled={loading || pendingSelectedVisibleCount === 0}
+                    >
+                      Έγκριση επιλεγμένων ({pendingSelectedVisibleCount})
+                    </Button>
+                    <Button
+                      size="S"
+                      variant="tertiary"
+                      loading={loading}
                       onClick={rejectAllPending}
                       disabled={loading || pendingFiltered.length === 0}
                     >
@@ -1589,9 +1765,23 @@ const App = () => {
               </Box>
             ) : (
             <Box className="more-lookup-match-table more-lookup-match-table--pending">
-            <Table colCount={6} rowCount={pendingFiltered.length}>
+            <Table colCount={7} rowCount={pendingFiltered.length}>
               <Thead>
                 <Tr>
+                  <Th className="more-lookup-col-select">
+                    <Checkbox
+                      aria-label="Επιλογή όλων των ορατών εγγραφών προς έγκριση"
+                      checked={
+                        allPendingVisibleSelected
+                          ? true
+                          : somePendingVisibleSelected
+                            ? 'indeterminate'
+                            : false
+                      }
+                      onCheckedChange={(checked) => toggleAllPendingSelection(checked === true)}
+                      disabled={loading || pendingVisibleKeys.length === 0}
+                    />
+                  </Th>
                   <Th className="more-lookup-col-actions">
                     <Typography variant="sigma">Απόρ./Έγκρ.</Typography>
                   </Th>
@@ -1613,8 +1803,20 @@ const App = () => {
                 </Tr>
               </Thead>
               <Tbody>
-                {pendingFiltered.map((row) => (
-                  <Tr key={rowKey(row)}>
+                {pendingFiltered.map((row) => {
+                  const selectionKey = pendingSelectionKey(row);
+                  return (
+                  <Tr key={selectionKey}>
+                    <Td className="more-lookup-col-select">
+                      <Checkbox
+                        aria-label={`Επιλογή ${row.cmsTitle}`}
+                        checked={selectedPendingKeys.includes(selectionKey)}
+                        onCheckedChange={(checked) =>
+                          togglePendingSelection(selectionKey, checked === true)
+                        }
+                        disabled={loading}
+                      />
+                    </Td>
                     <Td className="more-lookup-col-actions">
                       <MatchRowActions
                         loading={loading}
@@ -1638,7 +1840,8 @@ const App = () => {
                       <Badge>{cmsTypeLabel(row.contentType)}</Badge>
                     </Td>
                   </Tr>
-                ))}
+                  );
+                })}
               </Tbody>
             </Table>
             </Box>

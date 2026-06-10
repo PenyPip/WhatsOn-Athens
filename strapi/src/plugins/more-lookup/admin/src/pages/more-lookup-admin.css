@@ -37,64 +37,69 @@
   vertical-align: top;
 }
 
-/* Πίνακας 1: 7 στήλες */
-.more-lookup-match-table--matches th:nth-child(1),
-.more-lookup-match-table--matches td:nth-child(1) {
+.more-lookup-match-table .more-lookup-col-select {
+  width: 2.25rem !important;
+  text-align: center;
+}
+
+/* Πίνακας 1: 8 στήλες (επιλογή + 7) */
+.more-lookup-match-table--matches th:nth-child(2),
+.more-lookup-match-table--matches td:nth-child(2) {
   width: 7.25rem;
 }
 
-.more-lookup-match-table--matches th:nth-child(2),
-.more-lookup-match-table--matches td:nth-child(2),
 .more-lookup-match-table--matches th:nth-child(3),
-.more-lookup-match-table--matches td:nth-child(3) {
-  width: 16%;
-}
-
+.more-lookup-match-table--matches td:nth-child(3),
 .more-lookup-match-table--matches th:nth-child(4),
 .more-lookup-match-table--matches td:nth-child(4) {
-  width: 22%;
+  width: 16%;
 }
 
 .more-lookup-match-table--matches th:nth-child(5),
 .more-lookup-match-table--matches td:nth-child(5) {
-  width: 3.75rem;
+  width: 22%;
 }
 
 .more-lookup-match-table--matches th:nth-child(6),
 .more-lookup-match-table--matches td:nth-child(6) {
-  width: 3.25rem;
+  width: 3.75rem;
 }
 
 .more-lookup-match-table--matches th:nth-child(7),
 .more-lookup-match-table--matches td:nth-child(7) {
+  width: 3.25rem;
+}
+
+.more-lookup-match-table--matches th:nth-child(8),
+.more-lookup-match-table--matches td:nth-child(8) {
   width: 4.5rem;
 }
 
-/* Πίνακας 2: 6 στήλες */
-.more-lookup-match-table--pending th:nth-child(1),
-.more-lookup-match-table--pending td:nth-child(1) {
+/* Πίνακας 2: 7 στήλες (επιλογή + 6) */
+.more-lookup-match-table--pending th:nth-child(2),
+.more-lookup-match-table--pending td:nth-child(2) {
   width: 7.25rem;
 }
 
-.more-lookup-match-table--pending th:nth-child(2),
-.more-lookup-match-table--pending td:nth-child(2),
 .more-lookup-match-table--pending th:nth-child(3),
-.more-lookup-match-table--pending td:nth-child(3) {
-  width: 18%;
-}
-
+.more-lookup-match-table--pending td:nth-child(3),
 .more-lookup-match-table--pending th:nth-child(4),
 .more-lookup-match-table--pending td:nth-child(4) {
-  width: 24%;
+  width: 18%;
 }
 
 .more-lookup-match-table--pending th:nth-child(5),
 .more-lookup-match-table--pending td:nth-child(5) {
-  width: 3.25rem;
+  width: 24%;
 }
 
 .more-lookup-match-table--pending th:nth-child(6),
 .more-lookup-match-table--pending td:nth-child(6) {
+  width: 3.25rem;
+}
+
+.more-lookup-match-table--pending th:nth-child(7),
+.more-lookup-match-table--pending td:nth-child(7) {
   width: 3.75rem;
 }
 
