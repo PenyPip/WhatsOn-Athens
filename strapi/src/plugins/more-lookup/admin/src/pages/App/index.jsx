@@ -980,7 +980,7 @@ const App = () => {
   const hasResults =
     Boolean(result) ||
     Boolean(syncReport) ||
-    matchedRows.length > 0 ||
+    matchDisplayRows.length > 0 ||
     pendingApproval.length > 0 ||
     (catalog.length > 0 && (!catalogOnlyMissing || catalogFiltered.length > 0));
 
