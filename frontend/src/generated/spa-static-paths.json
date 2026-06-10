@@ -578,6 +578,12 @@
   },
   {
     "slug": [
+      "movies",
+      "holly-boy"
+    ]
+  },
+  {
+    "slug": [
       "theater",
       "martyras-katigorias-4os-xronos"
     ]
@@ -826,6 +832,12 @@
     "slug": [
       "articles",
       "braveia-iris-2026-ti-lene-oi-ypopsifiotites-gia-to-elliniko-sinema"
+    ]
+  },
+  {
+    "slug": [
+      "articles",
+      "therino-sinema-athina-kalokairini-empeiria"
     ]
   },
   {
@@ -2602,6 +2614,27 @@
       "movies",
       "venue",
       "cinema-3332"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
+      "cinema-3949"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
+      "cinema-3311"
+    ]
+  },
+  {
+    "slug": [
+      "theater",
+      "venue",
+      "therino-dimotiko-theatro"
     ]
   },
   {

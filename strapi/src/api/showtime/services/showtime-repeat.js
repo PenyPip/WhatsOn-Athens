@@ -2,6 +2,7 @@
 
 const ATHENS_TZ = 'Europe/Athens';
 const { runAsRepeatChild } = require('./repeat-context');
+const { buildRepeatExpandTrace } = require('../../../utils/moreImportTrace');
 
 /** Αποφυγή επαναλήψης όταν τα child create / clearRepeatHelpers ενεργοποιούν lifecycle. */
 const expandingIds = new Set();
@@ -298,7 +299,17 @@ async function expandRepeatShowtimes(strapi, showtimeId, trigger = 'expand', opt
 
       await runAsRepeatChild(() =>
         strapi.entityService.create('api::showtime.showtime', {
-          data: { ...baseData, datetime: dt.toISOString() },
+          data: {
+            ...baseData,
+            datetime: dt.toISOString(),
+            import_source: 'repeat_expand',
+            import_trace: buildRepeatExpandTrace({
+              sourceShowtimeId: id,
+              startKey,
+              endKey,
+              trigger,
+            }),
+          },
         }),
       );
       created += 1;

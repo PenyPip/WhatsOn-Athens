@@ -4,18 +4,30 @@ import PageHeaderReveal from "@/components/PageHeaderReveal";
 /** Shell wrapper για σελίδες λίστας — compact offset κάτω από fixed nav. */
 export const PAGE_LIST_SHELL_CLASS = "min-h-screen pb-20 md:pb-8";
 
-/** Compact indigo band κάτω από navbar (ίδιο με /movies, /theater). */
+/** Compact indigo band κάτω από navbar (λίστες θεάτρου, events κ.λπ.). */
 export const PAGE_LIST_HERO_CLASS =
-  "section-black mb-6 max-md:-mt-16 max-md:py-5 max-md:pt-20 md:-mt-28 md:mb-8 md:py-10 md:pt-36";
+  "section-black mb-6 max-md:-mt-16 max-md:py-5 max-md:pt-20 md:-mt-28 md:mb-8 md:py-8 md:pt-28";
+
+/** Ακόμα πιο συμπαγές band για /movies (λίστα + φίλτρα). */
+export const PAGE_MOVIES_LIST_HERO_CLASS =
+  "section-black mb-5 max-md:-mt-14 max-md:py-3 max-md:pt-[4.25rem] md:-mt-28 md:mb-6 md:py-5 md:pt-28";
 
 export const PAGE_LIST_TITLE_CLASS =
   "font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl";
 
+/** Τίτλος λίστας ταινιών — μικρότερο band, μικρότερη γραμματοσειρά. */
+export const PAGE_MOVIES_LIST_TITLE_CLASS =
+  "font-display text-xl font-bold text-white mb-0.5 md:mb-1 md:text-3xl";
+
 export const PAGE_LIST_SUBTITLE_CLASS = "text-sm text-white/60 md:text-base";
 
-/** Εσωτερικό padding για hero λεπτομέρειας (ταινία, παράσταση, event). */
+/** Εσωτερικό padding για hero λεπτομέρειας (παράσταση, event). */
 export const PAGE_DETAIL_HERO_INNER_CLASS =
-  "relative z-10 container pb-6 pt-20 md:pb-10 md:pt-32 lg:pt-36";
+  "relative z-10 container pb-6 pt-20 md:pb-8 md:pt-28";
+
+/** Συμπαγές hero σελίδας ταινίας — χωρίς επιπλέον κενό κάτω από navbar. */
+export const PAGE_MOVIE_DETAIL_HERO_INNER_CLASS =
+  "relative z-10 container pb-4 pt-[4.25rem] md:pb-6 md:pt-28";
 
 /** Loading / not-found states κάτω από navbar. */
 export const PAGE_BELOW_NAV_CLASS = "min-h-screen pt-20 md:pt-28";

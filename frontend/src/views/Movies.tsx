@@ -16,7 +16,12 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import EventCard from "@/components/EventCard";
 import MoviesGridSkeleton from "@/components/MoviesGridSkeleton";
 import Footer from "@/components/Footer";
-import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_SUBTITLE_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
+import PageListHeader, {
+  PAGE_LIST_SHELL_CLASS,
+  PAGE_LIST_SUBTITLE_CLASS,
+  PAGE_MOVIES_LIST_HERO_CLASS,
+  PAGE_MOVIES_LIST_TITLE_CLASS,
+} from "@/components/PageListHeader";
 import { useMovies, useShowtimes, useVenuesForProgram, useVenueBySlug, useMovieGenres } from "@/hooks/useStrapi";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import {
@@ -846,8 +851,8 @@ const Movies = () => {
 
   return (
     <div className={PAGE_LIST_SHELL_CLASS}>
-      <PageListHeader reveal={false}>
-            <h1 className={PAGE_LIST_TITLE_CLASS}>
+      <PageListHeader reveal={false} className={PAGE_MOVIES_LIST_HERO_CLASS}>
+            <h1 className={PAGE_MOVIES_LIST_TITLE_CLASS}>
               {pageH1}
             </h1>
             {!venueFilter && !pathFilters.section && !pathFilters.genreSlug ? (

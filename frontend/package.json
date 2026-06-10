@@ -6,7 +6,7 @@
     "dev": "next dev --hostname 0.0.0.0 -p 3000 --turbo",
     "dev:docker": "next dev --hostname 0.0.0.0 -p 3000",
     "dev:clean": "rm -rf .next && next dev --hostname 0.0.0.0 -p 3000 --turbo",
-    "build": "node scripts/generate-sitemap.mjs && next build && node scripts/async-css.mjs && node scripts/strip-home-flight-rq.mjs && node scripts/compress-static.mjs",
+    "build": "node scripts/generate-sitemap.mjs && next build && node scripts/async-css.mjs && node scripts/sync-rq-flight.mjs && node scripts/compress-static.mjs",
     "analyze": "ANALYZE=true npm run build",
     "sitemap": "node scripts/generate-sitemap.mjs",
     "preview": "npx serve@14 out -l 3000 -s",

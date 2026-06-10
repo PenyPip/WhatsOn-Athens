@@ -2406,6 +2406,33 @@
       "programHref": "/movies/venue/cinema-3332",
       "moviesHref": "/movies/venue/cinema-3332",
       "venuesHref": "/venues"
+    },
+    {
+      "slug": "cinema-3949",
+      "name": "Cine ΠΑΝΟΡΑΜΑ",
+      "venueType": "cinema",
+      "googleMapsUrl": "https://www.google.com/maps?q=40.58339635158003,23.033944355821728",
+      "programHref": "/movies/venue/cinema-3949",
+      "moviesHref": "/movies/venue/cinema-3949",
+      "venuesHref": "/venues"
+    },
+    {
+      "slug": "cinema-3311",
+      "name": "Λαϊς Θερινό Σινεμά",
+      "venueType": "cinema",
+      "googleMapsUrl": "https://www.google.com/maps?q=37.965546,22.801976",
+      "programHref": "/movies/venue/cinema-3311",
+      "moviesHref": "/movies/venue/cinema-3311",
+      "venuesHref": "/venues"
+    },
+    {
+      "slug": "therino-dimotiko-theatro",
+      "name": "Θερινό Δημοτικό Θέατρο",
+      "venueType": "theater",
+      "googleMapsUrl": "https://www.google.com/maps?q=38.903764,22.431175",
+      "programHref": "/theater/venue/therino-dimotiko-theatro",
+      "theaterHref": "/theater/venue/therino-dimotiko-theatro",
+      "venuesHref": "/venues"
     }
   ],
   "movies": [
@@ -2921,7 +2948,7 @@
       "genreSlugs": [],
       "imdbRating": 7.6,
       "director": "Γιάννης Οικονομίδης",
-      "posterUrl": "/uploads/BV_DATE_1_9300213814.webp",
+      "posterUrl": "/uploads/qcaeotvki2dcdqpkbrrzoyt2meq_3c19143d40.jpg",
       "synopsis": "Ο Θωμάς Αλεξόπουλος, ένας μεσήλικας επιχειρηματίας, πνίγεται στα λάθη και στις επιπολαιότητές του. Όταν η κόντρα του με τον τοκογλύφο της περιοχής πάρει απρόβλεπτες διαστάσεις, και με τον χρόνο για να σώσει το οικογενειακό του σπίτι να τελειώνει, ωθείται στα άκρα. Εκεί που κάθε ελπίδα φαίνεται να έχει χαθεί, εμφανίζεται ένα απλό, εύκολο σχέδιο της τελευταίας στιγμής. Μια κίνηση που θα μπορούσε να είναι η μόνη του ευκαιρία να αποκαταστήσει τα πάντα και να βγει νικητής."
     },
     {
@@ -3231,6 +3258,17 @@
       "genreSlugs": [],
       "director": "Mathieu Kassovitz",
       "posterUrl": "/uploads/poster_0725_1814_0f83e5d0b4.jpg"
+    },
+    {
+      "path": "/movies/holly-boy",
+      "slug": "holly-boy",
+      "title": "Το Ιερό Αγόρι",
+      "originalTitle": "Holly boy",
+      "genreSlugs": [],
+      "imdbRating": 6.8,
+      "director": "Paolo Strippoli",
+      "posterUrl": "/uploads/2jpkq6xhcxanxoudeqpyhnucwr1_ecf4097151.jpg",
+      "synopsis": "Ένας καθηγητής φυσικής αγωγής μετακομίζει σε ένα απομονωμένο ορεινό χωριό, όπου οι κάτοικοι φαίνεται να ζουν σε απόλυτη γαλήνη. Σύντομα όμως ανακαλύπτει ένα σκοτεινό τελετουργικό: μία φορά την εβδομάδα, οι χωρικοί απαλλάσσονται από τον πόνο τους χάρη σε ένα μοναχικό αγόρι που γεννήθηκε με το παράξενο χάρισμα να θεραπεύει τις ψυχές των ανθρώπων μόνο με μια αγκαλιά. Προσπαθώντας να το σώσει από αυτή την παράνοια, ο άντρας έρχεται αντιμέτωπος με τη δική του σκοτεινή πλευρά."
     }
   ],
   "theaterShows": [
@@ -3477,6 +3515,11 @@
       "path": "/articles/braveia-iris-2026-ti-lene-oi-ypopsifiotites-gia-to-elliniko-sinema",
       "slug": "braveia-iris-2026-ti-lene-oi-ypopsifiotites-gia-to-elliniko-sinema",
       "title": "Βραβεία Ίρις 2026: Τι λένε οι υποψηφιότητες για το ελληνικό σινεμά"
+    },
+    {
+      "path": "/articles/therino-sinema-athina-kalokairini-empeiria",
+      "slug": "therino-sinema-athina-kalokairini-empeiria",
+      "title": "Θερινό σινεμά Αθήνα: Γιατί είναι η καλύτερη εμπειρία του καλοκαιριού"
     }
   ],
   "culturalEvents": [

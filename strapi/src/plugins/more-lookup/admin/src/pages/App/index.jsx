@@ -88,6 +88,72 @@ function TypeFilterBar({ label, value, options, onChange }) {
   );
 }
 
+const MORE_EVENTS_API_TEMPLATE =
+  'https://www.more.com/_api/playdetails/getevents?eventGroupCode={code}';
+
+function moreEventsApiUrl(code) {
+  const c = String(code || '').trim();
+  if (!c) return '';
+  return MORE_EVENTS_API_TEMPLATE.replace('{code}', encodeURIComponent(c));
+}
+
+function buildSourceTooltip({ pageUrl, apiUrl, jsonPreview, error, extraLines = [] } = {}) {
+  const lines = [];
+  if (pageUrl) lines.push(`URL: ${pageUrl}`);
+  if (apiUrl) lines.push(`API: ${apiUrl}`);
+  for (const line of extraLines) {
+    if (line) lines.push(line);
+  }
+  if (jsonPreview) lines.push(`JSON: ${jsonPreview}`);
+  if (error) lines.push(`Σφάλμα: ${error}`);
+  return lines.length ? lines.join('\n') : undefined;
+}
+
+function SourceInfo({ title, children, className }) {
+  if (!title) return children;
+  return (
+    <span className={className} title={title} style={{ cursor: 'help' }}>
+      {children}
+    </span>
+  );
+}
+
+function MorePageLink({ url, label, mono = false }) {
+  const href = String(url || '').trim();
+  const text = label || href;
+  if (!href) return <EllipsisCell text={text || '—'} mono={mono} />;
+  return (
+    <SourceInfo title={`URL: ${href}`}>
+      <a
+        href={href}
+        target="_blank"
+        rel="noopener noreferrer"
+        className={mono ? 'more-lookup-cell-code' : 'more-lookup-cell-ellipsis'}
+        style={{ color: '#4945ff', textDecoration: 'underline', textUnderlineOffset: '2px' }}
+      >
+        {text}
+      </a>
+    </SourceInfo>
+  );
+}
+
+function ApiVerifyCell({ verify, eventGroupCode }) {
+  const apiUrl = verify?.apiUrl || moreEventsApiUrl(eventGroupCode);
+  const title = buildSourceTooltip({
+    apiUrl,
+    jsonPreview: verify?.jsonPreview,
+    error: verify?.ok ? undefined : verify?.error,
+  });
+  const label = verify?.ok
+    ? `${verify.eventCount}/${verify.venueCount}`
+    : verify?.error || (apiUrl ? '—' : '—');
+  return (
+    <SourceInfo title={title}>
+      <Typography variant="pi">{label}</Typography>
+    </SourceInfo>
+  );
+}
+
 function venueScrapeSummary(row) {
   const vs = row.venueScrape;
   if (!vs) return '—';
@@ -97,6 +163,17 @@ function venueScrapeSummary(row) {
   const titles = (vs.uniqueTitles || []).slice(0, 3).join(', ');
   const suffix = titles ? ` · ${titles}${(vs.uniqueTitles?.length || 0) > 3 ? '…' : ''}` : '';
   return `${resolved}/${total} eventId→CMS${suffix}`;
+}
+
+function venueScrapeTooltip(row) {
+  const vs = row.venueScrape;
+  if (!vs) return undefined;
+  return buildSourceTooltip({
+    pageUrl: vs.moreLink,
+    jsonPreview: vs.jsonPreview,
+    error: vs.ok ? undefined : vs.error,
+    extraLines: vs.hint ? [vs.hint] : [],
+  });
 }
 
 function catalogCmsStatusLabel(row) {
@@ -260,6 +337,7 @@ function expandMatchRows(rows) {
           displayMoreTitle: match.moreTitle ?? row.moreTitle,
           displayScore: Number(match.score ?? row.score),
           displayVerify: match.verify ?? row.verify,
+          displayMoreUrl: match.moreUrl ?? row.moreUrl ?? null,
           displayMatchMethod: match.matchMethod ?? null,
           codeRole: index === 0 ? 'κύριος' : 'επιπλέον',
           isQueued: (row.cmsApprovedMoreCodes || []).includes(code),
@@ -1651,6 +1729,40 @@ const App = () => {
           </Flex>
         ) : null}
 
+        {result?.sources ? (
+          <Box paddingBottom={4} padding={3} background="neutral100" hasRadius style={cardStyle}>
+            <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
+              Πηγές δεδομένων
+            </Typography>
+            <Box paddingTop={2}>
+              <Typography variant="pi" textColor="neutral600">
+                Κατάλογος σινεμά:{' '}
+                <a href={result.sources.catalogCinemaUrl} target="_blank" rel="noopener noreferrer">
+                  {result.sources.catalogCinemaUrl}
+                </a>
+              </Typography>
+              <Box paddingTop={1}>
+                <Typography variant="pi" textColor="neutral600">
+                  Κατάλογος θεάτρου:{' '}
+                  <a href={result.sources.catalogTheaterUrl} target="_blank" rel="noopener noreferrer">
+                    {result.sources.catalogTheaterUrl}
+                  </a>
+                </Typography>
+              </Box>
+              <Box paddingTop={1}>
+                <Typography variant="pi" textColor="neutral500">
+                  API προβολών: {result.sources.eventsApiTemplate || MORE_EVENTS_API_TEMPLATE}
+                </Typography>
+              </Box>
+              <Box paddingTop={1}>
+                <Typography variant="pi" textColor="neutral500">
+                  Hover σε evg_ / API / Scrape για JSON δείγμα από την απάντηση.
+                </Typography>
+              </Box>
+            </Box>
+          </Box>
+        ) : null}
+
         {syncReport ? (
           <Box paddingBottom={4}>
             <SyncReportPanel report={syncReport} />
@@ -1771,10 +1883,22 @@ const App = () => {
                       <EllipsisCell text={row.cmsTitle} />
                     </Td>
                     <Td className="more-lookup-col-more-title">
-                      <EllipsisCell text={row.displayMoreTitle} tone="neutral600" />
+                      {row.displayMoreUrl ? (
+                        <MorePageLink url={row.displayMoreUrl} label={row.displayMoreTitle} />
+                      ) : (
+                        <EllipsisCell text={row.displayMoreTitle} tone="neutral600" />
+                      )}
                     </Td>
                     <Td className="more-lookup-col-code">
-                      <EllipsisCell text={row.displayCode} mono />
+                      <SourceInfo
+                        title={buildSourceTooltip({
+                          pageUrl: row.displayMoreUrl,
+                          apiUrl: moreEventsApiUrl(row.displayCode),
+                          jsonPreview: row.displayVerify?.jsonPreview,
+                        })}
+                      >
+                        <EllipsisCell text={row.displayCode} mono />
+                      </SourceInfo>
                       {row.codeRole !== 'κύριος' ? (
                         <Typography variant="pi" textColor="neutral500">
                           {row.codeRole}
@@ -1791,11 +1915,7 @@ const App = () => {
                       ) : null}
                     </Td>
                     <Td className="more-lookup-col-api">
-                      <Typography variant="pi">
-                        {row.displayVerify?.ok
-                          ? `${row.displayVerify.eventCount}/${row.displayVerify.venueCount}`
-                          : row.displayVerify?.error || '—'}
-                      </Typography>
+                      <ApiVerifyCell verify={row.displayVerify} eventGroupCode={row.displayCode} />
                     </Td>
                   </Tr>
                 ))}
@@ -1929,7 +2049,13 @@ const App = () => {
                       <EllipsisCell text={row.moreTitle || '—'} tone="neutral600" />
                     </Td>
                     <Td className="more-lookup-col-code">
-                      <EllipsisCell text={row.suggestedEventGroupCode} mono />
+                      <SourceInfo
+                        title={buildSourceTooltip({
+                          apiUrl: moreEventsApiUrl(row.suggestedEventGroupCode),
+                        })}
+                      >
+                        <EllipsisCell text={row.suggestedEventGroupCode} mono />
+                      </SourceInfo>
                     </Td>
                     <Td className="more-lookup-col-score">
                       <Typography variant="pi">{Number(row.score).toFixed(2)}</Typography>
@@ -2032,10 +2158,22 @@ const App = () => {
                       <Badge>{catalogKindLabel(row)}</Badge>
                     </Td>
                     <Td>
-                      <Typography>{row.moreTitle}</Typography>
+                      {row.moreUrl ? (
+                        <MorePageLink url={row.moreUrl} label={row.moreTitle} />
+                      ) : (
+                        <Typography>{row.moreTitle}</Typography>
+                      )}
                     </Td>
                     <Td>
-                      <Typography fontWeight="bold">{row.eventGroupCode}</Typography>
+                      <SourceInfo
+                        title={buildSourceTooltip({
+                          pageUrl: row.moreUrl,
+                          apiUrl: row.verify?.apiUrl || moreEventsApiUrl(row.eventGroupCode),
+                          jsonPreview: row.verify?.jsonPreview,
+                        })}
+                      >
+                        <Typography fontWeight="bold">{row.eventGroupCode}</Typography>
+                      </SourceInfo>
                     </Td>
                     <Td>
                       {row.inCms ? (
@@ -2054,15 +2192,36 @@ const App = () => {
                       )}
                     </Td>
                     <Td>
-                      <Typography>{row.verify?.ok ? row.verify.eventCount : '—'}</Typography>
+                      <SourceInfo
+                        title={buildSourceTooltip({
+                          apiUrl: row.verify?.apiUrl || moreEventsApiUrl(row.eventGroupCode),
+                          jsonPreview: row.verify?.jsonPreview,
+                          error: row.verify?.ok ? undefined : row.verify?.error,
+                        })}
+                      >
+                        <Typography variant="pi">
+                          {row.verify?.ok ? row.verify.eventCount : row.verify?.error || '—'}
+                        </Typography>
+                      </SourceInfo>
                     </Td>
                     <Td>
-                      <Typography>{row.verify?.ok ? row.verify.venueCount : '—'}</Typography>
+                      <SourceInfo
+                        title={buildSourceTooltip({
+                          apiUrl: row.verify?.apiUrl || moreEventsApiUrl(row.eventGroupCode),
+                          jsonPreview: row.verify?.jsonPreview,
+                        })}
+                      >
+                        <Typography variant="pi">
+                          {row.verify?.ok ? row.verify.venueCount : '—'}
+                        </Typography>
+                      </SourceInfo>
                     </Td>
                     <Td>
-                      <Typography variant="pi" title={row.venueScrape?.moreLink || ''}>
-                        {row.kind === 'venue_bundle' ? venueScrapeSummary(row) : '—'}
-                      </Typography>
+                      <SourceInfo title={venueScrapeTooltip(row)}>
+                        <Typography variant="pi">
+                          {row.kind === 'venue_bundle' ? venueScrapeSummary(row) : '—'}
+                        </Typography>
+                      </SourceInfo>
                     </Td>
                     <Td className="more-lookup-col-actions">
                       {row.canApproveVenue && !row.inCms ? (

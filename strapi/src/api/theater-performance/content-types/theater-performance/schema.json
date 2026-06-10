@@ -68,6 +68,16 @@
       "relation": "manyToOne",
       "target": "api::hall.hall",
       "description": "Προαιρετική αίθουσα (πρέπει να ανήκει στο ίδιο venue)."
+    },
+    "import_source": {
+      "type": "enumeration",
+      "enum": ["manual", "more_sync", "repeat_expand"],
+      "default": "manual",
+      "description": "Πώς προστέθηκε η παράσταση στο CMS."
+    },
+    "import_trace": {
+      "type": "text",
+      "description": "Πηγή εντοπισμού: More API URL, evg_, eventId, scrape URL κ.λπ."
     }
   }
 }

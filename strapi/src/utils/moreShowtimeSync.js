@@ -17,6 +17,7 @@ const {
   applyCinemaVenueUpdatedStatuses,
   migrateVenueUpdatedBooleanToEnum,
 } = require('../api/venue/services/venue-updated-status');
+const { buildMoreImportTrace } = require('./moreImportTrace');
 
 const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 120);
 const GOOGLE_MAPS_URL_MAX = 500;
@@ -636,6 +637,9 @@ async function upsertShowtimeFromEvent(strapi, report, {
   venue,
   now,
   statsTarget,
+  eventGroupCode,
+  syncPath,
+  contentResolution,
 }) {
   const datetime = parseMoreEventDatetime(event.eventDate);
   if (!datetime) {
@@ -669,6 +673,15 @@ async function upsertShowtimeFromEvent(strapi, report, {
       movie: movieId,
       venue: venue.id,
       summer_screening: venue.summer_outdoor === true,
+      import_source: 'more_sync',
+      import_trace: buildMoreImportTrace({
+        syncPath,
+        eventGroupCode,
+        event,
+        venue,
+        contentResolution,
+        contentKind: 'movie',
+      }),
     },
   });
 
@@ -683,6 +696,9 @@ async function upsertPerformanceFromEvent(strapi, report, {
   venue,
   now,
   statsTarget,
+  eventGroupCode,
+  syncPath,
+  contentResolution,
 }) {
   const datetime = parseMoreEventDatetime(event.eventDate);
   if (!datetime) {
@@ -727,6 +743,15 @@ async function upsertPerformanceFromEvent(strapi, report, {
       theater_show: theaterShowId,
       venue: venue.id,
       sold_out: soldOut,
+      import_source: 'more_sync',
+      import_trace: buildMoreImportTrace({
+        syncPath,
+        eventGroupCode,
+        event,
+        venue,
+        contentResolution,
+        contentKind: 'theater_show',
+      }),
     },
   });
 
@@ -935,6 +960,9 @@ async function syncMovieShowtimesFromMore(strapi, {
             venue,
             now,
             statsTarget: movieStats,
+            eventGroupCode: code,
+            syncPath: 'movie_event_group',
+            contentResolution: { movieId: movie.id, movieTitle: movie.title },
           });
           venueSyncTracker.recordUpsertResult(venue.id, result);
           if (result === 'created') report.createdFromMovies += 1;
@@ -1026,6 +1054,9 @@ async function syncMovieShowtimesFromMore(strapi, {
             venue,
             now,
             statsTarget: venueStats,
+            eventGroupCode: code,
+            syncPath: 'venue_bundle',
+            contentResolution: mapped,
           });
           venueSyncTracker.recordUpsertResult(venue.id, result);
           if (result === 'created') report.createdFromVenues += 1;
@@ -1151,6 +1182,9 @@ async function syncTheaterPerformancesFromMore(strapi, {
             venue,
             now,
             statsTarget: showStats,
+            eventGroupCode: code,
+            syncPath: 'theater_show_event_group',
+            contentResolution: { theaterShowId: show.id, theaterShowTitle: show.title },
           });
           if (result === 'created') report.createdFromTheaterShows += 1;
         }
@@ -1235,6 +1269,9 @@ async function syncTheaterPerformancesFromMore(strapi, {
             venue,
             now,
             statsTarget: venueStats,
+            eventGroupCode: code,
+            syncPath: 'theater_venue_bundle',
+            contentResolution: mapped,
           });
           if (result === 'created') report.createdFromTheaterVenues += 1;
         }

@@ -312,8 +312,23 @@ async function verifyEventGroupCodesParallel(codes, options = {}) {
   return map;
 }
 
+function moreEventsApiUrl(code) {
+  return `${MORE_GETEVENTS}?eventGroupCode=${encodeURIComponent(String(code || '').trim())}`;
+}
+
+function truncateJsonPreview(value, maxLen = 720) {
+  try {
+    const sample = Array.isArray(value) ? value.slice(0, 2) : value;
+    const s = JSON.stringify(sample);
+    if (s.length <= maxLen) return s;
+    return `${s.slice(0, maxLen)}…`;
+  } catch {
+    return '';
+  }
+}
+
 async function verifyEventGroupCode(code) {
-  const url = `${MORE_GETEVENTS}?eventGroupCode=${encodeURIComponent(code)}`;
+  const url = moreEventsApiUrl(code);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), VERIFY_TIMEOUT_MS);
   try {
@@ -321,17 +336,29 @@ async function verifyEventGroupCode(code) {
       signal: controller.signal,
       headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
     });
-    if (!res.ok) return { ok: false, error: `HTTP ${res.status}` };
+    if (!res.ok) return { ok: false, error: `HTTP ${res.status}`, apiUrl: url };
     const raw = await res.text();
     const trimmed = raw.trim();
-    if (!trimmed) return { ok: false, error: 'κενή απάντηση More API' };
+    if (!trimmed) return { ok: false, error: 'κενή απάντηση More API', apiUrl: url };
     let events;
     try {
       events = JSON.parse(trimmed);
     } catch (e) {
-      return { ok: false, error: e?.message || 'invalid JSON' };
+      return {
+        ok: false,
+        error: e?.message || 'invalid JSON',
+        apiUrl: url,
+        jsonPreview: trimmed.slice(0, 720),
+      };
     }
-    if (!Array.isArray(events)) return { ok: false, error: 'not array' };
+    if (!Array.isArray(events)) {
+      return {
+        ok: false,
+        error: 'not array',
+        apiUrl: url,
+        jsonPreview: truncateJsonPreview(events),
+      };
+    }
 
     const venues = new Map();
     for (const ev of events) {
@@ -341,10 +368,12 @@ async function verifyEventGroupCode(code) {
 
     return {
       ok: true,
+      apiUrl: url,
       eventCount: events.length,
       venueCount: venues.size,
       sampleVenues: [...venues.entries()].slice(0, 4).map(([id, name]) => ({ id, name })),
       sampleEventId: events[0]?.eventId ?? null,
+      jsonPreview: truncateJsonPreview(events),
     };
   } catch (e) {
     const wrapped = formatMoreNetworkError(e, {
@@ -352,7 +381,7 @@ async function verifyEventGroupCode(code) {
       timeoutMs: VERIFY_TIMEOUT_MS,
       label: 'More API verify',
     });
-    return { ok: false, error: wrapped.message };
+    return { ok: false, error: wrapped.message, apiUrl: url };
   } finally {
     clearTimeout(timer);
   }
@@ -1413,6 +1442,7 @@ async function enrichCatalogWithVenueProgramScrape(catalog, cmsVenues, cmsItems,
         resolvedCount: events.filter((e) => e.cmsMatch).length,
         uniqueTitles: scrape.uniqueTitles || [],
         events: events.slice(0, 48),
+        jsonPreview: scrape.jsonPreview || truncateJsonPreview(events.slice(0, 2)),
       },
     });
   }
@@ -1600,6 +1630,12 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
     (sum, item) => sum + (item.approvedEventGroupCodes?.length || 0),
     0,
   );
+
+  result.sources = {
+    catalogCinemaUrl: MORE_CINEMA_URL,
+    catalogTheaterUrl: MORE_THEATER_URL,
+    eventsApiTemplate: `${MORE_GETEVENTS}?eventGroupCode={code}`,
+  };
 
   result.durationMs = Date.now() - started;
   return result;
@@ -1809,6 +1845,7 @@ module.exports = {
   MIN_HINT_SCORE,
   CMS_LOOKUP_CONFIG,
   fetchMoreCatalog,
+  moreEventsApiUrl,
   verifyEventGroupCode,
   scrapeMoreVenueProgram: require('./moreVenueProgramScrape').scrapeMoreVenueProgram,
   enrichCatalogWithVenueProgramScrape,

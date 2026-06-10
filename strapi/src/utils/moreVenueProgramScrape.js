@@ -152,6 +152,19 @@ function mapScrapePayload(payload) {
 
   const uniqueTitles = [...new Set(mappedEvents.map((e) => e.playTitle).filter(Boolean))];
 
+  const jsonPreview = (() => {
+    try {
+      const sample = {
+        events: mappedEvents.slice(0, 2),
+        plays: plays.slice(0, 2),
+      };
+      const s = JSON.stringify(sample);
+      return s.length > 720 ? `${s.slice(0, 720)}…` : s;
+    } catch {
+      return '';
+    }
+  })();
+
   return {
     ok: mappedEvents.length > 0,
     events: mappedEvents,
@@ -163,6 +176,7 @@ function mapScrapePayload(payload) {
     uniqueTitles,
     eventCount: mappedEvents.length,
     playCount: uniqueTitles.length,
+    jsonPreview,
   };
 }
 

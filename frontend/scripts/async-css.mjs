@@ -11,7 +11,7 @@ const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "out");
 const STYLESHEET_RE =
   /<link rel="stylesheet" href="(\/_next\/static\/css\/[^"]+\.css)"([^>]*)\/?>/g;
 
-function patchHtml(html) {
+function patchSegment(html) {
   return html.replace(STYLESHEET_RE, (full, href, attrs = "") => {
     if (attrs.includes("data-async-css")) return full;
     const extra = attrs.replace(/\s*data-precedence="[^"]*"/, "").trim();
@@ -22,6 +22,12 @@ function patchHtml(html) {
       `<noscript><link rel="stylesheet" href="${href}"/></noscript>`,
     ].join("");
   });
+}
+
+/** Μην αγγίζουμε RSC flight payloads — αλλοιώνουν byte-length των T-rows. */
+function patchHtml(html) {
+  const parts = html.split(/(<script>self\.__next_f\.push\([\s\S]*?<\/script>)/g);
+  return parts.map((part) => (part.startsWith("<script>self.__next_f.push") ? part : patchSegment(part))).join("");
 }
 
 function walk(dir) {

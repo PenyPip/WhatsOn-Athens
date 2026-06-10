@@ -175,6 +175,15 @@
   line-height: 1.3;
 }
 
+.more-lookup-match-table a.more-lookup-cell-ellipsis,
+.more-lookup-match-table a.more-lookup-cell-code {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .more-lookup-match-table .more-lookup-cell-code {
   font-size: 0.72rem !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;

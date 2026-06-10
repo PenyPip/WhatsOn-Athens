@@ -22,11 +22,16 @@ async function parseMoreEventsJsonResponse(res, code) {
   return data;
 }
 
+function moreEventsApiUrl(eventGroupCode) {
+  const code = String(eventGroupCode || '').trim();
+  return `${MORE_GETEVENTS}?eventGroupCode=${encodeURIComponent(code)}`;
+}
+
 async function fetchMoreEventsByGroupCode(eventGroupCode) {
   const code = String(eventGroupCode || '').trim();
   if (!code) return [];
 
-  const url = `${MORE_GETEVENTS}?eventGroupCode=${encodeURIComponent(code)}`;
+  const url = moreEventsApiUrl(code);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
 
@@ -47,4 +52,5 @@ async function fetchMoreEventsByGroupCode(eventGroupCode) {
 
 module.exports = {
   fetchMoreEventsByGroupCode,
+  moreEventsApiUrl,
 };

@@ -18,7 +18,7 @@ type SpaRootProps = {
   suppressHydrationWarning?: boolean;
 };
 
-/** Client boundary — bootstrap μόνο από `#__RQ_STATE__` (αποφυγή διπλού JSON στο HTML). */
+/** Client boundary — bootstrap από `#__RQ_STATE__` (το flight row συγχρονίζεται στο build). */
 export default function SpaRoot({
   ssrPath,
   bootstrapState,
