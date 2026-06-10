@@ -1,7 +1,7 @@
 /**
- * Διορθώνει RSC flight row για __RQ_STATE__: το Next διπλο-escape-άρει το JSON στο
- * flight push (T length = script tag) → React «Connection closed» στο hydrate.
- * Αντικαθιστούμε το flight payload με το ακριβές περιεχόμενο του #__RQ_STATE__.
+ * Διορθώνει RSC flight rows για inline HTML (JSON-LD, React Query bootstrap):
+ * το Next διπλο-escape-άρει το περιεχόμενο στο flight push (T length ≠ payload)
+ * → React «Connection closed» στο hydrate.
  */
 import { readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
@@ -42,18 +42,31 @@ function extractPushes(html) {
   return pushes;
 }
 
-function fixHtml(html) {
+/** rowId → ακριβές κείμενο από το static <script> στο HTML. */
+function collectInlineHtmlSources(html) {
+  const sources = new Map();
+
   const rqMatch = html.match(/<script id="__RQ_STATE__" type="application\/json">([^<]*)<\/script>/);
-  if (!rqMatch) return { html, changed: false };
+  if (rqMatch) {
+    const rqRef = html.match(/\\"id\\":\\"__RQ_STATE__\\"[^}]*\\"__html\\":\\"\$(\d+)\\"/);
+    if (rqRef) sources.set(rqRef[1], rqMatch[1]);
+  }
 
-  const rqContent = rqMatch[1];
-  const refMatch = html.match(/\\"id\\":\\"__RQ_STATE__\\"[^}]*\\"__html\\":\\"\$(\d+)\\"/);
-  if (!refMatch) return { html, changed: false };
+  const ldMatch = html.match(/<script type="application\/ld\+json">([^<]*)<\/script>/);
+  if (ldMatch) {
+    const ldRef = html.match(
+      /\\"type\\":\\"application\/ld\+json\\",\\"dangerouslySetInnerHTML\\":\{\\"__html\\":\\"\$(\d+)\\"\}/,
+    );
+    if (ldRef) sources.set(ldRef[1], ldMatch[1]);
+  }
 
-  const rowId = refMatch[1];
-  const byteLen = Buffer.byteLength(rqContent, "utf8");
+  return sources;
+}
+
+function syncFlightRow(pushes, rowId, content) {
+  const byteLen = Buffer.byteLength(content, "utf8");
   const hexLen = byteLen.toString(16);
-  const pushes = extractPushes(html);
+  const newDecl = `${rowId}:T${hexLen},`;
 
   let declIdx = -1;
   for (let i = 0; i < pushes.length; i += 1) {
@@ -62,24 +75,39 @@ function fixHtml(html) {
       break;
     }
   }
-  if (declIdx === -1 || declIdx + 1 >= pushes.length) return { html, changed: false };
+  if (declIdx === -1 || declIdx + 1 >= pushes.length) return false;
 
-  const newDecl = `${rowId}:T${hexLen},`;
-  if (pushes[declIdx].content === newDecl && pushes[declIdx + 1].content === rqContent) {
-    return { html, changed: false };
+  if (pushes[declIdx].content === newDecl && pushes[declIdx + 1].content === content) {
+    return false;
   }
 
   pushes[declIdx].content = newDecl;
-  pushes[declIdx + 1].content = rqContent;
+  pushes[declIdx + 1].content = content;
+  return true;
+}
 
+function rebuildHtml(html, pushes) {
   let next = html;
   for (let i = pushes.length - 1; i >= 0; i -= 1) {
     const p = pushes[i];
     const escaped = escapeFlightPushContent(p.content);
     next = next.slice(0, p.start) + `self.__next_f.push([1,"${escaped}"])` + next.slice(p.end);
   }
+  return next;
+}
 
-  return { html: next, changed: true };
+function fixHtml(html) {
+  const sources = collectInlineHtmlSources(html);
+  if (sources.size === 0) return { html, changed: false };
+
+  const pushes = extractPushes(html);
+  let changed = false;
+  for (const [rowId, content] of sources) {
+    if (syncFlightRow(pushes, rowId, content)) changed = true;
+  }
+
+  if (!changed) return { html, changed: false };
+  return { html: rebuildHtml(html, pushes), changed: true };
 }
 
 function walk(dir) {
