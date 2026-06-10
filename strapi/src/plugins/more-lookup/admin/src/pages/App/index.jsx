@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../more-lookup-admin.css';
 import {
   Layout,
@@ -19,7 +19,6 @@ import {
   Th,
   Td,
   Badge,
-  Checkbox,
 } from '@strapi/design-system';
 import { useFetchClient, useNotification } from '@strapi/helper-plugin';
 
@@ -159,6 +158,29 @@ function formatCodeList(codes) {
   if (!list.length) return '—';
   if (list.length === 1) return list[0];
   return list.join(' · ');
+}
+
+function SelectCheckbox({ checked, onChange, disabled = false, indeterminate = false, ariaLabel }) {
+  const inputRef = useRef(null);
+
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.indeterminate = indeterminate;
+    }
+  }, [indeterminate, checked]);
+
+  return (
+    <input
+      ref={inputRef}
+      type="checkbox"
+      className="more-lookup-select-checkbox"
+      checked={Boolean(checked)}
+      onChange={(event) => onChange(event.target.checked)}
+      onClick={(event) => event.stopPropagation()}
+      disabled={disabled}
+      aria-label={ariaLabel}
+    />
+  );
 }
 
 function EllipsisCell({ text, tone = 'neutral800', mono = false }) {
@@ -867,11 +889,15 @@ const App = () => {
     }
   };
 
-  const matches = result?.matches ?? [];
-  const matchedRows = matches
-    .filter((r) => r.matched)
-    .filter((r) => matchesCmsContentFilter(r, matchContentFilter));
-  const matchDisplayRows = expandMatchRows(matchedRows);
+  const matchDisplayRows = useMemo(
+    () =>
+      expandMatchRows(
+        (result?.matches ?? [])
+          .filter((r) => r.matched)
+          .filter((r) => matchesCmsContentFilter(r, matchContentFilter)),
+      ),
+    [result?.matches, matchContentFilter],
+  );
   const pendingFiltered = useMemo(
     () => pendingApproval.filter((r) => matchesCmsContentFilter(r, matchContentFilter)),
     [pendingApproval, matchContentFilter],
@@ -900,13 +926,19 @@ const App = () => {
     matchSelectedVisibleCount > 0 && !allMatchVisibleSelected;
 
   useEffect(() => {
-    const visible = new Set(pendingVisibleKeys);
-    setSelectedPendingKeys((prev) => prev.filter((key) => visible.has(key)));
+    setSelectedPendingKeys((prev) => {
+      const visible = new Set(pendingVisibleKeys);
+      const next = prev.filter((key) => visible.has(key));
+      return next.length === prev.length ? prev : next;
+    });
   }, [pendingVisibleKeys]);
 
   useEffect(() => {
-    const visible = new Set(matchVisibleKeys);
-    setSelectedMatchKeys((prev) => prev.filter((key) => visible.has(key)));
+    setSelectedMatchKeys((prev) => {
+      const visible = new Set(matchVisibleKeys);
+      const next = prev.filter((key) => visible.has(key));
+      return next.length === prev.length ? prev : next;
+    });
   }, [matchVisibleKeys]);
   const approvedQueueCount =
     result?.stats?.approvedQueue ??
@@ -1397,13 +1429,15 @@ const App = () => {
                 </GridItem>
                 <GridItem col={5} s={12}>
                   <Box paddingTop={6}>
-                    <Checkbox
-                      value={overwriteExisting}
-                      onValueChange={setOverwriteExisting}
-                      disabled={loading}
-                    >
-                      Αντικατάσταση υπάρχοντος κωδικού
-                    </Checkbox>
+                    <label className="more-lookup-checkbox-label">
+                      <SelectCheckbox
+                        checked={overwriteExisting}
+                        onChange={setOverwriteExisting}
+                        disabled={loading}
+                        ariaLabel="Αντικατάσταση υπάρχοντος κωδικού"
+                      />
+                      <span>Αντικατάσταση υπάρχοντος κωδικού</span>
+                    </label>
                     <Box paddingLeft={6} paddingTop={2}>
                       <Typography variant="pi" textColor="neutral500">
                         Όταν υπάρχει ήδη διαφορετικός event_group_code
@@ -1608,11 +1642,11 @@ const App = () => {
               <Thead>
                 <Tr>
                   <Th className="more-lookup-col-select">
-                    <Checkbox
-                      aria-label="Επιλογή όλων των ορατών προτάσεων"
-                      value={allMatchVisibleSelected}
+                    <SelectCheckbox
+                      ariaLabel="Επιλογή όλων των ορατών προτάσεων"
+                      checked={allMatchVisibleSelected}
                       indeterminate={someMatchVisibleSelected}
-                      onValueChange={toggleAllMatchSelection}
+                      onChange={toggleAllMatchSelection}
                       disabled={loading || matchVisibleKeys.length === 0}
                     />
                   </Th>
@@ -1643,10 +1677,10 @@ const App = () => {
                 {matchDisplayRows.map((row) => (
                   <Tr key={row.displayKey}>
                     <Td className="more-lookup-col-select">
-                      <Checkbox
-                        aria-label={`Επιλογή ${row.cmsTitle}`}
-                        value={selectedMatchKeys.includes(row.displayKey)}
-                        onValueChange={(next) => toggleMatchSelection(row.displayKey, next)}
+                      <SelectCheckbox
+                        ariaLabel={`Επιλογή ${row.cmsTitle}`}
+                        checked={selectedMatchKeys.includes(row.displayKey)}
+                        onChange={(next) => toggleMatchSelection(row.displayKey, next)}
                         disabled={loading}
                       />
                     </Td>
@@ -1765,11 +1799,11 @@ const App = () => {
               <Thead>
                 <Tr>
                   <Th className="more-lookup-col-select">
-                    <Checkbox
-                      aria-label="Επιλογή όλων των ορατών εγγραφών προς έγκριση"
-                      value={allPendingVisibleSelected}
+                    <SelectCheckbox
+                      ariaLabel="Επιλογή όλων των ορατών εγγραφών προς έγκριση"
+                      checked={allPendingVisibleSelected}
                       indeterminate={somePendingVisibleSelected}
-                      onValueChange={toggleAllPendingSelection}
+                      onChange={toggleAllPendingSelection}
                       disabled={loading || pendingVisibleKeys.length === 0}
                     />
                   </Th>
@@ -1799,10 +1833,10 @@ const App = () => {
                   return (
                   <Tr key={selectionKey}>
                     <Td className="more-lookup-col-select">
-                      <Checkbox
-                        aria-label={`Επιλογή ${row.cmsTitle}`}
-                        value={selectedPendingKeys.includes(selectionKey)}
-                        onValueChange={(next) => togglePendingSelection(selectionKey, next)}
+                      <SelectCheckbox
+                        ariaLabel={`Επιλογή ${row.cmsTitle}`}
+                        checked={selectedPendingKeys.includes(selectionKey)}
+                        onChange={(next) => togglePendingSelection(selectionKey, next)}
                         disabled={loading}
                       />
                     </Td>
@@ -1869,12 +1903,14 @@ const App = () => {
                   onChange={setCatalogKindFilter}
                 />
                 <Box paddingBottom={1} className="more-lookup-catalog-missing-toggle">
-                  <Checkbox
-                    value={catalogOnlyMissing}
-                    onValueChange={setCatalogOnlyMissing}
-                  >
-                    Μόνο κωδικοί που λείπουν από το CMS
-                  </Checkbox>
+                  <label className="more-lookup-checkbox-label">
+                    <SelectCheckbox
+                      checked={catalogOnlyMissing}
+                      onChange={setCatalogOnlyMissing}
+                      ariaLabel="Μόνο κωδικοί που λείπουν από το CMS"
+                    />
+                    <span>Μόνο κωδικοί που λείπουν από το CMS</span>
+                  </label>
                 </Box>
               </Flex>
             </Box>

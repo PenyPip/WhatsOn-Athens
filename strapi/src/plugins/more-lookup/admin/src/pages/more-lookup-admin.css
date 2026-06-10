@@ -37,9 +37,46 @@
   vertical-align: top;
 }
 
+.more-lookup-select-checkbox {
+  width: 1rem;
+  height: 1rem;
+  margin: 0;
+  cursor: pointer;
+  accent-color: #4945ff;
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.more-lookup-select-checkbox:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.more-lookup-checkbox-label {
+  display: inline-flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.more-lookup-checkbox-label span {
+  line-height: 1.35;
+}
+
 .more-lookup-match-table .more-lookup-col-select {
-  width: 2.25rem !important;
+  width: 2.75rem !important;
+  min-width: 2.75rem !important;
   text-align: center;
+  overflow: visible !important;
+  position: relative;
+  z-index: 2;
+}
+
+.more-lookup-match-table .more-lookup-col-select .more-lookup-select-checkbox {
+  display: inline-block;
+  vertical-align: middle;
 }
 
 /* Πίνακας 1: 8 στήλες (επιλογή + 7) */

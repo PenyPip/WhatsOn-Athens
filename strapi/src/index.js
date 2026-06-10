@@ -11,6 +11,9 @@ const PUBLIC_COLLECTION_READ_ACTIONS = [
   'api::showtime.showtime.find',
   'api::showtime.showtime.findOne',
   'api::showtime.showtime.venueCalendar',
+  'api::showtime.showtime.homeCalendar',
+  'api::theater-performance.theater-performance.venueCalendar',
+  'api::theater-performance.theater-performance.homeCalendar',
   'api::venue.venue.find',
   'api::venue.venue.findOne',
   'api::hall.hall.find',
@@ -133,7 +136,11 @@ module.exports = {
 
     try {
       const { expandAllPendingRepeatShowtimes } = require('./api/showtime/services/showtime-repeat');
-      await expandAllPendingRepeatShowtimes(strapi);
+      setImmediate(() => {
+        expandAllPendingRepeatShowtimes(strapi).catch((error) => {
+          strapi.log.warn('[whatson bootstrap showtime repeat]', error);
+        });
+      });
     } catch (e) {
       strapi.log.warn('[whatson bootstrap showtime repeat]', e);
     }

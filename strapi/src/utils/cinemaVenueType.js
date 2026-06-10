@@ -28,23 +28,37 @@ function cinemaVenueTypeFilter() {
 /** Παλιές ελληνικές ετικέτες → cinema / theater / other (χωρίς validation). */
 async function migrateLegacyVenueTypes(strapi) {
   const store = strapi.store({ type: 'plugin', name: 'whatson-venue-types' });
-  if (await store.get({ key: 'migratedV2' })) return;
-
   let updated = 0;
-  for (const [from, to] of Object.entries(LEGACY_VENUE_TYPE_TO_ENUM)) {
-    const rows = await strapi.db.query('api::venue.venue').findMany({
-      where: { type: from },
-      select: ['id'],
+
+  const missingType = await strapi.db.query('api::venue.venue').findMany({
+    where: { type: { $null: true } },
+    select: ['id'],
+  });
+  for (const row of missingType) {
+    await strapi.db.query('api::venue.venue').update({
+      where: { id: row.id },
+      data: { type: 'cinema' },
     });
-    for (const row of rows) {
-      await strapi.db.query('api::venue.venue').update({
-        where: { id: row.id },
-        data: { type: to },
-      });
-      updated += 1;
-    }
+    updated += 1;
   }
-  await store.set({ key: 'migratedV2', value: true });
+
+  if (!(await store.get({ key: 'migratedV2' }))) {
+    for (const [from, to] of Object.entries(LEGACY_VENUE_TYPE_TO_ENUM)) {
+      const rows = await strapi.db.query('api::venue.venue').findMany({
+        where: { type: from },
+        select: ['id'],
+      });
+      for (const row of rows) {
+        await strapi.db.query('api::venue.venue').update({
+          where: { id: row.id },
+          data: { type: to },
+        });
+        updated += 1;
+      }
+    }
+    await store.set({ key: 'migratedV2', value: true });
+  }
+
   if (updated > 0) {
     strapi.log.info(`[whatson] venue type migration: ${updated} εγγραφές → cinema/theater/other`);
   }

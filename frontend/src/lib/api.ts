@@ -1616,7 +1616,7 @@ async function fetchShowtimesCalendar(): Promise<StrapiShowtime[]> {
   const rows = await fetchAPI<any[]>(
     "/showtimes/home-calendar",
     {},
-    { noPopulate: true },
+    { noPopulate: true, noStore: true },
   );
   return (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x));
 }
@@ -1627,7 +1627,7 @@ async function fetchShowtimesVenueCalendar(venueSlug: string): Promise<StrapiSho
     const rows = await fetchAPI<any[]>(
       "/showtimes/venue-calendar",
       { venue: venueSlug },
-      { noPopulate: true },
+      { noPopulate: true, noStore: true },
     );
     return (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x));
   } catch {
@@ -1651,7 +1651,7 @@ async function fetchTheaterPerformancesCalendar(): Promise<StrapiTheaterPerforma
   const rows = await fetchAPI<any[]>(
     "/theater-performances/home-calendar",
     {},
-    { noPopulate: true },
+    { noPopulate: true, noStore: true },
   );
   return (Array.isArray(rows) ? rows : []).flatMap((x) => mapTheaterPerformance(x));
 }
@@ -1663,7 +1663,7 @@ async function fetchTheaterPerformancesVenueCalendar(
     const rows = await fetchAPI<any[]>(
       "/theater-performances/venue-calendar",
       { venue: venueSlug },
-      { noPopulate: true },
+      { noPopulate: true, noStore: true },
     );
     return (Array.isArray(rows) ? rows : []).flatMap((x) => mapTheaterPerformance(x));
   } catch {

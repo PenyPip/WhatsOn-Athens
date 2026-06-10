@@ -26,21 +26,20 @@ const config = {
   },
 };
 
-const bootstrap = (app) => {
-  app.injectContentManagerComponent('editView', 'right-links', {
-    name: 'venue-type-preset',
-    Component: () => import('./components/VenueTypePreset'),
-  });
-};
-
 const register = (app) => {
   app.registerPlugin({
     id: 'cache-clear',
     name: 'Εκκαθάριση cache',
   });
 
+  app.addMenuSection({
+    id: 'whatson-venues',
+    label: 'Χώροι',
+  });
+
   app.addMenuLink({
     to: '/plugins/venues-cinema',
+    section: 'whatson-venues',
     icon: () => React.createElement('span', null, '🎬'),
     intlLabel: {
       id: 'venues.cinema.menu',
@@ -56,6 +55,7 @@ const register = (app) => {
 
   app.addMenuLink({
     to: '/plugins/venues-theater',
+    section: 'whatson-venues',
     icon: () => React.createElement('span', null, '🎭'),
     intlLabel: {
       id: 'venues.theater.menu',
@@ -71,6 +71,7 @@ const register = (app) => {
 
   app.addMenuLink({
     to: '/plugins/venues-other',
+    section: 'whatson-venues',
     icon: () => React.createElement('span', null, '📍'),
     intlLabel: {
       id: 'venues.other.menu',
@@ -86,6 +87,7 @@ const register = (app) => {
 
   app.addMenuLink({
     to: '/plugins/venues-all',
+    section: 'whatson-venues',
     icon: () => React.createElement('span', null, '🏛️'),
     intlLabel: {
       id: 'venues.all.menu',
@@ -116,6 +118,5 @@ const register = (app) => {
 
 export default {
   config,
-  bootstrap,
   register,
 };

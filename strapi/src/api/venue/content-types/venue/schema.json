@@ -5,16 +5,12 @@
     "singularName": "venue",
     "pluralName": "venues",
     "displayName": "Χώροι",
-    "description": "Σινεμά, θέατρα και άλλοι χώροι. Διαχείριση από το μενού «Χώροι» (Σινεμά / Θέατρα / Άλλοι / Όλοι) — όχι από το γενικό Content Manager."
+    "description": "Σινεμά, θέατρα και άλλοι χώροι. Εμφανίζονται στο Content Manager και στο μενού «Χώροι»."
   },
   "options": {
     "draftAndPublish": true
   },
-  "pluginOptions": {
-    "content-manager": {
-      "visible": false
-    }
-  },
+  "pluginOptions": {},
   "attributes": {
     "name": {
       "type": "string",
