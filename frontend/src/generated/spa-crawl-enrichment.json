@@ -264,7 +264,7 @@
       "name": "EKRAN Summer Cinema",
       "venueType": "cinema",
       "address": "Αγαθίου 11, Κυψέλη 114 72",
-      "googleMapsUrl": "https://maps.google.com/?cid=ChIJE4uCA0u9oRQRTyhuIkgM2Y8",
+      "googleMapsUrl": "https://share.google/KyKluFm3k4Jnow8ed",
       "programHref": "/movies/venue/ekran-summer-cinema",
       "moviesHref": "/movies/venue/ekran-summer-cinema",
       "venuesHref": "/venues"
@@ -624,13 +624,13 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "venue",
+      "slug": "cine-attikon-alsos",
       "name": "Cine Attikon Alsos",
       "venueType": "cinema",
       "address": "Ηπείρου",
-      "googleMapsUrl": "https://www.google.com/maps/embed?pb=!1m14!1m8!1m3!1d2222.98213057934!2d23.757704293993918!3d38.00579044747091!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x7c288d738c839f1c!2sAttikon+Grove+(summer)!5e0!3m2!1sen!2sgr!4v1562161231861!5m2!1sen!2sgr&output=embed",
-      "programHref": "/movies/venue/venue",
-      "moviesHref": "/movies/venue/venue",
+      "googleMapsUrl": "Cine Attikon Alsos",
+      "programHref": "/movies/venue/cine-attikon-alsos",
+      "moviesHref": "/movies/venue/cine-attikon-alsos",
       "venuesHref": "/venues"
     },
     {
@@ -684,6 +684,7 @@
       "name": "Cine Γέρακας",
       "venueType": "cinema",
       "address": "Μιλτιάδου & Γαργηττού, Γέρακας",
+      "googleMapsUrl": "https://share.google/Ooay2SImztNq7xeGA",
       "programHref": "/movies/venue/cine-gerakas",
       "moviesHref": "/movies/venue/cine-gerakas",
       "venuesHref": "/venues"
@@ -770,15 +771,6 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "dimotiko-t-heatro-peiraia",
-      "name": "Δημοτικό Θέατρο Πειραιά",
-      "venueType": "theater",
-      "address": "Λεωφόρος Ηρώων Πολυτεχνείου, Πειραιάς",
-      "programHref": "/theater/venue/dimotiko-t-heatro-peiraia",
-      "theaterHref": "/theater/venue/dimotiko-t-heatro-peiraia",
-      "venuesHref": "/venues"
-    },
-    {
       "slug": "botsalakia",
       "name": "Βοτσαλάκια",
       "venueType": "cinema",
@@ -817,6 +809,8 @@
       "slug": "arxaio-theatro-epidayroy",
       "name": "Αρχαίο Θέατρο Επιδαύρου",
       "venueType": "theater",
+      "address": "Επίδαυρος, Αργολίδα",
+      "googleMapsUrl": "https://share.google/4lqPyb0RiVdfDyVST",
       "programHref": "/theater/venue/arxaio-theatro-epidayroy",
       "theaterHref": "/theater/venue/arxaio-theatro-epidayroy",
       "venuesHref": "/venues"
@@ -825,6 +819,8 @@
       "slug": "odeio-irodoy-attikoy",
       "name": "Ωδείο Ηρώδου Αττικού",
       "venueType": "other",
+      "address": "Διονυσίου Αρεοπαγίτου, 10555",
+      "googleMapsUrl": "https://share.google/7ZfP6OfV2vkTcc4v4",
       "venuesHref": "/venues"
     },
     {
@@ -838,6 +834,7 @@
       "name": "Cine Ria",
       "venueType": "cinema",
       "address": "Αφροδίτης 8, Βάρη 166 72",
+      "googleMapsUrl": "https://share.google/AoU068w0hU7drjQvB",
       "programHref": "/movies/venue/cine-ria",
       "moviesHref": "/movies/venue/cine-ria",
       "venuesHref": "/venues"
@@ -1046,6 +1043,8 @@
       "slug": "melina-cinema-summer",
       "name": "Melina Cinema (summer)",
       "venueType": "cinema",
+      "address": "Σωκράτους 65, Δραπετσώνα 186 48",
+      "googleMapsUrl": "https://share.google/IOvJz2EFOVIysu0QC",
       "programHref": "/movies/venue/melina-cinema-summer",
       "moviesHref": "/movies/venue/melina-cinema-summer",
       "venuesHref": "/venues"
@@ -1063,6 +1062,8 @@
       "slug": "cine-alex",
       "name": "CINE ALEX",
       "venueType": "cinema",
+      "address": "Ολύμπου, Θεσσαλονίκη 556 35",
+      "googleMapsUrl": "https://share.google/1uAWzrbedIyZlksOh",
       "programHref": "/movies/venue/cine-alex",
       "moviesHref": "/movies/venue/cine-alex",
       "venuesHref": "/venues"
@@ -1079,6 +1080,8 @@
       "slug": "cine-kastro",
       "name": "Cine Κάστρο",
       "venueType": "cinema",
+      "address": "Βορείου Ηπείρου 1 και, Σώμερσετ 49, Ρίο 265 04",
+      "googleMapsUrl": "https://share.google/kn7VrrCYR46q2FD16",
       "programHref": "/movies/venue/cine-kastro",
       "moviesHref": "/movies/venue/cine-kastro",
       "venuesHref": "/venues"
@@ -1256,21 +1259,23 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "cinema-2420",
+      "slug": "cinema-bakoyra-aithoysa-1",
       "name": "Cinema Βακούρα - Αίθουσα 1",
       "venueType": "cinema",
-      "googleMapsUrl": "https://www.google.com/maps?q=40.631633,22.950309",
-      "programHref": "/movies/venue/cinema-2420",
-      "moviesHref": "/movies/venue/cinema-2420",
+      "address": "Μιχαήλ Ιωάννου 8, Θεσσαλονίκη 546 22",
+      "googleMapsUrl": "https://share.google/1ZokYMmKxxrdMlVPV",
+      "programHref": "/movies/venue/cinema-bakoyra-aithoysa-1",
+      "moviesHref": "/movies/venue/cinema-bakoyra-aithoysa-1",
       "venuesHref": "/venues"
     },
     {
-      "slug": "cinema-3986",
+      "slug": "cine-ayra",
       "name": "Cine Αύρα",
       "venueType": "cinema",
-      "googleMapsUrl": "https://www.google.com/maps?q=40.578480807712666,22.941348084770706",
-      "programHref": "/movies/venue/cinema-3986",
-      "moviesHref": "/movies/venue/cinema-3986",
+      "address": "Νικ. Πλαστήρα 3, Καλαμαριά 551 32",
+      "googleMapsUrl": "https://share.google/FY73hlMxX7zEqNdy7",
+      "programHref": "/movies/venue/cine-ayra",
+      "moviesHref": "/movies/venue/cine-ayra",
       "venuesHref": "/venues"
     },
     {
@@ -1283,39 +1288,43 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "cinema-3474",
+      "slug": "cine-creta-maris",
       "name": "Cine Creta Maris",
       "venueType": "cinema",
-      "googleMapsUrl": "https://www.google.com/maps?q=35.3226841907874,25.385118411213575",
-      "programHref": "/movies/venue/cinema-3474",
-      "moviesHref": "/movies/venue/cinema-3474",
+      "address": "Δημοκρατίας, Λιμένας Χερσονήσου 700 14",
+      "googleMapsUrl": "https://share.google/UcUGSPSkccArBMXL7",
+      "programHref": "/movies/venue/cine-creta-maris",
+      "moviesHref": "/movies/venue/cine-creta-maris",
       "venuesHref": "/venues"
     },
     {
-      "slug": "cinema-2776",
+      "slug": "domotel-kastri-contemporary-iotel",
       "name": "Domotel Kastri Contemporary Ηotel",
       "venueType": "cinema",
-      "googleMapsUrl": "https://www.google.com/maps?q=38.095834,23.823573",
-      "programHref": "/movies/venue/cinema-2776",
-      "moviesHref": "/movies/venue/cinema-2776",
+      "address": "Ελ. Βενιζέλου 154 και, Romilias, Nea Erithrea 146 71",
+      "googleMapsUrl": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x14a19ef40936663d:0xa64de18f4a0b14ae?sa=X&ved=1t:8290&ictx=111",
+      "programHref": "/movies/venue/domotel-kastri-contemporary-iotel",
+      "moviesHref": "/movies/venue/domotel-kastri-contemporary-iotel",
       "venuesHref": "/venues"
     },
     {
-      "slug": "cinema-3689",
+      "slug": "makedonikon",
       "name": "Makedonikon",
       "venueType": "cinema",
-      "googleMapsUrl": "https://www.google.com/maps?q=40.62981540402197,22.951534625170062",
-      "programHref": "/movies/venue/cinema-3689",
-      "moviesHref": "/movies/venue/cinema-3689",
+      "address": "Σόλωνος 73, Αθήνα 106 79",
+      "googleMapsUrl": "https://share.google/UgrtNaKCL7EEzLBJi",
+      "programHref": "/movies/venue/makedonikon",
+      "moviesHref": "/movies/venue/makedonikon",
       "venuesHref": "/venues"
     },
     {
-      "slug": "cinema-2615",
+      "slug": "cinema-bakoyra-aithoysa-2",
       "name": "Cinema Βακούρα - Αίθουσα 2",
       "venueType": "cinema",
-      "googleMapsUrl": "https://www.google.com/maps?q=40.631633,22.950309",
-      "programHref": "/movies/venue/cinema-2615",
-      "moviesHref": "/movies/venue/cinema-2615",
+      "address": "Μιχαήλ Ιωάννου 8, Θεσσαλονίκη 546 22",
+      "googleMapsUrl": "https://share.google/1ZokYMmKxxrdMlVPV",
+      "programHref": "/movies/venue/cinema-bakoyra-aithoysa-2",
+      "moviesHref": "/movies/venue/cinema-bakoyra-aithoysa-2",
       "venuesHref": "/venues"
     },
     {
@@ -1337,12 +1346,13 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "cinema-3393",
+      "slug": "villagio-cinema",
       "name": "Villagio Cinema",
       "venueType": "cinema",
-      "googleMapsUrl": "https://www.google.com/maps?q=36.376983,25.48305",
-      "programHref": "/movies/venue/cinema-3393",
-      "moviesHref": "/movies/venue/cinema-3393",
+      "address": "Makedonias 5, Kamari 847 00",
+      "googleMapsUrl": "https://share.google/XdK8aIYkGPZjOz5v9",
+      "programHref": "/movies/venue/villagio-cinema",
+      "moviesHref": "/movies/venue/villagio-cinema",
       "venuesHref": "/venues"
     },
     {
@@ -1418,12 +1428,13 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "cinema-2336",
+      "slug": "kinimatografos-aello-therinos",
       "name": "Kινηματογράφος Αελλώ (Θερινός)",
       "venueType": "cinema",
-      "googleMapsUrl": "https://www.google.com/maps?q=38.021592,24.006824",
-      "programHref": "/movies/venue/cinema-2336",
-      "moviesHref": "/movies/venue/cinema-2336",
+      "address": "Ελ. Βενιζέλου 12, Ραφήνα 190 09",
+      "googleMapsUrl": "https://share.google/2eq3MUdxGmnZmgxru",
+      "programHref": "/movies/venue/kinimatografos-aello-therinos",
+      "moviesHref": "/movies/venue/kinimatografos-aello-therinos",
       "venuesHref": "/venues"
     },
     {
@@ -1535,12 +1546,13 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-422",
+      "slug": "3o-gymnasio-ierapetras-kyrveia",
       "name": "3ο Γυμνάσιο Ιεράπετρας, Κύρβεια",
       "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=38.136717,23.505249",
-      "programHref": "/theater/venue/theater-422",
-      "theaterHref": "/theater/venue/theater-422",
+      "address": "Παπαμαστοράκη, Ιεράπετρα 722 00",
+      "googleMapsUrl": "https://share.google/iB3d7h42u5jxcpsVq",
+      "programHref": "/theater/venue/3o-gymnasio-ierapetras-kyrveia",
+      "theaterHref": "/theater/venue/3o-gymnasio-ierapetras-kyrveia",
       "venuesHref": "/venues"
     },
     {
@@ -1778,12 +1790,13 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-55",
+      "slug": "green-theater-t-heatro-arxaion-kleonon",
       "name": "Green theater - Θέατρο Αρχαίων Κλεωνών",
       "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=37.8217378,22.7505371",
-      "programHref": "/theater/venue/theater-55",
-      "theaterHref": "/theater/venue/theater-55",
+      "address": "Αρχαίες Κλεωνές 205 00",
+      "googleMapsUrl": "https://share.google/Eq3HZEU94sRFqQ5Wl",
+      "programHref": "/theater/venue/green-theater-t-heatro-arxaion-kleonon",
+      "theaterHref": "/theater/venue/green-theater-t-heatro-arxaion-kleonon",
       "venuesHref": "/venues"
     },
     {
@@ -1886,12 +1899,13 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-40",
+      "slug": "alex-cinema",
       "name": "Alex Cinema",
       "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=37.894566,23.978641",
-      "programHref": "/theater/venue/theater-40",
-      "theaterHref": "/theater/venue/theater-40",
+      "address": "Πόρτο Ράφτη 190 03",
+      "googleMapsUrl": "https://share.google/q0entgWKd6wwrMFqg",
+      "programHref": "/theater/venue/alex-cinema",
+      "theaterHref": "/theater/venue/alex-cinema",
       "venuesHref": "/venues"
     },
     {
@@ -1958,12 +1972,13 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-7248",
+      "slug": "kinimatotheatro-reks",
       "name": "Kινηματοθέατρο Ρεξ",
       "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=41.12084046769196,25.400657567286984",
-      "programHref": "/theater/venue/theater-7248",
-      "theaterHref": "/theater/venue/theater-7248",
+      "address": "Σοφούλη 1, Κομοτηνή 691 00",
+      "googleMapsUrl": "https://share.google/j7WH5LzlAaOwz0gIo",
+      "programHref": "/theater/venue/kinimatotheatro-reks",
+      "theaterHref": "/theater/venue/kinimatotheatro-reks",
       "venuesHref": "/venues"
     },
     {
@@ -2021,15 +2036,6 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-7096",
-      "name": "Cine Γέρακας",
-      "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=38.02339311044965,23.854705982445914",
-      "programHref": "/theater/venue/theater-7096",
-      "theaterHref": "/theater/venue/theater-7096",
-      "venuesHref": "/venues"
-    },
-    {
       "slug": "theater-2633",
       "name": "Θερινό Κιν/θεάτρο Cine Βάλια",
       "venueType": "theater",
@@ -2066,21 +2072,23 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-1523",
+      "slug": "cine-victoria-platamonas",
       "name": "Cine Victoria - Πλαταμώνας",
       "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=39.637718,22.421675",
-      "programHref": "/theater/venue/theater-1523",
-      "theaterHref": "/theater/venue/theater-1523",
+      "address": "Νέοι Πόροι 600 63",
+      "googleMapsUrl": "https://share.google/QIYUVlN2kMx8ivY8S",
+      "programHref": "/theater/venue/cine-victoria-platamonas",
+      "theaterHref": "/theater/venue/cine-victoria-platamonas",
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-4637",
+      "slug": "cine-savvas-nea-plagia",
       "name": "Cine Σάββας Νέα Πλάγια",
-      "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=40.265858098498725,23.20349701079632",
-      "programHref": "/theater/venue/theater-4637",
-      "theaterHref": "/theater/venue/theater-4637",
+      "venueType": "cinema",
+      "address": "Αιγαίου 7, Νέα Προποντίδα 632 00",
+      "googleMapsUrl": "https://share.google/MYgzVK5zQW4njjIpd",
+      "programHref": "/movies/venue/cine-savvas-nea-plagia",
+      "moviesHref": "/movies/venue/cine-savvas-nea-plagia",
       "venuesHref": "/venues"
     },
     {
@@ -2102,12 +2110,13 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-787",
+      "slug": "1o-dimotiko-sxoleio-liksoyrioy",
       "name": "1ο Δημοτικό σχολείο Ληξουρίου",
       "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=38.1890152,20.4394354",
-      "programHref": "/theater/venue/theater-787",
-      "theaterHref": "/theater/venue/theater-787",
+      "address": "Ληξούρι 282 00",
+      "googleMapsUrl": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x135d8727c4e09f8f:0x7b661c76e857ae16?sa=X&ved=1t:8290&ictx=111",
+      "programHref": "/theater/venue/1o-dimotiko-sxoleio-liksoyrioy",
+      "theaterHref": "/theater/venue/1o-dimotiko-sxoleio-liksoyrioy",
       "venuesHref": "/venues"
     },
     {
@@ -2129,12 +2138,13 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-4506",
+      "slug": "royal-theater-ayleios-xoros",
       "name": "Royal Theater - Αύλειος χώρος",
       "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=38.228336344258864,21.723908169310487",
-      "programHref": "/theater/venue/theater-4506",
-      "theaterHref": "/theater/venue/theater-4506",
+      "address": "Ακτή Δυμαίων 51, Πάτρα 263 33",
+      "googleMapsUrl": "https://share.google/gyvaoTlAejTZU9TUa",
+      "programHref": "/theater/venue/royal-theater-ayleios-xoros",
+      "theaterHref": "/theater/venue/royal-theater-ayleios-xoros",
       "venuesHref": "/venues"
     },
     {
@@ -2153,15 +2163,6 @@
       "googleMapsUrl": "https://www.google.com/maps?q=38.360124,21.426191",
       "programHref": "/theater/venue/theater-2324",
       "theaterHref": "/theater/venue/theater-2324",
-      "venuesHref": "/venues"
-    },
-    {
-      "slug": "theater-2336",
-      "name": "Kινηματογράφος Αελλώ (Θερινός)",
-      "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=38.021592,24.006824",
-      "programHref": "/theater/venue/theater-2336",
-      "theaterHref": "/theater/venue/theater-2336",
       "venuesHref": "/venues"
     },
     {
@@ -2363,75 +2364,103 @@
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-638",
+      "slug": "dimotiko-theatro-peiraia",
       "name": "Δημοτικό Θέατρο Πειραιά",
       "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=37.943346,23.646769",
-      "programHref": "/theater/venue/theater-638",
-      "theaterHref": "/theater/venue/theater-638",
+      "address": "Λεωφ. Ηρ. Πολυτεχνείου 32, Πειραιάς 185 35",
+      "googleMapsUrl": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x14a1bbe853400001:0x75d4fd979f9c6a42?sa=X&ved=1t:8290&ictx=111",
+      "programHref": "/theater/venue/dimotiko-theatro-peiraia",
+      "theaterHref": "/theater/venue/dimotiko-theatro-peiraia",
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-3113",
+      "slug": "theatro-anesis-pano-skini",
       "name": "Θέατρο Ανεσις - Πάνω Σκηνή",
       "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=37.986985,23.76241",
-      "programHref": "/theater/venue/theater-3113",
-      "theaterHref": "/theater/venue/theater-3113",
+      "address": "Λεωφ. Κηφισίας 14, Αθήνα 115 26",
+      "googleMapsUrl": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x14a1a2aab7b6a2bb:0x77a63dd20fce011c?sa=X&ved=1t:8290&ictx=111",
+      "programHref": "/theater/venue/theatro-anesis-pano-skini",
+      "theaterHref": "/theater/venue/theatro-anesis-pano-skini",
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-48",
+      "slug": "dimotiko-theatro-ilioypolis-dimitris-kintis",
       "name": "Δημοτικό θέατρο Ηλιούπολης «Δημήτρης Κιντής»",
       "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=37.969373,23.726521",
-      "programHref": "/theater/venue/theater-48",
-      "theaterHref": "/theater/venue/theater-48",
+      "address": "&, Γαρδίκη, Smolika και, Ilioupoli 163 45",
+      "googleMapsUrl": "https://maps.app.goo.gl/wivXSoD6k5nBm3nY6",
+      "programHref": "/theater/venue/dimotiko-theatro-ilioypolis-dimitris-kintis",
+      "theaterHref": "/theater/venue/dimotiko-theatro-ilioypolis-dimitris-kintis",
       "venuesHref": "/venues"
     },
     {
-      "slug": "theater-2727",
+      "slug": "romaiko-odeio-nikopolis",
       "name": "Ρωμαικό Ωδείο Νικόπολης",
       "venueType": "theater",
-      "googleMapsUrl": "https://www.google.com/maps?q=39.010479,20.731439",
-      "programHref": "/theater/venue/theater-2727",
-      "theaterHref": "/theater/venue/theater-2727",
+      "address": "Πρέβεζα 481 00",
+      "googleMapsUrl": "https://maps.app.goo.gl/dZZJbYw3tDTWDoJd6",
+      "programHref": "/theater/venue/romaiko-odeio-nikopolis",
+      "theaterHref": "/theater/venue/romaiko-odeio-nikopolis",
       "venuesHref": "/venues"
     },
     {
-      "slug": "cinema-3332",
+      "slug": "cine-pylaia",
       "name": "Cine Πυλαία",
       "venueType": "cinema",
-      "googleMapsUrl": "https://www.google.com/maps?q=40.600574,22.988091",
-      "programHref": "/movies/venue/cinema-3332",
-      "moviesHref": "/movies/venue/cinema-3332",
+      "address": "Πολυτεχνείου 20, Πυλαία 555 35",
+      "googleMapsUrl": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x14a838bb3d42b4b7:0x9a649b5bb18d2ed4?sa=X&ved=1t:8290&ictx=111",
+      "programHref": "/movies/venue/cine-pylaia",
+      "moviesHref": "/movies/venue/cine-pylaia",
       "venuesHref": "/venues"
     },
     {
-      "slug": "cinema-3949",
+      "slug": "cine-panorama",
       "name": "Cine ΠΑΝΟΡΑΜΑ",
       "venueType": "cinema",
-      "googleMapsUrl": "https://www.google.com/maps?q=40.58339635158003,23.033944355821728",
-      "programHref": "/movies/venue/cinema-3949",
-      "moviesHref": "/movies/venue/cinema-3949",
+      "address": "1ο χλμ, Thermis-Panoramatos Rd, Panorama 552 36",
+      "googleMapsUrl": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x14a84731b2c150f3:0x4b05ef08412cee3?sa=X&ved=1t:8290&ictx=111",
+      "programHref": "/movies/venue/cine-panorama",
+      "moviesHref": "/movies/venue/cine-panorama",
       "venuesHref": "/venues"
     },
     {
-      "slug": "cinema-3311",
+      "slug": "lais-therino-sinema",
       "name": "Λαϊς Θερινό Σινεμά",
       "venueType": "cinema",
-      "googleMapsUrl": "https://www.google.com/maps?q=37.965546,22.801976",
-      "programHref": "/movies/venue/cinema-3311",
-      "moviesHref": "/movies/venue/cinema-3311",
+      "address": "Α. Λαζανά 211, Βραχάτι 200 06",
+      "googleMapsUrl": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x14a00df3013f7169:0x44a021dad4b2c85f?sa=X&ved=1t:8290&ictx=111",
+      "programHref": "/movies/venue/lais-therino-sinema",
+      "moviesHref": "/movies/venue/lais-therino-sinema",
       "venuesHref": "/venues"
     },
     {
       "slug": "therino-dimotiko-theatro",
       "name": "Θερινό Δημοτικό Θέατρο",
       "venueType": "theater",
+      "address": "Συμεωνίδου 1, Κομοτηνή 691 00",
       "googleMapsUrl": "https://www.google.com/maps?q=38.903764,22.431175",
       "programHref": "/theater/venue/therino-dimotiko-theatro",
       "theaterHref": "/theater/venue/therino-dimotiko-theatro",
+      "venuesHref": "/venues"
+    },
+    {
+      "slug": "olympion-polyxoros-aithoysa-1",
+      "name": "Ολύμπιον Πολυχώρος - Αίθουσα 1",
+      "venueType": "cinema",
+      "address": "Μητροπόλεως 42, Καστοριά 521 00",
+      "googleMapsUrl": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x1359fd3c7137a295:0xe81596b71790e0?sa=X&ved=1t:8290&ictx=111",
+      "programHref": "/movies/venue/olympion-polyxoros-aithoysa-1",
+      "moviesHref": "/movies/venue/olympion-polyxoros-aithoysa-1",
+      "venuesHref": "/venues"
+    },
+    {
+      "slug": "cine-mariel",
+      "name": "Cine Mariel",
+      "venueType": "cinema",
+      "address": "Αυλακίου, Πόρτο Ράφτη 190 03",
+      "googleMapsUrl": "https://www.google.com/maps/place//data=!4m2!3m1!1s0x14a18ef997c05c8d:0x6c96a910e4ac86ef?sa=X&ved=1t:8290&ictx=111",
+      "programHref": "/movies/venue/cine-mariel",
+      "moviesHref": "/movies/venue/cine-mariel",
       "venuesHref": "/venues"
     }
   ],
@@ -3269,6 +3298,31 @@
       "director": "Paolo Strippoli",
       "posterUrl": "/uploads/2jpkq6xhcxanxoudeqpyhnucwr1_ecf4097151.jpg",
       "synopsis": "Ένας καθηγητής φυσικής αγωγής μετακομίζει σε ένα απομονωμένο ορεινό χωριό, όπου οι κάτοικοι φαίνεται να ζουν σε απόλυτη γαλήνη. Σύντομα όμως ανακαλύπτει ένα σκοτεινό τελετουργικό: μία φορά την εβδομάδα, οι χωρικοί απαλλάσσονται από τον πόνο τους χάρη σε ένα μοναχικό αγόρι που γεννήθηκε με το παράξενο χάρισμα να θεραπεύει τις ψυχές των ανθρώπων μόνο με μια αγκαλιά. Προσπαθώντας να το σώσει από αυτή την παράνοια, ο άντρας έρχεται αντιμέτωπος με τη δική του σκοτεινή πλευρά."
+    },
+    {
+      "path": "/movies/movie-3",
+      "slug": "movie-3",
+      "title": "Ανεμοδαρμένα Ύψη",
+      "originalTitle": "Wuthering Heights",
+      "genreSlugs": [],
+      "director": "Emerald Fennell",
+      "posterUrl": "/uploads/ywro5dye8ryyxjd6cvd69jlzeic_d878170ef5.jpg"
+    },
+    {
+      "path": "/movies/project-hail-mary",
+      "slug": "project-hail-mary",
+      "title": "Αποστολή Χαίρε Μαρία",
+      "originalTitle": "Project Hail Mary",
+      "genreSlugs": [],
+      "posterUrl": "/uploads/tawkdfup4tobzirxkv6e5kt5are_9e4f639eb9.jpg"
+    },
+    {
+      "path": "/movies/zootopia",
+      "slug": "zootopia",
+      "title": "Ζωούπολη 2",
+      "originalTitle": "Zootopia",
+      "genreSlugs": [],
+      "posterUrl": "/uploads/5yoedzieuhvqgcpo1jun45a1pec_3fd8ff8d09.jpg"
     }
   ],
   "theaterShows": [

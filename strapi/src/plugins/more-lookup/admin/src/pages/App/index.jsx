@@ -526,6 +526,9 @@ function SyncReportPanel({ report }) {
   const [showErrors, setShowErrors] = React.useState(false);
 
   const created = Number(report.created ?? 0);
+  const createdFromBuckets = Number(report.createdFromBuckets ?? created);
+  const createdInDb = report.createdInDb != null ? Number(report.createdInDb) : null;
+  const createdMismatch = createdInDb != null && createdInDb !== createdFromBuckets;
   const alreadyExists = Number(report.alreadyExists ?? 0);
   const skippedNoVenue = Number(report.skippedNoVenue ?? 0);
   const skippedUnknown = Number(report.skippedUnknownEventId ?? 0);
@@ -574,6 +577,14 @@ function SyncReportPanel({ report }) {
           tone={created > 0 ? 'success' : 'neutral'}
           hint="Σύνολο στο CMS"
         />
+        {createdMismatch ? (
+          <StatBadge
+            label="Όντως στη βάση"
+            value={createdInDb}
+            tone="warning"
+            hint={`Μετρητές sync: ${createdFromBuckets} — ασυμφωνία`}
+          />
+        ) : null}
         <StatBadge label="Ήδη υπήρχαν" value={alreadyExists} />
         <StatBadge
           label="Χωρίς venue_id"

@@ -20,7 +20,6 @@ const {
 const { buildMoreImportTrace } = require('./moreImportTrace');
 
 const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 120);
-const GOOGLE_MAPS_URL_MAX = 500;
 
 function compactSyncErrorMessage(raw) {
   const s = String(raw || '').trim();
@@ -69,28 +68,6 @@ function pushSyncError(report, dedup, entry) {
   report.errors.push({ ...entry, error: msg });
 }
 
-/** Σύντομο maps URL — όχι embed (ξεπερνά VARCHAR). */
-function googleMapsUrlForVenueStorage(event) {
-  const lat = event?.venueLatitude ?? event?.venueLat;
-  const lng = event?.venueLongitude ?? event?.venueLng;
-  const la = lat != null ? Number(String(lat).replace(',', '.')) : NaN;
-  const lo = lng != null ? Number(String(lng).replace(',', '.')) : NaN;
-  if (Number.isFinite(la) && Number.isFinite(lo)) {
-    return `https://www.google.com/maps?q=${la},${lo}`;
-  }
-
-  const mapUrl = String(event?.venueMapUrl || event?.venueMapURL || '').trim();
-  if (!mapUrl || !/google\.com\/maps/i.test(mapUrl)) return undefined;
-
-  if (mapUrl.includes('/maps/embed')) {
-    const coords = mapUrl.match(/!3d(-?[\d.]+)!4d(-?[\d.]+)/);
-    if (coords) return `https://www.google.com/maps?q=${coords[1]},${coords[2]}`;
-    return undefined;
-  }
-
-  return mapUrl.length <= GOOGLE_MAPS_URL_MAX ? mapUrl : undefined;
-}
-
 /** Κατά sync: δημιουργία χώρου από More αν λείπει (venueId / venueName). */
 const AUTO_CREATE_THEATER_VENUES = process.env.MORE_THEATER_SYNC_AUTO_CREATE_VENUES !== 'false';
 const AUTO_CREATE_CINEMA_VENUES = process.env.MORE_CINEMA_SYNC_AUTO_CREATE_VENUES !== 'false';
@@ -99,7 +76,6 @@ const VENUE_AUTO_CREATE = {
   theater: {
     isEnabled: () => AUTO_CREATE_THEATER_VENUES,
     venueType: 'theater',
-    findTypeFilter: { $ne: 'cinema' },
     defaultNamePrefix: 'Θέατρο More',
     info: 'Αυτόματη δημιουργία από More theater sync.',
     slugPrefix: 'theater',
@@ -110,7 +86,6 @@ const VENUE_AUTO_CREATE = {
   cinema: {
     isEnabled: () => AUTO_CREATE_CINEMA_VENUES,
     venueType: 'cinema',
-    findTypeFilter: 'cinema',
     defaultNamePrefix: 'Σινεμά More',
     info: 'Αυτόματη δημιουργία από More cinema sync.',
     slugPrefix: 'cinema',
@@ -288,7 +263,8 @@ function buildVenueDataFromMoreEvent(event, config) {
   const data = {
     name: venueName,
     type: config.venueType,
-    publishedAt: new Date().toISOString(),
+    // Αυτόματη δημιουργία από sync → μένει draft (unpublished) ακόμη κι αν έχει προβολές/παραστάσεις.
+    publishedAt: null,
     info: config.info,
   };
   if (moreVenueId) data.venue_id = moreVenueId;
@@ -296,23 +272,51 @@ function buildVenueDataFromMoreEvent(event, config) {
     data.summer_outdoor = true;
   }
 
-  const mapsUrl = googleMapsUrlForVenueStorage(event);
-  if (mapsUrl) data.google_maps_url = mapsUrl;
+  // Χωρίς google_maps_url: οι διευθύνσεις/χάρτες από το More είναι συχνά λάθος → τα βάζει admin χειροκίνητα.
 
   return { data, moreVenueId, venueName };
 }
 
-async function findVenueByMoreId(strapi, moreVenueId, config) {
-  if (!moreVenueId) return null;
-  const typeFilter =
-    typeof config.findTypeFilter === 'string'
-      ? config.findTypeFilter
-      : { $ne: 'cinema' };
+const GREEK_TO_LATIN = {
+  α: 'a', ά: 'a', β: 'v', γ: 'g', δ: 'd', ε: 'e', έ: 'e', ζ: 'z', η: 'i', ή: 'i',
+  θ: 'th', ι: 'i', ί: 'i', ϊ: 'i', ΐ: 'i', κ: 'k', λ: 'l', μ: 'm', ν: 'n', ξ: 'x',
+  ο: 'o', ό: 'o', π: 'p', ρ: 'r', σ: 's', ς: 's', τ: 't', υ: 'y', ύ: 'y', ϋ: 'y',
+  ΰ: 'y', φ: 'f', χ: 'ch', ψ: 'ps', ω: 'o', ώ: 'o',
+};
+
+/** Slug από όνομα χώρου (μεταγραφή ελληνικών → λατινικά)· ποτέ με venue_id. */
+function slugifyVenueName(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .split('')
+    .map((ch) => GREEK_TO_LATIN[ch] ?? ch)
+    .join('')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+/** Βρίσκει χώρο που υπάρχει ήδη με ίδιο όνομα (αποφυγή διπλότυπων). */
+async function findVenueByName(strapi, name) {
+  const trimmed = String(name || '').trim();
+  if (!trimmed) return null;
   const rows = await strapi.entityService.findMany('api::venue.venue', {
-    filters: {
-      venue_id: moreVenueId,
-      type: typeFilter,
-    },
+    filters: { name: { $eqi: trimmed } },
+    fields: ['id', 'name', 'slug', 'venue_id', 'summer_outdoor', 'type'],
+    publicationState: 'preview',
+    limit: 1,
+  });
+  return Array.isArray(rows) && rows.length ? rows[0] : null;
+}
+
+async function findVenueByMoreId(strapi, moreVenueId) {
+  if (!moreVenueId) return null;
+  // Global έλεγχος venue_id (ανεξαρτήτως type): το More venueId είναι μοναδικό ανά φυσικό χώρο
+  // → αποφυγή διπλότυπων ακόμη κι αν ο χώρος υπάρχει με άλλο type.
+  const rows = await strapi.entityService.findMany('api::venue.venue', {
+    filters: { venue_id: moreVenueId },
     fields: ['id', 'name', 'slug', 'venue_id', 'summer_outdoor', 'type'],
     publicationState: 'preview',
     limit: 1,
@@ -327,8 +331,10 @@ async function createVenueFromMore(strapi, event, report, config, errorDedup) {
   if (!Array.isArray(report[config.listKey])) report[config.listKey] = [];
   if (typeof report[config.countKey] !== 'number') report[config.countKey] = 0;
 
-  try {
-    const created = await strapi.entityService.create('api::venue.venue', { data });
+  // Slug από το όνομα (μεταγραφή ελληνικών)· αν λείπει, fallback στο slugPrefix.
+  const baseSlug = slugifyVenueName(venueName) || config.slugPrefix;
+
+  const recordCreated = (created, note) => {
     report[config.countKey] += 1;
     report[config.listKey].push({
       id: created.id,
@@ -337,45 +343,78 @@ async function createVenueFromMore(strapi, event, report, config, errorDedup) {
       moreVenueId: moreVenueId || null,
     });
     strapi.log.info(
-      `[${config.logTag}] created venue ${created.id} ${created.name} (moreVenueId=${moreVenueId || '—'})`,
+      `[${config.logTag}] created venue ${created.id} ${created.name}${note ? ` (${note})` : ''} (moreVenueId=${moreVenueId || '—'})`,
     );
+  };
+
+  try {
+    const created = await strapi.entityService.create('api::venue.venue', {
+      data: { ...data, slug: baseSlug },
+    });
+    recordCreated(created);
     return created;
   } catch (e) {
     const msg = e?.message || String(e);
-    if (moreVenueId && /unique|slug|already exists/i.test(msg)) {
+    if (!/unique|slug|already exists/i.test(msg)) {
+      pushSyncError(report, errorDedup, {
+        action: 'create_venue',
+        venueType: config.venueType,
+        moreVenueId,
+        name: venueName,
+        error: msg,
+      });
+      return null;
+    }
+
+    // Slug conflict = υπάρχει ήδη χώρος με το ίδιο όνομα → reuse αντί για διπλότυπο.
+    const existingByName = await findVenueByName(strapi, venueName);
+    if (existingByName) {
+      if (moreVenueId && !normalizeMoreVenueId(existingByName.venue_id)) {
+        try {
+          await strapi.entityService.update('api::venue.venue', existingByName.id, {
+            data: { venue_id: moreVenueId },
+          });
+          existingByName.venue_id = moreVenueId;
+        } catch (eUpd) {
+          strapi.log.warn(
+            `[${config.logTag}] backfill venue_id απέτυχε για ${existingByName.id}: ${eUpd?.message || eUpd}`,
+          );
+        }
+      }
+      strapi.log.info(
+        `[${config.logTag}] reuse existing venue ${existingByName.id} ${existingByName.name} (moreVenueId=${moreVenueId || '—'})`,
+      );
+      return existingByName;
+    }
+
+    // Δεν ταυτίστηκε με όνομα (διαφορετικός χώρος, ίδιο slug) → name-based slug με αριθμητικό suffix.
+    for (let i = 2; i <= 50; i += 1) {
       try {
-        const slugSuffix = String(moreVenueId).replace(/\W+/g, '-');
         const created = await strapi.entityService.create('api::venue.venue', {
-          data: { ...data, slug: `${config.slugPrefix}-${slugSuffix}` },
+          data: { ...data, slug: `${baseSlug}-${i}` },
         });
-        report[config.countKey] += 1;
-        report[config.listKey].push({
-          id: created.id,
-          name: created.name,
-          slug: created.slug,
-          moreVenueId,
-        });
-        strapi.log.info(
-          `[${config.logTag}] created venue ${created.id} ${created.name} (slug fallback, moreVenueId=${moreVenueId})`,
-        );
+        recordCreated(created, `slug suffix -${i}`);
         return created;
-      } catch (e2) {
-        pushSyncError(report, errorDedup, {
-          action: 'create_venue',
-          venueType: config.venueType,
-          moreVenueId,
-          name: venueName,
-          error: e2?.message || String(e2),
-        });
-        return null;
+      } catch (eRetry) {
+        if (!/unique|slug|already exists/i.test(eRetry?.message || String(eRetry))) {
+          pushSyncError(report, errorDedup, {
+            action: 'create_venue',
+            venueType: config.venueType,
+            moreVenueId,
+            name: venueName,
+            error: eRetry?.message || String(eRetry),
+          });
+          return null;
+        }
       }
     }
+
     pushSyncError(report, errorDedup, {
       action: 'create_venue',
       venueType: config.venueType,
       moreVenueId,
       name: venueName,
-      error: msg,
+      error: `Αδύνατη δημιουργία μοναδικού slug από «${venueName}» (${baseSlug})`,
     });
     return null;
   }
@@ -413,10 +452,32 @@ async function ensureVenueFromMoreEvent(
 
   const promise = (async () => {
     if (moreVenueId) {
-      const fromDb = await findVenueByMoreId(strapi, moreVenueId, config);
+      const fromDb = await findVenueByMoreId(strapi, moreVenueId);
       if (fromDb) {
         registerVenueInLookup(lookup, fromDb);
         return fromDb;
+      }
+    }
+
+    // Έλεγχος ονόματος στη DB → αποφυγή διπλότυπου χώρου που υπάρχει ήδη.
+    const venueName = String(event?.venueName || '').trim();
+    if (venueName) {
+      const byName = await findVenueByName(strapi, venueName);
+      if (byName) {
+        if (moreVenueId && !normalizeMoreVenueId(byName.venue_id)) {
+          try {
+            await strapi.entityService.update('api::venue.venue', byName.id, {
+              data: { venue_id: moreVenueId },
+            });
+            byName.venue_id = moreVenueId;
+          } catch (e) {
+            strapi.log.warn(
+              `[${config.logTag}] backfill venue_id απέτυχε για ${byName.id}: ${e?.message || e}`,
+            );
+          }
+        }
+        registerVenueInLookup(lookup, byName);
+        return byName;
       }
     }
 
@@ -574,6 +635,31 @@ async function loadTheaterShowsWithCodes(strapi, theaterShowIdFilter) {
   });
   const list = Array.isArray(rows) ? rows : [];
   return list.filter((show) => collectEventGroupCodes(show).length > 0);
+}
+
+/**
+ * Μετρά πόσες more_sync εγγραφές (προβολές + παραστάσεις) δημιουργήθηκαν στη βάση από
+ * τη στιγμή `sinceMs` και μετά — ανεξάρτητη επαλήθευση του «Νέες» της αναφοράς.
+ */
+async function countMoreSyncCreatedSince(strapi, sinceMs) {
+  const sinceIso = new Date(sinceMs).toISOString();
+  const filters = {
+    import_source: 'more_sync',
+    createdAt: { $gte: sinceIso },
+  };
+  const safeCount = async (uid) => {
+    try {
+      return await strapi.entityService.count(uid, { filters });
+    } catch (e) {
+      strapi.log.warn(`[more-showtime-sync] countMoreSyncCreatedSince ${uid}: ${e?.message || e}`);
+      return 0;
+    }
+  };
+  const [showtimes, performances] = await Promise.all([
+    safeCount('api::showtime.showtime'),
+    safeCount('api::theater-performance.theater-performance'),
+  ]);
+  return { showtimes, performances, total: showtimes + performances };
 }
 
 async function showtimeExistsAt(strapi, { movieId, venueId, datetime }) {
@@ -1393,11 +1479,28 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     now,
   });
 
-  const created =
+  const createdFromBuckets =
     movieReport.createdFromMovies +
     movieReport.createdFromVenues +
     theaterReport.createdFromTheaterShows +
     theaterReport.createdFromTheaterVenues;
+
+  // Ανεξάρτητη επαλήθευση: μέτρα όσες more_sync εγγραφές μπήκαν όντως στη βάση σε αυτό
+  // το τρέξιμο (createdAt >= started). Αν η αναφορά υπολείπεται, εδώ θα φανεί η απόκλιση.
+  const dbCreated = await countMoreSyncCreatedSince(strapi, started);
+
+  // Headline = ό,τι μεγαλύτερο μεταξύ μετρητών sync και πραγματικών inserts στη βάση,
+  // ώστε το «Νέες» να μην υπολείπεται ποτέ των πραγματικά προστιθέμενων προβολών.
+  const created = Math.max(createdFromBuckets, dbCreated.total);
+
+  if (createdFromBuckets !== dbCreated.total) {
+    strapi.log.warn(
+      `[more-showtime-sync] ασυμφωνία «Νέες»: μετρητές=${createdFromBuckets} ` +
+        `(ταινίες=${movieReport.createdFromMovies} σινεμά_bundle=${movieReport.createdFromVenues} ` +
+        `θέατρο=${theaterReport.createdFromTheaterShows} θέατρο_bundle=${theaterReport.createdFromTheaterVenues}) ` +
+        `· πραγματικά_στη_βάση=${dbCreated.total} (showtimes=${dbCreated.showtimes} performances=${dbCreated.performances})`,
+    );
+  }
 
   const report = {
     ok: true,
@@ -1411,6 +1514,10 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     theaterVenuesWithMoreId: theaterReport.theaterVenuesWithMoreId,
     theaterVenuesWithBundleCode: theaterReport.theaterVenuesWithBundleCode,
     created,
+    createdFromBuckets,
+    createdInDb: dbCreated.total,
+    createdInDbShowtimes: dbCreated.showtimes,
+    createdInDbPerformances: dbCreated.performances,
     createdFromMovies: movieReport.createdFromMovies,
     createdFromVenues: movieReport.createdFromVenues,
     createdFromTheaterShows: theaterReport.createdFromTheaterShows,
@@ -1445,6 +1552,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   report.message =
     `Νέες: ${created} (ταινίες: ${report.createdFromMovies} · σινεμά bundle: ${report.createdFromVenues}` +
     ` · θέατρο: ${report.createdFromTheaterShows} · θέατρο bundle: ${report.createdFromTheaterVenues})` +
+    (dbCreated.total !== createdFromBuckets
+      ? ` · στη βάση: ${dbCreated.total} (showtimes ${dbCreated.showtimes} · παραστάσεις ${dbCreated.performances})`
+      : '') +
     ` · υπήρχαν: ${report.alreadyExists}` +
     (report.createdCinemaVenues
       ? ` · νέα σινεμά: ${report.createdCinemaVenues}`
@@ -1466,7 +1576,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
       : '');
 
   strapi.log.info(
-    `[more-showtime-sync] movies=${report.moviesScanned} evgCodes=${report.movieEventGroupCodesTotal} (${report.moviesWithMultipleEventGroupCodes} με επιπλέον more_event_groups) theater=${report.theaterShowsScanned} created=${report.created} exists=${report.alreadyExists} unknownEventId=${report.skippedUnknownEventId} (${report.durationMs}ms)`,
+    `[more-showtime-sync] movies=${report.moviesScanned} evgCodes=${report.movieEventGroupCodesTotal} (${report.moviesWithMultipleEventGroupCodes} με επιπλέον more_event_groups) theater=${report.theaterShowsScanned} created=${report.created} (buckets=${report.createdFromBuckets} db=${report.createdInDb}) exists=${report.alreadyExists} unknownEventId=${report.skippedUnknownEventId} (${report.durationMs}ms)`,
   );
 
   return report;

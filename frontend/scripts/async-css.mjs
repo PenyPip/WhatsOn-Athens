@@ -1,8 +1,12 @@
 /**
  * Μετατρέπει blocking <link rel="stylesheet"> σε async (media=print onload)
- * ώστε το #home-static-lcp και άλλο server HTML να ζωγραφίζονται πριν το πλήρες Tailwind.
+ * ώστε το #home-static-lcp να ζωγραφίζεται (inline critical CSS) πριν το πλήρες Tailwind.
+ *
+ * ΜΟΝΟ στην αρχική (`index.html`): εκεί υπάρχει inline critical CSS για το hero/LCP.
+ * Οι εσωτερικές σελίδες ΔΕΝ έχουν inline critical CSS — αν γίνει async το Tailwind,
+ * εμφανίζεται FOUC (π.χ. αφίσα χωρίς styles πάνω-αριστερά στο hard refresh).
  */
-import { readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync } from "node:fs";
 import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -30,29 +34,16 @@ function patchHtml(html) {
   return parts.map((part) => (part.startsWith("<script>self.__next_f.push") ? part : patchSegment(part))).join("");
 }
 
-function walk(dir) {
-  let count = 0;
-  for (const name of readdirSync(dir)) {
-    const full = join(dir, name);
-    const st = statSync(full);
-    if (st.isDirectory()) {
-      count += walk(full);
-      continue;
-    }
-    if (!name.endsWith(".html")) continue;
-    const raw = readFileSync(full, "utf8");
-    const next = patchHtml(raw);
-    if (next !== raw) {
-      writeFileSync(full, next);
-      count += 1;
-    }
-  }
-  return count;
-}
-
 try {
-  const n = walk(OUT);
-  console.log(`[async-css] Patched ${n} HTML file(s) under out/`);
+  const homeHtml = join(OUT, "index.html");
+  const raw = readFileSync(homeHtml, "utf8");
+  const next = patchHtml(raw);
+  let n = 0;
+  if (next !== raw) {
+    writeFileSync(homeHtml, next);
+    n = 1;
+  }
+  console.log(`[async-css] Patched ${n} HTML file(s) (home only)`);
 } catch (e) {
   console.error("[async-css] Failed:", e);
   process.exit(1);

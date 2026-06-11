@@ -584,6 +584,24 @@
   },
   {
     "slug": [
+      "movies",
+      "movie-3"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "project-hail-mary"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "zootopia"
+    ]
+  },
+  {
+    "slug": [
       "theater",
       "martyras-katigorias-4os-xronos"
     ]
@@ -1248,6 +1266,13 @@
     "slug": [
       "movies",
       "venue",
+      "cine-attikon-alsos"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
       "dimotikos-cine-dafni"
     ]
   },
@@ -1347,13 +1372,6 @@
       "theater",
       "venue",
       "neos-akadimos"
-    ]
-  },
-  {
-    "slug": [
-      "theater",
-      "venue",
-      "dimotiko-t-heatro-peiraia"
     ]
   },
   {
@@ -1724,14 +1742,14 @@
     "slug": [
       "movies",
       "venue",
-      "cinema-2420"
+      "cinema-bakoyra-aithoysa-1"
     ]
   },
   {
     "slug": [
       "movies",
       "venue",
-      "cinema-3986"
+      "cine-ayra"
     ]
   },
   {
@@ -1745,28 +1763,28 @@
     "slug": [
       "movies",
       "venue",
-      "cinema-3474"
+      "cine-creta-maris"
     ]
   },
   {
     "slug": [
       "movies",
       "venue",
-      "cinema-2776"
+      "domotel-kastri-contemporary-iotel"
     ]
   },
   {
     "slug": [
       "movies",
       "venue",
-      "cinema-3689"
+      "makedonikon"
     ]
   },
   {
     "slug": [
       "movies",
       "venue",
-      "cinema-2615"
+      "cinema-bakoyra-aithoysa-2"
     ]
   },
   {
@@ -1787,7 +1805,7 @@
     "slug": [
       "movies",
       "venue",
-      "cinema-3393"
+      "villagio-cinema"
     ]
   },
   {
@@ -1850,7 +1868,7 @@
     "slug": [
       "movies",
       "venue",
-      "cinema-2336"
+      "kinimatografos-aello-therinos"
     ]
   },
   {
@@ -1941,7 +1959,7 @@
     "slug": [
       "theater",
       "venue",
-      "theater-422"
+      "3o-gymnasio-ierapetras-kyrveia"
     ]
   },
   {
@@ -2130,7 +2148,7 @@
     "slug": [
       "theater",
       "venue",
-      "theater-55"
+      "green-theater-t-heatro-arxaion-kleonon"
     ]
   },
   {
@@ -2214,7 +2232,7 @@
     "slug": [
       "theater",
       "venue",
-      "theater-40"
+      "alex-cinema"
     ]
   },
   {
@@ -2270,7 +2288,7 @@
     "slug": [
       "theater",
       "venue",
-      "theater-7248"
+      "kinimatotheatro-reks"
     ]
   },
   {
@@ -2319,13 +2337,6 @@
     "slug": [
       "theater",
       "venue",
-      "theater-7096"
-    ]
-  },
-  {
-    "slug": [
-      "theater",
-      "venue",
       "theater-2633"
     ]
   },
@@ -2354,14 +2365,14 @@
     "slug": [
       "theater",
       "venue",
-      "theater-1523"
+      "cine-victoria-platamonas"
     ]
   },
   {
     "slug": [
-      "theater",
+      "movies",
       "venue",
-      "theater-4637"
+      "cine-savvas-nea-plagia"
     ]
   },
   {
@@ -2382,7 +2393,7 @@
     "slug": [
       "theater",
       "venue",
-      "theater-787"
+      "1o-dimotiko-sxoleio-liksoyrioy"
     ]
   },
   {
@@ -2403,7 +2414,7 @@
     "slug": [
       "theater",
       "venue",
-      "theater-4506"
+      "royal-theater-ayleios-xoros"
     ]
   },
   {
@@ -2418,13 +2429,6 @@
       "theater",
       "venue",
       "theater-2324"
-    ]
-  },
-  {
-    "slug": [
-      "theater",
-      "venue",
-      "theater-2336"
     ]
   },
   {
@@ -2585,49 +2589,49 @@
     "slug": [
       "theater",
       "venue",
-      "theater-638"
+      "dimotiko-theatro-peiraia"
     ]
   },
   {
     "slug": [
       "theater",
       "venue",
-      "theater-3113"
+      "theatro-anesis-pano-skini"
     ]
   },
   {
     "slug": [
       "theater",
       "venue",
-      "theater-48"
+      "dimotiko-theatro-ilioypolis-dimitris-kintis"
     ]
   },
   {
     "slug": [
       "theater",
       "venue",
-      "theater-2727"
+      "romaiko-odeio-nikopolis"
     ]
   },
   {
     "slug": [
       "movies",
       "venue",
-      "cinema-3332"
+      "cine-pylaia"
     ]
   },
   {
     "slug": [
       "movies",
       "venue",
-      "cinema-3949"
+      "cine-panorama"
     ]
   },
   {
     "slug": [
       "movies",
       "venue",
-      "cinema-3311"
+      "lais-therino-sinema"
     ]
   },
   {
@@ -2635,6 +2639,20 @@
       "theater",
       "venue",
       "therino-dimotiko-theatro"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
+      "olympion-polyxoros-aithoysa-1"
+    ]
+  },
+  {
+    "slug": [
+      "movies",
+      "venue",
+      "cine-mariel"
     ]
   },
   {
