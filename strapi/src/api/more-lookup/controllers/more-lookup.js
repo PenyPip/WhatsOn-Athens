@@ -277,6 +277,15 @@ module.exports = {
     ctx.body = { ok: true, ...getMoreShowtimeSyncJob() };
   },
 
+  async syncShowtimesReset(ctx) {
+    const cleared = resetStuckMoreShowtimeSyncJob('Ακυρώθηκε χειροκίνητα (reset).');
+    ctx.body = {
+      ok: true,
+      cleared: Boolean(cleared),
+      job: getMoreShowtimeSyncJob(),
+    };
+  },
+
   async syncShowtimes(ctx) {
     if (process.env.MORE_SHOWTIME_SYNC_ENABLED === 'false') {
       ctx.status = 503;

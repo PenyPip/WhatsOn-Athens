@@ -2,13 +2,17 @@
 
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 const { syncShowtimesFromMore } = require('./moreShowtimeSync');
 
 const JOB_FILE = path.join(process.cwd(), 'data', 'more-showtime-sync-job.json');
+const WORKER_LOG = path.join(process.cwd(), 'data', 'more-showtime-sync-worker.log');
 const STALE_MS = Number(process.env.MORE_SHOWTIME_SYNC_STALE_MS || 20 * 60 * 1000);
 const HEARTBEAT_MS = 30_000;
+const START_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_START_DELAY_MS || 2500);
+const USE_WORKER = process.env.MORE_SHOWTIME_SYNC_IN_PROCESS !== 'true';
 
-/** @type {{ id: string, status: string, startedAt: string, finishedAt?: string, progress: string, report?: object, error?: string, lastProgressAt?: string } | null} */
+/** @type {object | null} */
 let activeJob = null;
 
 function ensureJobDir() {
@@ -27,6 +31,7 @@ function publicJob(job) {
     error: job.error ?? null,
     report: job.report ?? null,
     lastProgressAt: job.lastProgressAt ?? null,
+    workerPid: job.workerPid ?? null,
   };
 }
 
@@ -35,7 +40,7 @@ function persistJob(job) {
   try {
     ensureJobDir();
     fs.writeFileSync(JOB_FILE, JSON.stringify(publicJob(job)));
-  } catch (e) {
+  } catch {
     // μη κρίσιμο
   }
 }
@@ -51,13 +56,36 @@ function loadPersistedJob() {
   }
 }
 
+function loadFullJobFromDisk() {
+  try {
+    if (!fs.existsSync(JOB_FILE)) return null;
+    return JSON.parse(fs.readFileSync(JOB_FILE, 'utf8'));
+  } catch {
+    return null;
+  }
+}
+
+function isProcessAlive(pid) {
+  const n = Number(pid);
+  if (!Number.isFinite(n) || n <= 0) return false;
+  try {
+    process.kill(n, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function markInterruptedIfNeeded(saved) {
   if (saved?.status !== 'running') return saved;
+  if (isProcessAlive(saved.workerPid)) {
+    return saved;
+  }
   return {
     ...saved,
     status: 'failed',
     error:
-      'Το sync διακόπηκε (επανεκκίνηση Strapi ή crash). Τρέξε ξανά και έλεγξε τα logs του server.',
+      'Το sync διακόπηκε (επανεκκίνηση Strapi ή crash worker). Τρέξε ξανά — «Ξανά (force)».',
     finishedAt: new Date().toISOString(),
     progress: 'Διακόπηκε',
   };
@@ -72,20 +100,6 @@ function initJobStateFromDisk() {
 }
 
 initJobStateFromDisk();
-
-function getMoreShowtimeSyncJob() {
-  const job = activeJob ? publicJob(activeJob) : loadPersistedJob();
-  if (isJobStale(job)) {
-    return resetStuckMoreShowtimeSyncJob(
-      'Το sync κόλλησε χωρίς πρόοδο — ακυρώθηκε αυτόματα. Τρέξε ξανά (μειώνει φόρτο: MORE_SHOWTIME_SYNC_CONCURRENCY=3).',
-    );
-  }
-  return job;
-}
-
-function isMoreShowtimeSyncRunning() {
-  return activeJob?.status === 'running';
-}
 
 function isJobStale(job) {
   if (!job || job.status !== 'running') return false;
@@ -112,12 +126,37 @@ function resetStuckMoreShowtimeSyncJob(reason) {
   if (!job || job.status !== 'running') return null;
   const msg =
     reason ||
-    'Το sync διακόπηκε (502/restart Strapi ή crash). Τρέξε ξανά — η προηγούμενη εργασία ακυρώθηκε.';
+    'Το sync διακόπηκε (502/restart). Τρέξε ξανά — η προηγούμενη εργασία ακυρώθηκε.';
   if (activeJob) return failJob(activeJob, msg);
-  const failed = { ...job, ...{ status: 'failed', error: msg, finishedAt: new Date().toISOString(), progress: msg } };
+  const failed = {
+    ...job,
+    status: 'failed',
+    error: msg,
+    finishedAt: new Date().toISOString(),
+    progress: msg,
+  };
   activeJob = failed;
   persistJob(failed);
   return publicJob(failed);
+}
+
+function getMoreShowtimeSyncJob() {
+  const disk = loadPersistedJob();
+  if (disk && (!activeJob || activeJob.id === disk.id)) {
+    activeJob = disk;
+  }
+  const job = activeJob ? publicJob(activeJob) : disk;
+  if (isJobStale(job)) {
+    return resetStuckMoreShowtimeSyncJob(
+      'Το sync κόλλησε χωρίς πρόοδο — ακυρώθηκε. Τρέξε ξανά (worker + χαμηλό concurrency).',
+    );
+  }
+  return job;
+}
+
+function isMoreShowtimeSyncRunning() {
+  const job = getMoreShowtimeSyncJob();
+  return job?.status === 'running';
 }
 
 function touchJobProgress(jobRef, msg) {
@@ -127,21 +166,180 @@ function touchJobProgress(jobRef, msg) {
   persistJob(jobRef);
 }
 
+function patchJobOnDisk(jobId, patch) {
+  const current = loadFullJobFromDisk();
+  if (!current || current.id !== jobId) return null;
+  Object.assign(current, patch);
+  activeJob = current;
+  persistJob(current);
+  return current;
+}
+
+function spawnSyncWorker(strapi, jobId) {
+  const script = path.join(process.cwd(), 'scripts', 'sync-showtimes-worker.js');
+  const heapMb = String(process.env.MORE_SHOWTIME_SYNC_WORKER_HEAP || '768').replace(/\D/g, '') || '768';
+  ensureJobDir();
+  const logFd = fs.openSync(WORKER_LOG, 'a');
+
+  const child = spawn(
+    process.execPath,
+    [`--max-old-space-size=${heapMb}`, script, jobId],
+    {
+      detached: true,
+      stdio: ['ignore', logFd, logFd],
+      env: { ...process.env, MORE_SHOWTIME_SYNC_WORKER: '1' },
+    },
+  );
+  child.unref();
+
+  patchJobOnDisk(jobId, { workerPid: child.pid ?? null });
+  strapi.log.info(`[more-showtime-sync] worker spawned pid=${child.pid} job=${jobId} heap=${heapMb}MB`);
+  return child.pid;
+}
+
 /**
- * Ξεκινά sync στο background (δεν μπλοκάρει HTTP request / nginx timeout).
+ * Εκτέλεση sync μέσα στο worker process (φορτώνει δικό του Strapi instance).
+ * @param {string} jobId
+ */
+async function runMoreShowtimeSyncWorker(jobId) {
+  const saved = loadFullJobFromDisk();
+  if (!saved || saved.id !== jobId) {
+    console.error(`[sync-worker] Άγνωστο job ${jobId}`);
+    process.exit(1);
+  }
+  if (saved.status !== 'running') {
+    console.error(`[sync-worker] Job ${jobId} status=${saved.status} — skip`);
+    process.exit(0);
+  }
+
+  const workerOptions = saved.workerOptions || {};
+  let strapi;
+
+  const onProgress = (msg) => {
+    if (!msg) return;
+    patchJobOnDisk(jobId, {
+      status: 'running',
+      lastProgressAt: new Date().toISOString(),
+      progress: msg,
+    });
+  };
+
+  try {
+    console.log(`[sync-worker] boot Strapi job=${jobId}`);
+    onProgress('Worker: εκκίνηση Strapi…');
+    const Strapi = require('@strapi/strapi');
+    strapi = await Strapi().load();
+    onProgress('Worker: συγχρονισμός More…');
+
+    const report = await syncShowtimesFromMore(strapi, {
+      ...workerOptions,
+      onProgress,
+    });
+
+    patchJobOnDisk(jobId, {
+      status: 'completed',
+      report,
+      finishedAt: new Date().toISOString(),
+      progress: report.message || 'Ολοκληρώθηκε',
+      error: null,
+    });
+    console.log(`[sync-worker] completed job=${jobId} (${report.durationMs}ms)`);
+  } catch (e) {
+    const msg = e?.message || String(e);
+    patchJobOnDisk(jobId, {
+      status: 'failed',
+      error: msg,
+      finishedAt: new Date().toISOString(),
+      progress: `Αποτυχία: ${msg}`,
+    });
+    console.error(`[sync-worker] failed job=${jobId}`, e);
+    process.exitCode = 1;
+  } finally {
+    if (strapi) {
+      try {
+        await strapi.destroy();
+      } catch {
+        // ignore
+      }
+    }
+  }
+}
+
+function runSyncInProcess(strapi, jobRef, options, finish, onProgress) {
+  const heartbeat = setInterval(() => {
+    if (jobRef.status !== 'running') {
+      clearInterval(heartbeat);
+      return;
+    }
+    const ref = jobRef.lastProgressAt || jobRef.startedAt;
+    if (ref && Date.now() - new Date(ref).getTime() > STALE_MS) {
+      finish({
+        status: 'failed',
+        error:
+          'Το sync κόλλησε χωρίς πρόοδο. Χρησιμοποίησε worker mode (default) ή μείωσε MORE_SHOWTIME_SYNC_CONCURRENCY.',
+        finishedAt: new Date().toISOString(),
+        progress: 'Κολλημένο',
+      });
+      clearInterval(heartbeat);
+      strapi.log.error(`[more-showtime-sync] job ${jobRef.id} stale`);
+    }
+  }, HEARTBEAT_MS);
+
+  (async () => {
+    try {
+      const report = await syncShowtimesFromMore(strapi, { ...options, onProgress });
+      finish({
+        status: 'completed',
+        report,
+        finishedAt: new Date().toISOString(),
+        progress: report.message || 'Ολοκληρώθηκε',
+        error: null,
+      });
+      strapi.log.info(`[more-showtime-sync] job ${jobRef.id} completed (${report.durationMs}ms)`);
+    } catch (e) {
+      const msg = e?.message || String(e);
+      finish({
+        status: 'failed',
+        error: msg,
+        finishedAt: new Date().toISOString(),
+        progress: `Αποτυχία: ${msg}`,
+      });
+      strapi.log.error(`[more-showtime-sync] job ${jobRef.id} failed`, e);
+    } finally {
+      clearInterval(heartbeat);
+    }
+  })().catch((e) => {
+    if (jobRef.status === 'running') {
+      const msg = e?.message || String(e);
+      finish({
+        status: 'failed',
+        error: msg,
+        finishedAt: new Date().toISOString(),
+        progress: `Αποτυχία: ${msg}`,
+      });
+    }
+    clearInterval(heartbeat);
+  });
+}
+
+/**
  * @returns {{ started: boolean, reason?: string, job: object | null }}
  */
 function startMoreShowtimeSyncJob(strapi, options = {}) {
   if (activeJob?.status === 'running') {
     if (options.force === true || isJobStale(activeJob)) {
       resetStuckMoreShowtimeSyncJob(
-        options.force === true
-          ? 'Ακυρώθηκε χειροκίνητα — ξεκινά νέο sync.'
-          : undefined,
+        options.force === true ? 'Ακυρώθηκε χειροκίνητα — ξεκινά νέο sync.' : undefined,
       );
     } else {
       return { started: false, reason: 'already_running', job: publicJob(activeJob) };
     }
+  }
+
+  const diskRunning = loadPersistedJob();
+  if (diskRunning?.status === 'running' && !options.force && !isJobStale(diskRunning)) {
+    activeJob = diskRunning;
+    return { started: false, reason: 'already_running', job: publicJob(diskRunning) };
   }
 
   const id = `sync-${Date.now()}`;
@@ -151,88 +349,48 @@ function startMoreShowtimeSyncJob(strapi, options = {}) {
     status: 'running',
     startedAt,
     lastProgressAt: startedAt,
-    progress: 'Έναρξη συγχρονισμού…',
+    progress: 'Έναρξη συγχρονισμού (worker)…',
     report: null,
     error: null,
+    workerOptions: {
+      movieId: options.movieId,
+      theaterShowId: options.theaterShowId,
+    },
   };
   persistJob(activeJob);
 
-  const jobRef = activeJob;
-  let lastProgressMs = Date.now();
+  if (USE_WORKER) {
+    setTimeout(() => {
+      try {
+        spawnSyncWorker(strapi, id);
+        touchJobProgress(activeJob, 'Worker ξεκίνησε — συγχρονισμός More σε εξέλιξη…');
+      } catch (e) {
+        failJob(
+          activeJob,
+          e?.message || 'Αποτυχία εκκίνησης worker — έλεγξε logs data/more-showtime-sync-worker.log',
+        );
+        strapi.log.error('[more-showtime-sync] worker spawn failed', e);
+      }
+    }, START_DELAY_MS);
+    return { started: true, job: publicJob(activeJob), mode: 'worker' };
+  }
 
+  const jobRef = activeJob;
   const onProgress = (msg) => {
     if (jobRef.status !== 'running' || !msg) return;
-    lastProgressMs = Date.now();
     touchJobProgress(jobRef, msg);
     if (typeof options.onProgress === 'function') options.onProgress(msg);
   };
-
-  const heartbeat = setInterval(() => {
-    if (jobRef.status !== 'running') {
-      clearInterval(heartbeat);
-      return;
-    }
-    if (Date.now() - lastProgressMs > STALE_MS) {
-      jobRef.status = 'failed';
-      jobRef.error =
-        'Το sync κόλλησε χωρίς πρόοδο (πιθανό timeout More API ή υπερβολικό φόρτο). Δοκίμασε ξανά ή μείωσε MORE_SHOWTIME_SYNC_CONCURRENCY.';
-      jobRef.finishedAt = new Date().toISOString();
-      jobRef.progress = jobRef.error;
-      persistJob(jobRef);
-      clearInterval(heartbeat);
-      strapi.log.error(`[more-showtime-sync] job ${id} stale (no progress ${STALE_MS}ms)`);
-    }
-  }, HEARTBEAT_MS);
-
   const finish = (patch) => {
     Object.assign(jobRef, patch);
     persistJob(jobRef);
-    clearInterval(heartbeat);
   };
 
-  // setImmediate: το POST επιστρέφει πριν ξεκινήσει βαρύ I/O (λιγότερα 502 στο nginx κατά το kick-off).
-  setImmediate(() => {
-    (async () => {
-      try {
-        const report = await syncShowtimesFromMore(strapi, {
-          ...options,
-          onProgress,
-        });
-        finish({
-          status: 'completed',
-          report,
-          finishedAt: new Date().toISOString(),
-          progress: report.message || 'Ολοκληρώθηκε',
-          error: null,
-        });
-        strapi.log.info(`[more-showtime-sync] job ${id} completed (${report.durationMs}ms)`);
-      } catch (e) {
-        const msg = e?.message || String(e);
-        finish({
-          status: 'failed',
-          error: msg,
-          finishedAt: new Date().toISOString(),
-          progress: `Αποτυχία: ${msg}`,
-        });
-        strapi.log.error(`[more-showtime-sync] job ${id} failed`, e);
-      }
-    })().catch((e) => {
-      if (jobRef.status === 'running') {
-        const msg = e?.message || String(e);
-        finish({
-          status: 'failed',
-          error: msg,
-          finishedAt: new Date().toISOString(),
-          progress: `Αποτυχία: ${msg}`,
-        });
-        strapi.log.error(`[more-showtime-sync] job ${id} unhandled`, e);
-      } else {
-        clearInterval(heartbeat);
-      }
-    });
-  });
+  setTimeout(() => {
+    runSyncInProcess(strapi, jobRef, options, finish, onProgress);
+  }, START_DELAY_MS);
 
-  return { started: true, job: publicJob(activeJob) };
+  return { started: true, job: publicJob(activeJob), mode: 'in-process' };
 }
 
 module.exports = {
@@ -240,4 +398,5 @@ module.exports = {
   isMoreShowtimeSyncRunning,
   startMoreShowtimeSyncJob,
   resetStuckMoreShowtimeSyncJob,
+  runMoreShowtimeSyncWorker,
 };

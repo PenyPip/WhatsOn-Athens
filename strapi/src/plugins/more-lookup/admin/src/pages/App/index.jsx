@@ -507,7 +507,15 @@ function syncErrorMetaLines(err) {
 
 function isTransientGatewayError(err) {
   const status = err?.response?.status ?? err?.status;
-  return status === 502 || status === 503 || status === 504;
+  if (status === 502 || status === 503 || status === 504) return true;
+  const body =
+    typeof err?.response?.data === 'string'
+      ? err.response.data
+      : typeof err?.response?.data?.message === 'string'
+        ? err.response.data.message
+        : '';
+  const msg = `${err?.message || ''} ${body}`;
+  return /502|503|504|bad gateway|gateway time-out|nginx/i.test(msg);
 }
 
 function groupSyncErrors(errors) {
@@ -1513,10 +1521,36 @@ const App = () => {
 
   const runSyncRequest = async (force = false) => {
     setSyncLoading(true);
-    setSyncProgress(force ? 'Επανεκκίνηση sync (force)…' : 'Έναρξη συγχρονισμού…');
+    setSyncProgress(force ? 'Reset + επανεκκίνηση sync…' : 'Έναρξη συγχρονισμού…');
     setSyncReport(null);
     try {
-      const res = await post('/api/more-lookup/sync-showtimes', force ? { force: true } : {});
+      if (force) {
+        try {
+          await post('/api/more-lookup/sync-showtimes/reset', {});
+        } catch {
+          // Strapi μπορεί να είναι down — συνεχίζουμε
+        }
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+
+      let res;
+      try {
+        res = await post('/api/more-lookup/sync-showtimes', force ? { force: true } : {});
+      } catch (postErr) {
+        if (isTransientGatewayError(postErr)) {
+          setSyncProgress('502 στην έναρξη — το worker μπορεί να ξεκίνησε, αναμονή…');
+          await new Promise((resolve) => setTimeout(resolve, 12000));
+          const report = await pollSyncJob();
+          setSyncReport(report);
+          toggleNotification({
+            type: report?.created > 0 ? 'success' : 'info',
+            message: report?.message || 'Συγχρονισμός ολοκληρώθηκε (μετά από 502).',
+          });
+          return;
+        }
+        throw postErr;
+      }
+
       const data = res?.data;
       if (data?.status === 'completed' && data?.report) {
         setSyncReport(data.report);
@@ -1527,7 +1561,7 @@ const App = () => {
         return;
       }
       if (data?.status === 'running' || data?.status === 'started') {
-        setSyncProgress(data.progress || 'Συγχρονισμός σε εξέλιξη…');
+        setSyncProgress(data.progress || 'Συγχρονισμός σε εξέλιξη (worker)…');
         const report = await pollSyncJob();
         setSyncReport(report);
         toggleNotification({
@@ -1558,7 +1592,7 @@ const App = () => {
             type: 'warning',
             message:
               retryErr?.message ||
-              '502 Bad Gateway — το Strapi έπεσε ενώ ξεκινούσε το sync. Πάτα «Ξανά (force)».',
+              '502 Bad Gateway — δοκίμασε «Ξανά (force)» ή server: docker compose logs strapi data/more-showtime-sync-worker.log',
           });
           return;
         }
@@ -1747,8 +1781,8 @@ const App = () => {
                         {syncProgress}
                       </Typography>
                       <Typography variant="pi" textColor="neutral500" paddingTop={1}>
-                        Το sync τρέχει στο server — μπορείς να μείνεις στη σελίδα (2–10+ λεπτά ανάλογα με
-                        τους κωδικούς More). Αν δεις 502, περίμενε· αν κολλήσει, «Ξανά (force)».
+                        Το sync τρέχει σε ξεχωριστό worker (δεν ρίχνει το Strapi). 5–15+ λεπτά.
+                        Αν δεις 502, περίμενε 1–2 λεπτά· μετά «Ξανά (force)».
                       </Typography>
                     </Box>
                   ) : null}

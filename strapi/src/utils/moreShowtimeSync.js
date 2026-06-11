@@ -21,7 +21,9 @@ const {
 } = require('../api/venue/services/venue-updated-status');
 const { buildMoreImportTrace } = require('./moreImportTrace');
 
-const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 120);
+const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 200);
+const EVENTS_CACHE_MAX = Number(process.env.MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX || 24);
+const PREFETCH_ENABLED = process.env.MORE_SHOWTIME_SYNC_PREFETCH === 'true';
 
 function compactSyncErrorMessage(raw) {
   const s = String(raw || '').trim();
@@ -120,8 +122,14 @@ function yieldEventLoop() {
 
 function createEventsCache(fetchDelayMs) {
   const cache = new Map();
-  let fetchIndex = 0;
-  let totalFetches = 0;
+
+  function trimCache() {
+    while (cache.size > EVENTS_CACHE_MAX) {
+      const oldest = cache.keys().next().value;
+      if (oldest === undefined) break;
+      cache.delete(oldest);
+    }
+  }
 
   async function fetchAndStore(key) {
     let events = [];
@@ -133,31 +141,30 @@ function createEventsCache(fetchDelayMs) {
       events = [];
     }
     cache.set(key, events);
+    trimCache();
     return events;
   }
 
   return {
-    setTotalFetches(n) {
-      totalFetches = n;
-    },
     size() {
       return cache.size;
+    },
+    clear() {
+      cache.clear();
     },
     async get(code) {
       const key = String(code || '').trim();
       if (!key) return [];
       if (cache.has(key)) return cache.get(key);
       const events = await fetchAndStore(key);
-      fetchIndex += 1;
-      if (fetchIndex < totalFetches && fetchDelayMs > 0) {
-        await sleep(fetchDelayMs);
-      }
+      if (fetchDelayMs > 0) await sleep(fetchDelayMs);
+      if (cache.size % 8 === 0) await yieldEventLoop();
       return events;
     },
     /** Παράλληλο prefetch μοναδικών κωδικών — πολύ πιο γρήγορο από σειριακό sync. */
     async prefetchAll(codes, options = {}) {
       const concurrency = Number(
-        options.concurrency ?? process.env.MORE_SHOWTIME_SYNC_CONCURRENCY ?? 3,
+        options.concurrency ?? process.env.MORE_SHOWTIME_SYNC_CONCURRENCY ?? 2,
       );
       const delayMs = Number(options.delayMs ?? fetchDelayMs);
       const unique = [
@@ -775,6 +782,7 @@ async function findPerformanceAt(strapi, { theaterShowId, venueId, datetime }) {
 
 async function buildEventIdIndex(items, eventsCache, mapItem) {
   const index = new Map();
+  let n = 0;
 
   for (const item of items) {
     for (const code of collectEventGroupCodes(item)) {
@@ -784,6 +792,8 @@ async function buildEventIdIndex(items, eventsCache, mapItem) {
         if (!eventId || index.has(eventId)) continue;
         index.set(eventId, mapItem(item));
       }
+      n += 1;
+      if (n % 10 === 0) await yieldEventLoop();
     }
   }
 
@@ -1498,12 +1508,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     if (typeof options.onProgress === 'function') options.onProgress(msg);
   };
 
-  progress('Φόρτωση χώρων και καταχωρήσεων CMS…');
-
-  const [globalVenueLookup, venuePresenceIndex] = await Promise.all([
-    loadGlobalVenueLookup(strapi),
-    buildVenuePresenceIndex(strapi),
-  ]);
+  progress('Φόρτωση χώρων CMS…');
+  const globalVenueLookup = await loadGlobalVenueLookup(strapi);
+  const venuePresenceIndex = await buildVenuePresenceIndex(strapi);
   const cinemaVenueLookup = globalVenueLookup;
   const cinemaVenuesWithBundle = await loadVenuesWithBundleCodes(
     strapi,
@@ -1547,13 +1554,18 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     theaterVenuesWithBundle,
   );
   const uniqueCodeCount = new Set(allCodes.map((c) => String(c || '').trim()).filter(Boolean)).size;
-  eventsCache.setTotalFetches(uniqueCodeCount);
 
-  progress(`More API: prefetch ${uniqueCodeCount} κωδικών…`);
-  const prefetch = await eventsCache.prefetchAll(allCodes, { onProgress: progress });
-  progress(
-    `More API: ${prefetch.fetched}/${prefetch.total} κωδικοί · συγχρονισμός ταινιών…`,
-  );
+  if (PREFETCH_ENABLED && uniqueCodeCount > 0) {
+    progress(`More API: prefetch ${uniqueCodeCount} κωδικών…`);
+    const prefetch = await eventsCache.prefetchAll(allCodes, { onProgress: progress });
+    progress(
+      `More API: ${prefetch.fetched}/${prefetch.total} κωδικοί · συγχρονισμός ταινιών…`,
+    );
+  } else {
+    progress(
+      `More API: ${uniqueCodeCount} κωδικοί (σειριακά, χαμηλή μνήμη) · συγχρονισμός ταινιών…`,
+    );
+  }
 
   const movieReport = await syncMovieShowtimesFromMore(strapi, {
     movies,
@@ -1565,6 +1577,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     onProgress: progress,
   });
 
+  eventsCache.clear();
   progress('Συγχρονισμός θεάτρου…');
   const theaterReport = await syncTheaterPerformancesFromMore(strapi, {
     theaterShows,

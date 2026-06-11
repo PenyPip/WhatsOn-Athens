@@ -67,6 +67,15 @@ module.exports = {
     },
     {
       method: 'POST',
+      path: '/more-lookup/sync-showtimes/reset',
+      handler: 'more-lookup.syncShowtimesReset',
+      config: {
+        auth: false,
+        policies: ['global::is-admin'],
+      },
+    },
+    {
+      method: 'POST',
       path: '/more-lookup/sync-showtimes',
       handler: 'more-lookup.syncShowtimes',
       config: {

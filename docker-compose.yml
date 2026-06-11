@@ -45,7 +45,11 @@ services:
       NODE_ENV: production
       ENCRYPTION_KEY: whatson-encryption-key-32chars!!
       NODE_OPTIONS: --max-old-space-size=1536
-      MORE_SHOWTIME_SYNC_CONCURRENCY: "3"
+      MORE_SHOWTIME_SYNC_CONCURRENCY: "2"
+      MORE_SHOWTIME_SYNC_DELAY_MS: "200"
+      MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX: "24"
+      MORE_SHOWTIME_SYNC_WORKER_HEAP: "768"
+      MORE_SHOWTIME_SYNC_START_DELAY_MS: "2500"
       URL: https://the37n.gr
       STRAPI_ADMIN_BACKEND_URL: https://the37n.gr
       PUBLIC_URL: https://the37n.gr
