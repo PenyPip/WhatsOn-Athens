@@ -505,6 +505,11 @@ function syncErrorMetaLines(err) {
   return lines;
 }
 
+function isTransientGatewayError(err) {
+  const status = err?.response?.status ?? err?.status;
+  return status === 502 || status === 503 || status === 504;
+}
+
 function groupSyncErrors(errors) {
   const groups = new Map();
   for (const err of errors || []) {
@@ -832,14 +837,23 @@ const App = () => {
 
   const pollSyncJob = useCallback(async () => {
     // ~45 λεπτά (1080 × 2.5s) — μεγάλα sync με πολλούς κωδικούς More.
+    let gatewayPauses = 0;
     for (let attempt = 0; attempt < 1080; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 2500));
       let data;
       try {
         const res = await get('/api/more-lookup/sync-showtimes/status');
         data = res?.data;
+        gatewayPauses = 0;
       } catch (netErr) {
-        if (attempt < 3) continue;
+        if (isTransientGatewayError(netErr)) {
+          gatewayPauses += 1;
+          setSyncProgress(
+            `502/503 από nginx — το Strapi φορτώνει ξανά (${gatewayPauses})… Μην κλείσεις τη σελίδα.`,
+          );
+          continue;
+        }
+        if (attempt < 5) continue;
         throw new Error(
           netErr?.message || 'Αποτυχία επικοινωνίας με το Strapi κατά το sync (δίκτυο/server).',
         );
@@ -1497,12 +1511,12 @@ const App = () => {
     }
   };
 
-  const syncShowtimes = async () => {
+  const runSyncRequest = async (force = false) => {
     setSyncLoading(true);
-    setSyncProgress('Έναρξη συγχρονισμού…');
+    setSyncProgress(force ? 'Επανεκκίνηση sync (force)…' : 'Έναρξη συγχρονισμού…');
     setSyncReport(null);
     try {
-      const res = await post('/api/more-lookup/sync-showtimes', {});
+      const res = await post('/api/more-lookup/sync-showtimes', force ? { force: true } : {});
       const data = res?.data;
       if (data?.status === 'completed' && data?.report) {
         setSyncReport(data.report);
@@ -1528,6 +1542,27 @@ const App = () => {
         message: data?.message || 'Συγχρονισμός ολοκληρώθηκε.',
       });
     } catch (error) {
+      if (isTransientGatewayError(error)) {
+        setSyncProgress('502 κατά την έναρξη — αναμονή Strapi…');
+        await new Promise((resolve) => setTimeout(resolve, 8000));
+        try {
+          const report = await pollSyncJob();
+          setSyncReport(report);
+          toggleNotification({
+            type: report?.created > 0 ? 'success' : 'info',
+            message: report?.message || 'Συγχρονισμός ολοκληρώθηκε (μετά από 502).',
+          });
+          return;
+        } catch (retryErr) {
+          toggleNotification({
+            type: 'warning',
+            message:
+              retryErr?.message ||
+              '502 Bad Gateway — το Strapi έπεσε ενώ ξεκινούσε το sync. Πάτα «Ξανά (force)».',
+          });
+          return;
+        }
+      }
       const message =
         error?.response?.data?.error?.message ||
         error?.message ||
@@ -1539,6 +1574,9 @@ const App = () => {
       setSyncProgress(null);
     }
   };
+
+  const syncShowtimes = () => runSyncRequest(false);
+  const syncShowtimesForce = () => runSyncRequest(true);
 
   return (
     <Layout>
@@ -1670,15 +1708,25 @@ const App = () => {
                 subtitle="More API → Προβολή ταινίας / Παράσταση · μόνο χειροκίνητα (χωρίς cron)"
                 action={
                   showtimeSyncEnabled ? (
-                    <Button
-                      variant="success"
-                      loading={syncLoading}
-                      onClick={syncShowtimes}
-                      disabled={syncLoading || loading}
-                      style={actionButtonStyle}
-                    >
-                      {syncLoading ? 'Sync…' : 'Τρέξε sync'}
-                    </Button>
+                    <Flex gap={2}>
+                      <Button
+                        variant="success"
+                        loading={syncLoading}
+                        onClick={syncShowtimes}
+                        disabled={syncLoading || loading}
+                        style={actionButtonStyle}
+                      >
+                        {syncLoading ? 'Sync…' : 'Τρέξε sync'}
+                      </Button>
+                      <Button
+                        variant="tertiary"
+                        onClick={syncShowtimesForce}
+                        disabled={syncLoading || loading}
+                        title="Ακυρώνει κολλημένο sync και ξεκινά νέο (μετά από 502 ή crash)"
+                      >
+                        Ξανά (force)
+                      </Button>
+                    </Flex>
                   ) : null
                 }
               />
@@ -1700,7 +1748,7 @@ const App = () => {
                       </Typography>
                       <Typography variant="pi" textColor="neutral500" paddingTop={1}>
                         Το sync τρέχει στο server — μπορείς να μείνεις στη σελίδα (2–10+ λεπτά ανάλογα με
-                        τους κωδικούς More).
+                        τους κωδικούς More). Αν δεις 502, περίμενε· αν κολλήσει, «Ξανά (force)».
                       </Typography>
                     </Box>
                   ) : null}

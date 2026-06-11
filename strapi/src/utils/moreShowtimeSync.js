@@ -114,6 +114,10 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function yieldEventLoop() {
+  return new Promise((resolve) => setImmediate(resolve));
+}
+
 function createEventsCache(fetchDelayMs) {
   const cache = new Map();
   let fetchIndex = 0;
@@ -153,7 +157,7 @@ function createEventsCache(fetchDelayMs) {
     /** Παράλληλο prefetch μοναδικών κωδικών — πολύ πιο γρήγορο από σειριακό sync. */
     async prefetchAll(codes, options = {}) {
       const concurrency = Number(
-        options.concurrency ?? process.env.MORE_SHOWTIME_SYNC_CONCURRENCY ?? 6,
+        options.concurrency ?? process.env.MORE_SHOWTIME_SYNC_CONCURRENCY ?? 3,
       );
       const delayMs = Number(options.delayMs ?? fetchDelayMs);
       const unique = [
@@ -178,6 +182,7 @@ function createEventsCache(fetchDelayMs) {
             options.onProgress(`More API: ${fetched}/${unique.length} κωδικοί…`);
           }
           if (delayMs > 0) await sleep(delayMs);
+          if (fetched % 12 === 0) await yieldEventLoop();
         }
       }
 
@@ -203,6 +208,7 @@ async function findAllEntities(strapi, uid, options = {}) {
     all.push(...list);
     if (list.length < pageSize) break;
     page += 1;
+    if (page % 3 === 0) await yieldEventLoop();
   }
   return all;
 }

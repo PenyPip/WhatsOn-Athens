@@ -14,6 +14,7 @@ const { syncShowtimesFromMore } = require('../../../utils/moreShowtimeSync');
 const {
   getMoreShowtimeSyncJob,
   startMoreShowtimeSyncJob,
+  resetStuckMoreShowtimeSyncJob,
 } = require('../../../utils/moreShowtimeSyncJob');
 const {
   getMoreLookupJob,
@@ -296,6 +297,7 @@ module.exports = {
       movieId: movieId != null && String(movieId).trim() ? Number(movieId) : undefined,
       theaterShowId:
         theaterShowId != null && String(theaterShowId).trim() ? Number(theaterShowId) : undefined,
+      force: body.force === true,
     };
 
     if (wait) {
@@ -312,16 +314,19 @@ module.exports = {
     }
 
     const existing = getMoreShowtimeSyncJob();
-    if (existing?.status === 'running') {
+    if (existing?.status === 'running' && !syncOptions.force) {
       ctx.body = { ok: true, status: 'running', ...existing };
       return;
     }
 
-    strapi.log.info(`[more-showtime-sync] background run by ${adminEmail}`);
+    strapi.log.info(
+      `[more-showtime-sync] background run by ${adminEmail}${syncOptions.force ? ' (force)' : ''}`,
+    );
     const started = startMoreShowtimeSyncJob(strapi, syncOptions);
     ctx.body = {
       ok: true,
-      status: started.started ? 'started' : 'running',
+      status: started.started ? 'started' : started.reason || 'running',
+      reason: started.reason ?? null,
       ...started.job,
     };
   },
