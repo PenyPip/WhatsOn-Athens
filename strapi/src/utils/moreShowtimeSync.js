@@ -164,6 +164,7 @@ function createEventsCache(fetchDelayMs) {
       let cursor = 0;
       let fetched = 0;
 
+      let lastProgressAt = 0;
       async function worker() {
         while (cursor < unique.length) {
           const idx = cursor;
@@ -172,6 +173,10 @@ function createEventsCache(fetchDelayMs) {
           if (!key || cache.has(key)) continue;
           await fetchAndStore(key);
           fetched += 1;
+          if (typeof options.onProgress === 'function' && fetched - lastProgressAt >= 8) {
+            lastProgressAt = fetched;
+            options.onProgress(`More API: ${fetched}/${unique.length} κωδικοί…`);
+          }
           if (delayMs > 0) await sleep(delayMs);
         }
       }
@@ -333,28 +338,37 @@ async function loadGlobalVenueLookup(strapi) {
   return buildVenueLookup(rows.filter((v) => normalizeMoreVenueId(v.venue_id)));
 }
 
-/**
- * Επιβεβαιώνει ότι ο χώρος όντως λείπει από CMS (venue_id ή όνομα) πριν μπει στην αναφορά.
- * @param {Map<string, boolean>} cache
- */
-async function isVenueConfirmedMissingFromCms(strapi, event, cache) {
-  const moreVenueId = normalizeMoreVenueId(event?.venueId);
-  const venueName = String(event?.venueName || '').trim();
-  const cacheKey = moreVenueId || (venueName ? `name:${normalizeVenueName(venueName)}` : '');
-  if (!cacheKey) return true;
-  if (cache.has(cacheKey)) return cache.get(cacheKey);
+/** Ευρετήριο venue_id + ονόματος — ένα load, χωρίς DB query ανά event (αποφυγή timeout). */
+async function buildVenuePresenceIndex(strapi) {
+  const rows = await findAllEntities(strapi, 'api::venue.venue', {
+    fields: ['id', 'name', 'venue_id'],
+    publicationState: 'preview',
+    pageSize: 200,
+  });
+  const byMoreId = new Set();
+  const byName = new Set();
+  for (const row of rows) {
+    for (const key of moreVenueIdLookupKeys(row?.venue_id)) byMoreId.add(key);
+    const nameKey = normalizeVenueName(row?.name);
+    if (nameKey) byName.add(nameKey);
+  }
+  return { byMoreId, byName };
+}
 
-  let missing = true;
+function isVenueMissingFromPresenceIndex(event, index) {
+  if (!index) return true;
+  const moreVenueId = normalizeMoreVenueId(event?.venueId);
   if (moreVenueId) {
-    const byId = await findVenueByMoreId(strapi, moreVenueId);
-    if (byId) missing = false;
+    for (const key of moreVenueIdLookupKeys(moreVenueId)) {
+      if (index.byMoreId.has(key)) return false;
+    }
   }
-  if (missing && venueName) {
-    const byName = await findVenueByName(strapi, venueName);
-    if (byName) missing = false;
+  const venueName = String(event?.venueName || '').trim();
+  if (venueName) {
+    const nameKey = normalizeVenueName(venueName);
+    if (nameKey && index.byName.has(nameKey)) return false;
   }
-  cache.set(cacheKey, missing);
-  return missing;
+  return true;
 }
 
 async function createVenueFromMore(strapi, event, report, config, errorDedup) {
@@ -1007,6 +1021,8 @@ async function syncMovieShowtimesFromMore(strapi, {
   venuesWithBundle,
   eventsCache,
   now,
+  venuePresenceIndex,
+  onProgress,
 }) {
   const report = {
     ...emptySyncCounters(),
@@ -1025,7 +1041,6 @@ async function syncMovieShowtimesFromMore(strapi, {
   const pendingVenueCreates = new Map();
   const failedVenueKeys = new Set();
   const errorDedup = new Set();
-  const missingVenueCache = new Map();
   const venueSyncTracker = createVenueSyncStatsTracker();
   const scrapeCache = createVenueScrapeCache();
   const supplementalEventIndex = new Map();
@@ -1055,7 +1070,11 @@ async function syncMovieShowtimesFromMore(strapi, {
       }))
     : new Map();
 
-  for (const movie of movies) {
+  for (let movieIndex = 0; movieIndex < movies.length; movieIndex += 1) {
+    const movie = movies[movieIndex];
+    if (onProgress && movieIndex > 0 && movieIndex % 5 === 0) {
+      onProgress(`Συγχρονισμός ταινιών: ${movieIndex}/${movies.length}…`);
+    }
     const codes = collectEventGroupCodes(movie);
     const movieStats = {
       movieId: movie.id,
@@ -1089,10 +1108,7 @@ async function syncMovieShowtimesFromMore(strapi, {
             report.skippedNoVenue += 1;
             movieStats.skipped += 1;
             const missingId = normalizeMoreVenueId(event?.venueId);
-            if (
-              missingId &&
-              (await isVenueConfirmedMissingFromCms(strapi, event, missingVenueCache))
-            ) {
+            if (missingId && isVenueMissingFromPresenceIndex(event, venuePresenceIndex)) {
               movieStats.missingVenueIds.add(missingId);
             }
             continue;
@@ -1245,6 +1261,8 @@ async function syncTheaterPerformancesFromMore(strapi, {
   venuesWithBundle,
   eventsCache,
   now,
+  venuePresenceIndex,
+  onProgress,
 }) {
   const report = {
     ...emptySyncCounters(),
@@ -1268,7 +1286,6 @@ async function syncTheaterPerformancesFromMore(strapi, {
   const pendingVenueCreates = new Map();
   const failedVenueKeys = new Set();
   const errorDedup = new Set();
-  const missingVenueCache = new Map();
   const scrapeCache = createVenueScrapeCache();
   const supplementalEventIndex = new Map();
   const showsForTitle = venuesWithBundle.length
@@ -1284,7 +1301,11 @@ async function syncTheaterPerformancesFromMore(strapi, {
     theaterShowTitle: show.title,
   }));
 
-  for (const show of theaterShows) {
+  for (let showIndex = 0; showIndex < theaterShows.length; showIndex += 1) {
+    const show = theaterShows[showIndex];
+    if (onProgress && showIndex > 0 && showIndex % 5 === 0) {
+      onProgress(`Συγχρονισμός θεάτρου: ${showIndex}/${theaterShows.length}…`);
+    }
     const codes = collectEventGroupCodes(show);
     const showStats = {
       theaterShowId: show.id,
@@ -1318,10 +1339,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
             report.skippedNoVenue += 1;
             showStats.skipped += 1;
             const missingId = normalizeMoreVenueId(event?.venueId);
-            if (
-              missingId &&
-              (await isVenueConfirmedMissingFromCms(strapi, event, missingVenueCache))
-            ) {
+            if (missingId && isVenueMissingFromPresenceIndex(event, venuePresenceIndex)) {
               showStats.missingVenueIds.add(missingId);
             }
             continue;
@@ -1476,7 +1494,10 @@ async function syncShowtimesFromMore(strapi, options = {}) {
 
   progress('Φόρτωση χώρων και καταχωρήσεων CMS…');
 
-  const globalVenueLookup = await loadGlobalVenueLookup(strapi);
+  const [globalVenueLookup, venuePresenceIndex] = await Promise.all([
+    loadGlobalVenueLookup(strapi),
+    buildVenuePresenceIndex(strapi),
+  ]);
   const cinemaVenueLookup = globalVenueLookup;
   const cinemaVenuesWithBundle = await loadVenuesWithBundleCodes(
     strapi,
@@ -1523,7 +1544,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   eventsCache.setTotalFetches(uniqueCodeCount);
 
   progress(`More API: prefetch ${uniqueCodeCount} κωδικών…`);
-  const prefetch = await eventsCache.prefetchAll(allCodes);
+  const prefetch = await eventsCache.prefetchAll(allCodes, { onProgress: progress });
   progress(
     `More API: ${prefetch.fetched}/${prefetch.total} κωδικοί · συγχρονισμός ταινιών…`,
   );
@@ -1534,6 +1555,8 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     venuesWithBundle: cinemaVenuesWithBundle,
     eventsCache,
     now,
+    venuePresenceIndex,
+    onProgress: progress,
   });
 
   progress('Συγχρονισμός θεάτρου…');
@@ -1543,6 +1566,8 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     venuesWithBundle: theaterVenuesWithBundle,
     eventsCache,
     now,
+    venuePresenceIndex,
+    onProgress: progress,
   });
 
   const createdFromBuckets =

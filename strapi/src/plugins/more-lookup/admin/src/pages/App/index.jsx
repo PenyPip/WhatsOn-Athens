@@ -831,18 +831,32 @@ const App = () => {
   }, [get]);
 
   const pollSyncJob = useCallback(async () => {
-    for (let attempt = 0; attempt < 480; attempt += 1) {
+    // ~45 λεπτά (1080 × 2.5s) — μεγάλα sync με πολλούς κωδικούς More.
+    for (let attempt = 0; attempt < 1080; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 2500));
-      const res = await get('/api/more-lookup/sync-showtimes/status');
-      const data = res?.data;
+      let data;
+      try {
+        const res = await get('/api/more-lookup/sync-showtimes/status');
+        data = res?.data;
+      } catch (netErr) {
+        if (attempt < 3) continue;
+        throw new Error(
+          netErr?.message || 'Αποτυχία επικοινωνίας με το Strapi κατά το sync (δίκτυο/server).',
+        );
+      }
       if (data?.progress) setSyncProgress(data.progress);
       if (data?.status === 'completed' && data?.report) return data.report;
       if (data?.status === 'failed') {
         throw new Error(data?.error || 'Αποτυχία συγχρονισμού');
       }
+      if (!data?.status) {
+        throw new Error(
+          'Το sync διακόπηκε — δεν υπάρχει ενεργή εργασία (πιθανή επανεκκίνηση Strapi). Τρέξε ξανά.',
+        );
+      }
       if (data?.status !== 'running' && data?.status !== 'started') break;
     }
-    throw new Error('Το sync ξεπέρασε το χρονικό όριο αναμονής (~20 λεπτά).');
+    throw new Error('Το sync ξεπέρασε το χρονικό όριο αναμονής (~45 λεπτά).');
   }, [get]);
 
   const mergeApplyIntoResult = useCallback((applyResult) => {
