@@ -5,6 +5,8 @@ const {
   collectEventGroupCodes,
   collectVenueBundleCodes,
   collectTheaterVenueBundleCodes,
+  normalizeMoreVenueId,
+  moreVenueIdLookupKeys,
 } = require('./moreEventGroupCodes');
 const {
   createVenueScrapeCache,
@@ -209,10 +211,6 @@ function normalizeVenueName(name) {
     .replace(/\s+/g, ' ');
 }
 
-function normalizeMoreVenueId(raw) {
-  return String(raw ?? '').trim();
-}
-
 function buildVenueLookup(venues) {
   const byMoreId = new Map();
   const byName = new Map();
@@ -312,16 +310,51 @@ async function findVenueByName(strapi, name) {
 }
 
 async function findVenueByMoreId(strapi, moreVenueId) {
-  if (!moreVenueId) return null;
-  // Global έλεγχος venue_id (ανεξαρτήτως type): το More venueId είναι μοναδικό ανά φυσικό χώρο
-  // → αποφυγή διπλότυπων ακόμη κι αν ο χώρος υπάρχει με άλλο type.
+  const keys = moreVenueIdLookupKeys(moreVenueId);
+  if (!keys.length) return null;
+  // Global έλεγχος venue_id (ανεξαρτήτως type): το More venueId είναι μοναδικό ανά φυσικό χώρο.
   const rows = await strapi.entityService.findMany('api::venue.venue', {
-    filters: { venue_id: moreVenueId },
+    filters: { $or: keys.map((key) => ({ venue_id: key })) },
     fields: ['id', 'name', 'slug', 'venue_id', 'summer_outdoor', 'type'],
     publicationState: 'preview',
     limit: 1,
   });
   return Array.isArray(rows) && rows.length ? rows[0] : null;
+}
+
+/** Όλοι οι χώροι με venue_id — κοινό lookup ταινιών/θεάτρου (χωρίς φίλτρο type). */
+async function loadGlobalVenueLookup(strapi) {
+  const rows = await findAllEntities(strapi, 'api::venue.venue', {
+    filters: { venue_id: { $notNull: true } },
+    fields: ['id', 'name', 'slug', 'venue_id', 'summer_outdoor', 'type'],
+    publicationState: 'preview',
+    pageSize: 200,
+  });
+  return buildVenueLookup(rows.filter((v) => normalizeMoreVenueId(v.venue_id)));
+}
+
+/**
+ * Επιβεβαιώνει ότι ο χώρος όντως λείπει από CMS (venue_id ή όνομα) πριν μπει στην αναφορά.
+ * @param {Map<string, boolean>} cache
+ */
+async function isVenueConfirmedMissingFromCms(strapi, event, cache) {
+  const moreVenueId = normalizeMoreVenueId(event?.venueId);
+  const venueName = String(event?.venueName || '').trim();
+  const cacheKey = moreVenueId || (venueName ? `name:${normalizeVenueName(venueName)}` : '');
+  if (!cacheKey) return true;
+  if (cache.has(cacheKey)) return cache.get(cacheKey);
+
+  let missing = true;
+  if (moreVenueId) {
+    const byId = await findVenueByMoreId(strapi, moreVenueId);
+    if (byId) missing = false;
+  }
+  if (missing && venueName) {
+    const byName = await findVenueByName(strapi, venueName);
+    if (byName) missing = false;
+  }
+  cache.set(cacheKey, missing);
+  return missing;
 }
 
 async function createVenueFromMore(strapi, event, report, config, errorDedup) {
@@ -444,7 +477,27 @@ async function ensureVenueFromMoreEvent(
   const pendingKey = `${config.venueType}:${moreVenueId || (nameKey ? `name:${nameKey}` : '')}`;
   if (pendingKey === `${config.venueType}:`) return null;
 
-  if (failedVenueKeys.has(pendingKey)) return null;
+  if (failedVenueKeys.has(pendingKey)) {
+    // Μπορεί να προστέθηκε venue_id στο CMS μετά την πρώτη αποτυχία — ξαναέλεγξε DB.
+    if (moreVenueId) {
+      const retry = await findVenueByMoreId(strapi, moreVenueId);
+      if (retry) {
+        registerVenueInLookup(lookup, retry);
+        failedVenueKeys.delete(pendingKey);
+        return retry;
+      }
+    }
+    const retryName = String(event?.venueName || '').trim();
+    if (retryName) {
+      const byName = await findVenueByName(strapi, retryName);
+      if (byName) {
+        registerVenueInLookup(lookup, byName);
+        failedVenueKeys.delete(pendingKey);
+        return byName;
+      }
+    }
+    return null;
+  }
 
   if (pendingVenueCreates.has(pendingKey)) {
     return pendingVenueCreates.get(pendingKey);
@@ -972,6 +1025,7 @@ async function syncMovieShowtimesFromMore(strapi, {
   const pendingVenueCreates = new Map();
   const failedVenueKeys = new Set();
   const errorDedup = new Set();
+  const missingVenueCache = new Map();
   const venueSyncTracker = createVenueSyncStatsTracker();
   const scrapeCache = createVenueScrapeCache();
   const supplementalEventIndex = new Map();
@@ -1035,7 +1089,12 @@ async function syncMovieShowtimesFromMore(strapi, {
             report.skippedNoVenue += 1;
             movieStats.skipped += 1;
             const missingId = normalizeMoreVenueId(event?.venueId);
-            if (missingId) movieStats.missingVenueIds.add(missingId);
+            if (
+              missingId &&
+              (await isVenueConfirmedMissingFromCms(strapi, event, missingVenueCache))
+            ) {
+              movieStats.missingVenueIds.add(missingId);
+            }
             continue;
           }
 
@@ -1209,6 +1268,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
   const pendingVenueCreates = new Map();
   const failedVenueKeys = new Set();
   const errorDedup = new Set();
+  const missingVenueCache = new Map();
   const scrapeCache = createVenueScrapeCache();
   const supplementalEventIndex = new Map();
   const showsForTitle = venuesWithBundle.length
@@ -1258,7 +1318,12 @@ async function syncTheaterPerformancesFromMore(strapi, {
             report.skippedNoVenue += 1;
             showStats.skipped += 1;
             const missingId = normalizeMoreVenueId(event?.venueId);
-            if (missingId) showStats.missingVenueIds.add(missingId);
+            if (
+              missingId &&
+              (await isVenueConfirmedMissingFromCms(strapi, event, missingVenueCache))
+            ) {
+              showStats.missingVenueIds.add(missingId);
+            }
             continue;
           }
 
@@ -1411,13 +1476,14 @@ async function syncShowtimesFromMore(strapi, options = {}) {
 
   progress('Φόρτωση χώρων και καταχωρήσεων CMS…');
 
-  const cinemaVenueLookup = await loadVenueByMoreId(strapi, 'cinema');
+  const globalVenueLookup = await loadGlobalVenueLookup(strapi);
+  const cinemaVenueLookup = globalVenueLookup;
   const cinemaVenuesWithBundle = await loadVenuesWithBundleCodes(
     strapi,
     'cinema',
     collectVenueBundleCodes,
   );
-  const theaterVenueLookup = await loadTheaterVenueLookup(strapi);
+  const theaterVenueLookup = globalVenueLookup;
   const theaterVenuesWithBundle = await loadTheaterVenuesWithBundleCodes(strapi);
 
   const movies = await loadMoviesWithCodes(

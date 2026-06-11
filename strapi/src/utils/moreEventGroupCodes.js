@@ -180,7 +180,27 @@ function collectEventGroupCodes(movie) {
   return codes;
 }
 
+/** More.com venueId — κανονικοποίηση για σύγκριση CMS ↔ More. */
+function normalizeMoreVenueId(raw) {
+  return String(raw ?? '').trim();
+}
+
+/** Παραλλαγές κλειδιού (π.χ. "3975" / 3975) για αναζήτηση venue_id στο CMS. */
+function moreVenueIdLookupKeys(raw) {
+  const id = normalizeMoreVenueId(raw);
+  if (!id) return [];
+  const keys = new Set([id]);
+  const num = Number(id);
+  if (Number.isFinite(num)) {
+    keys.add(String(num));
+    keys.add(String(Math.trunc(num)));
+  }
+  return [...keys];
+}
+
 module.exports = {
+  normalizeMoreVenueId,
+  moreVenueIdLookupKeys,
   isVenueBundleCode,
   classifyCinemaCatalogKind,
   looksLikeMovieCatalogTitle,

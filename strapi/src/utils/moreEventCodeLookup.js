@@ -21,6 +21,8 @@ const {
   resolveVenueEventGroupCodesFromEntry,
   classifyCinemaCatalogKind,
   extractEvgCodeFromText,
+  normalizeMoreVenueId,
+  moreVenueIdLookupKeys,
 } = require('./moreEventGroupCodes');
 const {
   createVenueScrapeCache,
@@ -747,6 +749,7 @@ async function loadCmsVenues(strapi) {
       'name',
       'slug',
       'type',
+      'venue_id',
       'event_group_code',
       'more_link',
       'pending_event_group_code',
@@ -760,6 +763,35 @@ async function loadCmsVenues(strapi) {
   return Array.isArray(rows) ? rows : [];
 }
 
+function buildCmsVenueByMoreIdIndex(cmsVenues) {
+  const byMoreId = new Map();
+  for (const venue of cmsVenues || []) {
+    for (const key of moreVenueIdLookupKeys(venue?.venue_id ?? venue?.venueId)) {
+      if (!byMoreId.has(key)) byMoreId.set(key, venue);
+    }
+  }
+  return byMoreId;
+}
+
+function collectMoreVenueIdsFromVerify(verify) {
+  if (!verify?.ok) return [];
+  const ids = [];
+  for (const row of verify.sampleVenues || []) {
+    const id = normalizeMoreVenueId(row?.id);
+    if (id) ids.push(id);
+  }
+  return ids;
+}
+
+function findCmsVenueByMoreId(moreVenueId, cmsVenueByMoreId) {
+  if (!cmsVenueByMoreId?.size) return null;
+  for (const key of moreVenueIdLookupKeys(moreVenueId)) {
+    const hit = cmsVenueByMoreId.get(key);
+    if (hit) return hit;
+  }
+  return null;
+}
+
 function mapCmsVenueLookupRow(row) {
   const eventGroupCodes = collectVenueBundleCodes(row);
   return {
@@ -769,6 +801,7 @@ function mapCmsVenueLookupRow(row) {
     originalTitle: '',
     slug: row.slug ?? '',
     venueType: row.type ?? 'cinema',
+    moreVenueId: normalizeMoreVenueId(row?.venue_id ?? row?.venueId) || null,
     eventGroupCode: row.event_group_code ?? '',
     eventGroupCodes,
     rejectedMoreCodes: collectRejectedMoreCodes(row),
@@ -893,10 +926,10 @@ function filterCmsRefsForCatalogEntry(entry, refs) {
   return refs.filter((ref) => ref.inCms);
 }
 
-function annotateCatalogWithCmsStatus(entries, cmsCodeIndex) {
+function annotateCatalogWithCmsStatus(entries, cmsCodeIndex, cmsVenueByMoreId) {
   return entries.map((entry) => {
     const allRefs = cmsCodeIndex.get(entry.eventGroupCode) || [];
-    const cmsRefs = filterCmsRefsForCatalogEntry(entry, allRefs);
+    let cmsRefs = filterCmsRefsForCatalogEntry(entry, allRefs);
     const pendingRefs = (() => {
       if (entry.kind === 'venue_bundle') {
         return allRefs.filter((ref) => ref.pending && ref.contentType === 'venue');
@@ -909,7 +942,38 @@ function annotateCatalogWithCmsStatus(entries, cmsCodeIndex) {
       }
       return allRefs.filter((ref) => ref.pending);
     })();
-    const inCms = cmsRefs.length > 0;
+    let inCms = cmsRefs.length > 0;
+
+    // venue_bundle: αν λείπει κωδικός αλλά υπάρχει χώρος CMS με ίδιο More venueId → in_cms.
+    if (!inCms && entry.kind === 'venue_bundle' && cmsVenueByMoreId?.size) {
+      for (const moreId of collectMoreVenueIdsFromVerify(entry.verify)) {
+        const venue = findCmsVenueByMoreId(moreId, cmsVenueByMoreId);
+        if (!venue) continue;
+        if (entry.category === 'cinema' && venue.type && venue.type !== 'cinema') continue;
+        if (
+          entry.category === 'theater' &&
+          venue.type &&
+          venue.type !== 'theater' &&
+          venue.type !== 'other'
+        ) {
+          continue;
+        }
+        inCms = true;
+        cmsRefs = [
+          {
+            contentType: 'venue',
+            cmsId: venue.id,
+            cmsTitle: venue.name,
+            venueType: venue.type,
+            inCms: true,
+            matchedBy: 'venue_id',
+            moreVenueId: normalizeMoreVenueId(venue.venue_id),
+          },
+        ];
+        break;
+      }
+    }
+
     const pendingOnly = !inCms && pendingRefs.length > 0;
     return {
       ...entry,
@@ -1574,6 +1638,7 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
       loadCmsVenues(strapi),
     ]);
     const cmsCodeIndex = buildCmsEventGroupCodeIndex(cmsItems, cmsVenues);
+    const cmsVenueByMoreId = buildCmsVenueByMoreIdIndex(cmsVenues);
 
     const withVerify = await attachVerification(
       catalogRows.map((e) => ({
@@ -1586,7 +1651,7 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
       skipVerify,
       { onProgress: progress },
     );
-    const annotated = annotateCatalogWithCmsStatus(withVerify, cmsCodeIndex);
+    const annotated = annotateCatalogWithCmsStatus(withVerify, cmsCodeIndex, cmsVenueByMoreId);
     let catalogOut = await enrichCatalogWithVenueProgramScrape(annotated, cmsVenues, cmsItems, {
       onProgress: progress,
     });

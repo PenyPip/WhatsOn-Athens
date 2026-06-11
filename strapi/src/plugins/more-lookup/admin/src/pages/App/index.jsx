@@ -703,8 +703,9 @@ function SyncReportPanel({ report }) {
         <Box paddingBottom={errorCount ? 4 : 0}>
           <SyncReportSection title={`Λείπουν More venueId (${missingIds.length})`} tone="warning">
             <Typography variant="pi" textColor="neutral600" paddingBottom={3}>
-              Τα venueId δεν αντιστοιχούν ακόμα σε χώρο CMS. Στο sync δημιουργούνται αυτόματα σινεμά/θέατρα
-              (εκτός αν απενεργοποιηθεί με MORE_CINEMA_SYNC_AUTO_CREATE_VENUES / MORE_THEATER_SYNC_AUTO_CREATE_VENUES).
+              Δεν βρέθηκε χώρος CMS με το ίδιο More venueId (ούτε με ίδιο όνομα). Στο sync δημιουργούνται
+              αυτόματα σινεμά/θέατρα (εκτός αν απενεργοποιηθεί με MORE_CINEMA_SYNC_AUTO_CREATE_VENUES /
+              MORE_THEATER_SYNC_AUTO_CREATE_VENUES).
             </Typography>
             <Flex gap={2} wrap="wrap">
               {visibleMissingIds.map((id) => (
