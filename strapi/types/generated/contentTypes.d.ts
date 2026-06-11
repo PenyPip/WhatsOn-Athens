@@ -849,6 +849,11 @@ export interface ApiShowtimeShowtime extends Schema.CollectionType {
       'manyToOne',
       'api::hall.hall'
     >;
+    import_source: Attribute.Enumeration<
+      ['manual', 'more_sync', 'repeat_expand']
+    > &
+      Attribute.DefaultTo<'manual'>;
+    import_trace: Attribute.Text;
     movie: Attribute.Relation<
       'api::showtime.showtime',
       'manyToOne',
@@ -937,6 +942,11 @@ export interface ApiTheaterPerformanceTheaterPerformance
       'manyToOne',
       'api::hall.hall'
     >;
+    import_source: Attribute.Enumeration<
+      ['manual', 'more_sync', 'repeat_expand']
+    > &
+      Attribute.DefaultTo<'manual'>;
+    import_trace: Attribute.Text;
     price: Attribute.Decimal;
     repeat_skip_days: Attribute.Component<'scheduling.skip-day', true>;
     repeat_until: Attribute.Date;
@@ -1098,18 +1108,13 @@ export interface ApiUserReviewUserReview extends Schema.CollectionType {
 export interface ApiVenueVenue extends Schema.CollectionType {
   collectionName: 'venues';
   info: {
-    description: '\u03A3\u03B9\u03BD\u03B5\u03BC\u03AC, \u03B8\u03AD\u03B1\u03C4\u03C1\u03B1 \u03BA\u03B1\u03B9 \u03AC\u03BB\u03BB\u03BF\u03B9 \u03C7\u03CE\u03C1\u03BF\u03B9. \u0394\u03B9\u03B1\u03C7\u03B5\u03AF\u03C1\u03B9\u03C3\u03B7 \u03B1\u03C0\u03CC \u03C4\u03BF \u03BC\u03B5\u03BD\u03BF\u03CD \u00AB\u03A7\u03CE\u03C1\u03BF\u03B9\u00BB (\u03A3\u03B9\u03BD\u03B5\u03BC\u03AC / \u0398\u03AD\u03B1\u03C4\u03C1\u03B1 / \u0386\u03BB\u03BB\u03BF\u03B9 / \u038C\u03BB\u03BF\u03B9) \u2014 \u03CC\u03C7\u03B9 \u03B1\u03C0\u03CC \u03C4\u03BF \u03B3\u03B5\u03BD\u03B9\u03BA\u03CC Content Manager.';
+    description: '\u03A3\u03B9\u03BD\u03B5\u03BC\u03AC, \u03B8\u03AD\u03B1\u03C4\u03C1\u03B1 \u03BA\u03B1\u03B9 \u03AC\u03BB\u03BB\u03BF\u03B9 \u03C7\u03CE\u03C1\u03BF\u03B9. \u0395\u03BC\u03C6\u03B1\u03BD\u03AF\u03B6\u03BF\u03BD\u03C4\u03B1\u03B9 \u03C3\u03C4\u03BF Content Manager \u03BA\u03B1\u03B9 \u03C3\u03C4\u03BF \u03BC\u03B5\u03BD\u03BF\u03CD \u00AB\u03A7\u03CE\u03C1\u03BF\u03B9\u00BB.';
     displayName: '\u03A7\u03CE\u03C1\u03BF\u03B9';
     pluralName: 'venues';
     singularName: 'venue';
   };
   options: {
     draftAndPublish: true;
-  };
-  pluginOptions: {
-    'content-manager': {
-      visible: false;
-    };
   };
   attributes: {
     address: Attribute.String;

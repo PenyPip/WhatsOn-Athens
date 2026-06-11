@@ -1,6 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import { lcpImageSrc } from "@/lib/lcpImageSrc";
-import { homeHeroCriticalCss } from "@/lib/homeHeroLayout";
+import { HOME_HERO_CRITICAL_CSS } from "@/lib/homeHeroLayout";
 
 /** Server LCP μέσα στο #home-hero-slot — in-flow, όχι fixed (λιγότερο CLS). */
 type HomeStaticLcpProps = {
@@ -16,7 +16,7 @@ export default function HomeStaticLcp({ posterHref, title, synopsis }: HomeStati
 
   const criticalCss =
     "html,body{margin:0;min-height:100%}body{font-family:system-ui,-apple-system,sans-serif;background:#f0edf8;color:#1c1d62}" +
-    homeHeroCriticalCss();
+    HOME_HERO_CRITICAL_CSS;
 
   return (
     <>
