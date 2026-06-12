@@ -10,7 +10,7 @@
     "strapi": "strapi",
     "deploy": "strapi deploy",
     "lookup-more-codes": "node scripts/lookup-more-event-codes.mjs",
-    "sync-showtimes": "node scripts/sync-showtimes-worker.js"
+    "sync-showtimes-offline": "node scripts/sync-offline.js"
   },
   "dependencies": {
     "@_sh/strapi-plugin-ckeditor": "2.1.3",

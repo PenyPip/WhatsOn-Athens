@@ -21,9 +21,15 @@ const {
 } = require('../api/venue/services/venue-updated-status');
 const { buildMoreImportTrace } = require('./moreImportTrace');
 
-const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 200);
-const EVENTS_CACHE_MAX = Number(process.env.MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX || 24);
+const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 250);
+const EVENTS_CACHE_MAX = Number(process.env.MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX || 16);
+const MOVIE_BATCH_SIZE = Number(process.env.MORE_SHOWTIME_SYNC_MOVIE_BATCH || 6);
+const THEATER_BATCH_SIZE = Number(process.env.MORE_SHOWTIME_SYNC_THEATER_BATCH || 6);
 const PREFETCH_ENABLED = process.env.MORE_SHOWTIME_SYNC_PREFETCH === 'true';
+
+function maybeGc() {
+  if (typeof global.gc === 'function') global.gc();
+}
 
 function compactSyncErrorMessage(raw) {
   const s = String(raw || '').trim();
@@ -686,35 +692,123 @@ async function loadVenuesWithBundleCodes(strapi, venueType, collectBundleFn) {
 }
 
 async function loadMoviesWithCodes(strapi, movieIdFilter) {
-  const filters = {};
   if (movieIdFilter != null) {
-    filters.id = movieIdFilter;
+    return loadMoviesWithCodesPage(strapi, { page: 1, pageSize: 1, movieIdFilter });
   }
-  const rows = await findAllEntities(strapi, 'api::movie.movie', {
+  const all = [];
+  for (let page = 1; ; page += 1) {
+    const batch = await loadMoviesWithCodesPage(strapi, { page, pageSize: 200 });
+    if (!batch.length) break;
+    all.push(...batch);
+    if (batch.length < 200) break;
+    await yieldEventLoop();
+  }
+  return all;
+}
+
+async function loadMoviesWithCodesPage(strapi, { page, pageSize, movieIdFilter }) {
+  const filters = {};
+  if (movieIdFilter != null) filters.id = movieIdFilter;
+  const rows = await strapi.entityService.findMany('api::movie.movie', {
     filters,
     fields: ['id', 'title', 'slug', 'event_group_code'],
     populate: { more_event_groups: true },
     publicationState: 'preview',
-    pageSize: 200,
+    pagination: { page, pageSize },
   });
   const list = Array.isArray(rows) ? rows : [];
   return list.filter((m) => collectEventGroupCodes(m).length > 0);
 }
 
 async function loadTheaterShowsWithCodes(strapi, theaterShowIdFilter) {
-  const filters = {};
   if (theaterShowIdFilter != null) {
-    filters.id = theaterShowIdFilter;
+    return loadTheaterShowsWithCodesPage(strapi, { page: 1, pageSize: 1, theaterShowIdFilter });
   }
-  const rows = await findAllEntities(strapi, 'api::theater-show.theater-show', {
+  const all = [];
+  for (let page = 1; ; page += 1) {
+    const batch = await loadTheaterShowsWithCodesPage(strapi, { page, pageSize: 200 });
+    if (!batch.length) break;
+    all.push(...batch);
+    if (batch.length < 200) break;
+    await yieldEventLoop();
+  }
+  return all;
+}
+
+async function loadTheaterShowsWithCodesPage(strapi, { page, pageSize, theaterShowIdFilter }) {
+  const filters = {};
+  if (theaterShowIdFilter != null) filters.id = theaterShowIdFilter;
+  const rows = await strapi.entityService.findMany('api::theater-show.theater-show', {
     filters,
     fields: ['id', 'title', 'slug', 'event_group_code'],
     populate: { more_event_groups: true },
     publicationState: 'preview',
-    pageSize: 200,
+    pagination: { page, pageSize },
   });
   const list = Array.isArray(rows) ? rows : [];
   return list.filter((show) => collectEventGroupCodes(show).length > 0);
+}
+
+function mergeMovieSyncReports(target, source) {
+  if (!source) return target;
+  if (!target) return { ...source };
+  const counterKeys = [
+    'createdFromMovies',
+    'createdFromVenues',
+    'createdCinemaVenues',
+    'alreadyExists',
+    'skippedPast',
+    'skippedNoVenue',
+    'skippedUnknownEventId',
+    'skippedInvalidDate',
+    'resolvedViaVenueScrape',
+  ];
+  target.moviesScanned = (target.moviesScanned || 0) + (source.moviesScanned || 0);
+  for (const key of counterKeys) {
+    target[key] = (target[key] || 0) + (source[key] || 0);
+  }
+  target.createdCinemaVenuesList = [
+    ...(target.createdCinemaVenuesList || []),
+    ...(source.createdCinemaVenuesList || []),
+  ];
+  target.byMovie = [...(target.byMovie || []), ...(source.byMovie || [])];
+  target.byVenue = [...(target.byVenue || []), ...(source.byVenue || [])];
+  target.missingVenueIds = [...(target.missingVenueIds || []), ...(source.missingVenueIds || [])];
+  target.errors = [...(target.errors || []), ...(source.errors || [])];
+  if (source.venueUpdatedStatuses) target.venueUpdatedStatuses = source.venueUpdatedStatuses;
+  if (source.note && !target.note) target.note = source.note;
+  return target;
+}
+
+function mergeTheaterSyncReports(target, source) {
+  if (!source) return target;
+  if (!target) return { ...source };
+  const counterKeys = [
+    'createdFromTheaterShows',
+    'createdFromTheaterVenues',
+    'createdTheaterVenues',
+    'alreadyExists',
+    'updatedSoldOut',
+    'skippedPast',
+    'skippedNoVenue',
+    'skippedUnknownEventId',
+    'skippedInvalidDate',
+    'resolvedViaVenueScrape',
+  ];
+  target.theaterShowsScanned = (target.theaterShowsScanned || 0) + (source.theaterShowsScanned || 0);
+  for (const key of counterKeys) {
+    target[key] = (target[key] || 0) + (source[key] || 0);
+  }
+  target.createdTheaterVenuesList = [
+    ...(target.createdTheaterVenuesList || []),
+    ...(source.createdTheaterVenuesList || []),
+  ];
+  target.byTheaterShow = [...(target.byTheaterShow || []), ...(source.byTheaterShow || [])];
+  target.byTheaterVenue = [...(target.byTheaterVenue || []), ...(source.byTheaterVenue || [])];
+  target.missingVenueIds = [...(target.missingVenueIds || []), ...(source.missingVenueIds || [])];
+  target.errors = [...(target.errors || []), ...(source.errors || [])];
+  if (source.note && !target.note) target.note = source.note;
+  return target;
 }
 
 /**
@@ -1039,6 +1133,9 @@ async function syncMovieShowtimesFromMore(strapi, {
   now,
   venuePresenceIndex,
   onProgress,
+  skipMovieLoop = false,
+  skipVenueBundles = false,
+  eventIdIndex: sharedEventIdIndex,
 }) {
   const report = {
     ...emptySyncCounters(),
@@ -1074,19 +1171,14 @@ async function syncMovieShowtimesFromMore(strapi, {
     return report;
   }
 
-  if (!movies.length) {
+  if (!movies.length && venuesWithBundle.length) {
     report.note =
       'Δεν υπάρχουν ταινίες με per-movie event_group_code — συγχρονισμός μόνο από venue bundle σινεμά.';
   }
 
-  const eventIdIndex = movies.length
-    ? await buildEventIdIndex(movies, eventsCache, (movie) => ({
-        movieId: movie.id,
-        movieTitle: movie.title,
-      }))
-    : new Map();
+  const eventIdIndex = sharedEventIdIndex || new Map();
 
-  for (let movieIndex = 0; movieIndex < movies.length; movieIndex += 1) {
+  if (!skipMovieLoop) for (let movieIndex = 0; movieIndex < movies.length; movieIndex += 1) {
     const movie = movies[movieIndex];
     if (onProgress && movieIndex > 0 && movieIndex % 5 === 0) {
       onProgress(`Συγχρονισμός ταινιών: ${movieIndex}/${movies.length}…`);
@@ -1108,6 +1200,11 @@ async function syncMovieShowtimesFromMore(strapi, {
         const events = await eventsCache.get(code);
 
         for (const event of events) {
+          const eventId = String(event.eventId ?? '').trim();
+          if (eventId && !eventIdIndex.has(eventId)) {
+            eventIdIndex.set(eventId, { movieId: movie.id, movieTitle: movie.title });
+          }
+
           let venue = resolveVenueFromMoreEvent(venueLookup, event);
           if (!venue) {
             venue = await ensureCinemaVenueFromMoreEvent(
@@ -1177,7 +1274,7 @@ async function syncMovieShowtimesFromMore(strapi, {
     }
   }
 
-  for (const venue of venuesWithBundle) {
+  if (!skipVenueBundles) for (const venue of venuesWithBundle) {
     const venueStats = {
       venueId: venue.id,
       name: venue.name,
@@ -1261,13 +1358,14 @@ async function syncMovieShowtimesFromMore(strapi, {
     }
   }
 
-  if (venueSyncTracker.entries().length > 0) {
+  if (!skipVenueBundles && venueSyncTracker.entries().length > 0) {
     await migrateVenueUpdatedBooleanToEnum(strapi);
     report.venueUpdatedStatuses = await applyCinemaVenueUpdatedStatuses(strapi, venueSyncTracker, {
       autoCreatedVenueIds: (report.createdCinemaVenuesList || []).map((v) => v.id),
     });
   }
 
+  report.eventIdIndex = eventIdIndex;
   return report;
 }
 
@@ -1279,6 +1377,9 @@ async function syncTheaterPerformancesFromMore(strapi, {
   now,
   venuePresenceIndex,
   onProgress,
+  skipShowLoop = false,
+  skipVenueBundles = false,
+  eventIdIndex: sharedEventIdIndex,
 }) {
   const report = {
     ...emptySyncCounters(),
@@ -1294,7 +1395,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
     missingVenueIds: [],
   };
 
-  if (!theaterShows.length) {
+  if (!theaterShows.length && !venuesWithBundle.length) {
     report.note = 'Δεν υπάρχουν παραστάσεις θεάτρου με event_group_code.';
     return report;
   }
@@ -1312,12 +1413,9 @@ async function syncTheaterPerformancesFromMore(strapi, {
       ])
     : [];
 
-  const eventIdIndex = await buildEventIdIndex(theaterShows, eventsCache, (show) => ({
-    theaterShowId: show.id,
-    theaterShowTitle: show.title,
-  }));
+  const eventIdIndex = sharedEventIdIndex || new Map();
 
-  for (let showIndex = 0; showIndex < theaterShows.length; showIndex += 1) {
+  if (!skipShowLoop) for (let showIndex = 0; showIndex < theaterShows.length; showIndex += 1) {
     const show = theaterShows[showIndex];
     if (onProgress && showIndex > 0 && showIndex % 5 === 0) {
       onProgress(`Συγχρονισμός θεάτρου: ${showIndex}/${theaterShows.length}…`);
@@ -1339,6 +1437,14 @@ async function syncTheaterPerformancesFromMore(strapi, {
         const events = await eventsCache.get(code);
 
         for (const event of events) {
+          const eventId = String(event.eventId ?? '').trim();
+          if (eventId && !eventIdIndex.has(eventId)) {
+            eventIdIndex.set(eventId, {
+              theaterShowId: show.id,
+              theaterShowTitle: show.title,
+            });
+          }
+
           let venue = resolveVenueFromMoreEvent(venueLookup, event);
           if (!venue) {
             venue = await ensureTheaterVenueFromMoreEvent(
@@ -1406,7 +1512,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
     }
   }
 
-  for (const venue of venuesWithBundle) {
+  if (!skipVenueBundles) for (const venue of venuesWithBundle) {
     const venueStats = {
       venueId: venue.id,
       name: venue.name,
@@ -1481,6 +1587,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
     }
   }
 
+  report.eventIdIndex = eventIdIndex;
   return report;
 }
 
@@ -1520,23 +1627,212 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   const theaterVenueLookup = globalVenueLookup;
   const theaterVenuesWithBundle = await loadTheaterVenuesWithBundleCodes(strapi);
 
-  const movies = await loadMoviesWithCodes(
-    strapi,
-    options.movieId != null ? Number(options.movieId) : undefined,
-  );
-  const theaterShows = await loadTheaterShowsWithCodes(
-    strapi,
-    options.theaterShowId != null ? Number(options.theaterShowId) : undefined,
-  );
+  const movieIdFilter =
+    options.movieId != null && Number.isFinite(Number(options.movieId))
+      ? Number(options.movieId)
+      : undefined;
+  const theaterShowIdFilter =
+    options.theaterShowId != null && Number.isFinite(Number(options.theaterShowId))
+      ? Number(options.theaterShowId)
+      : undefined;
 
-  const movieCodeCount = movies.reduce((sum, movie) => sum + collectEventGroupCodes(movie).length, 0);
-  const moviesWithSecondaryCodes = movies.filter(
-    (movie) => collectEventGroupCodes(movie).length > 1,
-  ).length;
-  const theaterCodeCount = theaterShows.reduce(
-    (sum, show) => sum + collectEventGroupCodes(show).length,
-    0,
-  );
+  let movieReport = null;
+  let cinemaEventIdIndex = new Map();
+  let moviesWithSecondaryCodes = 0;
+  let movieCodeCount = 0;
+  let totalMoviesScanned = 0;
+
+  progress('Συγχρονισμός ταινιών (batches, χαμηλή μνήμη)…');
+
+  if (movieIdFilter != null) {
+    const movies = await loadMoviesWithCodesPage(strapi, {
+      page: 1,
+      pageSize: 1,
+      movieIdFilter,
+    });
+    totalMoviesScanned = movies.length;
+    for (const movie of movies) {
+      const codes = collectEventGroupCodes(movie);
+      movieCodeCount += codes.length;
+      if (codes.length > 1) moviesWithSecondaryCodes += 1;
+    }
+    const eventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
+    movieReport = await syncMovieShowtimesFromMore(strapi, {
+      movies,
+      venueLookup: cinemaVenueLookup,
+      venuesWithBundle: cinemaVenuesWithBundle,
+      eventsCache,
+      now,
+      venuePresenceIndex,
+      onProgress: progress,
+    });
+    cinemaEventIdIndex = movieReport.eventIdIndex || cinemaEventIdIndex;
+    eventsCache.clear();
+    maybeGc();
+  } else {
+    for (let page = 1; ; page += 1) {
+      const movies = await loadMoviesWithCodesPage(strapi, {
+        page,
+        pageSize: MOVIE_BATCH_SIZE,
+      });
+      if (!movies.length) break;
+      totalMoviesScanned += movies.length;
+      for (const movie of movies) {
+        const codes = collectEventGroupCodes(movie);
+        movieCodeCount += codes.length;
+        if (codes.length > 1) moviesWithSecondaryCodes += 1;
+      }
+      const eventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
+      const partial = await syncMovieShowtimesFromMore(strapi, {
+        movies,
+        venueLookup: cinemaVenueLookup,
+        venuesWithBundle: [],
+        eventsCache,
+        now,
+        venuePresenceIndex,
+        onProgress: progress,
+        skipVenueBundles: true,
+        eventIdIndex: cinemaEventIdIndex,
+      });
+      cinemaEventIdIndex = partial.eventIdIndex || cinemaEventIdIndex;
+      movieReport = mergeMovieSyncReports(movieReport, partial);
+      eventsCache.clear();
+      maybeGc();
+      await yieldEventLoop();
+      progress(`Ταινίες: ${totalMoviesScanned} επεξεργασμένες (batch ${page})…`);
+    }
+
+    if (cinemaVenuesWithBundle.length) {
+      progress('Σινεμά venue bundles…');
+      const eventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
+      const bundlePart = await syncMovieShowtimesFromMore(strapi, {
+        movies: [],
+        venueLookup: cinemaVenueLookup,
+        venuesWithBundle: cinemaVenuesWithBundle,
+        eventsCache,
+        now,
+        venuePresenceIndex,
+        onProgress: progress,
+        skipMovieLoop: true,
+        eventIdIndex: cinemaEventIdIndex,
+      });
+      movieReport = mergeMovieSyncReports(movieReport, bundlePart);
+      eventsCache.clear();
+      maybeGc();
+    }
+  }
+
+  if (!movieReport) {
+    movieReport = {
+      ...emptySyncCounters(),
+      moviesScanned: 0,
+      venuesWithMoreId: cinemaVenueLookup.byMoreId.size,
+      venuesWithBundleCode: cinemaVenuesWithBundle.length,
+      createdFromMovies: 0,
+      createdFromVenues: 0,
+      createdCinemaVenues: 0,
+      createdCinemaVenuesList: [],
+      byMovie: [],
+      byVenue: [],
+      missingVenueIds: [],
+    };
+  }
+  movieReport.moviesScanned = totalMoviesScanned;
+
+  let theaterReport = null;
+  let theaterEventIdIndex = new Map();
+  let theaterCodeCount = 0;
+  let totalTheaterScanned = 0;
+
+  progress('Συγχρονισμός θεάτρου (batches)…');
+
+  if (theaterShowIdFilter != null) {
+    const theaterShows = await loadTheaterShowsWithCodesPage(strapi, {
+      page: 1,
+      pageSize: 1,
+      theaterShowIdFilter,
+    });
+    totalTheaterScanned = theaterShows.length;
+    for (const show of theaterShows) theaterCodeCount += collectEventGroupCodes(show).length;
+    const eventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
+    theaterReport = await syncTheaterPerformancesFromMore(strapi, {
+      theaterShows,
+      venueLookup: theaterVenueLookup,
+      venuesWithBundle: theaterVenuesWithBundle,
+      eventsCache,
+      now,
+      venuePresenceIndex,
+      onProgress: progress,
+    });
+    eventsCache.clear();
+    maybeGc();
+  } else {
+    for (let page = 1; ; page += 1) {
+      const theaterShows = await loadTheaterShowsWithCodesPage(strapi, {
+        page,
+        pageSize: THEATER_BATCH_SIZE,
+      });
+      if (!theaterShows.length) break;
+      totalTheaterScanned += theaterShows.length;
+      for (const show of theaterShows) theaterCodeCount += collectEventGroupCodes(show).length;
+      const eventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
+      const partial = await syncTheaterPerformancesFromMore(strapi, {
+        theaterShows,
+        venueLookup: theaterVenueLookup,
+        venuesWithBundle: [],
+        eventsCache,
+        now,
+        venuePresenceIndex,
+        onProgress: progress,
+        skipShowLoop: false,
+        skipVenueBundles: true,
+        eventIdIndex: theaterEventIdIndex,
+      });
+      theaterEventIdIndex = partial.eventIdIndex || theaterEventIdIndex;
+      theaterReport = mergeTheaterSyncReports(theaterReport, partial);
+      eventsCache.clear();
+      maybeGc();
+      await yieldEventLoop();
+      progress(`Θέατρο: ${totalTheaterScanned} παραστάσεις (batch ${page})…`);
+    }
+
+    if (theaterVenuesWithBundle.length) {
+      progress('Θέατρο venue bundles…');
+      const eventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
+      const bundlePart = await syncTheaterPerformancesFromMore(strapi, {
+        theaterShows: [],
+        venueLookup: theaterVenueLookup,
+        venuesWithBundle: theaterVenuesWithBundle,
+        eventsCache,
+        now,
+        venuePresenceIndex,
+        onProgress: progress,
+        skipShowLoop: true,
+        eventIdIndex: theaterEventIdIndex,
+      });
+      theaterReport = mergeTheaterSyncReports(theaterReport, bundlePart);
+      eventsCache.clear();
+      maybeGc();
+    }
+  }
+
+  if (!theaterReport) {
+    theaterReport = {
+      ...emptySyncCounters(),
+      theaterShowsScanned: 0,
+      theaterVenuesWithMoreId: theaterVenueLookup.byMoreId.size,
+      theaterVenuesWithBundleCode: theaterVenuesWithBundle.length,
+      createdFromTheaterShows: 0,
+      createdFromTheaterVenues: 0,
+      createdTheaterVenues: 0,
+      createdTheaterVenuesList: [],
+      byTheaterShow: [],
+      byTheaterVenue: [],
+      missingVenueIds: [],
+    };
+  }
+  theaterReport.theaterShowsScanned = totalTheaterScanned;
+
   const cinemaVenueCodeCount = cinemaVenuesWithBundle.reduce(
     (sum, venue) => sum + venue.bundleCodes.length,
     0,
@@ -1545,49 +1841,6 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     (sum, venue) => sum + venue.bundleCodes.length,
     0,
   );
-
-  const eventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
-  const allCodes = collectAllSyncEventGroupCodes(
-    movies,
-    theaterShows,
-    cinemaVenuesWithBundle,
-    theaterVenuesWithBundle,
-  );
-  const uniqueCodeCount = new Set(allCodes.map((c) => String(c || '').trim()).filter(Boolean)).size;
-
-  if (PREFETCH_ENABLED && uniqueCodeCount > 0) {
-    progress(`More API: prefetch ${uniqueCodeCount} κωδικών…`);
-    const prefetch = await eventsCache.prefetchAll(allCodes, { onProgress: progress });
-    progress(
-      `More API: ${prefetch.fetched}/${prefetch.total} κωδικοί · συγχρονισμός ταινιών…`,
-    );
-  } else {
-    progress(
-      `More API: ${uniqueCodeCount} κωδικοί (σειριακά, χαμηλή μνήμη) · συγχρονισμός ταινιών…`,
-    );
-  }
-
-  const movieReport = await syncMovieShowtimesFromMore(strapi, {
-    movies,
-    venueLookup: cinemaVenueLookup,
-    venuesWithBundle: cinemaVenuesWithBundle,
-    eventsCache,
-    now,
-    venuePresenceIndex,
-    onProgress: progress,
-  });
-
-  eventsCache.clear();
-  progress('Συγχρονισμός θεάτρου…');
-  const theaterReport = await syncTheaterPerformancesFromMore(strapi, {
-    theaterShows,
-    venueLookup: theaterVenueLookup,
-    venuesWithBundle: theaterVenuesWithBundle,
-    eventsCache,
-    now,
-    venuePresenceIndex,
-    onProgress: progress,
-  });
 
   const createdFromBuckets =
     movieReport.createdFromMovies +

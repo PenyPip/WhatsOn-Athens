@@ -44,12 +44,15 @@ services:
       JWT_SECRET: whatson-jwt-secret
       NODE_ENV: production
       ENCRYPTION_KEY: whatson-encryption-key-32chars!!
-      NODE_OPTIONS: --max-old-space-size=1536
-      MORE_SHOWTIME_SYNC_CONCURRENCY: "2"
-      MORE_SHOWTIME_SYNC_DELAY_MS: "200"
-      MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX: "24"
-      MORE_SHOWTIME_SYNC_WORKER_HEAP: "768"
-      MORE_SHOWTIME_SYNC_START_DELAY_MS: "2500"
+      NODE_OPTIONS: --max-old-space-size=1024 --expose-gc
+      MORE_SHOWTIME_SYNC_IN_PROCESS: "true"
+      MORE_SHOWTIME_SYNC_WORKER: "false"
+      MORE_SHOWTIME_SYNC_CONCURRENCY: "1"
+      MORE_SHOWTIME_SYNC_DELAY_MS: "250"
+      MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX: "16"
+      MORE_SHOWTIME_SYNC_MOVIE_BATCH: "6"
+      MORE_SHOWTIME_SYNC_THEATER_BATCH: "6"
+      MORE_SHOWTIME_SYNC_START_DELAY_MS: "1000"
       URL: https://the37n.gr
       STRAPI_ADMIN_BACKEND_URL: https://the37n.gr
       PUBLIC_URL: https://the37n.gr

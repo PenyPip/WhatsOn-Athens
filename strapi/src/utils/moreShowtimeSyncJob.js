@@ -10,7 +10,8 @@ const WORKER_LOG = path.join(process.cwd(), 'data', 'more-showtime-sync-worker.l
 const STALE_MS = Number(process.env.MORE_SHOWTIME_SYNC_STALE_MS || 20 * 60 * 1000);
 const HEARTBEAT_MS = 30_000;
 const START_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_START_DELAY_MS || 2500);
-const USE_WORKER = process.env.MORE_SHOWTIME_SYNC_IN_PROCESS !== 'true';
+/** Worker = 2ο Strapi instance → OOM σε μικρά VPS. Μόνο με MORE_SHOWTIME_SYNC_WORKER=true */
+const USE_WORKER = process.env.MORE_SHOWTIME_SYNC_WORKER === 'true';
 
 /** @type {object | null} */
 let activeJob = null;
@@ -349,7 +350,7 @@ function startMoreShowtimeSyncJob(strapi, options = {}) {
     status: 'running',
     startedAt,
     lastProgressAt: startedAt,
-    progress: 'Έναρξη συγχρονισμού (worker)…',
+    progress: 'Έναρξη συγχρονισμού…',
     report: null,
     error: null,
     workerOptions: {
