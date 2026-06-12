@@ -30,6 +30,14 @@ const nextConfig: NextConfig = {
   experimental: {
     optimizePackageImports: ["lucide-react", "date-fns", "@tanstack/react-query"],
     optimizeCss: true,
+    ...(isProdBuild
+      ? {
+          /** Λιγότερη RAM στο `next build` (static export εκατοντάδες paths). */
+          staticGenerationRetryCount: 1,
+          staticGenerationMaxConcurrency: 2,
+          staticGenerationMinPagesPerWorker: 50,
+        }
+      : {}),
   },
   ...(process.env.NODE_ENV === "development"
     ? {

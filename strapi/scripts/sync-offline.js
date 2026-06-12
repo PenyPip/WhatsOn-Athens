@@ -2,11 +2,14 @@
 
 /**
  * Offline sync — τρέχει ΜΟΝΟ του Strapi (χωρίς παράλληλο instance).
- * Χρήση στο server όταν το admin δίνει 502:
+ * Χρήση στο server όταν το admin δίνει 502 ή OOM:
  *
  *   docker compose stop strapi
- *   docker compose run --rm --no-deps strapi node scripts/sync-offline.js
+ *   docker compose run --rm --no-deps strapi \
+ *     node --max-old-space-size=2048 --expose-gc scripts/sync-offline.js [cinema|theater|all]
  *   docker compose start strapi
+ *
+ * Προαιρετικό όρισμα scope: cinema | theater | all (default all).
  */
 
 const path = require('path');
@@ -14,6 +17,8 @@ const path = require('path');
 process.chdir(path.join(__dirname, '..'));
 
 async function main() {
+  const rawScope = process.argv[2];
+  const scope = rawScope === 'cinema' || rawScope === 'theater' ? rawScope : 'all';
   const id = `sync-offline-${Date.now()}`;
   const startedAt = new Date().toISOString();
   const jobFile = path.join(process.cwd(), 'data', 'more-showtime-sync-job.json');
@@ -41,7 +46,7 @@ async function main() {
     }),
   );
 
-  console.log(`[sync-offline] job ${id}`);
+  console.log(`[sync-offline] job ${id} scope=${scope} gc=${typeof global.gc === 'function' ? 'on' : 'off'}`);
   const Strapi = require('@strapi/strapi');
   const { syncShowtimesFromMore } = require('../src/utils/moreShowtimeSync');
 
@@ -58,7 +63,7 @@ async function main() {
       console.log(`[sync-offline] ${msg}`);
     };
 
-    const report = await syncShowtimesFromMore(strapi, { onProgress });
+    const report = await syncShowtimesFromMore(strapi, { scope, onProgress });
     writeJob({
       status: 'completed',
       report,

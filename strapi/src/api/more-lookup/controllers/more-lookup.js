@@ -302,10 +302,14 @@ module.exports = {
     const wait = body.wait === true || ctx.query?.wait === 'true';
     const adminEmail = ctx.state?.admin?.email || 'unknown';
 
+    const rawScope = body.scope ?? ctx.query?.scope;
+    const scope = rawScope === 'cinema' || rawScope === 'theater' ? rawScope : 'all';
+
     const syncOptions = {
       movieId: movieId != null && String(movieId).trim() ? Number(movieId) : undefined,
       theaterShowId:
         theaterShowId != null && String(theaterShowId).trim() ? Number(theaterShowId) : undefined,
+      scope,
       force: body.force === true,
     };
 
@@ -329,7 +333,7 @@ module.exports = {
     }
 
     strapi.log.info(
-      `[more-showtime-sync] background run by ${adminEmail}${syncOptions.force ? ' (force)' : ''}`,
+      `[more-showtime-sync] background run by ${adminEmail} scope=${scope}${syncOptions.force ? ' (force)' : ''}`,
     );
     const started = startMoreShowtimeSyncJob(strapi, syncOptions);
     ctx.body = {

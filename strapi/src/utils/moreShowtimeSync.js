@@ -1136,6 +1136,7 @@ async function syncMovieShowtimesFromMore(strapi, {
   skipMovieLoop = false,
   skipVenueBundles = false,
   eventIdIndex: sharedEventIdIndex,
+  progressOffset = 0,
 }) {
   const report = {
     ...emptySyncCounters(),
@@ -1180,8 +1181,9 @@ async function syncMovieShowtimesFromMore(strapi, {
 
   if (!skipMovieLoop) for (let movieIndex = 0; movieIndex < movies.length; movieIndex += 1) {
     const movie = movies[movieIndex];
-    if (onProgress && movieIndex > 0 && movieIndex % 5 === 0) {
-      onProgress(`Συγχρονισμός ταινιών: ${movieIndex}/${movies.length}…`);
+    if (onProgress) {
+      const label = movie.title || movie.slug || `#${movie.id}`;
+      onProgress(`Ταινία ${progressOffset + movieIndex + 1}: «${label}»`);
     }
     const codes = collectEventGroupCodes(movie);
     const movieStats = {
@@ -1274,7 +1276,11 @@ async function syncMovieShowtimesFromMore(strapi, {
     }
   }
 
-  if (!skipVenueBundles) for (const venue of venuesWithBundle) {
+  if (!skipVenueBundles) for (let venueIdx = 0; venueIdx < venuesWithBundle.length; venueIdx += 1) {
+    const venue = venuesWithBundle[venueIdx];
+    if (onProgress) {
+      onProgress(`Σινεμά (bundle) ${venueIdx + 1}/${venuesWithBundle.length}: «${venue.name}»`);
+    }
     const venueStats = {
       venueId: venue.id,
       name: venue.name,
@@ -1380,6 +1386,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
   skipShowLoop = false,
   skipVenueBundles = false,
   eventIdIndex: sharedEventIdIndex,
+  progressOffset = 0,
 }) {
   const report = {
     ...emptySyncCounters(),
@@ -1417,8 +1424,9 @@ async function syncTheaterPerformancesFromMore(strapi, {
 
   if (!skipShowLoop) for (let showIndex = 0; showIndex < theaterShows.length; showIndex += 1) {
     const show = theaterShows[showIndex];
-    if (onProgress && showIndex > 0 && showIndex % 5 === 0) {
-      onProgress(`Συγχρονισμός θεάτρου: ${showIndex}/${theaterShows.length}…`);
+    if (onProgress) {
+      const label = show.title || show.slug || `#${show.id}`;
+      onProgress(`Παράσταση ${progressOffset + showIndex + 1}: «${label}»`);
     }
     const codes = collectEventGroupCodes(show);
     const showStats = {
@@ -1512,7 +1520,11 @@ async function syncTheaterPerformancesFromMore(strapi, {
     }
   }
 
-  if (!skipVenueBundles) for (const venue of venuesWithBundle) {
+  if (!skipVenueBundles) for (let venueIdx = 0; venueIdx < venuesWithBundle.length; venueIdx += 1) {
+    const venue = venuesWithBundle[venueIdx];
+    if (onProgress) {
+      onProgress(`Θέατρο (bundle) ${venueIdx + 1}/${venuesWithBundle.length}: «${venue.name}»`);
+    }
     const venueStats = {
       venueId: venue.id,
       name: venue.name,
@@ -1615,6 +1627,12 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     if (typeof options.onProgress === 'function') options.onProgress(msg);
   };
 
+  /** scope: 'cinema' | 'theater' | 'all' — επιτρέπει ξεχωριστά runs (λιγότερη μνήμη ανά process). */
+  const scope =
+    options.scope === 'cinema' || options.scope === 'theater' ? options.scope : 'all';
+  const runCinema = scope !== 'theater';
+  const runTheater = scope !== 'cinema';
+
   progress('Φόρτωση χώρων CMS…');
   const globalVenueLookup = await loadGlobalVenueLookup(strapi);
   const venuePresenceIndex = await buildVenuePresenceIndex(strapi);
@@ -1642,9 +1660,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   let movieCodeCount = 0;
   let totalMoviesScanned = 0;
 
-  progress('Συγχρονισμός ταινιών (batches, χαμηλή μνήμη)…');
+  if (runCinema) progress('Συγχρονισμός ταινιών (batches, χαμηλή μνήμη)…');
 
-  if (movieIdFilter != null) {
+  if (runCinema && movieIdFilter != null) {
     const movies = await loadMoviesWithCodesPage(strapi, {
       page: 1,
       pageSize: 1,
@@ -1669,7 +1687,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     cinemaEventIdIndex = movieReport.eventIdIndex || cinemaEventIdIndex;
     eventsCache.clear();
     maybeGc();
-  } else {
+  } else if (runCinema) {
     for (let page = 1; ; page += 1) {
       const movies = await loadMoviesWithCodesPage(strapi, {
         page,
@@ -1693,6 +1711,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
         onProgress: progress,
         skipVenueBundles: true,
         eventIdIndex: cinemaEventIdIndex,
+        progressOffset: totalMoviesScanned - movies.length,
       });
       cinemaEventIdIndex = partial.eventIdIndex || cinemaEventIdIndex;
       movieReport = mergeMovieSyncReports(movieReport, partial);
@@ -1744,9 +1763,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   let theaterCodeCount = 0;
   let totalTheaterScanned = 0;
 
-  progress('Συγχρονισμός θεάτρου (batches)…');
+  if (runTheater) progress('Συγχρονισμός θεάτρου (batches)…');
 
-  if (theaterShowIdFilter != null) {
+  if (runTheater && theaterShowIdFilter != null) {
     const theaterShows = await loadTheaterShowsWithCodesPage(strapi, {
       page: 1,
       pageSize: 1,
@@ -1766,7 +1785,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     });
     eventsCache.clear();
     maybeGc();
-  } else {
+  } else if (runTheater) {
     for (let page = 1; ; page += 1) {
       const theaterShows = await loadTheaterShowsWithCodesPage(strapi, {
         page,
@@ -1787,6 +1806,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
         skipShowLoop: false,
         skipVenueBundles: true,
         eventIdIndex: theaterEventIdIndex,
+        progressOffset: totalTheaterScanned - theaterShows.length,
       });
       theaterEventIdIndex = partial.eventIdIndex || theaterEventIdIndex;
       theaterReport = mergeTheaterSyncReports(theaterReport, partial);
@@ -1868,6 +1888,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   const report = {
     ok: true,
     at: new Date().toISOString(),
+    scope,
     moviesScanned: movieReport.moviesScanned,
     movieEventGroupCodesTotal: movieCodeCount,
     moviesWithMultipleEventGroupCodes: moviesWithSecondaryCodes,
@@ -1912,7 +1933,11 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     durationMs: Date.now() - started,
   };
 
+  const scopePrefix =
+    scope === 'cinema' ? 'Σινεμά · ' : scope === 'theater' ? 'Θέατρο · ' : '';
+
   report.message =
+    scopePrefix +
     `Νέες: ${created} (ταινίες: ${report.createdFromMovies} · σινεμά bundle: ${report.createdFromVenues}` +
     ` · θέατρο: ${report.createdFromTheaterShows} · θέατρο bundle: ${report.createdFromTheaterVenues})` +
     (dbCreated.total !== createdFromBuckets
@@ -1945,7 +1970,52 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   return report;
 }
 
+/** Βαθύ merge δύο τιμών report: αριθμοί→άθροισμα, arrays→concat, objects→αναδρομικά. */
+function mergeReportValue(a, b) {
+  if (a == null) return b;
+  if (b == null) return a;
+  if (Array.isArray(a) && Array.isArray(b)) return [...a, ...b];
+  if (typeof a === 'number' && typeof b === 'number') return a + b;
+  if (typeof a === 'boolean' && typeof b === 'boolean') return a && b;
+  if (typeof a === 'object' && typeof b === 'object') {
+    const out = {};
+    for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
+      out[key] = mergeReportValue(a[key], b[key]);
+    }
+    return out;
+  }
+  return b !== undefined && b !== '' ? b : a;
+}
+
+/**
+ * Συνδυάζει per-phase reports (cinema + theater) σε ένα ενιαίο report.
+ * Χρησιμοποιείται από το chained worker («Όλα» = δύο σειριακά processes).
+ */
+function combineSyncReports(reports) {
+  const list = (reports || []).filter(Boolean);
+  if (list.length === 0) return null;
+  if (list.length === 1) return list[0];
+
+  const merged = list.reduce((acc, r) => mergeReportValue(acc, r));
+  merged.scope = 'all';
+  merged.ok = list.every((r) => r.ok !== false);
+  merged.at = new Date().toISOString();
+
+  merged.message =
+    `Νέες: ${merged.created} (ταινίες: ${merged.createdFromMovies} · σινεμά bundle: ${merged.createdFromVenues}` +
+    ` · θέατρο: ${merged.createdFromTheaterShows} · θέατρο bundle: ${merged.createdFromTheaterVenues})` +
+    ` · υπήρχαν: ${merged.alreadyExists}` +
+    (merged.createdCinemaVenues ? ` · νέα σινεμά: ${merged.createdCinemaVenues}` : '') +
+    (merged.createdTheaterVenues ? ` · νέοι χώροι θεάτρου: ${merged.createdTheaterVenues}` : '') +
+    (merged.updatedSoldOut ? ` · sold out ενημ.: ${merged.updatedSoldOut}` : '') +
+    ` · χωρίς venue_id: ${merged.skippedNoVenue}` +
+    ` · άγνωστο eventId: ${merged.skippedUnknownEventId}`;
+
+  return merged;
+}
+
 module.exports = {
   syncShowtimesFromMore,
+  combineSyncReports,
   parseMoreEventDatetime,
 };

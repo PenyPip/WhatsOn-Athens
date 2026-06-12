@@ -46,7 +46,8 @@ services:
       ENCRYPTION_KEY: whatson-encryption-key-32chars!!
       NODE_OPTIONS: --max-old-space-size=1024
       MORE_SHOWTIME_SYNC_WORKER: "true"
-      MORE_SHOWTIME_SYNC_WORKER_HEAP: "768"
+      # Worker = ξεχωριστό process (Strapi ~300-500MB + sync). 768 ήταν λίγο → OOM. Server έχει RAM.
+      MORE_SHOWTIME_SYNC_WORKER_HEAP: "2048"
       MORE_SHOWTIME_SYNC_CONCURRENCY: "1"
       MORE_SHOWTIME_SYNC_DELAY_MS: "250"
       MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX: "16"
@@ -84,6 +85,7 @@ services:
         NEXT_PUBLIC_SITE_URL: https://the37n.gr
         SITEMAP_STRAPI_URL: http://host.docker.internal:1337
         SITEMAP_STRICT_MODE: "1"
+        NODE_HEAP_MB: "4096"
     ports:
       - "3000:80"
     depends_on:

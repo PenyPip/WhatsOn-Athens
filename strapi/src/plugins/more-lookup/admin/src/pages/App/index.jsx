@@ -1530,9 +1530,12 @@ const App = () => {
     }
   };
 
-  const runSyncRequest = async (force = false) => {
+  const runSyncRequest = async (force = false, scope = 'all') => {
+    const scopeLabel = scope === 'cinema' ? 'σινεμά' : scope === 'theater' ? 'θέατρο' : 'σινεμά + θέατρο';
     setSyncLoading(true);
-    setSyncProgress(force ? 'Reset + επανεκκίνηση sync…' : 'Έναρξη συγχρονισμού…');
+    setSyncProgress(
+      force ? `Reset + επανεκκίνηση sync (${scopeLabel})…` : `Έναρξη συγχρονισμού (${scopeLabel})…`,
+    );
     setSyncReport(null);
     let finishedOk = false;
     try {
@@ -1547,7 +1550,7 @@ const App = () => {
 
       let res;
       try {
-        res = await post('/api/more-lookup/sync-showtimes', force ? { force: true } : {});
+        res = await post('/api/more-lookup/sync-showtimes', { scope, ...(force ? { force: true } : {}) });
       } catch (postErr) {
         if (isTransientGatewayError(postErr)) {
           setSyncProgress('502 στην έναρξη — το worker μπορεί να ξεκίνησε, αναμονή…');
@@ -1634,8 +1637,10 @@ const App = () => {
     }
   };
 
-  const syncShowtimes = () => runSyncRequest(false);
-  const syncShowtimesForce = () => runSyncRequest(true);
+  const syncShowtimes = () => runSyncRequest(false, 'all');
+  const syncShowtimesForce = () => runSyncRequest(true, 'all');
+  const syncShowtimesCinema = () => runSyncRequest(false, 'cinema');
+  const syncShowtimesTheater = () => runSyncRequest(false, 'theater');
 
   return (
     <Layout>
@@ -1767,21 +1772,38 @@ const App = () => {
                 subtitle="More API → Προβολή ταινίας / Παράσταση · μόνο χειροκίνητα (χωρίς cron)"
                 action={
                   showtimeSyncEnabled ? (
-                    <Flex gap={2}>
+                    <Flex gap={2} wrap="wrap">
                       <Button
                         variant="success"
                         loading={syncLoading}
                         onClick={syncShowtimes}
                         disabled={syncLoading || loading}
                         style={actionButtonStyle}
+                        title="Σινεμά → Θέατρο σε δύο σειριακά worker processes (λιγότερη μνήμη)"
                       >
-                        {syncLoading ? 'Sync…' : 'Τρέξε sync'}
+                        {syncLoading ? 'Sync…' : 'Τρέξε sync (Όλα)'}
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={syncShowtimesCinema}
+                        disabled={syncLoading || loading}
+                        title="Μόνο προβολές σινεμά (ταινίες) — χαμηλότερο peak μνήμης"
+                      >
+                        Σινεμά
+                      </Button>
+                      <Button
+                        variant="secondary"
+                        onClick={syncShowtimesTheater}
+                        disabled={syncLoading || loading}
+                        title="Μόνο παραστάσεις θεάτρου — χαμηλότερο peak μνήμης"
+                      >
+                        Θέατρο
                       </Button>
                       <Button
                         variant="tertiary"
                         onClick={syncShowtimesForce}
                         disabled={syncLoading || loading}
-                        title="Ακυρώνει κολλημένο sync και ξεκινά νέο (μετά από 502 ή crash)"
+                        title="Ακυρώνει κολλημένο sync και ξεκινά νέο (Όλα) μετά από 502 ή crash"
                       >
                         Ξανά (force)
                       </Button>
@@ -1799,6 +1821,11 @@ const App = () => {
                     Χρειάζεται event_group_code ανά ταινία/παράσταση. Αν λείπει σινεμά ή θέατρο στο CMS,
                     δημιουργείται αυτόματα από More (venueId + όνομα) και μετά προστίθενται προβολές.
                     Δημιουργούνται μόνο νέες εγγραφές προβολών.
+                  </Typography>
+                  <Typography variant="pi" textColor="neutral500" paddingTop={2}>
+                    «Όλα» = σινεμά και θέατρο σε δύο σειριακά worker processes (καθαρό heap ανά φάση →
+                    λιγότερη μνήμη). «Σινεμά» / «Θέατρο» τρέχουν μόνο το ένα σκέλος — χρήσιμα αν θέλεις
+                    χαμηλό peak μνήμης ή γρήγορη ενημέρωση μόνο της μίας κατηγορίας.
                   </Typography>
                   {syncLoading && syncProgress ? (
                     <Box paddingTop={3}>

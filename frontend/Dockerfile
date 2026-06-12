@@ -27,11 +27,15 @@ ARG NEXT_PUBLIC_SITE_URL=https://the37n.gr
 # Κατά build: Strapi στο host :1337 — docker compose περνά host.docker.internal (όχι network=host).
 ARG SITEMAP_STRAPI_URL=http://host.docker.internal:1337
 ARG SITEMAP_STRICT_MODE=1
+# Next static export + prefetch — χρειάζεται μεγαλύτερο heap (VPS: 4096, Docker Desktop: αύξησε RAM ≥6GB).
+ARG NODE_HEAP_MB=4096
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV SITEMAP_STRAPI_URL=$SITEMAP_STRAPI_URL
 ENV SITEMAP_STRICT_MODE=$SITEMAP_STRICT_MODE
+ENV NODE_OPTIONS=--max-old-space-size=${NODE_HEAP_MB}
+ENV NEXT_TELEMETRY_DISABLED=1
 
 RUN npm run build
 

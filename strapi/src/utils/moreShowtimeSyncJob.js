@@ -3,7 +3,7 @@
 const fs = require('fs');
 const path = require('path');
 const { spawn } = require('child_process');
-const { syncShowtimesFromMore } = require('./moreShowtimeSync');
+const { syncShowtimesFromMore, combineSyncReports } = require('./moreShowtimeSync');
 
 const JOB_FILE = path.join(process.cwd(), 'data', 'more-showtime-sync-job.json');
 const WORKER_LOG = path.join(process.cwd(), 'data', 'more-showtime-sync-worker.log');
@@ -26,6 +26,8 @@ function ensureJobDir() {
 
 function publicJob(job) {
   if (!job) return null;
+  const phases = Array.isArray(job.phases) ? job.phases : null;
+  const phaseIndex = job.phaseIndex != null ? job.phaseIndex : null;
   return {
     id: job.id,
     status: job.status,
@@ -36,6 +38,11 @@ function publicJob(job) {
     report: job.report ?? null,
     lastProgressAt: job.lastProgressAt ?? null,
     workerPid: job.workerPid ?? null,
+    scope: job.scope ?? null,
+    phases,
+    phaseIndex,
+    currentPhase: phases && phaseIndex != null ? phases[phaseIndex] ?? null : null,
+    totalPhases: phases ? phases.length : null,
   };
 }
 
@@ -54,6 +61,12 @@ function jobForDisk(job) {
   const pub = publicJob(job);
   if (job?.workerOptions) pub.workerOptions = job.workerOptions;
   if (job?.report) pub.report = trimReportForDisk(job.report);
+  if (job?.phaseTransitionAt) pub.phaseTransitionAt = job.phaseTransitionAt;
+  if (job?.phaseReports && typeof job.phaseReports === 'object') {
+    const trimmed = {};
+    for (const [k, v] of Object.entries(job.phaseReports)) trimmed[k] = trimReportForDisk(v);
+    pub.phaseReports = trimmed;
+  }
   return pub;
 }
 
@@ -179,8 +192,11 @@ function recoverDeadWorkerJob(job) {
   const pid = job.workerPid;
   if (pid && isProcessAlive(pid)) return job;
 
-  const ageMs = job.startedAt ? Date.now() - new Date(job.startedAt).getTime() : 0;
-  if (!pid && ageMs < START_DELAY_MS + WORKER_BOOT_GRACE_MS) return job;
+  // Παράθυρο χάριτος: αρχικό spawn (startedAt) ή μετάβαση φάσης (phaseTransitionAt).
+  // Στο chained «Όλα» ο worker βγαίνει με workerPid=null και ο parent ξεκινά την επόμενη φάση.
+  const graceRef = job.phaseTransitionAt || job.startedAt;
+  const graceAgeMs = graceRef ? Date.now() - new Date(graceRef).getTime() : Infinity;
+  if (!pid && graceAgeMs < START_DELAY_MS + WORKER_BOOT_GRACE_MS) return job;
 
   const msg = pid
     ? 'Ο worker διακόπηκε (crash/OOM). Δες data/more-showtime-sync-worker.log και δοκίμασε «Ξανά (force)».'
@@ -245,13 +261,15 @@ function patchJobOnDisk(jobId, patch) {
 
 function spawnSyncWorker(strapi, jobId) {
   const script = path.join(process.cwd(), 'scripts', 'sync-showtimes-worker.js');
-  const heapMb = String(process.env.MORE_SHOWTIME_SYNC_WORKER_HEAP || '768').replace(/\D/g, '') || '768';
+  const heapMb = String(process.env.MORE_SHOWTIME_SYNC_WORKER_HEAP || '1536').replace(/\D/g, '') || '1536';
   ensureJobDir();
   const logFd = fs.openSync(WORKER_LOG, 'a');
 
+  // --expose-gc ως ΑΜΕΣΟ CLI arg (επιτρέπεται· μόνο το NODE_OPTIONS απαγορεύει το flag) →
+  // ενεργοποιεί το maybeGc() ανάμεσα στα batches ώστε να αποδεσμεύεται μνήμη μέσα στο run.
   const child = spawn(
     process.execPath,
-    [`--max-old-space-size=${heapMb}`, script, jobId],
+    [`--max-old-space-size=${heapMb}`, '--expose-gc', script, jobId],
     {
       detached: true,
       stdio: ['ignore', logFd, logFd],
@@ -266,6 +284,20 @@ function spawnSyncWorker(strapi, jobId) {
       if (job.workerPid && child.pid && job.workerPid !== child.pid) return;
 
       if (code === 0) {
+        // Chained «Όλα»: ο worker ολοκλήρωσε μια φάση κι αύξησε το phaseIndex.
+        // Αν υπάρχει επόμενη φάση, ξεκινάμε νέο (καθαρό heap) worker process.
+        const phases = Array.isArray(job.phases) ? job.phases : [];
+        if (job.phaseIndex != null && job.phaseIndex < phases.length) {
+          try {
+            spawnSyncWorker(strapi, jobId);
+          } catch (e) {
+            failJobById(
+              jobId,
+              e?.message || 'Αποτυχία εκκίνησης επόμενης φάσης sync. Δες data/more-showtime-sync-worker.log.',
+            );
+          }
+          return;
+        }
         failJobById(
           jobId,
           'Ο worker τερμάτισε χωρίς να σημειώσει ολοκλήρωση. Δες data/more-showtime-sync-worker.log.',
@@ -304,19 +336,25 @@ async function runMoreShowtimeSyncWorker(jobId) {
   }
 
   const workerOptions = saved.workerOptions || {};
+  const phases = Array.isArray(saved.phases) && saved.phases.length ? saved.phases : ['cinema', 'theater'];
+  const phaseIndex = Number.isInteger(saved.phaseIndex) ? saved.phaseIndex : 0;
+  const phase = phases[phaseIndex] || 'all';
+  const isLastPhase = phaseIndex >= phases.length - 1;
+  const phaseLabel = phase === 'cinema' ? 'σινεμά' : phase === 'theater' ? 'θέατρο' : 'όλα';
   let strapi;
 
   const onProgress = (msg) => {
     if (!msg) return;
+    const prefix = phases.length > 1 ? `[${phaseIndex + 1}/${phases.length} ${phaseLabel}] ` : '';
     patchJobOnDisk(jobId, {
       status: 'running',
       lastProgressAt: new Date().toISOString(),
-      progress: msg,
+      progress: `${prefix}${msg}`,
     });
   };
 
   try {
-    console.log(`[sync-worker] boot Strapi job=${jobId}`);
+    console.log(`[sync-worker] boot Strapi job=${jobId} phase=${phase} (${phaseIndex + 1}/${phases.length})`);
     onProgress('Worker: εκκίνηση Strapi…');
     const Strapi = require('@strapi/strapi');
     strapi = await Strapi().load();
@@ -324,24 +362,51 @@ async function runMoreShowtimeSyncWorker(jobId) {
 
     const report = await syncShowtimesFromMore(strapi, {
       ...workerOptions,
+      scope: phase,
       onProgress,
     });
 
-    const patched = patchJobOnDisk(jobId, {
-      status: 'completed',
-      report,
-      finishedAt: new Date().toISOString(),
-      progress: report.message || 'Ολοκληρώθηκε',
-      error: null,
-      workerPid: null,
-    });
-    if (!patched) {
-      console.error(
-        `[sync-worker] completed but job file changed (job=${jobId}). Report not persisted — πιθανό force reset.`,
-      );
-      process.exitCode = 1;
+    const current = loadFullJobFromDisk();
+    const phaseReports = { ...(current?.phaseReports || {}), [phase]: report };
+
+    if (isLastPhase) {
+      const ordered = phases.map((p) => phaseReports[p]).filter(Boolean);
+      const finalReport = phases.length > 1 ? combineSyncReports(ordered) : report;
+      const patched = patchJobOnDisk(jobId, {
+        status: 'completed',
+        report: finalReport,
+        phaseReports,
+        finishedAt: new Date().toISOString(),
+        progress: finalReport.message || 'Ολοκληρώθηκε',
+        error: null,
+        workerPid: null,
+      });
+      if (!patched) {
+        console.error(
+          `[sync-worker] completed but job file changed (job=${jobId}). Report not persisted — πιθανό force reset.`,
+        );
+        process.exitCode = 1;
+      } else {
+        console.log(`[sync-worker] completed job=${jobId} phase=${phase} (${report.durationMs}ms)`);
+      }
     } else {
-      console.log(`[sync-worker] completed job=${jobId} (${report.durationMs}ms)`);
+      // Ολοκληρώθηκε ενδιάμεση φάση — ο parent ξεκινά την επόμενη με καθαρό heap.
+      const patched = patchJobOnDisk(jobId, {
+        status: 'running',
+        phaseReports,
+        phaseIndex: phaseIndex + 1,
+        phaseTransitionAt: new Date().toISOString(),
+        lastProgressAt: new Date().toISOString(),
+        progress: `Ολοκληρώθηκε φάση «${phaseLabel}». Εκκίνηση επόμενης φάσης…`,
+        error: null,
+        workerPid: null,
+      });
+      if (!patched) {
+        console.error(`[sync-worker] phase ${phase} done but job file changed (job=${jobId}).`);
+        process.exitCode = 1;
+      } else {
+        console.log(`[sync-worker] phase ${phase} done job=${jobId} (${report.durationMs}ms) → next phase`);
+      }
     }
   } catch (e) {
     const msg = e?.message || String(e);
@@ -349,13 +414,13 @@ async function runMoreShowtimeSyncWorker(jobId) {
       status: 'failed',
       error: msg,
       finishedAt: new Date().toISOString(),
-      progress: `Αποτυχία: ${msg}`,
+      progress: `Αποτυχία (${phaseLabel}): ${msg}`,
       workerPid: null,
     });
     if (!patched) {
       console.error(`[sync-worker] failed job=${jobId} but patch rejected`, e);
     } else {
-      console.error(`[sync-worker] failed job=${jobId}`, e);
+      console.error(`[sync-worker] failed job=${jobId} phase=${phase}`, e);
     }
     process.exitCode = 1;
   } finally {
@@ -446,16 +511,29 @@ function startMoreShowtimeSyncJob(strapi, options = {}) {
     return { started: false, reason: 'already_running', job: publicJob(diskRunning) };
   }
 
+  // scope: 'cinema' | 'theater' | 'all'. Single-entity sync κλειδώνει το ανάλογο scope.
+  let scope =
+    options.scope === 'cinema' || options.scope === 'theater' ? options.scope : 'all';
+  if (options.movieId != null) scope = 'cinema';
+  if (options.theaterShowId != null) scope = 'theater';
+  const phases = scope === 'all' ? ['cinema', 'theater'] : [scope];
+
   const id = `sync-${Date.now()}`;
   const startedAt = new Date().toISOString();
+  const scopeLabel =
+    scope === 'cinema' ? 'σινεμά' : scope === 'theater' ? 'θέατρο' : 'σινεμά + θέατρο';
   activeJob = {
     id,
     status: 'running',
     startedAt,
     lastProgressAt: startedAt,
-    progress: 'Έναρξη συγχρονισμού (worker)…',
+    progress: `Έναρξη συγχρονισμού (${scopeLabel})…`,
     report: null,
     error: null,
+    scope,
+    phases,
+    phaseIndex: 0,
+    phaseReports: {},
     workerOptions: {
       movieId: options.movieId,
       theaterShowId: options.theaterShowId,
