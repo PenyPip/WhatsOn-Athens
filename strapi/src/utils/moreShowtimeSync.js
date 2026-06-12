@@ -233,9 +233,12 @@ async function findAllEntities(strapi, uid, options = {}) {
   const all = [];
   let start = 0;
 
+  const queryBase =
+    base.sort != null ? base : { ...base, sort: { id: 'asc' } };
+
   for (let pageNum = 0; pageNum < maxPages; pageNum += 1) {
     const rows = await strapi.entityService.findMany(uid, {
-      ...base,
+      ...queryBase,
       pagination: { start, limit: pageSize },
     });
     const list = Array.isArray(rows) ? rows : [];
@@ -433,13 +436,19 @@ async function loadVenueBundleRows(strapi, venueType, onPageProgress) {
   });
 }
 
-function venuesWithBundleFromRows(rows, collectBundleFn) {
-  return rows
-    .map((venue) => ({
-      ...venue,
-      bundleCodes: collectBundleFn(venue),
-    }))
-    .filter((venue) => venue.bundleCodes.length > 0);
+function venuesWithBundleFromRows(rows, collectBundleFn, { onlyWithBundles = true } = {}) {
+  const mapped = rows.map((venue) => ({
+    ...venue,
+    bundleCodes: collectBundleFn(venue),
+  }));
+  return onlyWithBundles ? mapped.filter((venue) => venue.bundleCodes.length > 0) : mapped;
+}
+
+function registerVenueInPresenceIndex(index, venue) {
+  if (!index || !venue) return;
+  for (const key of moreVenueIdLookupKeys(venue?.venue_id)) index.byMoreId.add(key);
+  const nameKey = normalizeVenueName(venue?.name);
+  if (nameKey) index.byName.add(nameKey);
 }
 
 function buildVenuePresenceIndexFromRows(rows) {
@@ -746,10 +755,93 @@ async function loadMoviesWithCodesPage(strapi, { page, pageSize, movieIdFilter }
     fields: ['id', 'title', 'slug', 'event_group_code'],
     populate: { more_event_groups: true },
     publicationState: 'preview',
+    sort: { id: 'asc' },
     pagination: { start, limit },
   });
   const list = Array.isArray(rows) ? rows : [];
   return list.filter((m) => collectEventGroupCodes(m).length > 0);
+}
+
+/** Σάρωση CMS: μόνο ταινίες με event_group_code / more_event_groups (σειρά id ↑, χωρίς διπλότυπα). */
+async function listMoviesWithSyncCodes(strapi, onPageProgress) {
+  const list = [];
+  const seenIds = new Set();
+  const pageSize = 100;
+  let start = 0;
+  let scanned = 0;
+  let duplicateSkips = 0;
+  for (;;) {
+    const rows = await strapi.entityService.findMany('api::movie.movie', {
+      fields: ['id', 'title', 'slug', 'event_group_code'],
+      populate: { more_event_groups: true },
+      publicationState: 'preview',
+      sort: { id: 'asc' },
+      pagination: { start, limit: pageSize },
+    });
+    const batch = Array.isArray(rows) ? rows : [];
+    if (!batch.length) break;
+    scanned += batch.length;
+    for (const movie of batch) {
+      if (seenIds.has(movie.id)) {
+        duplicateSkips += 1;
+        continue;
+      }
+      const codes = collectEventGroupCodes(movie);
+      if (!codes.length) continue;
+      seenIds.add(movie.id);
+      list.push({
+        id: movie.id,
+        title: movie.title,
+        slug: movie.slug,
+        codes,
+        ordinal: list.length + 1,
+      });
+    }
+    if (typeof onPageProgress === 'function') {
+      onPageProgress(
+        `Σάρωση CMS: ${scanned} ταινίες στον κατάλογο · ${list.length} μοναδικές με More κωδικό…`,
+      );
+    }
+    if (batch.length < pageSize) break;
+    start += pageSize;
+    if (start % 300 === 0) await yieldEventLoop();
+  }
+  if (duplicateSkips > 0) {
+    console.warn(
+      `[more-showtime-sync] listMoviesWithSyncCodes: αγνοήθηκαν ${duplicateSkips} διπλότυπα (pagination)`,
+    );
+  }
+  return list;
+}
+
+async function loadMoviesForSyncBatch(strapi, entries) {
+  if (!entries?.length) return [];
+  const ids = entries.map((e) => e.id);
+  const rows = await loadMoviesByIds(strapi, ids);
+  const meta = new Map(entries.map((e) => [e.id, e]));
+  return rows.map((movie) => {
+    const entry = meta.get(movie.id);
+    return {
+      ...movie,
+      _syncOrdinal: entry?.ordinal ?? null,
+      _syncCodes: entry?.codes,
+    };
+  });
+}
+
+async function loadMoviesByIds(strapi, ids) {
+  if (!ids?.length) return [];
+  const limit = Math.min(ids.length, 250);
+  const rows = await strapi.entityService.findMany('api::movie.movie', {
+    filters: { id: { $in: ids } },
+    fields: ['id', 'title', 'slug', 'event_group_code'],
+    populate: { more_event_groups: true },
+    publicationState: 'preview',
+    pagination: { start: 0, limit },
+  });
+  const list = Array.isArray(rows) ? rows : [];
+  const byId = new Map(list.map((m) => [m.id, m]));
+  return ids.map((id) => byId.get(id)).filter(Boolean);
 }
 
 async function loadTheaterShowsWithCodes(strapi, theaterShowIdFilter) {
@@ -1189,12 +1281,14 @@ async function syncMovieShowtimesFromMore(strapi, {
   skipVenueBundles = false,
   eventIdIndex: sharedEventIdIndex,
   progressOffset = 0,
+  totalMoviesCount = null,
+  totalVenuesCount = null,
 }) {
   const report = {
     ...emptySyncCounters(),
     moviesScanned: movies.length,
     venuesWithMoreId: venueLookup.byMoreId.size,
-    venuesWithBundleCode: venuesWithBundle.length,
+    venuesWithBundleCode: venuesWithBundle.filter((v) => v.bundleCodes?.length).length,
     createdFromMovies: 0,
     createdFromVenues: 0,
     createdCinemaVenues: 0,
@@ -1231,108 +1325,139 @@ async function syncMovieShowtimesFromMore(strapi, {
 
   const eventIdIndex = sharedEventIdIndex || new Map();
 
-  if (!skipMovieLoop) for (let movieIndex = 0; movieIndex < movies.length; movieIndex += 1) {
-    const movie = movies[movieIndex];
-    const label = movie.title || movie.slug || `#${movie.id}`;
-    const movieNum = progressOffset + movieIndex + 1;
-    const codes = collectEventGroupCodes(movie);
-    const movieStats = {
-      movieId: movie.id,
-      title: movie.title,
-      eventGroupCodes: codes,
-      eventGroupCode: codes[0] || null,
-      created: 0,
-      alreadyExists: 0,
-      skipped: 0,
-      missingVenueIds: new Set(),
-    };
+  if (!skipMovieLoop) {
+    const processedMovieIds = new Set();
+    for (let movieIndex = 0; movieIndex < movies.length; movieIndex += 1) {
+      const movie = movies[movieIndex];
+      if (processedMovieIds.has(movie.id)) continue;
+      processedMovieIds.add(movie.id);
+      const label = movie.title || movie.slug || `#${movie.id}`;
+      const movieNum =
+        movie._syncOrdinal != null ? movie._syncOrdinal : progressOffset + movieIndex + 1;
+      const totalHint =
+        totalMoviesCount != null ? `${movieNum}/${totalMoviesCount}` : String(movieNum);
+      const codes = collectEventGroupCodes(movie);
+      const movieStats = {
+        movieId: movie.id,
+        title: movie.title,
+        eventGroupCodes: codes,
+        eventGroupCode: codes[0] || null,
+        created: 0,
+        alreadyExists: 0,
+        skipped: 0,
+        missingVenueIds: new Set(),
+      };
 
-    for (const code of codes) {
-      try {
-        if (onProgress) {
-          onProgress(`Ταινία ${movieNum}: «${label}» · More API (${code})…`);
-        }
-        const events = await eventsCache.get(code);
-
-        for (const event of events) {
-          const eventId = String(event.eventId ?? '').trim();
-          if (eventId && !eventIdIndex.has(eventId)) {
-            eventIdIndex.set(eventId, { movieId: movie.id });
-          }
-
-          let venue = resolveVenueFromMoreEvent(venueLookup, event);
-          if (!venue) {
-            venue = await ensureCinemaVenueFromMoreEvent(
-              strapi,
-              venueLookup,
-              event,
-              report,
-              pendingVenueCreates,
-              failedVenueKeys,
-              errorDedup,
-            );
-          }
-          if (!venue) {
-            report.skippedNoVenue += 1;
-            movieStats.skipped += 1;
-            const missingId = normalizeMoreVenueId(event?.venueId);
-            if (missingId && isVenueMissingFromPresenceIndex(event, venuePresenceIndex)) {
-              movieStats.missingVenueIds.add(missingId);
+      for (let codeIdx = 0; codeIdx < codes.length; codeIdx += 1) {
+        const code = codes[codeIdx];
+        try {
+          if (onProgress) {
+            if (codes.length === 1) {
+              onProgress(`Ταινία ${totalHint}: «${label}» · More API (${code})…`);
+            } else if (codeIdx === 0) {
+              onProgress(
+                `Ταινία ${totalHint}: «${label}» · More API (${codes.length} κωδικοί)…`,
+              );
+            } else {
+              onProgress(
+                `Ταινία ${totalHint}: «${label}» · κωδικός ${codeIdx + 1}/${codes.length} (${code})…`,
+              );
             }
-            continue;
           }
+          const events = await eventsCache.get(code);
 
-          venueSyncTracker.touch(venue.id);
-          const result = await upsertShowtimeFromEvent(strapi, report, {
-            event,
+          for (const event of events) {
+            const eventId = String(event.eventId ?? '').trim();
+            if (eventId && !eventIdIndex.has(eventId)) {
+              eventIdIndex.set(eventId, { movieId: movie.id });
+            }
+
+            let venue = resolveVenueFromMoreEvent(venueLookup, event);
+            if (!venue) {
+              venue = await ensureCinemaVenueFromMoreEvent(
+                strapi,
+                venueLookup,
+                event,
+                report,
+                pendingVenueCreates,
+                failedVenueKeys,
+                errorDedup,
+              );
+            }
+            if (!venue) {
+              report.skippedNoVenue += 1;
+              movieStats.skipped += 1;
+              const missingId = normalizeMoreVenueId(event?.venueId);
+              if (missingId && isVenueMissingFromPresenceIndex(event, venuePresenceIndex)) {
+                movieStats.missingVenueIds.add(missingId);
+              }
+              continue;
+            }
+
+            registerVenueInPresenceIndex(venuePresenceIndex, venue);
+            venueSyncTracker.touch(venue.id);
+            const result = await upsertShowtimeFromEvent(strapi, report, {
+              event,
+              movieId: movie.id,
+              venue,
+              now,
+              statsTarget: movieStats,
+              eventGroupCode: code,
+              syncPath: 'movie_event_group',
+              contentResolution: { movieId: movie.id, movieTitle: movie.title },
+            });
+            venueSyncTracker.recordUpsertResult(venue.id, result);
+            if (result === 'created') report.createdFromMovies += 1;
+          }
+        } catch (e) {
+          const msg = e?.message || String(e);
+          pushSyncError(report, errorDedup, {
             movieId: movie.id,
-            venue,
-            now,
-            statsTarget: movieStats,
-            eventGroupCode: code,
-            syncPath: 'movie_event_group',
-            contentResolution: { movieId: movie.id, movieTitle: movie.title },
+            title: movie.title,
+            code,
+            error: msg,
           });
-          venueSyncTracker.recordUpsertResult(venue.id, result);
-          if (result === 'created') report.createdFromMovies += 1;
+          strapi.log.warn(`[more-showtime-sync] movie ${movie.id} (${code}): ${msg}`);
         }
-      } catch (e) {
-        const msg = e?.message || String(e);
-        pushSyncError(report, errorDedup, {
-          movieId: movie.id,
-          title: movie.title,
-          code,
-          error: msg,
-        });
-        strapi.log.warn(`[more-showtime-sync] movie ${movie.id} (${code}): ${msg}`);
       }
-    }
 
-    if (movieStats.created > 0 || movieStats.missingVenueIds.size > 0) {
-      report.byMovie.push({
-        movieId: movieStats.movieId,
-        title: movieStats.title,
-        eventGroupCodes: movieStats.eventGroupCodes,
-        eventGroupCode: movieStats.eventGroupCode,
-        created: movieStats.created,
-        alreadyExists: movieStats.alreadyExists,
-        skipped: movieStats.skipped,
-        missingVenueIds: [...movieStats.missingVenueIds],
-      });
-      for (const vid of movieStats.missingVenueIds) {
-        report.missingVenueIds.push({
-          movieId: movie.id,
-          title: movie.title,
-          moreVenueId: vid,
+      if (movieStats.created > 0 || movieStats.missingVenueIds.size > 0) {
+        report.byMovie.push({
+          movieId: movieStats.movieId,
+          title: movieStats.title,
+          eventGroupCodes: movieStats.eventGroupCodes,
+          eventGroupCode: movieStats.eventGroupCode,
+          created: movieStats.created,
+          alreadyExists: movieStats.alreadyExists,
+          skipped: movieStats.skipped,
+          missingVenueIds: [...movieStats.missingVenueIds],
         });
+        for (const vid of movieStats.missingVenueIds) {
+          report.missingVenueIds.push({
+            movieId: movie.id,
+            title: movie.title,
+            moreVenueId: vid,
+          });
+        }
       }
     }
   }
 
   if (!skipVenueBundles) for (let venueIdx = 0; venueIdx < venuesWithBundle.length; venueIdx += 1) {
     const venue = venuesWithBundle[venueIdx];
+    const venueNum = venueIdx + 1;
+    const venueTotalHint =
+      totalVenuesCount != null ? `${venueNum}/${totalVenuesCount}` : String(venueNum);
+    if (!venue.bundleCodes?.length) {
+      if (onProgress) {
+        onProgress(`Σινεμά ${venueTotalHint}: «${venue.name}» — χωρίς bundle codes, παράλειψη`);
+      }
+      continue;
+    }
     if (onProgress) {
-      onProgress(`Σινεμά (bundle) ${venueIdx + 1}/${venuesWithBundle.length}: «${venue.name}»`);
+      onProgress(
+        `Σινεμά ${venueTotalHint}: «${venue.name}» · bundle (${venue.bundleCodes.length} κωδ.)…`,
+      );
     }
     const venueStats = {
       venueId: venue.id,
@@ -1687,7 +1812,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   const runCinema = scope !== 'theater';
   const runTheater = scope !== 'cinema';
 
-  progress('Φόρτωση χώρων CMS…');
+  progress('Βήμα 1/3: ευρετήριο χώρων CMS (σειρά id — lookup μόνο)…');
   const allVenueRows = await loadAllVenuesForSync(strapi, progress);
   maybeGc();
   const globalVenueLookup = buildVenueLookup(
@@ -1695,24 +1820,10 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   );
   const venuePresenceIndex = buildVenuePresenceIndexFromRows(allVenueRows);
   const cinemaVenueLookup = globalVenueLookup;
-  const cinemaVenuesWithBundle = runCinema
-    ? venuesWithBundleFromRows(
-        await loadVenueBundleRows(strapi, 'cinema', progress),
-        collectVenueBundleCodes,
-      )
-    : [];
   const theaterVenueLookup = globalVenueLookup;
-  const theaterVenuesWithBundle = runTheater
-    ? venuesWithBundleFromRows(
-        await loadVenueBundleRows(strapi, 'theater', progress),
-        collectTheaterVenueBundleCodes,
-      )
-    : [];
-  progress(
-    `Χώροι έτοιμοι: ${allVenueRows.length} συνολικά · ${globalVenueLookup.byMoreId.size} με More venue_id` +
-      (runCinema ? ` · ${cinemaVenuesWithBundle.length} σινεμά bundles` : '') +
-      (runTheater ? ` · ${theaterVenuesWithBundle.length} θέατρο bundles` : ''),
-  );
+  let cinemaVenuesWithBundle = [];
+  let cinemaVenueBundleCount = 0;
+  let theaterVenuesWithBundle = [];
 
   const movieIdFilter =
     options.movieId != null && Number.isFinite(Number(options.movieId))
@@ -1729,7 +1840,11 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   let movieCodeCount = 0;
   let totalMoviesScanned = 0;
 
-  if (runCinema) progress('Συγχρονισμός ταινιών (batches, χαμηλή μνήμη)…');
+  if (runCinema) {
+    progress(
+      'Βήμα 2/3: ταινίες CMS (σειρά id) — νέα σινεμά + προβολές από More κωδικό ταινίας…',
+    );
+  }
 
   if (runCinema && movieIdFilter != null) {
     const movies = await loadMoviesWithCodesPage(strapi, {
@@ -1752,48 +1867,68 @@ async function syncShowtimesFromMore(strapi, options = {}) {
       now,
       venuePresenceIndex,
       onProgress: progress,
+      totalMoviesCount: movies.length || 1,
     });
     cinemaEventIdIndex = movieReport.eventIdIndex || cinemaEventIdIndex;
     eventsCache.clear();
     maybeGc();
   } else if (runCinema) {
-    for (let page = 1; ; page += 1) {
-      progress(`Φόρτωση batch ταινιών ${page}…`);
-      const movies = await loadMoviesWithCodesPage(strapi, {
-        page,
-        pageSize: MOVIE_BATCH_SIZE,
-      });
-      if (!movies.length) break;
-      totalMoviesScanned += movies.length;
-      progress(`Batch ${page}: ${movies.length} ταινίες — επεξεργασία…`);
-      for (const movie of movies) {
-        const codes = collectEventGroupCodes(movie);
-        movieCodeCount += codes.length;
-        if (codes.length > 1) moviesWithSecondaryCodes += 1;
+    progress('Σάρωση CMS: ποιες ταινίες έχουν More κωδικό…');
+    const moviesWithCodes = await listMoviesWithSyncCodes(strapi, progress);
+    const totalWithCodes = moviesWithCodes.length;
+    if (!totalWithCodes) {
+      progress('Δεν βρέθηκαν ταινίες με More κωδικό στο CMS — skip ταινιών.');
+    } else {
+      progress(`Βρέθηκαν ${totalWithCodes} ταινίες με More κωδικό — συγχρονισμός 1/${totalWithCodes}…`);
+      for (let offset = 0; offset < moviesWithCodes.length; offset += MOVIE_BATCH_SIZE) {
+        const slice = moviesWithCodes.slice(offset, offset + MOVIE_BATCH_SIZE);
+        for (const entry of slice) {
+          movieCodeCount += entry.codes.length;
+          if (entry.codes.length > 1) moviesWithSecondaryCodes += 1;
+        }
+        const movies = await loadMoviesForSyncBatch(strapi, slice);
+        totalMoviesScanned += movies.length;
+        const eventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
+        const partial = await syncMovieShowtimesFromMore(strapi, {
+          movies,
+          venueLookup: cinemaVenueLookup,
+          venuesWithBundle: [],
+          eventsCache,
+          now,
+          venuePresenceIndex,
+          onProgress: progress,
+          skipVenueBundles: true,
+          eventIdIndex: cinemaEventIdIndex,
+          totalMoviesCount: totalWithCodes,
+        });
+        cinemaEventIdIndex = partial.eventIdIndex || cinemaEventIdIndex;
+        movieReport = mergeMovieSyncReports(movieReport, partial);
+        eventsCache.clear();
+        maybeGc();
+        await yieldEventLoop();
+        progress(
+          `Ταινίες: ${Math.min(offset + movies.length, totalWithCodes)}/${totalWithCodes} ολοκληρώθηκαν`,
+        );
       }
-      const eventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
-      const partial = await syncMovieShowtimesFromMore(strapi, {
-        movies,
-        venueLookup: cinemaVenueLookup,
-        venuesWithBundle: [],
-        eventsCache,
-        now,
-        venuePresenceIndex,
-        onProgress: progress,
-        skipVenueBundles: true,
-        eventIdIndex: cinemaEventIdIndex,
-        progressOffset: totalMoviesScanned - movies.length,
-      });
-      cinemaEventIdIndex = partial.eventIdIndex || cinemaEventIdIndex;
-      movieReport = mergeMovieSyncReports(movieReport, partial);
-      eventsCache.clear();
-      maybeGc();
-      await yieldEventLoop();
-      progress(`Ταινίες: ${totalMoviesScanned} επεξεργασμένες (batch ${page})…`);
     }
 
+    progress(
+      'Βήμα 3/3: σινεμά CMS (σειρά id) — προβολές από bundle codes + ταινίες βήμα 2…',
+    );
+    const allCinemaVenueRows = await loadVenueBundleRows(strapi, 'cinema', progress);
+    cinemaVenuesWithBundle = venuesWithBundleFromRows(
+      allCinemaVenueRows,
+      collectVenueBundleCodes,
+      { onlyWithBundles: false },
+    );
+    const cinemaVenuesWithBundleCodes = cinemaVenuesWithBundle.filter(
+      (v) => v.bundleCodes.length > 0,
+    );
+    cinemaVenueBundleCount = cinemaVenuesWithBundleCodes.length;
     if (cinemaVenuesWithBundle.length) {
-      progress('Σινεμά venue bundles…');
+      progress(
+        `Σινεμά CMS: ${cinemaVenuesWithBundle.length} συνολικά · ${cinemaVenuesWithBundleCodes.length} με bundle codes…`,
+      );
       const eventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
       const bundlePart = await syncMovieShowtimesFromMore(strapi, {
         movies: [],
@@ -1805,19 +1940,37 @@ async function syncShowtimesFromMore(strapi, options = {}) {
         onProgress: progress,
         skipMovieLoop: true,
         eventIdIndex: cinemaEventIdIndex,
+        totalVenuesCount: cinemaVenuesWithBundle.length,
       });
       movieReport = mergeMovieSyncReports(movieReport, bundlePart);
       eventsCache.clear();
       maybeGc();
+    } else {
+      progress('Δεν βρέθηκαν σινεμά στο CMS — skip bundles.');
     }
   }
+
+  if (runTheater) {
+    theaterVenuesWithBundle = venuesWithBundleFromRows(
+      await loadVenueBundleRows(strapi, 'theater', progress),
+      collectTheaterVenueBundleCodes,
+    );
+  }
+
+  progress(
+    `Χώροι: ${allVenueRows.length} CMS · ${globalVenueLookup.byMoreId.size} με More venue_id` +
+      (runCinema
+        ? ` · ${cinemaVenuesWithBundle.length} σινεμά CMS (${cinemaVenueBundleCount} με bundle)`
+        : '') +
+      (runTheater ? ` · ${theaterVenuesWithBundle.length} θέατρο bundles` : ''),
+  );
 
   if (!movieReport) {
     movieReport = {
       ...emptySyncCounters(),
       moviesScanned: 0,
       venuesWithMoreId: cinemaVenueLookup.byMoreId.size,
-      venuesWithBundleCode: cinemaVenuesWithBundle.length,
+      venuesWithBundleCode: cinemaVenueBundleCount,
       createdFromMovies: 0,
       createdFromVenues: 0,
       createdCinemaVenues: 0,
