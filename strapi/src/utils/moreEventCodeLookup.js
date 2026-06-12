@@ -7,7 +7,7 @@ const USER_AGENT = 'whatson-more-lookup/1.0';
 const FETCH_TIMEOUT_MS = Number(process.env.MORE_LOOKUP_FETCH_TIMEOUT_MS || 45_000);
 const VERIFY_TIMEOUT_MS = Number(process.env.MORE_LOOKUP_VERIFY_TIMEOUT_MS || 20_000);
 const VERIFY_CONCURRENCY = Number(process.env.MORE_LOOKUP_VERIFY_CONCURRENCY || 8);
-const SCRAPE_LOOKUP_ENABLED = process.env.MORE_LOOKUP_VENUE_SCRAPE !== 'false';
+const SCRAPE_LOOKUP_ENABLED = process.env.MORE_LOOKUP_VENUE_SCRAPE === 'true';
 const SCRAPE_LOOKUP_MAX = Number(process.env.MORE_LOOKUP_VENUE_SCRAPE_MAX || 20);
 const MIN_HINT_SCORE = 0.45;
 const DEFAULT_MIN_SCORE = MIN_HINT_SCORE;

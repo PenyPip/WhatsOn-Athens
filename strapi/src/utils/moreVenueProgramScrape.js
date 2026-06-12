@@ -5,8 +5,9 @@ const { fetchMore, formatMoreNetworkError } = require('./moreHttp');
 const MORE_CINEMA_WARMUP = 'https://www.more.com/gr-el/tickets/cinema/';
 const USER_AGENT = 'Mozilla/5.0 (compatible; whatson-more-venue-scrape/1.0)';
 const FETCH_TIMEOUT_MS = Number(process.env.MORE_VENUE_SCRAPE_TIMEOUT_MS || 22_000);
-const SCRAPE_ENABLED = process.env.MORE_VENUE_PROGRAM_SCRAPE !== 'false';
-/** Scrape κατά sync — αργό (HTML fetch). Default off· ενεργό μόνο στο lookup. */
+/** HTML scrape more.com — default off (από server/VPS συχνά timeout· JSON getevents δουλεύει). */
+const SCRAPE_ENABLED = process.env.MORE_VENUE_PROGRAM_SCRAPE === 'true';
+/** Scrape κατά sync — αργό (HTML fetch). Default off· ενεργό μόνο με MORE_VENUE_SCRAPE_ON_SYNC=true. */
 const SCRAPE_ON_SYNC = process.env.MORE_VENUE_SCRAPE_ON_SYNC === 'true';
 const SCRAPE_DELAY_MS = Number(process.env.MORE_VENUE_SCRAPE_DELAY_MS || 180);
 
@@ -39,9 +40,9 @@ function cookiesFromResponse(res) {
     .join('; ');
 }
 
-async function fetchText(url, cookie = '') {
+async function fetchText(url, cookie = '', timeoutMs = FETCH_TIMEOUT_MS) {
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
     const headers = {
       'User-Agent': USER_AGENT,
@@ -54,7 +55,7 @@ async function fetchText(url, cookie = '') {
   } catch (e) {
     throw formatMoreNetworkError(e, {
       url,
-      timeoutMs: FETCH_TIMEOUT_MS,
+      timeoutMs,
       label: 'venue scrape More',
     });
   } finally {
@@ -215,6 +216,141 @@ async function scrapeMoreVenueProgram(moreLink) {
   }
 }
 
+/**
+ * Διαγνωστικό: ένα warmup + δοκιμή λίστας more_link (χωρίς επανάληψη warmup ανά URL).
+ * @param {string[]} urls
+ * @param {{ timeoutMs?: number, onProgress?: (n: number, total: number, url: string) => void, delayMs?: number }} [options]
+ */
+async function probeVenueProgramScrape(urls, options = {}) {
+  const timeoutMs = Number(options.timeoutMs ?? FETCH_TIMEOUT_MS);
+  const delayMs = options.delayMs ?? SCRAPE_DELAY_MS;
+  const onProgress = options.onProgress;
+  const unique = [...new Set((urls || []).map(normalizeMoreUrl).filter(Boolean))];
+
+  const failAll = (warmupError) => ({
+    at: new Date().toISOString(),
+    warmup: { ok: false, error: warmupError },
+    summary: {
+      total: unique.length,
+      ok: 0,
+      empty: 0,
+      noBookingPanel: 0,
+      timeout: 0,
+      error: 0,
+      skippedWarmup: unique.length,
+    },
+    entries: unique.map((url) => ({
+      url,
+      status: 'warmup_failed',
+      error: warmupError,
+      eventCount: 0,
+      playCount: 0,
+    })),
+  });
+
+  if (!unique.length) {
+    return {
+      at: new Date().toISOString(),
+      warmup: { ok: false, error: 'no_urls' },
+      summary: {
+        total: 0,
+        ok: 0,
+        empty: 0,
+        noBookingPanel: 0,
+        timeout: 0,
+        error: 0,
+        skippedWarmup: 0,
+      },
+      entries: [],
+    };
+  }
+
+  let cookie = '';
+  try {
+    const warmup = await fetchText(MORE_CINEMA_WARMUP, '', timeoutMs);
+    cookie = warmup.cookie;
+  } catch (e) {
+    return failAll(e?.message || String(e));
+  }
+
+  const entries = [];
+  let ok = 0;
+  let empty = 0;
+  let noBookingPanel = 0;
+  let timeout = 0;
+  let error = 0;
+
+  for (let i = 0; i < unique.length; i += 1) {
+    const url = unique[i];
+    if (onProgress) onProgress(i + 1, unique.length, url);
+    const started = Date.now();
+    try {
+      if (delayMs > 0 && i > 0) await sleep(delayMs);
+      const page = await fetchText(url, cookie, timeoutMs);
+      const payload = parseBookingPanelPayload(page.text);
+      if (!payload) {
+        noBookingPanel += 1;
+        entries.push({
+          url,
+          status: 'no_booking_panel',
+          ms: Date.now() - started,
+          eventCount: 0,
+          playCount: 0,
+        });
+        continue;
+      }
+      const mapped = mapScrapePayload(payload);
+      if (mapped.ok) {
+        ok += 1;
+        entries.push({
+          url,
+          status: 'ok',
+          ms: Date.now() - started,
+          eventCount: mapped.eventCount,
+          playCount: mapped.playCount,
+          uniqueTitles: mapped.uniqueTitles.slice(0, 12),
+        });
+      } else {
+        empty += 1;
+        entries.push({
+          url,
+          status: 'empty',
+          ms: Date.now() - started,
+          eventCount: 0,
+          playCount: 0,
+        });
+      }
+    } catch (e) {
+      const msg = e?.message || String(e);
+      if (/timeout|abort/i.test(msg)) timeout += 1;
+      else error += 1;
+      entries.push({
+        url,
+        status: /timeout|abort/i.test(msg) ? 'timeout' : 'error',
+        error: msg,
+        ms: Date.now() - started,
+        eventCount: 0,
+        playCount: 0,
+      });
+    }
+  }
+
+  return {
+    at: new Date().toISOString(),
+    warmup: { ok: true },
+    summary: {
+      total: unique.length,
+      ok,
+      empty,
+      noBookingPanel,
+      timeout,
+      error,
+      skippedWarmup: 0,
+    },
+    entries,
+  };
+}
+
 function createVenueScrapeCache() {
   const cache = new Map();
   return {
@@ -253,6 +389,7 @@ module.exports = {
   SCRAPE_ENABLED,
   SCRAPE_ON_SYNC,
   scrapeMoreVenueProgram,
+  probeVenueProgramScrape,
   createVenueScrapeCache,
   findCmsVenueForBundleCode,
   normalizeMoreUrl,

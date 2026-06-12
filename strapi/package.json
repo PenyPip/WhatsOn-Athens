@@ -10,6 +10,7 @@
     "strapi": "strapi",
     "deploy": "strapi deploy",
     "lookup-more-codes": "node scripts/lookup-more-event-codes.mjs",
+    "probe-venue-scrape": "node scripts/probe-venue-scrape.mjs",
     "sync-showtimes-offline": "node scripts/sync-offline.js"
   },
   "dependencies": {
