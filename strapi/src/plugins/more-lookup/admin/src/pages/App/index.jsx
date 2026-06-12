@@ -11,7 +11,6 @@ import {
   Grid,
   GridItem,
   Divider,
-  TextInput,
   Table,
   Thead,
   Tbody,
@@ -810,8 +809,16 @@ function PanelHeader({ title, subtitle, action }) {
   );
 }
 
+function formatSyncProgressAge(iso) {
+  if (!iso) return null;
+  const sec = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (sec < 5) return 'μόλις τώρα';
+  if (sec < 60) return `πριν ${sec}s`;
+  const min = Math.floor(sec / 60);
+  return min === 1 ? 'πριν 1 λεπ.' : `πριν ${min} λεπ.`;
+}
+
 const App = () => {
-  const [query, setQuery] = useState('');
   const [catalogPage, setCatalogPage] = useState(1);
   const [catalogOnlyMissing, setCatalogOnlyMissing] = useState(true);
   const [catalogKindFilter, setCatalogKindFilter] = useState('all');
@@ -819,12 +826,13 @@ const App = () => {
   const [loading, setLoading] = useState(false);
   const [enabled, setEnabled] = useState(true);
   const [applyMinScore, setApplyMinScore] = useState(0.45);
-  const [overwriteExisting, setOverwriteExisting] = useState(false);
   const [showtimeSyncEnabled, setShowtimeSyncEnabled] = useState(true);
   const [result, setResult] = useState(null);
   const [syncReport, setSyncReport] = useState(null);
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncProgress, setSyncProgress] = useState(null);
+  const [syncProgressAt, setSyncProgressAt] = useState(null);
+  const [, setProgressTick] = useState(0);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupProgress, setLookupProgress] = useState(null);
   const [lookupJobKind, setLookupJobKind] = useState(null);
@@ -833,6 +841,12 @@ const App = () => {
   const [selectedMatchKeys, setSelectedMatchKeys] = useState(() => new Set());
   const { get, post } = useFetchClient();
   const toggleNotification = useNotification();
+
+  useEffect(() => {
+    if (!syncLoading) return undefined;
+    const id = setInterval(() => setProgressTick((t) => t + 1), 1000);
+    return () => clearInterval(id);
+  }, [syncLoading]);
 
   const loadPending = useCallback(async () => {
     try {
@@ -843,11 +857,15 @@ const App = () => {
     }
   }, [get]);
 
+  const applySyncStatus = useCallback((data) => {
+    if (data?.progress) setSyncProgress(data.progress);
+    if (data?.lastProgressAt) setSyncProgressAt(data.lastProgressAt);
+  }, []);
+
   const pollSyncJob = useCallback(async () => {
-    // ~45 λεπτά (1080 × 2.5s) — μεγάλα sync με πολλούς κωδικούς More.
+    // ~45 λεπτά (2700 × 1s) — μεγάλα sync με πολλούς κωδικούς More.
     let gatewayPauses = 0;
-    for (let attempt = 0; attempt < 1080; attempt += 1) {
-      await new Promise((resolve) => setTimeout(resolve, 2500));
+    for (let attempt = 0; attempt < 2700; attempt += 1) {
       let data;
       try {
         const res = await get('/api/more-lookup/sync-showtimes/status');
@@ -859,14 +877,18 @@ const App = () => {
           setSyncProgress(
             `502/503 από nginx — το Strapi φορτώνει ξανά (${gatewayPauses})… Μην κλείσεις τη σελίδα.`,
           );
+          await new Promise((resolve) => setTimeout(resolve, 1000));
           continue;
         }
-        if (attempt < 5) continue;
+        if (attempt < 5) {
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue;
+        }
         throw new Error(
           netErr?.message || 'Αποτυχία επικοινωνίας με το Strapi κατά το sync (δίκτυο/server).',
         );
       }
-      if (data?.progress) setSyncProgress(data.progress);
+      applySyncStatus(data);
       if (data?.status === 'completed') {
         if (data?.report) return data.report;
         throw new Error(
@@ -888,9 +910,10 @@ const App = () => {
             `Το sync σταμάτησε (${data?.status || 'άγνωστη κατάσταση'}). Δες data/more-showtime-sync-worker.log.`,
         );
       }
+      await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     throw new Error('Το sync ξεπέρασε το χρονικό όριο αναμονής (~45 λεπτά).');
-  }, [get]);
+  }, [applySyncStatus, get]);
 
   const mergeApplyIntoResult = useCallback((applyResult) => {
     if (!applyResult) return;
@@ -965,7 +988,10 @@ const App = () => {
         return;
       }
       setSyncLoading(true);
-      setSyncProgress(data.progress || 'Συγχρονισμός σε εξέλιξη…');
+      applySyncStatus(data);
+      if (!data?.lastProgressAt) {
+        setSyncProgress(data.progress || 'Συγχρονισμός σε εξέλιξη…');
+      }
       const report = await pollSyncJob();
       setSyncReport(report);
       toggleNotification({
@@ -978,8 +1004,9 @@ const App = () => {
     } finally {
       setSyncLoading(false);
       setSyncProgress(null);
+      setSyncProgressAt(null);
     }
-  }, [get, pollSyncJob, toggleNotification]);
+  }, [applySyncStatus, get, pollSyncJob, toggleNotification]);
 
   const loadStatus = useCallback(async () => {
     try {
@@ -1023,7 +1050,6 @@ const App = () => {
     setResult(null);
     try {
       const lookupResult = await finishLookupJob({
-        query: query.trim() || undefined,
         matchCms: true,
       });
       setResult(lookupResult);
@@ -1048,7 +1074,7 @@ const App = () => {
     try {
       const applyResult = await finishLookupJob({
         apply: true,
-        overwriteExisting,
+        overwriteExisting: false,
       });
       mergeApplyIntoResult(applyResult);
       const applied = applyResult?.apply?.stats?.applied ?? 0;
@@ -1382,7 +1408,7 @@ const App = () => {
     try {
       const res = await post('/api/more-lookup/approve', {
         approvals: rows.map(mapPendingToApiRow),
-        overwriteExisting,
+        overwriteExisting: false,
       });
       const approvedKeys = new Set(rows.map((r) => rowKey(r)));
       setPendingApproval((prev) => prev.filter((r) => !approvedKeys.has(rowKey(r))));
@@ -1530,27 +1556,16 @@ const App = () => {
     }
   };
 
-  const runSyncRequest = async (force = false, scope = 'all') => {
+  const runSyncRequest = async (scope = 'all') => {
     const scopeLabel = scope === 'cinema' ? 'σινεμά' : scope === 'theater' ? 'θέατρο' : 'σινεμά + θέατρο';
     setSyncLoading(true);
-    setSyncProgress(
-      force ? `Reset + επανεκκίνηση sync (${scopeLabel})…` : `Έναρξη συγχρονισμού (${scopeLabel})…`,
-    );
+    setSyncProgress(`Έναρξη συγχρονισμού (${scopeLabel})…`);
     setSyncReport(null);
     let finishedOk = false;
     try {
-      if (force) {
-        try {
-          await post('/api/more-lookup/sync-showtimes/reset', {});
-        } catch {
-          // Strapi μπορεί να είναι down — συνεχίζουμε
-        }
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-      }
-
       let res;
       try {
-        res = await post('/api/more-lookup/sync-showtimes', { scope, ...(force ? { force: true } : {}) });
+        res = await post('/api/more-lookup/sync-showtimes', { scope });
       } catch (postErr) {
         if (isTransientGatewayError(postErr)) {
           setSyncProgress('502 στην έναρξη — το worker μπορεί να ξεκίνησε, αναμονή…');
@@ -1579,11 +1594,14 @@ const App = () => {
       }
       if (data?.status === 'completed' && !data?.report) {
         throw new Error(
-          'Το sync ολοκληρώθηκε χωρίς αναφορά. Δες data/more-showtime-sync-worker.log και δοκίμασε «Ξανά (force)».',
+          'Το sync ολοκληρώθηκε χωρίς αναφορά. Δες data/more-showtime-sync-worker.log.',
         );
       }
       if (data?.status === 'running' || data?.status === 'started') {
-        setSyncProgress(data.progress || 'Συγχρονισμός σε εξέλιξη (worker)…');
+        applySyncStatus(data);
+        if (!data?.lastProgressAt) {
+          setSyncProgress(data.progress || 'Συγχρονισμός σε εξέλιξη (worker)…');
+        }
         const report = await pollSyncJob();
         setSyncReport(report);
         finishedOk = true;
@@ -1599,7 +1617,7 @@ const App = () => {
       throw new Error(
         data?.error ||
           data?.progress ||
-          'Δεν ξεκίνηκε συγχρονισμός — δοκίμασε «Ξανά (force)» ή έλεγξε data/more-showtime-sync-worker.log',
+          'Δεν ξεκίνηκε συγχρονισμός — έλεγξε data/more-showtime-sync-worker.log',
       );
     } catch (error) {
       if (isTransientGatewayError(error)) {
@@ -1619,7 +1637,7 @@ const App = () => {
             type: 'warning',
             message:
               retryErr?.message ||
-              '502 Bad Gateway — δοκίμασε «Ξανά (force)» ή server: docker compose logs strapi data/more-showtime-sync-worker.log',
+              '502 Bad Gateway — έλεγξε docker compose logs strapi και data/more-showtime-sync-worker.log',
           });
           return;
         }
@@ -1633,14 +1651,16 @@ const App = () => {
       toggleNotification({ type: 'warning', message });
     } finally {
       setSyncLoading(false);
-      if (finishedOk) setSyncProgress(null);
+      if (finishedOk) {
+        setSyncProgress(null);
+        setSyncProgressAt(null);
+      }
     }
   };
 
-  const syncShowtimes = () => runSyncRequest(false, 'all');
-  const syncShowtimesForce = () => runSyncRequest(true, 'all');
-  const syncShowtimesCinema = () => runSyncRequest(false, 'cinema');
-  const syncShowtimesTheater = () => runSyncRequest(false, 'theater');
+  const syncShowtimes = () => runSyncRequest('all');
+  const syncShowtimesCinema = () => runSyncRequest('cinema');
+  const syncShowtimesTheater = () => runSyncRequest('theater');
 
   return (
     <Layout>
@@ -1694,39 +1714,7 @@ const App = () => {
                 title="Βήμα 1 — Κωδικοί More"
                 subtitle="Έγκριση → ουρά · «Γράψε αυτόματα» γράφει μόνο εγκεκριμένους κωδικούς"
               />
-              <Grid gap={4}>
-                <GridItem col={7} s={12}>
-                  <TextInput
-                    label="Φίλτρο τίτλου"
-                    name="query"
-                    hint="Προαιρετικό — π.χ. «Αρκουδότρυπα»"
-                    placeholder="Αναζήτηση τίτλου…"
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    disabled={loading}
-                  />
-                </GridItem>
-                <GridItem col={5} s={12}>
-                  <Box paddingTop={6}>
-                    <label className="more-lookup-checkbox-label">
-                      <SelectCheckbox
-                        checked={overwriteExisting}
-                        onChange={setOverwriteExisting}
-                        disabled={loading}
-                        ariaLabel="Αντικατάσταση υπάρχοντος κωδικού"
-                      />
-                      <span>Αντικατάσταση υπάρχοντος κωδικού</span>
-                    </label>
-                    <Box paddingLeft={6} paddingTop={2}>
-                      <Typography variant="pi" textColor="neutral500">
-                        Όταν υπάρχει ήδη διαφορετικός event_group_code
-                      </Typography>
-                    </Box>
-                  </Box>
-                </GridItem>
-              </Grid>
-
-              <Flex gap={3} paddingTop={4} wrap="wrap" alignItems="center">
+              <Flex gap={3} paddingTop={2} wrap="wrap" alignItems="center">
                 <Button
                   loading={lookupLoading}
                   onClick={runLookup}
@@ -1799,14 +1787,6 @@ const App = () => {
                       >
                         Θέατρο
                       </Button>
-                      <Button
-                        variant="tertiary"
-                        onClick={syncShowtimesForce}
-                        disabled={syncLoading || loading}
-                        title="Ακυρώνει κολλημένο sync και ξεκινά νέο (Όλα) μετά από 502 ή crash"
-                      >
-                        Ξανά (force)
-                      </Button>
                     </Flex>
                   ) : null
                 }
@@ -1833,8 +1813,9 @@ const App = () => {
                         {syncProgress}
                       </Typography>
                       <Typography variant="pi" textColor="neutral500" paddingTop={1}>
-                        Τρέχει σε worker στο background (10–20+ λεπτά). Μείνε στη σελίδα — η πρόοδο
-                        ενημερώνεται κάθε λίγα δευτερόλεπτα.
+                        Τρέχει σε worker στο background (10–20+ λεπτά). Η πρόοδος ενημερώνεται κάθε
+                        ~1 δευτερόλεπτο
+                        {syncProgressAt ? ` · ${formatSyncProgressAge(syncProgressAt)}` : ''}.
                       </Typography>
                     </Box>
                   ) : null}

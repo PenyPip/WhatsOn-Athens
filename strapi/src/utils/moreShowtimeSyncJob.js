@@ -120,7 +120,7 @@ function markInterruptedIfNeeded(saved) {
     ...saved,
     status: 'failed',
     error:
-      'Το sync διακόπηκε (επανεκκίνηση Strapi ή crash worker). Τρέξε ξανά — «Ξανά (force)».',
+      'Το sync διακόπηκε (επανεκκίνηση Strapi ή crash worker). Τρέξε ξανά sync.',
     finishedAt: new Date().toISOString(),
     progress: 'Διακόπηκε',
   };
@@ -199,7 +199,7 @@ function recoverDeadWorkerJob(job) {
   if (!pid && graceAgeMs < START_DELAY_MS + WORKER_BOOT_GRACE_MS) return job;
 
   const msg = pid
-    ? 'Ο worker διακόπηκε (crash/OOM). Δες data/more-showtime-sync-worker.log και δοκίμασε «Ξανά (force)».'
+    ? 'Ο worker διακόπηκε (crash/OOM). Δες data/more-showtime-sync-worker.log και τρέξε ξανά sync.'
     : 'Ο worker δεν ξεκίνησε εγκαίρως. Δες data/more-showtime-sync-worker.log (spawn/permissions).';
 
   if (activeJob?.id === job.id) return failJob(activeJob, msg);
@@ -218,10 +218,10 @@ function recoverDeadWorkerJob(job) {
 
 function getMoreShowtimeSyncJob() {
   const disk = loadPersistedJob();
-  if (disk && (!activeJob || activeJob.id === disk.id)) {
+  if (disk) {
     activeJob = disk;
   }
-  let job = activeJob ? publicJob(activeJob) : disk;
+  let job = disk ? publicJob(disk) : activeJob ? publicJob(activeJob) : null;
   job = recoverDeadWorkerJob(job);
   if (isJobStale(job)) {
     return resetStuckMoreShowtimeSyncJob(
