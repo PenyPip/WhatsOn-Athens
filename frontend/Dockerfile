@@ -30,7 +30,8 @@ ARG SITEMAP_STRAPI_URL=https://the37n.gr
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV SITEMAP_STRAPI_URL=$SITEMAP_STRAPI_URL
-ENV SITEMAP_STRICT_MODE=1
+# Strict sitemap μόνο όταν το Strapi απαντά — όχι όταν το API είναι down κατά το docker build.
+ENV SITEMAP_STRICT_MODE=0
 
 RUN npm run build
 

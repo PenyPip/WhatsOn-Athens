@@ -17,6 +17,8 @@ const STRAPI_ORIGIN = (process.env.SITEMAP_STRAPI_URL || process.env.STRAPI_INTE
   "",
 );
 const SITEMAP_STRICT_MODE = process.env.SITEMAP_STRICT_MODE === "1";
+/** Πόσες συλλογές Strapi απάντησαν επιτυχώς (για strict mode). */
+let sitemapApiCollectionsOk = 0;
 
 const MOVIES_SECTION_PATHS = ["today", "week", "summer", "new", "soon"];
 const MOVIES_AREA_PATHS = ["athens", "thessaloniki", "other"];
@@ -189,6 +191,18 @@ async function buildCrawlEnrichment() {
         populate: POSTER_POPULATE,
       }),
     ]);
+    if (
+      genreRows.length ||
+      venueRows.length ||
+      movieRows.length ||
+      theaterRows.length ||
+      restaurantRows.length ||
+      reviewRows.length ||
+      articleRows.length ||
+      eventRows.length
+    ) {
+      sitemapApiCollectionsOk += 1;
+    }
 
     const genres = genreRows
       .map((row) => {
@@ -385,6 +399,7 @@ async function fetchCollectionOrThrow(pluralApi, opts = {}) {
 async function slugsFromApi(pluralApi, pathPrefix) {
   try {
     const rows = await fetchCollectionOrThrow(pluralApi);
+    sitemapApiCollectionsOk += 1;
     const seen = new Set();
     const urls = [];
     for (const row of rows) {
@@ -476,8 +491,14 @@ async function main() {
   const criticalDynamicCount = dynamic.length + venueProgramUrls.length;
   if (criticalDynamicCount < 20) {
     const msg = `[sitemap] suspiciously low dynamic URL count: ${criticalDynamicCount}`;
-    if (SITEMAP_STRICT_MODE) throw new Error(msg);
-    console.log(`${msg} (continuing, SITEMAP_STRICT_MODE=0)`);
+    if (SITEMAP_STRICT_MODE && sitemapApiCollectionsOk > 0) {
+      throw new Error(msg);
+    }
+    if (SITEMAP_STRICT_MODE && sitemapApiCollectionsOk === 0) {
+      console.warn(`${msg} — Strapi API unreachable, strict mode skipped`);
+    } else {
+      console.log(`${msg} (continuing, SITEMAP_STRICT_MODE=0)`);
+    }
   }
   const xml = buildXml(all);
   const robots = buildRobots();

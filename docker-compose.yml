@@ -44,7 +44,7 @@ services:
       JWT_SECRET: whatson-jwt-secret
       NODE_ENV: production
       ENCRYPTION_KEY: whatson-encryption-key-32chars!!
-      NODE_OPTIONS: --max-old-space-size=1024 --expose-gc
+      NODE_OPTIONS: --max-old-space-size=1024
       MORE_SHOWTIME_SYNC_IN_PROCESS: "true"
       MORE_SHOWTIME_SYNC_WORKER: "false"
       MORE_SHOWTIME_SYNC_CONCURRENCY: "1"
