@@ -891,11 +891,17 @@ const App = () => {
       applySyncStatus(data);
       if (data?.status === 'completed') {
         if (data?.report) return data.report;
+        if (data?.hasPhaseReports) {
+          throw new Error(
+            'Το sync ολοκληρώθηκε αλλά η αναφορά δεν φορτώθηκε — κάνε refresh ή δες data/more-showtime-sync-worker.log.',
+          );
+        }
         throw new Error(
           'Το sync ολοκληρώθηκε χωρίς αναφορά (πιθανό crash worker). Δες data/more-showtime-sync-worker.log.',
         );
       }
       if (data?.status === 'failed') {
+        if (data?.report) setSyncReport(data.report);
         throw new Error(data?.error || data?.progress || 'Αποτυχία συγχρονισμού');
       }
       if (!data?.status) {
@@ -913,7 +919,7 @@ const App = () => {
       await new Promise((resolve) => setTimeout(resolve, 1000));
     }
     throw new Error('Το sync ξεπέρασε το χρονικό όριο αναμονής (~45 λεπτά).');
-  }, [applySyncStatus, get]);
+  }, [applySyncStatus, get, setSyncReport]);
 
   const mergeApplyIntoResult = useCallback((applyResult) => {
     if (!applyResult) return;
@@ -985,6 +991,13 @@ const App = () => {
       const data = res?.data;
       if (data?.status !== 'running' && data?.status !== 'started') {
         if (data?.status === 'completed' && data?.report) setSyncReport(data.report);
+        if (data?.status === 'failed') {
+          if (data?.report) setSyncReport(data.report);
+          toggleNotification({
+            type: 'warning',
+            message: data?.error || data?.progress || 'Το sync απέτυχε.',
+          });
+        }
         return;
       }
       setSyncLoading(true);

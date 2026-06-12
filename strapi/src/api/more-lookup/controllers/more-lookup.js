@@ -28,7 +28,7 @@ module.exports = {
     ctx.body = {
       enabled: process.env.MORE_LOOKUP_ENABLED !== 'false',
       showtimeSyncEnabled: process.env.MORE_SHOWTIME_SYNC_ENABLED !== 'false',
-      showtimeSyncJob: getMoreShowtimeSyncJob(),
+      showtimeSyncJob: getMoreShowtimeSyncJob(strapi),
       lookupJob: getMoreLookupJob(),
       moreProxy: getMoreProxyStatus(),
       minScore: DEFAULT_MIN_SCORE,
@@ -274,7 +274,7 @@ module.exports = {
   },
 
   async syncShowtimesStatus(ctx) {
-    ctx.body = { ok: true, ...getMoreShowtimeSyncJob() };
+    ctx.body = { ok: true, ...getMoreShowtimeSyncJob(strapi) };
   },
 
   async syncShowtimesReset(ctx) {
@@ -282,7 +282,7 @@ module.exports = {
     ctx.body = {
       ok: true,
       cleared: Boolean(cleared),
-      job: getMoreShowtimeSyncJob(),
+      job: getMoreShowtimeSyncJob(strapi),
     };
   },
 
@@ -326,7 +326,7 @@ module.exports = {
       return;
     }
 
-    const existing = getMoreShowtimeSyncJob();
+    const existing = getMoreShowtimeSyncJob(strapi);
     if (existing?.status === 'running' && !syncOptions.force) {
       ctx.body = { ok: true, status: 'running', ...existing };
       return;

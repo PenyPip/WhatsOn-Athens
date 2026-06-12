@@ -185,5 +185,14 @@ module.exports = {
       strapi.log.warn('[whatson bootstrap site navigation]', e);
     }
 
+    try {
+      const { resumeOrphanedSyncWorker } = require('./utils/moreShowtimeSyncJob');
+      setImmediate(() => {
+        resumeOrphanedSyncWorker(strapi);
+      });
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap more-showtime-sync resume]', e);
+    }
+
   },
 };

@@ -11,6 +11,29 @@ const path = require('path');
 
 process.chdir(path.join(__dirname, '..'));
 
+function persistWorkerFailure(jobId, message) {
+  if (!jobId) return;
+  try {
+    const { failJobById } = require('../src/utils/moreShowtimeSyncJob');
+    failJobById(jobId, message);
+  } catch (patchErr) {
+    console.error('[sync-worker] could not persist failure', patchErr);
+  }
+}
+
+process.on('uncaughtException', (err) => {
+  console.error('[sync-worker] uncaughtException:', err?.stack || err);
+  persistWorkerFailure(process.argv[2], err?.message || String(err));
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[sync-worker] unhandledRejection:', reason);
+  const msg = reason?.message || String(reason);
+  persistWorkerFailure(process.argv[2], msg);
+  process.exit(1);
+});
+
 async function main() {
   const jobId = process.argv[2];
   if (!jobId) {
@@ -24,14 +47,6 @@ async function main() {
 
 main().catch((e) => {
   console.error('[sync-worker] fatal:', e?.stack || e);
-  const jobId = process.argv[2];
-  if (jobId) {
-    try {
-      const { failJobById } = require('../src/utils/moreShowtimeSyncJob');
-      failJobById(jobId, e?.message || String(e));
-    } catch (patchErr) {
-      console.error('[sync-worker] could not persist failure', patchErr);
-    }
-  }
+  persistWorkerFailure(process.argv[2], e?.message || String(e));
   process.exit(1);
 });

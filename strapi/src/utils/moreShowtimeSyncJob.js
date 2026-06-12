@@ -35,7 +35,7 @@ function publicJob(job) {
     finishedAt: job.finishedAt ?? null,
     progress: job.progress,
     error: job.error ?? null,
-    report: job.report ?? null,
+    report: resolvePublicReport(job),
     lastProgressAt: job.lastProgressAt ?? null,
     workerPid: job.workerPid ?? null,
     scope: job.scope ?? null,
@@ -43,6 +43,9 @@ function publicJob(job) {
     phaseIndex,
     currentPhase: phases && phaseIndex != null ? phases[phaseIndex] ?? null : null,
     totalPhases: phases ? phases.length : null,
+    hasPhaseReports: Boolean(
+      job.phaseReports && Object.keys(job.phaseReports).length > 0,
+    ),
   };
 }
 
@@ -57,26 +60,68 @@ function trimReportForDisk(report) {
   };
 }
 
+/** Μικρή αναφορά για job file — τα byMovie/byVenue μπορεί να φτάσουν MB και να σπάνε το persist. */
+function slimReportForDisk(report) {
+  const trimmed = trimReportForDisk(report);
+  if (!trimmed || typeof trimmed !== 'object') return trimmed;
+  const {
+    byMovie,
+    byVenue,
+    byTheaterShow,
+    byTheaterVenue,
+    missingVenueIds,
+    missingCinemaVenueIds,
+    missingTheaterVenueIds,
+    createdCinemaVenuesList,
+    createdTheaterVenuesList,
+    eventIdIndex,
+    phaseReports,
+    ...summary
+  } = trimmed;
+  return {
+    ...summary,
+    byMovieCount: Array.isArray(byMovie) ? byMovie.length : 0,
+    byVenueCount: Array.isArray(byVenue) ? byVenue.length : 0,
+    byTheaterShowCount: Array.isArray(byTheaterShow) ? byTheaterShow.length : 0,
+    byTheaterVenueCount: Array.isArray(byTheaterVenue) ? byTheaterVenue.length : 0,
+    missingVenueIdsCount: Array.isArray(missingVenueIds) ? missingVenueIds.length : 0,
+    detailsOmitted: true,
+  };
+}
+
+function resolvePublicReport(job) {
+  if (job?.report) return job.report;
+  if (job?.phaseReports && typeof job.phaseReports === 'object') {
+    const parts = Object.values(job.phaseReports).filter(Boolean);
+    if (parts.length) return combineSyncReports(parts);
+  }
+  return null;
+}
+
 function jobForDisk(job) {
   const pub = publicJob(job);
   if (job?.workerOptions) pub.workerOptions = job.workerOptions;
-  if (job?.report) pub.report = trimReportForDisk(job.report);
+  const resolvedReport = job.report || resolvePublicReport(job);
+  if (resolvedReport) pub.report = slimReportForDisk(resolvedReport);
   if (job?.phaseTransitionAt) pub.phaseTransitionAt = job.phaseTransitionAt;
   if (job?.phaseReports && typeof job.phaseReports === 'object') {
     const trimmed = {};
-    for (const [k, v] of Object.entries(job.phaseReports)) trimmed[k] = trimReportForDisk(v);
+    for (const [k, v] of Object.entries(job.phaseReports)) trimmed[k] = slimReportForDisk(v);
     pub.phaseReports = trimmed;
   }
   return pub;
 }
 
 function persistJob(job) {
-  if (!job) return;
+  if (!job) return false;
   try {
     ensureJobDir();
-    fs.writeFileSync(JOB_FILE, JSON.stringify(jobForDisk(job)));
+    const payload = JSON.stringify(jobForDisk(job));
+    fs.writeFileSync(JOB_FILE, payload);
+    return true;
   } catch (e) {
     console.error('[more-showtime-sync] persist job failed', e?.message || e);
+    return false;
   }
 }
 
@@ -186,17 +231,66 @@ function resetStuckMoreShowtimeSyncJob(reason) {
   return publicJob(failed);
 }
 
-function recoverDeadWorkerJob(job) {
+/** @type {number} */
+let lastWorkerResumeAt = 0;
+const WORKER_RESUME_DEBOUNCE_MS = 15_000;
+const WORKER_RESUME_MIN_AGE_MS = Number(process.env.MORE_SHOWTIME_SYNC_RESUME_MIN_MS || 8000);
+
+function jobNeedsWorkerResume(job) {
+  if (!USE_WORKER || !job || job.status !== 'running') return false;
+  if (job.workerPid && isProcessAlive(job.workerPid)) return false;
+  const graceRef = job.phaseTransitionAt || job.startedAt;
+  const graceAgeMs = graceRef ? Date.now() - new Date(graceRef).getTime() : Infinity;
+  return graceAgeMs >= START_DELAY_MS + WORKER_RESUME_MIN_AGE_MS;
+}
+
+function resumeOrphanedSyncWorker(strapi) {
+  const job = loadFullJobFromDisk();
+  if (!jobNeedsWorkerResume(job)) return false;
+  const now = Date.now();
+  if (now - lastWorkerResumeAt < WORKER_RESUME_DEBOUNCE_MS) return false;
+  lastWorkerResumeAt = now;
+  try {
+    spawnSyncWorker(strapi, job.id);
+    patchJobOnDisk(job.id, {
+      progress: `${job.progress || 'Sync'} · worker ξανα-ξεκίνησε (resume)`,
+      lastProgressAt: new Date().toISOString(),
+    });
+    if (strapi?.log) {
+      strapi.log.warn(`[more-showtime-sync] resumed orphaned worker job=${job.id} phase=${job.phaseIndex}`);
+    } else {
+      console.warn(`[more-showtime-sync] resumed orphaned worker job=${job.id}`);
+    }
+    return true;
+  } catch (e) {
+    failJobById(
+      job.id,
+      e?.message || 'Αποτυχία επανεκκίνησης worker μετά από restart. Τρέξε ξανά sync.',
+    );
+    return false;
+  }
+}
+
+function recoverDeadWorkerJob(job, strapi) {
   if (!job || job.status !== 'running' || !USE_WORKER) return job;
 
   const pid = job.workerPid;
   if (pid && isProcessAlive(pid)) return job;
 
-  // Παράθυρο χάριτος: αρχικό spawn (startedAt) ή μετάβαση φάσης (phaseTransitionAt).
-  // Στο chained «Όλα» ο worker βγαίνει με workerPid=null και ο parent ξεκινά την επόμενη φάση.
   const graceRef = job.phaseTransitionAt || job.startedAt;
   const graceAgeMs = graceRef ? Date.now() - new Date(graceRef).getTime() : Infinity;
-  if (!pid && graceAgeMs < START_DELAY_MS + WORKER_BOOT_GRACE_MS) return job;
+  if (graceAgeMs < START_DELAY_MS + WORKER_BOOT_GRACE_MS) {
+    if (strapi && jobNeedsWorkerResume(job)) resumeOrphanedSyncWorker(strapi);
+    return publicJob(loadFullJobFromDisk()) || job;
+  }
+
+  if (strapi && jobNeedsWorkerResume(job)) {
+    resumeOrphanedSyncWorker(strapi);
+    const refreshed = loadFullJobFromDisk();
+    if (refreshed?.workerPid && isProcessAlive(refreshed.workerPid)) {
+      return publicJob(refreshed);
+    }
+  }
 
   const msg = pid
     ? 'Ο worker διακόπηκε (crash/OOM). Δες data/more-showtime-sync-worker.log και τρέξε ξανά sync.'
@@ -216,13 +310,14 @@ function recoverDeadWorkerJob(job) {
   return publicJob(failed);
 }
 
-function getMoreShowtimeSyncJob() {
+function getMoreShowtimeSyncJob(strapi) {
   const disk = loadPersistedJob();
   if (disk) {
     activeJob = disk;
   }
+  if (strapi) resumeOrphanedSyncWorker(strapi);
   let job = disk ? publicJob(disk) : activeJob ? publicJob(activeJob) : null;
-  job = recoverDeadWorkerJob(job);
+  job = recoverDeadWorkerJob(job, strapi);
   if (isJobStale(job)) {
     return resetStuckMoreShowtimeSyncJob(
       'Το sync κόλλησε χωρίς πρόοδο — ακυρώθηκε. Τρέξε ξανά (worker + χαμηλό concurrency).',
@@ -255,13 +350,59 @@ function patchJobOnDisk(jobId, patch) {
   }
   Object.assign(current, patch);
   activeJob = current;
-  persistJob(current);
+  if (!persistJob(current)) {
+    console.error(`[more-showtime-sync] patch persist failed job=${jobId}`);
+    return null;
+  }
   return current;
+}
+
+function completeJobById(jobId, report, extraPatch = {}) {
+  const slim = slimReportForDisk(report);
+  let patched = patchJobOnDisk(jobId, {
+    status: 'completed',
+    report: slim,
+    finishedAt: new Date().toISOString(),
+    progress: slim?.message || report?.message || 'Ολοκληρώθηκε',
+    error: null,
+    workerPid: null,
+    ...extraPatch,
+  });
+  if (patched) return patched;
+
+  const minimal = {
+    ok: true,
+    message: report?.message || 'Ολοκληρώθηκε',
+    created: report?.created ?? 0,
+    createdFromMovies: report?.createdFromMovies ?? 0,
+    createdFromVenues: report?.createdFromVenues ?? 0,
+    createdFromTheaterShows: report?.createdFromTheaterShows ?? 0,
+    createdFromTheaterVenues: report?.createdFromTheaterVenues ?? 0,
+    alreadyExists: report?.alreadyExists ?? 0,
+    durationMs: report?.durationMs,
+    detailsOmitted: true,
+  };
+  patched = patchJobOnDisk(jobId, {
+    status: 'completed',
+    report: minimal,
+    finishedAt: new Date().toISOString(),
+    progress: minimal.message,
+    error: null,
+    workerPid: null,
+    ...extraPatch,
+  });
+  if (!patched) {
+    failJobById(
+      jobId,
+      'Το sync ολοκληρώθηκε αλλά η αναφορά δεν αποθηκεύτηκε (disk). Δες data/more-showtime-sync-worker.log.',
+    );
+  }
+  return patched;
 }
 
 function spawnSyncWorker(strapi, jobId) {
   const script = path.join(process.cwd(), 'scripts', 'sync-showtimes-worker.js');
-  const heapMb = String(process.env.MORE_SHOWTIME_SYNC_WORKER_HEAP || '1536').replace(/\D/g, '') || '1536';
+  const heapMb = String(process.env.MORE_SHOWTIME_SYNC_WORKER_HEAP || '2560').replace(/\D/g, '') || '2560';
   ensureJobDir();
   const logFd = fs.openSync(WORKER_LOG, 'a');
 
@@ -372,18 +513,10 @@ async function runMoreShowtimeSyncWorker(jobId) {
     if (isLastPhase) {
       const ordered = phases.map((p) => phaseReports[p]).filter(Boolean);
       const finalReport = phases.length > 1 ? combineSyncReports(ordered) : report;
-      const patched = patchJobOnDisk(jobId, {
-        status: 'completed',
-        report: finalReport,
-        phaseReports,
-        finishedAt: new Date().toISOString(),
-        progress: finalReport.message || 'Ολοκληρώθηκε',
-        error: null,
-        workerPid: null,
-      });
+      const patched = completeJobById(jobId, finalReport, { phaseReports });
       if (!patched) {
         console.error(
-          `[sync-worker] completed but job file changed (job=${jobId}). Report not persisted — πιθανό force reset.`,
+          `[sync-worker] completed but job file changed or persist failed (job=${jobId}).`,
         );
         process.exitCode = 1;
       } else {
@@ -393,7 +526,9 @@ async function runMoreShowtimeSyncWorker(jobId) {
       // Ολοκληρώθηκε ενδιάμεση φάση — ο parent ξεκινά την επόμενη με καθαρό heap.
       const patched = patchJobOnDisk(jobId, {
         status: 'running',
-        phaseReports,
+        phaseReports: Object.fromEntries(
+          Object.entries(phaseReports).map(([k, v]) => [k, slimReportForDisk(v)]),
+        ),
         phaseIndex: phaseIndex + 1,
         phaseTransitionAt: new Date().toISOString(),
         lastProgressAt: new Date().toISOString(),
@@ -580,6 +715,7 @@ module.exports = {
   isMoreShowtimeSyncRunning,
   startMoreShowtimeSyncJob,
   resetStuckMoreShowtimeSyncJob,
+  resumeOrphanedSyncWorker,
   runMoreShowtimeSyncWorker,
   failJobById,
 };
