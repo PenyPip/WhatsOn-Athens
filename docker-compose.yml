@@ -77,10 +77,12 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
+      extra_hosts:
+        - "host.docker.internal:host-gateway"
       args:
         NEXT_PUBLIC_API_URL: /api
         NEXT_PUBLIC_SITE_URL: https://the37n.gr
-        SITEMAP_STRAPI_URL: http://127.0.0.1:1337
+        SITEMAP_STRAPI_URL: http://host.docker.internal:1337
         SITEMAP_STRICT_MODE: "1"
     ports:
       - "3000:80"

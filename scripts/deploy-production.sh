@@ -19,7 +19,7 @@ if ! docker compose ps strapi 2>/dev/null | grep -q '(healthy)'; then
   exit 1
 fi
 
-echo "==> 2/4 Frontend build (Strapi στο host :1337, network=host στο Dockerfile)"
+echo "==> 2/4 Frontend build (Strapi healthy στο host :1337 → host.docker.internal)"
 docker compose build frontend
 
 echo "==> 3/4 Strapi rebuild (αν άλλαξε κώδικας)"
