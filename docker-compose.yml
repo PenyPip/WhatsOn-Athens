@@ -45,8 +45,8 @@ services:
       NODE_ENV: production
       ENCRYPTION_KEY: whatson-encryption-key-32chars!!
       NODE_OPTIONS: --max-old-space-size=1024
-      MORE_SHOWTIME_SYNC_IN_PROCESS: "true"
-      MORE_SHOWTIME_SYNC_WORKER: "false"
+      MORE_SHOWTIME_SYNC_WORKER: "true"
+      MORE_SHOWTIME_SYNC_WORKER_HEAP: "512"
       MORE_SHOWTIME_SYNC_CONCURRENCY: "1"
       MORE_SHOWTIME_SYNC_DELAY_MS: "250"
       MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX: "16"
@@ -80,7 +80,8 @@ services:
       args:
         NEXT_PUBLIC_API_URL: /api
         NEXT_PUBLIC_SITE_URL: https://the37n.gr
-        SITEMAP_STRAPI_URL: https://the37n.gr
+        SITEMAP_STRAPI_URL: http://127.0.0.1:1337
+        SITEMAP_STRICT_MODE: "1"
     ports:
       - "3000:80"
     depends_on:

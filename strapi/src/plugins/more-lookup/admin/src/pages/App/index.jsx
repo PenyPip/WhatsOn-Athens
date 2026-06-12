@@ -1775,30 +1775,14 @@ const App = () => {
                     δημιουργείται αυτόματα από More (venueId + όνομα) και μετά προστίθενται προβολές.
                     Δημιουργούνται μόνο νέες εγγραφές προβολών.
                   </Typography>
-                  <Box
-                    paddingTop={3}
-                    padding={3}
-                    background="warning100"
-                    hasRadius
-                  >
-                    <Typography variant="pi" textColor="warning700" fontWeight="semiBold">
-                      Επαναλαμβανόμενο 502;
-                    </Typography>
-                    <Typography variant="pi" textColor="neutral700" paddingTop={1}>
-                      SSH στο server, στο repo:{' '}
-                      <code>./scripts/run-offline-sync.sh</code> — σταματά το Strapi, τρέχει sync μόνο
-                      του (χωρίς OOM), το ξανανεβάζει. Η αναφορά μένει στο{' '}
-                      <code>data/more-showtime-sync-job.json</code>.
-                    </Typography>
-                  </Box>
                   {syncLoading && syncProgress ? (
                     <Box paddingTop={3}>
                       <Typography variant="pi" textColor="primary700" fontWeight="semiBold">
                         {syncProgress}
                       </Typography>
                       <Typography variant="pi" textColor="neutral500" paddingTop={1}>
-                        10–20+ λεπτά. Αν εμφανιστεί 502, το VPS δεν αντέχει sync μέσω admin — τρέξε
-                        offline στο server: <code>./scripts/run-offline-sync.sh</code>
+                        Τρέχει σε worker στο background (10–20+ λεπτά). Μείνε στη σελίδα — η πρόοδο
+                        ενημερώνεται κάθε λίγα δευτερόλεπτα.
                       </Typography>
                     </Box>
                   ) : null}

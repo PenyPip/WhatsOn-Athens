@@ -1,3 +1,4 @@
+# syntax=docker/dockerfile:1.4
 FROM node:20-alpine AS base
 
 WORKDIR /front
@@ -24,16 +25,17 @@ FROM base AS builder
 
 ARG NEXT_PUBLIC_API_URL=/api
 ARG NEXT_PUBLIC_SITE_URL=https://the37n.gr
-# Κατά το `docker build` το hostname `strapi` δεν υπάρχει — χρησιμοποιούμε το δημόσιο API.
-ARG SITEMAP_STRAPI_URL=https://the37n.gr
+# Κατά build: Strapi πρέπει να τρέχει στο host :1337 (βλ. scripts/deploy-production.sh).
+ARG SITEMAP_STRAPI_URL=http://127.0.0.1:1337
+ARG SITEMAP_STRICT_MODE=1
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV SITEMAP_STRAPI_URL=$SITEMAP_STRAPI_URL
-# Strict sitemap μόνο όταν το Strapi απαντά — όχι όταν το API είναι down κατά το docker build.
-ENV SITEMAP_STRICT_MODE=0
+ENV SITEMAP_STRICT_MODE=$SITEMAP_STRICT_MODE
 
-RUN npm run build
+# host network → φτάνει το mapped strapi:1337 κατά `docker compose build` στον server.
+RUN --network=host npm run build
 
 FROM nginx:alpine
 
