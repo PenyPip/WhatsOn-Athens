@@ -1,5 +1,6 @@
 import crawlData from "@/generated/spa-crawl-enrichment.json";
 import { parseMoviesFilterPath } from "@/lib/moviesFilterPaths";
+import { cinemaVenueProgramSeo } from "@/lib/cinemaVenueProgramSeo";
 import { moviesAreaSeo, moviesGenreSeo, moviesSectionSeo } from "@/lib/moviesFilterSeo";
 import { moviePageDescription, moviePageTitle } from "@/lib/pageSeoCopy";
 import type { StrapiMovie } from "@/lib/api";
@@ -43,6 +44,14 @@ export type CrawlCulturalEvent = {
   posterUrl?: string;
   synopsis?: string;
   metaDescription?: string;
+  startDate?: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  venueName?: string;
+  venueAddress?: string;
+  ticketPrice?: number;
+  ticketUrl?: string;
 };
 
 const data = crawlData as {
@@ -97,6 +106,14 @@ export function crawlPosterForPath(path: string): string | undefined {
   return hit.entity.posterUrl;
 }
 
+export type PageSeoCopy = {
+  title: string;
+  description: string;
+  /** Open Graph / Twitter title — χωρίς «· 37Ν» όταν οριστεί. */
+  ogTitle?: string;
+  ogDescription?: string;
+};
+
 /** Τίτλος/περιγραφή από build enrichment (πιο ακριβή από slug → όνομα). */
 export function crawlVenueByProgramPath(path: string): CrawlVenue | null {
   const slug = path.match(/^\/movies\/venue\/([^/]+)$/)?.[1];
@@ -109,7 +126,7 @@ export function crawlVenueByProgramPath(path: string): CrawlVenue | null {
   }
 }
 
-export function crawlSeoCopyForPath(path: string): { title: string; description: string } | null {
+export function crawlSeoCopyForPath(path: string): PageSeoCopy | null {
   const normalized = path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const filterPath = parseMoviesFilterPath(normalized);
   if (filterPath.section) {
@@ -128,14 +145,12 @@ export function crawlSeoCopyForPath(path: string): { title: string; description:
 
   const venue = crawlVenueByProgramPath(path);
   if (venue) {
-    const addr = venue.address?.trim();
+    const s = cinemaVenueProgramSeo(venue);
     return {
-      title: `Πρόγραμμα — ${venue.name}`,
-      description: truncateDescription(
-        addr
-          ? `Πρόγραμμα ταινιών στο ${venue.name} (${addr}). Ώρες προβολών, αφίσες και κράτηση.`
-          : `Πρόγραμμα ταινιών στο ${venue.name}. Ώρες προβολών, αφίσες και κράτηση.`,
-      ),
+      title: s.title,
+      description: s.description,
+      ogTitle: s.ogTitle,
+      ogDescription: s.ogDescription,
     };
   }
 

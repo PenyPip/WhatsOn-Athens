@@ -10,6 +10,9 @@ const WORKER_LOG = path.join(process.cwd(), 'data', 'more-showtime-sync-worker.l
 const STALE_MS = Number(process.env.MORE_SHOWTIME_SYNC_STALE_MS || 20 * 60 * 1000);
 const HEARTBEAT_MS = 30_000;
 const START_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_START_DELAY_MS || 2500);
+/** Χάρις πριν θεωρήσουμε ότι ο worker δεν ξεκίνησε (spawn + Strapi boot). */
+const WORKER_BOOT_GRACE_MS = Number(process.env.MORE_SHOWTIME_SYNC_BOOT_GRACE_MS || 120_000);
+const MAX_PERSISTED_ERRORS = Number(process.env.MORE_SHOWTIME_SYNC_MAX_PERSISTED_ERRORS || 200);
 /** Worker (default): ξεχωριστή διεργασία — το admin/API μένει ζωντανό. In-process: MORE_SHOWTIME_SYNC_IN_PROCESS=true */
 const USE_WORKER = process.env.MORE_SHOWTIME_SYNC_IN_PROCESS !== 'true';
 
@@ -36,13 +39,31 @@ function publicJob(job) {
   };
 }
 
+function trimReportForDisk(report) {
+  if (!report || typeof report !== 'object') return report;
+  const errors = Array.isArray(report.errors) ? report.errors : null;
+  if (!errors || errors.length <= MAX_PERSISTED_ERRORS) return report;
+  return {
+    ...report,
+    errors: errors.slice(0, MAX_PERSISTED_ERRORS),
+    errorsTruncated: errors.length - MAX_PERSISTED_ERRORS,
+  };
+}
+
+function jobForDisk(job) {
+  const pub = publicJob(job);
+  if (job?.workerOptions) pub.workerOptions = job.workerOptions;
+  if (job?.report) pub.report = trimReportForDisk(job.report);
+  return pub;
+}
+
 function persistJob(job) {
   if (!job) return;
   try {
     ensureJobDir();
-    fs.writeFileSync(JOB_FILE, JSON.stringify(publicJob(job)));
-  } catch {
-    // μη κρίσιμο
+    fs.writeFileSync(JOB_FILE, JSON.stringify(jobForDisk(job)));
+  } catch (e) {
+    console.error('[more-showtime-sync] persist job failed', e?.message || e);
   }
 }
 
@@ -115,10 +136,21 @@ function failJob(jobRef, error) {
     error,
     finishedAt: new Date().toISOString(),
     progress: error,
+    workerPid: null,
   };
   Object.assign(jobRef, patch);
   persistJob(jobRef);
   return publicJob(jobRef);
+}
+
+function failJobById(jobId, error) {
+  const current = loadFullJobFromDisk();
+  if (!current || current.id !== jobId) {
+    if (activeJob?.id === jobId) return failJob(activeJob, error);
+    return null;
+  }
+  activeJob = current;
+  return failJob(current, error);
 }
 
 /** Μαρκάρει κολλημένο/ζombie job ώστε να επιτρέπεται νέο sync. */
@@ -141,12 +173,40 @@ function resetStuckMoreShowtimeSyncJob(reason) {
   return publicJob(failed);
 }
 
+function recoverDeadWorkerJob(job) {
+  if (!job || job.status !== 'running' || !USE_WORKER) return job;
+
+  const pid = job.workerPid;
+  if (pid && isProcessAlive(pid)) return job;
+
+  const ageMs = job.startedAt ? Date.now() - new Date(job.startedAt).getTime() : 0;
+  if (!pid && ageMs < START_DELAY_MS + WORKER_BOOT_GRACE_MS) return job;
+
+  const msg = pid
+    ? 'Ο worker διακόπηκε (crash/OOM). Δες data/more-showtime-sync-worker.log και δοκίμασε «Ξανά (force)».'
+    : 'Ο worker δεν ξεκίνησε εγκαίρως. Δες data/more-showtime-sync-worker.log (spawn/permissions).';
+
+  if (activeJob?.id === job.id) return failJob(activeJob, msg);
+  const failed = {
+    ...job,
+    status: 'failed',
+    error: msg,
+    finishedAt: new Date().toISOString(),
+    progress: msg,
+    workerPid: null,
+  };
+  activeJob = failed;
+  persistJob(failed);
+  return publicJob(failed);
+}
+
 function getMoreShowtimeSyncJob() {
   const disk = loadPersistedJob();
   if (disk && (!activeJob || activeJob.id === disk.id)) {
     activeJob = disk;
   }
-  const job = activeJob ? publicJob(activeJob) : disk;
+  let job = activeJob ? publicJob(activeJob) : disk;
+  job = recoverDeadWorkerJob(job);
   if (isJobStale(job)) {
     return resetStuckMoreShowtimeSyncJob(
       'Το sync κόλλησε χωρίς πρόοδο — ακυρώθηκε. Τρέξε ξανά (worker + χαμηλό concurrency).',
@@ -169,7 +229,14 @@ function touchJobProgress(jobRef, msg) {
 
 function patchJobOnDisk(jobId, patch) {
   const current = loadFullJobFromDisk();
-  if (!current || current.id !== jobId) return null;
+  if (!current || current.id !== jobId) {
+    if (current?.id && current.id !== jobId) {
+      console.warn(
+        `[more-showtime-sync] patch ignored job=${jobId} (disk has ${current.id}, status=${current.status})`,
+      );
+    }
+    return null;
+  }
   Object.assign(current, patch);
   activeJob = current;
   persistJob(current);
@@ -191,6 +258,29 @@ function spawnSyncWorker(strapi, jobId) {
       env: { ...process.env, MORE_SHOWTIME_SYNC_WORKER: '1' },
     },
   );
+
+  child.on('exit', (code, signal) => {
+    setTimeout(() => {
+      const job = loadFullJobFromDisk();
+      if (!job || job.id !== jobId || job.status !== 'running') return;
+      if (job.workerPid && child.pid && job.workerPid !== child.pid) return;
+
+      if (code === 0) {
+        failJobById(
+          jobId,
+          'Ο worker τερμάτισε χωρίς να σημειώσει ολοκλήρωση. Δες data/more-showtime-sync-worker.log.',
+        );
+        return;
+      }
+
+      const detail = signal ? `signal ${signal}` : `exit code ${code}`;
+      failJobById(
+        jobId,
+        `Ο worker τερμάτισε (${detail}). Πιθανό OOM — αύξησε MORE_SHOWTIME_SYNC_WORKER_HEAP. Δες data/more-showtime-sync-worker.log.`,
+      );
+    }, 2500);
+  });
+
   child.unref();
 
   patchJobOnDisk(jobId, { workerPid: child.pid ?? null });
@@ -237,23 +327,36 @@ async function runMoreShowtimeSyncWorker(jobId) {
       onProgress,
     });
 
-    patchJobOnDisk(jobId, {
+    const patched = patchJobOnDisk(jobId, {
       status: 'completed',
       report,
       finishedAt: new Date().toISOString(),
       progress: report.message || 'Ολοκληρώθηκε',
       error: null,
+      workerPid: null,
     });
-    console.log(`[sync-worker] completed job=${jobId} (${report.durationMs}ms)`);
+    if (!patched) {
+      console.error(
+        `[sync-worker] completed but job file changed (job=${jobId}). Report not persisted — πιθανό force reset.`,
+      );
+      process.exitCode = 1;
+    } else {
+      console.log(`[sync-worker] completed job=${jobId} (${report.durationMs}ms)`);
+    }
   } catch (e) {
     const msg = e?.message || String(e);
-    patchJobOnDisk(jobId, {
+    const patched = patchJobOnDisk(jobId, {
       status: 'failed',
       error: msg,
       finishedAt: new Date().toISOString(),
       progress: `Αποτυχία: ${msg}`,
+      workerPid: null,
     });
-    console.error(`[sync-worker] failed job=${jobId}`, e);
+    if (!patched) {
+      console.error(`[sync-worker] failed job=${jobId} but patch rejected`, e);
+    } else {
+      console.error(`[sync-worker] failed job=${jobId}`, e);
+    }
     process.exitCode = 1;
   } finally {
     if (strapi) {
@@ -400,4 +503,5 @@ module.exports = {
   startMoreShowtimeSyncJob,
   resetStuckMoreShowtimeSyncJob,
   runMoreShowtimeSyncWorker,
+  failJobById,
 };

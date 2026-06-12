@@ -24,5 +24,14 @@ async function main() {
 
 main().catch((e) => {
   console.error('[sync-worker] fatal:', e?.stack || e);
+  const jobId = process.argv[2];
+  if (jobId) {
+    try {
+      const { failJobById } = require('../src/utils/moreShowtimeSyncJob');
+      failJobById(jobId, e?.message || String(e));
+    } catch (patchErr) {
+      console.error('[sync-worker] could not persist failure', patchErr);
+    }
+  }
   process.exit(1);
 });

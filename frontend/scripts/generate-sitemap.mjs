@@ -111,6 +111,19 @@ function pickDecimal(attrs, key) {
   return Number.isFinite(n) && n > 0 ? n : undefined;
 }
 
+function pickEventVenue(attrs) {
+  const rel = attrs?.venue;
+  if (!rel) return null;
+  const data = rel.data ?? rel;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== "object") return null;
+  const inner = row.attributes && typeof row.attributes === "object" ? row.attributes : row;
+  const name = pickString(inner, "name");
+  const address = pickString(inner, "address");
+  if (!name && !address) return null;
+  return { name, address };
+}
+
 function relationList(attrs, key) {
   const raw = attrs[key];
   if (!raw) return [];
@@ -187,8 +200,18 @@ async function buildCrawlEnrichment() {
         extraFields: ["title"],
       }),
       fetchCollection("events", {
-        extraFields: ["title_el", "synopsis_el", "meta_description"],
-        populate: POSTER_POPULATE,
+        extraFields: [
+          "title_el",
+          "synopsis_el",
+          "meta_description",
+          "start_date",
+          "end_date",
+          "start_time",
+          "end_time",
+          "ticket_price",
+          "ticket_url",
+        ],
+        populate: `${POSTER_POPULATE}&populate[venue][fields][0]=name&populate[venue][fields][1]=address`,
       }),
     ]);
     if (
@@ -342,6 +365,13 @@ async function buildCrawlEnrichment() {
         if (!slug) return null;
         const synopsis = pickString(a, "synopsis_el");
         const metaDescription = pickString(a, "meta_description");
+        const startDate = pickString(a, "start_date");
+        const endDate = pickString(a, "end_date");
+        const startTime = pickString(a, "start_time");
+        const endTime = pickString(a, "end_time");
+        const ticketPrice = pickDecimal(a, "ticket_price");
+        const ticketUrl = pickString(a, "ticket_url");
+        const venue = pickEventVenue(a);
         return {
           path: `/events/${encodeURIComponent(slug)}`,
           slug,
@@ -349,6 +379,14 @@ async function buildCrawlEnrichment() {
           posterUrl: strapiMediaUrl(a.poster),
           ...(synopsis ? { synopsis } : {}),
           ...(metaDescription ? { metaDescription } : {}),
+          ...(startDate ? { startDate } : {}),
+          ...(endDate ? { endDate } : {}),
+          ...(startTime ? { startTime } : {}),
+          ...(endTime ? { endTime } : {}),
+          ...(venue?.name ? { venueName: venue.name } : {}),
+          ...(venue?.address ? { venueAddress: venue.address } : {}),
+          ...(ticketPrice != null ? { ticketPrice } : {}),
+          ...(ticketUrl ? { ticketUrl } : {}),
         };
       })
       .filter(Boolean);

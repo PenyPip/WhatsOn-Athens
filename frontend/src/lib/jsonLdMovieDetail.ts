@@ -1,6 +1,5 @@
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { absolutePageUrl, resolvePublicAssetUrl } from "@/lib/siteMetadata";
-import { resolveImdbRating } from "@/lib/movieImdb";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { findVenueForShowtime, isValidExternalUrl, resolveGoogleMapsHref } from "@/lib/venueResolve";
 import { resolvePricingForShowtime } from "@/lib/venuePricing";
@@ -141,15 +140,8 @@ export function buildMovieDetailJsonLd(input: MovieDetailJsonLdInput): JsonLdObj
     movieEntity.genre = parts.length === 1 ? parts[0] : parts;
   }
 
-  const imdb = resolveImdbRating(movie);
-  if (imdb != null) {
-    movieEntity.aggregateRating = {
-      "@type": "AggregateRating",
-      ratingValue: imdb,
-      bestRating: 10,
-      worstRating: 0,
-    };
-  }
+  // AggregateRating μόνο με ratingCount/reviewCount (απαίτηση Google Review snippets).
+  // Δεν εκπέμπουμε IMDb βαθμό χωρίς πλήθος κριτικών — το badge παραμένει στο UI.
 
   const breadcrumbs: JsonLdObject = {
     "@type": "BreadcrumbList",

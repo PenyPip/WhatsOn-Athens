@@ -29,6 +29,10 @@ export type PageSeoInput = {
   imageHeight?: number;
   /** YouTube embed URL για og:video (ταινίες με τρέιλερ). */
   videoUrl?: string | null;
+  /** Open Graph / Twitter title — χωρίς «· 37Ν» (override). */
+  ogTitle?: string;
+  /** Open Graph / Twitter description (override). */
+  ogDescription?: string;
   /** Μην ευρετηριάζεται (404, προφίλ, φίλτρα λίστας). */
   noIndex?: boolean;
   enabled?: boolean;
@@ -162,6 +166,10 @@ export function usePageSeo(input: PageSeoInput | null | undefined) {
 
     const fullTitle = formatPageTitle(input.title);
     const description = truncateDescription(input.description?.trim() || siteSeo.description);
+    const socialTitle = input.ogTitle?.trim() || fullTitle;
+    const socialDescription = truncateDescription(
+      input.ogDescription?.trim() || input.description?.trim() || siteSeo.description,
+    );
     const canonicalUrl = absolutePageUrl(input.canonicalPath ?? input.path ?? "/");
     const pageUrl = input.path ? absolutePageUrl(input.path) : canonicalUrl;
     const customImage = resolvePublicAssetUrl(input.image);
@@ -179,8 +187,8 @@ export function usePageSeo(input: PageSeoInput | null | undefined) {
     const videoUrl = input.videoUrl?.trim() || undefined;
 
     applySocialMeta({
-      title: fullTitle,
-      description,
+      title: socialTitle,
+      description: socialDescription,
       pageUrl,
       imageUrl,
       imageAlt,

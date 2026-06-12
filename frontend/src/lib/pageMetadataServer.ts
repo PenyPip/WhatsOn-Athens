@@ -15,8 +15,10 @@ import { shouldNoIndexPath } from "@/lib/seoPathRules";
 /** Next.js metadata ανά path — canonical, og:url, αφίσα entity στο αρχικό HTML. */
 export function buildMetadataForPath(path: string): Metadata {
   const normalized = path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
-  const { title, description } = seoCopyForPath(normalized);
+  const { title, description, ogTitle, ogDescription } = seoCopyForPath(normalized);
   const fullTitle = formatPageTitle(title);
+  const openGraphTitle = ogTitle?.trim() || fullTitle;
+  const openGraphDescription = ogDescription?.trim() || description;
   const canonical = absolutePageUrl(normalized);
   const ogType = inferOgType(normalized);
   const posterUrl = crawlPosterForPath(normalized);
@@ -43,8 +45,8 @@ export function buildMetadataForPath(path: string): Metadata {
       locale: "el_GR",
       url: canonical,
       siteName: siteSeo.siteName,
-      title: fullTitle,
-      description,
+      title: openGraphTitle,
+      description: openGraphDescription,
       images: ogImageAbsolute
         ? [
             {
@@ -58,8 +60,8 @@ export function buildMetadataForPath(path: string): Metadata {
     },
     twitter: {
       card: "summary_large_image",
-      title: fullTitle,
-      description,
+      title: openGraphTitle,
+      description: openGraphDescription,
       images: ogImageAbsolute ? [ogImageAbsolute] : undefined,
     },
   };

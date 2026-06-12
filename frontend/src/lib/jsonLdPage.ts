@@ -1,4 +1,6 @@
-import { crawlEntityByPath, crawlSeoCopyForPath, crawlVenueByProgramPath } from "@/lib/crawlEnrichment";
+import { cinemaVenueProgramSeo } from "@/lib/cinemaVenueProgramSeo";
+import { crawlEntityByPath, crawlSeoCopyForPath, crawlVenueByProgramPath, type PageSeoCopy } from "@/lib/crawlEnrichment";
+import { buildCulturalEventJsonLd } from "@/lib/jsonLdCulturalEvent";
 import { isMoviesReservedSegment, parseMoviesFilterPath } from "@/lib/moviesFilterPaths";
 import { absolutePageUrl, resolvePublicAssetUrl, siteSeo, truncateDescription } from "@/lib/siteMetadata";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
@@ -46,7 +48,7 @@ const SECTION_LABELS: Record<string, string> = {
 };
 
 /** Τίτλος/περιγραφή για server metadata & WebPage name. */
-export function seoCopyForPath(path: string): { title: string; description: string } {
+export function seoCopyForPath(path: string): PageSeoCopy {
   const normalized = path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const fromCrawl = crawlSeoCopyForPath(normalized);
   if (fromCrawl) return fromCrawl;
@@ -168,11 +170,13 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
   const parts = path.split("/").filter(Boolean);
   if (parts[0] === "movies" && parts[1] === "venue" && parts[2]) {
     const venue = crawlVenueByProgramPath(path);
+    const seo = venue ? cinemaVenueProgramSeo(venue) : null;
     return stripEmpty({
       "@type": "MovieTheater",
       "@id": `${pageUrl}#cinema`,
-      name: venue?.name ?? pageName.replace(/^Πρόγραμμα — /, ""),
+      name: venue?.name ?? pageName.split(" — ")[0] ?? pageName,
       url: pageUrl,
+      ...(seo?.description ? { description: seo.description } : {}),
       ...(venue?.address ? { address: { "@type": "PostalAddress", streetAddress: venue.address } } : {}),
     });
   }
@@ -256,18 +260,11 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
   if (parts[0] === "events" && parts.length >= 2) {
     const hit = crawlEntityByPath(path);
     const ev = hit?.kind === "culturalEvent" ? hit.entity : null;
-    const poster = ev?.posterUrl ? resolvePublicAssetUrl(ev.posterUrl) : undefined;
-    return stripEmpty({
-      "@type": "Event",
-      "@id": `${pageUrl}#event`,
-      name: ev?.title ?? pageName,
-      url: pageUrl,
-      inLanguage: "el-GR",
-      eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
-      eventStatus: "https://schema.org/EventScheduled",
-      ...(poster ? { image: poster } : {}),
-      ...(ev?.synopsis?.trim() ? { description: truncateDescription(ev.synopsis.trim()) } : {}),
-    });
+    if (ev) {
+      const eventLd = buildCulturalEventJsonLd(path, ev);
+      if (eventLd) return eventLd;
+    }
+    return null;
   }
   if (path === "/privacy") {
     return stripEmpty({

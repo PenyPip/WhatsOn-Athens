@@ -10,9 +10,10 @@ import {
   moviesSectionPath,
   parseMoviesFilterPath,
 } from "@/lib/moviesFilterPaths";
+import { cinemaVenueProgramSeo } from "@/lib/cinemaVenueProgramSeo";
 import { moviesAreaSeo, moviesGenreSeo, moviesSectionSeo } from "@/lib/moviesFilterSeo";
-import { truncateDescription } from "@/lib/siteMetadata";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import CinemaVenueProgramIntro from "@/components/CinemaVenueProgramIntro";
 import EventCard from "@/components/EventCard";
 import MoviesGridSkeleton from "@/components/MoviesGridSkeleton";
 import Footer from "@/components/Footer";
@@ -787,14 +788,15 @@ const Movies = () => {
 
   const listSeo = useMemo(() => {
     if (venueFilter) {
+      const s = cinemaVenueProgramSeo(venueFilter);
       return {
-        title: `Πρόγραμμα — ${venueFilter.name}`,
-        description: truncateDescription(
-          venueFilter.address?.trim()
-            ? `Πρόγραμμα ταινιών στο ${venueFilter.name} (${venueFilter.address.trim()}). Ώρες προβολών και αφίσες.`
-            : `Πρόγραμμα ταινιών στο ${venueFilter.name}. Ώρες προβολών, αφίσες και κράτηση.`,
-        ),
-        h1: venueFilter.name,
+        title: s.title,
+        description: s.description,
+        h1: s.h1,
+        subtitle: s.subtitle,
+        ogTitle: s.ogTitle,
+        ogDescription: s.ogDescription,
+        intro: s.intro,
       };
     }
     if (pathFilters.section) {
@@ -817,9 +819,13 @@ const Movies = () => {
     };
   }, [venueFilter, pathFilters.section, pathFilters.genreSlug, pathFilters.area, movieGenresList]);
 
+  const venueIntro = venueFilter && "intro" in listSeo ? listSeo.intro : undefined;
+
   usePageSeo({
     title: listSeo.title,
     description: listSeo.description,
+    ogTitle: listSeo.ogTitle,
+    ogDescription: listSeo.ogDescription,
     path: listCanonicalPath,
     canonicalPath: listCanonicalPath,
     noIndex: hasExtraQueryFilters,
@@ -855,7 +861,9 @@ const Movies = () => {
             <h1 className={PAGE_MOVIES_LIST_TITLE_CLASS}>
               {pageH1}
             </h1>
-            {!venueFilter && !pathFilters.section && !pathFilters.genreSlug ? (
+            {venueFilter ? (
+              <p className={PAGE_LIST_SUBTITLE_CLASS}>{listSeo.subtitle}</p>
+            ) : !pathFilters.section && !pathFilters.genreSlug ? (
               <p className={PAGE_LIST_SUBTITLE_CLASS}>
                 Τώρα στα σινεμά στην {AREA_LABELS[areaUiValue]}
               </p>
@@ -893,6 +901,10 @@ const Movies = () => {
               </div>
             ) : null}
       </PageListHeader>
+
+      {venueFilter && venueIntro ? (
+        <CinemaVenueProgramIntro venueName={venueFilter.name} intro={venueIntro} />
+      ) : null}
 
       <div className="container">
         {venueSlug && !venueFilter && !venueLookupPending ? (

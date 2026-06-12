@@ -867,16 +867,27 @@ const App = () => {
         );
       }
       if (data?.progress) setSyncProgress(data.progress);
-      if (data?.status === 'completed' && data?.report) return data.report;
+      if (data?.status === 'completed') {
+        if (data?.report) return data.report;
+        throw new Error(
+          'Το sync ολοκληρώθηκε χωρίς αναφορά (πιθανό crash worker). Δες data/more-showtime-sync-worker.log.',
+        );
+      }
       if (data?.status === 'failed') {
-        throw new Error(data?.error || 'Αποτυχία συγχρονισμού');
+        throw new Error(data?.error || data?.progress || 'Αποτυχία συγχρονισμού');
       }
       if (!data?.status) {
         throw new Error(
           'Το sync διακόπηκε — δεν υπάρχει ενεργή εργασία (πιθανή επανεκκίνηση Strapi). Τρέξε ξανά.',
         );
       }
-      if (data?.status !== 'running' && data?.status !== 'started') break;
+      if (data?.status !== 'running' && data?.status !== 'started') {
+        throw new Error(
+          data?.error ||
+            data?.progress ||
+            `Το sync σταμάτησε (${data?.status || 'άγνωστη κατάσταση'}). Δες data/more-showtime-sync-worker.log.`,
+        );
+      }
     }
     throw new Error('Το sync ξεπέρασε το χρονικό όριο αναμονής (~45 λεπτά).');
   }, [get]);
@@ -1523,6 +1534,7 @@ const App = () => {
     setSyncLoading(true);
     setSyncProgress(force ? 'Reset + επανεκκίνηση sync…' : 'Έναρξη συγχρονισμού…');
     setSyncReport(null);
+    let finishedOk = false;
     try {
       if (force) {
         try {
@@ -1542,6 +1554,7 @@ const App = () => {
           await new Promise((resolve) => setTimeout(resolve, 12000));
           const report = await pollSyncJob();
           setSyncReport(report);
+          finishedOk = true;
           toggleNotification({
             type: report?.created > 0 ? 'success' : 'info',
             message: report?.message || 'Συγχρονισμός ολοκληρώθηκε (μετά από 502).',
@@ -1554,27 +1567,37 @@ const App = () => {
       const data = res?.data;
       if (data?.status === 'completed' && data?.report) {
         setSyncReport(data.report);
+        finishedOk = true;
         toggleNotification({
           type: data.report?.created > 0 ? 'success' : 'info',
           message: data.report?.message || 'Συγχρονισμός ολοκληρώθηκε.',
         });
         return;
       }
+      if (data?.status === 'completed' && !data?.report) {
+        throw new Error(
+          'Το sync ολοκληρώθηκε χωρίς αναφορά. Δες data/more-showtime-sync-worker.log και δοκίμασε «Ξανά (force)».',
+        );
+      }
       if (data?.status === 'running' || data?.status === 'started') {
         setSyncProgress(data.progress || 'Συγχρονισμός σε εξέλιξη (worker)…');
         const report = await pollSyncJob();
         setSyncReport(report);
+        finishedOk = true;
         toggleNotification({
           type: report?.created > 0 ? 'success' : 'info',
           message: report?.message || 'Συγχρονισμός ολοκληρώθηκε.',
         });
         return;
       }
-      setSyncReport(data);
-      toggleNotification({
-        type: data?.created > 0 ? 'success' : 'info',
-        message: data?.message || 'Συγχρονισμός ολοκληρώθηκε.',
-      });
+      if (data?.status === 'failed') {
+        throw new Error(data?.error || data?.progress || 'Αποτυχία συγχρονισμού');
+      }
+      throw new Error(
+        data?.error ||
+          data?.progress ||
+          'Δεν ξεκίνηκε συγχρονισμός — δοκίμασε «Ξανά (force)» ή έλεγξε data/more-showtime-sync-worker.log',
+      );
     } catch (error) {
       if (isTransientGatewayError(error)) {
         setSyncProgress('502 κατά την έναρξη — αναμονή Strapi…');
@@ -1582,6 +1605,7 @@ const App = () => {
         try {
           const report = await pollSyncJob();
           setSyncReport(report);
+          finishedOk = true;
           toggleNotification({
             type: report?.created > 0 ? 'success' : 'info',
             message: report?.message || 'Συγχρονισμός ολοκληρώθηκε (μετά από 502).',
@@ -1602,10 +1626,11 @@ const App = () => {
         error?.message ||
         error?.response?.data?.message ||
         'Αποτυχία συγχρονισμού.';
+      setSyncProgress(message);
       toggleNotification({ type: 'warning', message });
     } finally {
       setSyncLoading(false);
-      setSyncProgress(null);
+      if (finishedOk) setSyncProgress(null);
     }
   };
 
