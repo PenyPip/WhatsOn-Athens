@@ -400,7 +400,7 @@ module.exports = {
       );
       ctx.body = {
         ...result,
-        message: `Δημιουργήθηκε draft χώρος «${result.venue.name}» (#${result.venue.id}) · στην ουρά εγγραφής`,
+        message: `Δημιουργήθηκε άμεσα draft χώρος «${result.venue.name}» (#${result.venue.id}) · Content Manager → Χώροι · μετά «Γράψε αυτόματα»`,
       };
     } catch (e) {
       ctx.status = 400;

@@ -294,12 +294,22 @@ function CatalogVenuePicker({ row, cmsVenueChoices, value, onChange, disabled })
         Υπάρχων χώρος CMS
       </Typography>
       {selectedId ? (
-        <Typography variant="pi" textColor="primary600">
-          Επιλέχθηκε: {selectedTitle}
-        </Typography>
+        <Flex gap={2} alignItems="center" wrap="wrap">
+          <Typography variant="pi" textColor="primary600">
+            Επιλέχθηκε: {selectedTitle}
+          </Typography>
+          <Button
+            size="S"
+            variant="tertiary"
+            disabled={disabled}
+            onClick={() => onChange('')}
+          >
+            Ακύρωση
+          </Button>
+        </Flex>
       ) : (
         <Typography variant="pi" textColor="neutral500">
-          Επίλεξε πρόταση ή αναζήτηση
+          Δεν έχει επιλεγεί χώρος — πάτα μία πρόταση ή αναζήτηση
         </Typography>
       )}
       {suggestions.length > 0 ? (
@@ -367,10 +377,15 @@ function CatalogVenueCreateFields({ row, nameValue, onNameChange, disabled }) {
   if (!row.canCreateVenue || row.inCms) return null;
   const venueType = row.category === 'theater' ? 'theater' : 'cinema';
   const sampleVenueId = row.verify?.sampleVenues?.[0]?.id;
+  const nameHint = defaultCreateVenueName(row);
   return (
     <Flex direction="column" alignItems="flex-start" gap={1} style={{ width: '100%', maxWidth: '18rem' }}>
       <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
         Νέος χώρος ({venueType === 'theater' ? 'θέατρο' : 'σινεμά'})
+      </Typography>
+      <Typography variant="pi" textColor="neutral500">
+        «Δημιουργία» = άμεσα draft στο CMS (Content Manager → Χώροι). Μετά «Γράψε αυτόματα» για
+        event_group_code.
       </Typography>
       <input
         className="more-lookup-catalog-venue-input"
@@ -378,9 +393,14 @@ function CatalogVenueCreateFields({ row, nameValue, onNameChange, disabled }) {
         value={nameValue || ''}
         onChange={(event) => onNameChange(event.target.value)}
         disabled={disabled}
-        placeholder="Όνομα χώρου CMS"
-        title="Όνομα για draft εγγραφή στο CMS"
+        placeholder={nameHint || 'Όνομα νέου χώρου'}
+        title="Όνομα για draft εγγραφή — δημιουργείται αμέσως με το κουμπί Δημιουργία"
       />
+      {nameHint && !nameValue?.trim() ? (
+        <Typography variant="pi" textColor="neutral500">
+          Πρόταση ονόματος: {nameHint}
+        </Typography>
+      ) : null}
       {sampleVenueId ? (
         <Typography variant="pi" textColor="neutral500">
           More venueId: {sampleVenueId}
@@ -1252,41 +1272,6 @@ const App = () => {
     setCatalogPage(1);
   }, [result, catalogOnlyMissing, catalogKindFilter, matchContentFilter]);
 
-  useEffect(() => {
-    if (!result?.catalog?.length) return;
-    setCatalogVenuePick((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      for (const row of result.catalog) {
-        if (row.kind !== 'venue_bundle' || row.inCms || !row.eventGroupCode) continue;
-        if (next[row.eventGroupCode]) continue;
-        if (row.suggestedVenue?.cmsId) {
-          next[row.eventGroupCode] = String(row.suggestedVenue.cmsId);
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [result?.catalog]);
-
-  useEffect(() => {
-    if (!result?.catalog?.length) return;
-    setCatalogCreateName((prev) => {
-      const next = { ...prev };
-      let changed = false;
-      for (const row of result.catalog) {
-        if (row.kind !== 'venue_bundle' || !row.eventGroupCode) continue;
-        if (next[row.eventGroupCode]) continue;
-        const suggested = defaultCreateVenueName(row);
-        if (suggested) {
-          next[row.eventGroupCode] = suggested;
-          changed = true;
-        }
-      }
-      return changed ? next : prev;
-    });
-  }, [result?.catalog]);
-
   const finishLookupJob = async (postBody) => {
     const res = await post('/api/more-lookup/run', postBody);
     const data = res?.data;
@@ -1772,12 +1757,9 @@ const App = () => {
   };
 
   const approveCatalogVenue = async (row) => {
-    const cmsId =
-      catalogVenuePick[row.eventGroupCode] ||
-      row.suggestedVenue?.cmsId ||
-      null;
+    const cmsId = catalogVenuePick[row.eventGroupCode] || null;
     if (!cmsId || !row.eventGroupCode) {
-      toggleNotification({ type: 'warning', message: 'Επίλεξε χώρο CMS για έγκριση.' });
+      toggleNotification({ type: 'warning', message: 'Επίλεξε πρώτα χώρο CMS (πρόταση ή λίστα).' });
       return;
     }
     setLoading(true);
@@ -1823,9 +1805,9 @@ const App = () => {
   };
 
   const linkCatalogVenue = async (row) => {
-    const cmsId = catalogVenuePick[row.eventGroupCode] || row.suggestedVenue?.cmsId || null;
+    const cmsId = catalogVenuePick[row.eventGroupCode] || null;
     if (!cmsId || !row.eventGroupCode) {
-      toggleNotification({ type: 'warning', message: 'Επίλεξε χώρο CMS για σύνδεση.' });
+      toggleNotification({ type: 'warning', message: 'Επίλεξε πρώτα χώρο CMS (πρόταση ή λίστα).' });
       return;
     }
     setLoading(true);
@@ -1897,9 +1879,11 @@ const App = () => {
   const createCatalogVenue = async (row) => {
     if (!row.eventGroupCode) return;
     const name = String(
-      catalogCreateName[row.eventGroupCode] || defaultCreateVenueName(row) || '',
+      catalogCreateName[row.eventGroupCode] || '',
     ).trim();
-    if (!name) {
+    const fallbackName = defaultCreateVenueName(row);
+    const finalName = name || fallbackName.trim();
+    if (!finalName) {
       toggleNotification({ type: 'warning', message: 'Συμπλήρωσε όνομα για τον νέο χώρο.' });
       return;
     }
@@ -1908,7 +1892,7 @@ const App = () => {
       const sampleVenueId = row.verify?.sampleVenues?.[0]?.id;
       const res = await post('/api/more-lookup/create-venue', {
         eventGroupCode: row.eventGroupCode,
-        name,
+        name: finalName,
         type: row.category === 'theater' ? 'theater' : 'cinema',
         venueId: sampleVenueId != null ? String(sampleVenueId) : undefined,
         moreTitle: row.moreTitle,
@@ -1960,7 +1944,7 @@ const App = () => {
         message:
           res?.data?.message ||
           (venue
-            ? `Δημιουργήθηκε draft «${venue.name}» (#${venue.id}) — άνοιξε Χώροι για επεξεργασία`
+            ? `Δημιουργήθηκε άμεσα draft «${venue.name}» (#${venue.id}) — Content Manager → Χώροι`
             : 'Δημιουργήθηκε χώρος.'),
       });
     } catch (error) {
@@ -2824,8 +2808,8 @@ const App = () => {
                             variant="secondary"
                             loading={loading}
                             onClick={() => linkCatalogVenue(row)}
-                            disabled={!row.canLinkVenue}
-                            title="Σύνδεση κωδικού More → υπάρχων χώρος CMS"
+                            disabled={!row.canLinkVenue || !catalogVenuePick[row.eventGroupCode]}
+                            title="Σύνδεση κωδικού More → επιλεγμένος χώρος CMS"
                           >
                             Σύνδεση
                           </Button>
@@ -2844,6 +2828,7 @@ const App = () => {
                             variant="success"
                             loading={loading}
                             onClick={() => approveCatalogVenue(row)}
+                            disabled={!catalogVenuePick[row.eventGroupCode]}
                             title="Μόνο ουρά έγκρισης (χωρίς more_code_links)"
                           >
                             Έγκρ.
