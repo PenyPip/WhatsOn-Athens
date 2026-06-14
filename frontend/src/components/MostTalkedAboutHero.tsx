@@ -142,9 +142,10 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
     if (typeof document === "undefined") return;
 
     const staticEl = document.getElementById("home-static-lcp");
+    const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
 
-    /** Static LCP: κρύψε overlay μετά paint + idle — αποφυγή deadlock με deferred queries. */
-    if (staticEl) {
+    /** Mobile: κρύψε static overlay μετά paint + idle (χωρίς deadlock). Desktop: περίμενε live hero (CLS). */
+    if (staticEl && isMobileViewport) {
       let cancelled = false;
       let idleId: number | undefined;
       const frame = requestAnimationFrame(() => {
@@ -171,6 +172,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
 
     if (loading) return;
     if (movies.length === 0) {
+      if (staticEl) return;
       markLcpDone();
       return;
     }
@@ -178,10 +180,50 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
       markLcpDone();
       return;
     }
-    const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => markLcpDone());
-    });
-    return () => cancelAnimationFrame(frame);
+
+    let cancelled = false;
+    let raf1 = 0;
+    let raf2 = 0;
+    const finish = () => {
+      if (cancelled) return;
+      raf1 = requestAnimationFrame(() => {
+        raf2 = requestAnimationFrame(() => {
+          if (!cancelled) markLcpDone();
+        });
+      });
+    };
+
+    /** Desktop: μην κρύψεις το static slot πριν ζωγραφιστεί το live hero poster (CLS ~1.4). */
+    const waitForLivePoster = () => {
+      const poster = document.querySelector<HTMLImageElement>("[data-home-hero-live] img");
+      if (!poster) {
+        finish();
+        return undefined;
+      }
+      if (poster.complete && poster.naturalWidth > 0) {
+        finish();
+        return undefined;
+      }
+      const onReady = () => {
+        poster.removeEventListener("load", onReady);
+        poster.removeEventListener("error", onReady);
+        finish();
+      };
+      poster.addEventListener("load", onReady);
+      poster.addEventListener("error", onReady);
+      return () => {
+        poster.removeEventListener("load", onReady);
+        poster.removeEventListener("error", onReady);
+      };
+    };
+
+    const removePosterListener = waitForLivePoster();
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(raf1);
+      cancelAnimationFrame(raf2);
+      removePosterListener?.();
+    };
   }, [loading, movies.length, markLcpDone]);
 
   const hasStaticLcpDom =
@@ -191,9 +233,9 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
   const hasCarousel = movies.length > 1;
   const heroSwipe = useHeroSwipe(hasCarousel, activeIndex, goTo);
 
-  if (loading) {
+  if (loading && movies.length === 0) {
     if (hasStaticLcp) return null;
-    if (movies.length === 0) return <MostTalkedAboutHeroShell />;
+    return <MostTalkedAboutHeroShell />;
   }
 
   if (movies.length === 0) {
