@@ -2,7 +2,7 @@ import crawlData from "@/generated/spa-crawl-enrichment.json";
 import { parseMoviesFilterPath } from "@/lib/moviesFilterPaths";
 import { cinemaVenueProgramSeo } from "@/lib/cinemaVenueProgramSeo";
 import { moviesAreaSeo, moviesGenreSeo, moviesSectionSeo } from "@/lib/moviesFilterSeo";
-import { moviePageDescription, moviePageTitle } from "@/lib/pageSeoCopy";
+import { movieDetailSeo } from "@/lib/movieDetailSeo";
 import type { StrapiMovie } from "@/lib/api";
 import { truncateDescription } from "@/lib/siteMetadata";
 
@@ -27,6 +27,8 @@ export type CrawlMovie = {
   director?: string;
   posterUrl?: string;
   synopsis?: string;
+  showtimeVenues?: string[];
+  showtimeVenueCount?: number;
 };
 export type CrawlTheaterShow = {
   path: string;
@@ -166,9 +168,19 @@ export function crawlSeoCopyForPath(path: string): PageSeoCopy | null {
       director: m.director ?? "",
     } as StrapiMovie;
     const genreLine = m.genreLine?.trim() ?? "";
+    const hint =
+      m.showtimeVenues?.length || m.showtimeVenueCount
+        ? {
+            venueNames: m.showtimeVenues,
+            venueCount: m.showtimeVenueCount ?? m.showtimeVenues?.length,
+          }
+        : undefined;
+    const seo = movieDetailSeo(stub, genreLine, hint);
     return {
-      title: moviePageTitle(stub, genreLine),
-      description: moviePageDescription(stub, genreLine),
+      title: seo.title,
+      description: seo.description,
+      ogTitle: seo.ogTitle,
+      ogDescription: seo.ogDescription,
     };
   }
   if (hit.kind === "theater") {

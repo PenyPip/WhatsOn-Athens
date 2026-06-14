@@ -607,12 +607,19 @@ function suggestCmsVenuesForCatalogBundle(catalogRow, cmsVenuesMapped, minScore 
 function buildSuggestedVenueCreatePayload(catalogRow) {
   const verify = catalogRow.verify;
   const sample = verify?.sampleVenues?.[0];
-  const name = String(catalogRow.moreTitle || sample?.name || '').trim() || 'Σινεμά More';
+  const name =
+    String(catalogRow.name || catalogRow.moreTitle || sample?.name || '').trim() || 'Σινεμά More';
+  const type =
+    catalogRow.type === 'theater' || catalogRow.type === 'cinema' || catalogRow.type === 'other'
+      ? catalogRow.type
+      : catalogRow.category === 'theater'
+        ? 'theater'
+        : 'cinema';
   return {
     name,
-    type: catalogRow.category === 'theater' ? 'theater' : 'cinema',
+    type,
     more_link: catalogRow.moreUrl || null,
-    venue_id: sample?.id ? String(sample.id) : null,
+    venue_id: catalogRow.venueId != null ? String(catalogRow.venueId) : sample?.id ? String(sample.id) : null,
     event_group_code: catalogRow.eventGroupCode,
     summer_outdoor: /θεριν|therino|summer/i.test(name),
   };
@@ -690,26 +697,35 @@ async function createVenueFromMoreCatalog(strapi, options = {}) {
   const code = String(options.eventGroupCode || '').trim();
   if (!code) throw new Error('Απαιτείται eventGroupCode');
 
+  const category = options.category || 'cinema';
   const catalogRow = {
+    name: options.name || '',
     moreTitle: options.moreTitle || '',
     moreUrl: options.moreUrl || '',
     eventGroupCode: code,
-    category: options.category || 'cinema',
+    category,
+    type: options.type,
+    venueId: options.venueId,
     verify: options.verify || null,
   };
   const draft = buildSuggestedVenueCreatePayload(catalogRow);
+  if (!draft.name?.trim()) throw new Error('Απαιτείται όνομα χώρου');
+
+  const catalogKind =
+    options.catalogKind ||
+    (category === 'theater' ? 'theater_venue' : 'venue_bundle');
   const slug = await uniqueVenueSlugForLookup(strapi, draft.name);
 
   const created = await strapi.entityService.create('api::venue.venue', {
     data: {
       ...draft,
       slug,
-      publishedAt: null,
+      publishedAt: options.publish === true ? new Date() : null,
       info: 'Δημιουργία από More lookup (draft).',
       more_code_links: [
         {
           code,
-          catalog_kind: 'venue_bundle',
+          catalog_kind: catalogKind,
           more_title: catalogRow.moreTitle || draft.name,
         },
       ],
@@ -732,6 +748,7 @@ async function createVenueFromMoreCatalog(strapi, options = {}) {
       type: created.type,
       venue_id: created.venue_id,
     },
+    catalogKind,
     approval,
   };
 }
@@ -871,7 +888,9 @@ function moreCodeLinksPayloadFromRaw(row) {
 }
 
 function catalogKindForCatalogEntry(entry) {
-  if (entry?.kind === 'venue_bundle') return 'venue_bundle';
+  if (entry?.kind === 'venue_bundle') {
+    return entry?.category === 'theater' ? 'theater_venue' : 'venue_bundle';
+  }
   if (entry?.kind === 'show' && entry?.category === 'theater') return 'show';
   if (entry?.kind === 'movie') return 'movie';
   return entry?.kind || 'movie';

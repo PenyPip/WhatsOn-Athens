@@ -132,6 +132,56 @@ function relationList(attrs, key) {
   return [];
 }
 
+function pickNestedRelation(attrs, key) {
+  const rel = attrs[key];
+  if (!rel) return null;
+  const data = rel.data ?? rel;
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row || typeof row !== "object") return null;
+  return entryAttrs(row);
+}
+
+async function fetchHomeCalendarShowtimes() {
+  try {
+    const res = await fetch(`${STRAPI_ORIGIN}/api/showtimes/home-calendar`, {
+      headers: { Accept: "application/json" },
+    });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return Array.isArray(json.data) ? json.data : [];
+  } catch {
+    return [];
+  }
+}
+
+/** slug ταινίας → σινεμά από επερχόμενες προβολές (SEO enrichment). */
+function buildMovieShowtimeHints(showtimeRows) {
+  const bySlug = new Map();
+  for (const row of showtimeRows) {
+    const a = entryAttrs(row);
+    const movie = pickNestedRelation(a, "movie");
+    const venue = pickNestedRelation(a, "venue");
+    const slug = pickString(movie ?? {}, "slug");
+    const venueName = pickString(venue ?? {}, "name");
+    if (!slug || !venueName) continue;
+    let set = bySlug.get(slug);
+    if (!set) {
+      set = new Set();
+      bySlug.set(slug, set);
+    }
+    set.add(venueName);
+  }
+  const out = new Map();
+  for (const [slug, names] of bySlug) {
+    const sorted = [...names].sort((x, y) => x.localeCompare(y, "el"));
+    out.set(slug, {
+      showtimeVenues: sorted.slice(0, 6),
+      showtimeVenueCount: sorted.length,
+    });
+  }
+  return out;
+}
+
 /** Σχετικό `/uploads/...` για og:image στο the37n.gr (όχι localhost Strapi). */
 function strapiMediaUrl(media) {
   if (!media) return undefined;
@@ -227,6 +277,9 @@ async function buildCrawlEnrichment() {
       sitemapApiCollectionsOk += 1;
     }
 
+    const showtimeRows = await fetchHomeCalendarShowtimes();
+    const showtimeHints = buildMovieShowtimeHints(showtimeRows);
+
     const genres = genreRows
       .map((row) => {
         const a = entryAttrs(row);
@@ -285,6 +338,7 @@ async function buildCrawlEnrichment() {
           .map((s) => genres.find((g) => g.slug === s)?.label)
           .filter(Boolean)
           .join(" · ");
+        const hint = showtimeHints.get(slug);
         return {
           path: `/movies/${encodeURIComponent(slug)}`,
           slug,
@@ -296,6 +350,12 @@ async function buildCrawlEnrichment() {
           ...(director ? { director } : {}),
           posterUrl: strapiMediaUrl(a.poster),
           ...(synopsis ? { synopsis } : {}),
+          ...(hint?.showtimeVenues?.length
+            ? {
+                showtimeVenues: hint.showtimeVenues,
+                showtimeVenueCount: hint.showtimeVenueCount,
+              }
+            : {}),
         };
       })
       .filter(Boolean);

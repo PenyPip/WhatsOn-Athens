@@ -385,10 +385,15 @@ module.exports = {
     try {
       const result = await createVenueFromMoreCatalog(strapi, {
         eventGroupCode: body.eventGroupCode,
+        name: body.name,
+        type: body.type,
+        venueId: body.venueId,
         moreTitle: body.moreTitle,
         moreUrl: body.moreUrl,
         category: body.category,
+        catalogKind: body.catalogKind,
         verify: body.verify,
+        publish: body.publish === true,
       });
       strapi.log.info(
         `[more-lookup] create-venue by ${adminEmail} ${result.venue.name} (#${result.venue.id}) → ${body.eventGroupCode}`,

@@ -249,3 +249,31 @@
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+.more-lookup-catalog-venue-input {
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #dcdce4;
+  border-radius: 0.25rem;
+  background: #ffffff;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  color: #32324d;
+}
+
+.more-lookup-catalog-venue-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.more-lookup-row-actions--catalog {
+  flex-direction: column;
+  align-items: stretch;
+  min-width: 6.5rem;
+}
+
+.more-lookup-row-actions--catalog button {
+  flex: none !important;
+  width: 100%;
+}

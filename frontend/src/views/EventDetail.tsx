@@ -51,8 +51,9 @@ import {
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
+import MovieDetailIntro from "@/components/MovieDetailIntro";
 import { usePageSeo } from "@/hooks/usePageSeo";
-import { moviePageDescription, moviePageTitle, staticPageSeo, theaterPageDescription } from "@/lib/pageSeoCopy";
+import { movieDetailSeo, staticPageSeo, theaterPageDescription } from "@/lib/pageSeoCopy";
 import ImdbRatingBadge from "@/components/ImdbRatingBadge";
 import { resolveImdbRating } from "@/lib/movieImdb";
 import { buildMovieDetailJsonLd } from "@/lib/jsonLdMovieDetail";
@@ -296,6 +297,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     [eventShowtimes, groupShowtimesByVenue],
   );
 
+  const movieSeoHint = useMemo(
+    () => ({
+      venueNames: showtimesByVenue.map((group) => group.venueName).filter(Boolean),
+      venueCount: showtimesByVenue.length,
+    }),
+    [showtimesByVenue],
+  );
+
   const mergedMovieForDisplay = useMemo((): (StrapiMovie & { summerScreening?: boolean }) | null => {
     if (type !== "movie" || !slug) return null;
     const raw = movieBySlug ?? movieFromList;
@@ -366,10 +375,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         };
       }
       if (isMovieEarly && movieEarly) {
-        const tl = movieTitleLines(movieEarly);
+        const seo = movieDetailSeo(movieEarly, genreLabel, movieSeoHint);
         return {
-          title: moviePageTitle(movieEarly, genreLabel),
-          description: moviePageDescription(movieEarly, genreLabel),
+          title: seo.title,
+          description: seo.description,
+          ogTitle: seo.ogTitle,
+          ogDescription: seo.ogDescription,
           path: `/movies/${slug}`,
           image: movieEarly.posterUrl,
           imageAlt: posterAltForMovie(movieEarly),
@@ -386,7 +397,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         imageAlt: posterAltForTheater(show.title),
         ogType: "article" as const,
       };
-    }, [isLoading, event, type, slug, genreLabel, isMovieEarly, movieEarly]),
+    }, [isLoading, event, type, slug, genreLabel, isMovieEarly, movieEarly, movieSeoHint]),
   );
 
   if (isLoading) {
@@ -506,6 +517,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   );
 
   const headline = isMovie && movie ? movieTitleLines(movie) : { primary: event.title, secondary: undefined as string | undefined };
+  const movieSeo =
+    isMovie && movie ? movieDetailSeo(movie, genreLabel, movieSeoHint) : null;
 
   const imdbRating = movie ? resolveImdbRating(movie) : null;
 
@@ -748,11 +761,24 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               className={cn(
                 "font-display font-bold text-white",
                 isMovie ? "text-2xl md:text-4xl" : "text-3xl md:text-5xl",
-                headline.secondary ? "mb-2" : theaterShow?.posterUrl && !isMovie ? "mb-2 md:mb-4" : isMovie ? "mb-3" : "mb-4",
+                isMovie && movieSeo
+                  ? headline.secondary
+                    ? "mb-2"
+                    : "mb-3"
+                  : headline.secondary
+                    ? "mb-2"
+                    : theaterShow?.posterUrl && !isMovie
+                      ? "mb-2 md:mb-4"
+                      : isMovie
+                        ? "mb-3"
+                        : "mb-4",
               )}
             >
-              {headline.primary}
+              {isMovie && movieSeo ? movieSeo.h1 : headline.primary}
             </h1>
+            {isMovie && movieSeo ? (
+              <p className="font-display text-lg md:text-xl font-medium text-white/80 mb-2">{movieSeo.subtitle}</p>
+            ) : null}
             {headline.secondary ? (
               <p className="font-display text-xl md:text-3xl font-medium text-white/85 mb-4">{headline.secondary}</p>
             ) : null}
@@ -875,6 +901,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           </div>
         </div>
       </section>
+
+      {isMovie && movieSeo ? (
+        <MovieDetailIntro movieName={headline.primary} intro={movieSeo.intro} />
+      ) : null}
 
       <div
         className={cn(

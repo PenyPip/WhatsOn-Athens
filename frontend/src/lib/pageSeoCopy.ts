@@ -1,39 +1,13 @@
 import { truncateDescription } from "@/lib/siteMetadata";
 import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
-import { movieDisplayName, movieTitleLines } from "@/lib/movieTitles";
+import {
+  movieDetailSeo,
+  moviePageDescription,
+  moviePageTitle,
+  type MovieShowtimeSeoHint,
+} from "@/lib/movieDetailSeo";
 
-/** Πρώτο είδος από γραμμή «δράμα · κωμωδία». */
-function primaryGenreLabel(genreLine?: string): string {
-  const first = genreLine?.trim().split(/\s*·\s*/)[0]?.trim();
-  return first ?? "";
-}
-
-/** Τίτλος για meta/OG — χωρίς «· 37Ν» (προστίθεται από layout ή formatPageTitle). */
-export function moviePageTitle(movie: StrapiMovie, genreLine?: string): string {
-  const tl = movieTitleLines(movie);
-  const base = movieDisplayName(tl);
-  const genre = primaryGenreLabel(genreLine);
-  if (genre) {
-    return `${base} — πότε παίζεται · ${genre} · σινεμά Αθήνα`;
-  }
-  return `${base} — πότε παίζεται · πρόγραμμα & ώρες σινεμά`;
-}
-
-export function moviePageDescription(movie: StrapiMovie, genreLine: string): string {
-  const tl = movieTitleLines(movie);
-  const genre = primaryGenreLabel(genreLine).toLowerCase();
-  const name = `«${movieDisplayName(tl)}»`;
-  const director = movie.director?.trim();
-  const synopsis = (movie.synopsis ?? "").trim();
-  const lead = genre ? `Πότε παίζεται η ταινία ${genre} ${name}` : `Πότε παίζεται ${name} στα σινεμά`;
-  const directorBit = director ? `. Σκηνοθεσία: ${director}` : "";
-  const tail =
-    "Δες πρόγραμμα προβολών, κινηματογράφους και ώρες στην Αθήνα και σε όλη την Ελλάδα.";
-  if (synopsis) {
-    return truncateDescription(`${lead}${directorBit}. ${synopsis} ${tail}`);
-  }
-  return truncateDescription(`${lead}${directorBit}. ${tail}`);
-}
+export { movieDetailSeo, moviePageDescription, moviePageTitle, type MovieShowtimeSeoHint };
 
 /** Στατικοί τίτλοι/περιγραφές για λίστες και στατικές σελίδες. */
 export const staticPageSeo = {
