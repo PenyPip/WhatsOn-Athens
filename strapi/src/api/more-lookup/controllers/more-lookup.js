@@ -5,6 +5,8 @@ const {
   applyMoreEventCodeMatches,
   approveMoreEventGroupCode,
   rejectMoreEventGroupCode,
+  linkMoreCodeToCms,
+  createVenueFromMoreCatalog,
   loadPendingApprovalItems,
   clearCmsPending,
   DEFAULT_MIN_SCORE,
@@ -342,5 +344,62 @@ module.exports = {
       reason: started.reason ?? null,
       ...started.job,
     };
+  },
+
+  async link(ctx) {
+    const body = ctx.request.body ?? {};
+    const adminEmail = ctx.state?.admin?.email || 'unknown';
+
+    try {
+      const result = await linkMoreCodeToCms(strapi, {
+        contentType: body.contentType,
+        cmsId: body.cmsId,
+        movieId: body.movieId,
+        theaterShowId: body.theaterShowId,
+        venueId: body.venueId,
+        eventGroupCode: body.eventGroupCode,
+        catalogKind: body.catalogKind,
+        moreTitle: body.moreTitle,
+        queueApproval: body.queueApproval !== false,
+        overwriteExisting: body.overwriteExisting === true,
+      });
+      strapi.log.info(
+        `[more-lookup] link by ${adminEmail} ${result.contentType} ${result.cmsId} → ${result.eventGroupCode}`,
+      );
+      ctx.body = {
+        ...result,
+        message: result.alreadyLinked
+          ? `Ο κωδικός ${result.eventGroupCode} είναι ήδη συνδεδεμένος`
+          : `Συνδέθηκε ${result.eventGroupCode} → CMS #${result.cmsId}${result.approval?.queued ? ' · στην ουρά' : ''}`,
+      };
+    } catch (e) {
+      ctx.status = 400;
+      ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+    }
+  },
+
+  async createVenue(ctx) {
+    const body = ctx.request.body ?? {};
+    const adminEmail = ctx.state?.admin?.email || 'unknown';
+
+    try {
+      const result = await createVenueFromMoreCatalog(strapi, {
+        eventGroupCode: body.eventGroupCode,
+        moreTitle: body.moreTitle,
+        moreUrl: body.moreUrl,
+        category: body.category,
+        verify: body.verify,
+      });
+      strapi.log.info(
+        `[more-lookup] create-venue by ${adminEmail} ${result.venue.name} (#${result.venue.id}) → ${body.eventGroupCode}`,
+      );
+      ctx.body = {
+        ...result,
+        message: `Δημιουργήθηκε draft χώρος «${result.venue.name}» (#${result.venue.id}) · στην ουρά εγγραφής`,
+      };
+    } catch (e) {
+      ctx.status = 400;
+      ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+    }
   },
 };

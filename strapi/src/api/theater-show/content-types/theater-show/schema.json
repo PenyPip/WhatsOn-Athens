@@ -100,6 +100,12 @@
       "component": "cinema.more-event-group",
       "description": "Επιπλέον More κωδικοί για το ίδιο θέατρο."
     },
+    "more_code_links": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.more-code-link",
+      "description": "Ρητές συνδέσεις More κωδικού → αυτή η παράσταση (ταύτιση lookup)."
+    },
     "pending_event_group_code": {
       "type": "string",
       "private": true,

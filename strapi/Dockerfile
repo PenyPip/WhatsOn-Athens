@@ -4,7 +4,8 @@ WORKDIR /cms
 ENV NPM_CONFIG_OMIT_OPTIONAL=false
 COPY package.json package-lock.json .npmrc ./
 COPY scripts/install-swc-native.sh scripts/install-swc-native.sh
-RUN npm ci && sh scripts/install-swc-native.sh && mkdir -p /cms/public/uploads
+RUN npm ci && sh scripts/install-swc-native.sh && mkdir -p /cms/public/uploads \
+  && cp -a node_modules /opt/strapi-node_modules
 COPY docker-entrypoint.dev.sh /usr/local/bin/docker-entrypoint.dev.sh
 RUN chmod +x /usr/local/bin/docker-entrypoint.dev.sh
 ENV NODE_ENV=development

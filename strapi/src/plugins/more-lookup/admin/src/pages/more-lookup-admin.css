@@ -231,3 +231,21 @@
   border: 1px solid #f5c0bb;
   word-break: break-word;
 }
+
+.more-lookup-catalog-venue-select {
+  width: 100%;
+  max-width: 18rem;
+  min-height: 2rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid #dcdce4;
+  border-radius: 0.25rem;
+  background: #ffffff;
+  font-size: 0.75rem;
+  line-height: 1.25;
+  color: #32324d;
+}
+
+.more-lookup-catalog-venue-select:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

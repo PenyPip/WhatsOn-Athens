@@ -83,5 +83,23 @@ module.exports = {
         policies: ['global::is-admin'],
       },
     },
+    {
+      method: 'POST',
+      path: '/more-lookup/link',
+      handler: 'more-lookup.link',
+      config: {
+        auth: false,
+        policies: ['global::is-admin'],
+      },
+    },
+    {
+      method: 'POST',
+      path: '/more-lookup/create-venue',
+      handler: 'more-lookup.createVenue',
+      config: {
+        auth: false,
+        policies: ['global::is-admin'],
+      },
+    },
   ],
 };

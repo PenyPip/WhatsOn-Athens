@@ -727,6 +727,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
     imdb_rating: Attribute.Decimal;
     is_dubbed: Attribute.Boolean & Attribute.DefaultTo<false>;
     language: Attribute.String;
+    more_code_links: Attribute.Component<'cinema.more-code-link', true>;
     more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
     most_talked_about: Attribute.Boolean & Attribute.DefaultTo<false>;
     movie_genres: Attribute.Relation<
@@ -1017,6 +1018,7 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     >;
     is_last_shows: Attribute.Boolean & Attribute.DefaultTo<false>;
     is_premiere: Attribute.Boolean & Attribute.DefaultTo<false>;
+    more_code_links: Attribute.Component<'cinema.more-code-link', true>;
     more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
     more_link: Attribute.String;
     on_tour: Attribute.Boolean & Attribute.DefaultTo<false>;
@@ -1149,6 +1151,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     >;
     image: Attribute.Media<'images'>;
     info: Attribute.Text & Attribute.Private;
+    more_code_links: Attribute.Component<'cinema.more-code-link', true>;
     more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
     more_link: Attribute.String;
     more_sync_log: Attribute.Text & Attribute.Private;

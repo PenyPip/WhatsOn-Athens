@@ -563,6 +563,179 @@ function matchVenueBundlesToCms(cmsVenues, catalog, minScore = DEFAULT_MIN_SCORE
   return results.sort((a, b) => (b.score || 0) - (a.score || 0));
 }
 
+/** Προτάσεις CMS χώρων για venue_bundle γραμμή καταλόγου που λείπει από CMS. */
+function suggestCmsVenuesForCatalogBundle(catalogRow, cmsVenuesMapped, minScore = MIN_HINT_SCORE) {
+  if (catalogRow?.kind !== 'venue_bundle') return [];
+  const moreEntry = {
+    title: catalogRow.moreTitle || catalogRow.title || '',
+    code: catalogRow.eventGroupCode,
+    moreUrl: catalogRow.moreUrl,
+    category: catalogRow.category,
+    codeSlugRoot: evgCodeSlugRoot(catalogRow.eventGroupCode),
+  };
+  const scored = [];
+  for (const cms of cmsVenuesMapped || []) {
+    if (catalogRow.category === 'cinema' && cms.venueType && cms.venueType !== 'cinema') continue;
+    if (
+      catalogRow.category === 'theater' &&
+      cms.venueType &&
+      cms.venueType !== 'theater' &&
+      cms.venueType !== 'other'
+    ) {
+      continue;
+    }
+    if (isRejectedMoreCode(cms, catalogRow.eventGroupCode)) continue;
+    if (cmsHasEventGroupCode(cms, catalogRow.eventGroupCode)) continue;
+    const score = scoreMatch(
+      { title: cms.title, slug: cms.slug, originalTitle: '' },
+      moreEntry,
+    );
+    if (score >= MIN_HINT_SCORE) {
+      scored.push({
+        cmsId: cms.id,
+        cmsTitle: cms.title,
+        score: Number(score.toFixed(3)),
+        venueType: cms.venueType,
+      });
+    }
+  }
+  scored.sort((a, b) => b.score - a.score);
+  const qualifying = scored.filter((row) => row.score >= minScore);
+  return (qualifying.length ? qualifying : scored).slice(0, 6);
+}
+
+function buildSuggestedVenueCreatePayload(catalogRow) {
+  const verify = catalogRow.verify;
+  const sample = verify?.sampleVenues?.[0];
+  const name = String(catalogRow.moreTitle || sample?.name || '').trim() || 'Σινεμά More';
+  return {
+    name,
+    type: catalogRow.category === 'theater' ? 'theater' : 'cinema',
+    more_link: catalogRow.moreUrl || null,
+    venue_id: sample?.id ? String(sample.id) : null,
+    event_group_code: catalogRow.eventGroupCode,
+    summer_outdoor: /θεριν|therino|summer/i.test(name),
+  };
+}
+
+/**
+ * Ρητή σύνδεση More κωδικού → CMS εγγραφή (more_code_links) + προαιρετική ουρά έγκρισης.
+ */
+async function linkMoreCodeToCms(strapi, options = {}) {
+  const contentType =
+    options.contentType ||
+    (options.venueId != null ? 'venue' : options.theaterShowId != null ? 'theater_show' : 'movie');
+  const cmsId = Number(
+    options.cmsId ?? options.venueId ?? options.theaterShowId ?? options.movieId,
+  );
+  const code = String(options.eventGroupCode || '').trim();
+  const catalogKind = String(options.catalogKind || catalogKindForCatalogEntry(options) || 'venue_bundle');
+  const moreTitle = String(options.moreTitle || '').trim();
+  const queueApproval = options.queueApproval !== false;
+
+  if (!Number.isFinite(cmsId) || !code) {
+    throw new Error('Απαιτούνται cmsId και eventGroupCode');
+  }
+
+  const config = CMS_LOOKUP_CONFIG[contentType];
+  if (!config) throw new Error(`Άγνωστος τύπος CMS: ${contentType}`);
+
+  const entry = await strapi.entityService.findOne(config.uid, cmsId, {
+    fields: ['id', contentType === 'venue' ? 'name' : 'title'],
+    populate: { more_code_links: true },
+    publicationState: 'preview',
+  });
+  if (!entry) throw new Error(`Δεν βρέθηκε ${contentType} #${cmsId}`);
+
+  const existing = moreCodeLinksPayloadFromRaw(entry);
+  const hasLink = existing.some((link) => link.code === code);
+  if (!hasLink) {
+    existing.push({
+      code,
+      catalog_kind: catalogKind,
+      more_title: moreTitle || undefined,
+    });
+    await strapi.entityService.update(config.uid, cmsId, {
+      data: { more_code_links: existing },
+    });
+  }
+
+  let approval = null;
+  if (queueApproval) {
+    approval = await approveMoreEventGroupCode(strapi, {
+      contentType,
+      cmsId,
+      movieId: options.movieId,
+      theaterShowId: options.theaterShowId,
+      venueId: options.venueId,
+      eventGroupCode: code,
+      overwriteExisting: options.overwriteExisting === true,
+    });
+  }
+
+  return {
+    ok: true,
+    linked: !hasLink,
+    alreadyLinked: hasLink,
+    contentType,
+    cmsId,
+    eventGroupCode: code,
+    catalogKind,
+    approval,
+  };
+}
+
+/** Δημιουργία draft χώρου από γραμμή καταλόγου More + σύνδεση κωδικού. */
+async function createVenueFromMoreCatalog(strapi, options = {}) {
+  const code = String(options.eventGroupCode || '').trim();
+  if (!code) throw new Error('Απαιτείται eventGroupCode');
+
+  const catalogRow = {
+    moreTitle: options.moreTitle || '',
+    moreUrl: options.moreUrl || '',
+    eventGroupCode: code,
+    category: options.category || 'cinema',
+    verify: options.verify || null,
+  };
+  const draft = buildSuggestedVenueCreatePayload(catalogRow);
+  const slug = await uniqueVenueSlugForLookup(strapi, draft.name);
+
+  const created = await strapi.entityService.create('api::venue.venue', {
+    data: {
+      ...draft,
+      slug,
+      publishedAt: null,
+      info: 'Δημιουργία από More lookup (draft).',
+      more_code_links: [
+        {
+          code,
+          catalog_kind: 'venue_bundle',
+          more_title: catalogRow.moreTitle || draft.name,
+        },
+      ],
+    },
+  });
+
+  const approval = await approveMoreEventGroupCode(strapi, {
+    contentType: 'venue',
+    cmsId: created.id,
+    venueId: created.id,
+    eventGroupCode: code,
+  });
+
+  return {
+    ok: true,
+    venue: {
+      id: created.id,
+      name: created.name,
+      slug: created.slug,
+      type: created.type,
+      venue_id: created.venue_id,
+    },
+    approval,
+  };
+}
+
 function mapRawMatchToResult(row, verified, applyMinScore) {
   const cms = row.cms;
   const contentType = cms.contentType || 'movie';
@@ -677,6 +850,33 @@ function approvedGroupsFromEntry(entry) {
     .filter(Boolean);
 }
 
+function collectMoreCodeLinksFromRaw(row) {
+  const groups = row?.more_code_links ?? row?.moreCodeLinks ?? [];
+  const list = Array.isArray(groups) ? groups : [];
+  return list
+    .map((group) => ({
+      code: String(group?.code ?? group?.attributes?.code ?? '').trim(),
+      catalogKind: String(group?.catalog_kind ?? group?.catalogKind ?? '').trim(),
+      moreTitle: String(group?.more_title ?? group?.moreTitle ?? '').trim(),
+    }))
+    .filter((link) => link.code && link.catalogKind);
+}
+
+function moreCodeLinksPayloadFromRaw(row) {
+  return collectMoreCodeLinksFromRaw(row).map((link) => ({
+    code: link.code,
+    catalog_kind: link.catalogKind,
+    more_title: link.moreTitle || undefined,
+  }));
+}
+
+function catalogKindForCatalogEntry(entry) {
+  if (entry?.kind === 'venue_bundle') return 'venue_bundle';
+  if (entry?.kind === 'show' && entry?.category === 'theater') return 'show';
+  if (entry?.kind === 'movie') return 'movie';
+  return entry?.kind || 'movie';
+}
+
 function mapCmsLookupRow(row, contentType) {
   const eventGroupCodes = collectEventGroupCodes(row);
   return {
@@ -692,6 +892,7 @@ function mapCmsLookupRow(row, contentType) {
     pendingEventGroupCode: row.pending_event_group_code ?? '',
     pendingMoreTitle: row.pending_more_title ?? '',
     pendingMatchScore: row.pending_match_score ?? null,
+    moreCodeLinks: collectMoreCodeLinksFromRaw(row),
   };
 }
 
@@ -707,7 +908,7 @@ async function loadCmsMovies(strapi) {
       'pending_more_title',
       'pending_match_score',
     ],
-    populate: { more_event_groups: true, rejected_more_codes: true, approved_more_codes: true },
+    populate: { more_event_groups: true, rejected_more_codes: true, approved_more_codes: true, more_code_links: true },
     publicationState: 'preview',
     pagination: { pageSize: 500 },
   });
@@ -726,7 +927,7 @@ async function loadCmsTheaterShows(strapi) {
       'pending_more_title',
       'pending_match_score',
     ],
-    populate: { more_event_groups: true, rejected_more_codes: true, approved_more_codes: true },
+    populate: { more_event_groups: true, rejected_more_codes: true, approved_more_codes: true, more_code_links: true },
     publicationState: 'preview',
     pagination: { pageSize: 500 },
   });
@@ -756,11 +957,46 @@ async function loadCmsVenues(strapi) {
       'pending_more_title',
       'pending_match_score',
     ],
-    populate: { more_event_groups: true, rejected_more_codes: true, approved_more_codes: true },
+    populate: { more_event_groups: true, rejected_more_codes: true, approved_more_codes: true, more_code_links: true },
     publicationState: 'preview',
     pagination: { pageSize: 500 },
   });
   return Array.isArray(rows) ? rows : [];
+}
+
+const GREEK_TO_LATIN_VENUE = {
+  α: 'a', ά: 'a', β: 'v', γ: 'g', δ: 'd', ε: 'e', έ: 'e', ζ: 'z', η: 'i', ή: 'i',
+  θ: 'th', ι: 'i', ί: 'i', κ: 'k', λ: 'l', μ: 'm', ν: 'n', ξ: 'x', ο: 'o', ό: 'o',
+  π: 'p', ρ: 'r', σ: 's', ς: 's', τ: 't', υ: 'y', ύ: 'y', φ: 'f', χ: 'ch', ψ: 'ps', ω: 'o', ώ: 'o',
+};
+
+function slugifyVenueNameForLookup(name) {
+  return String(name || '')
+    .trim()
+    .toLowerCase()
+    .split('')
+    .map((ch) => GREEK_TO_LATIN_VENUE[ch] ?? GREEK_TO_LATIN_VENUE[ch.toLowerCase()] ?? ch)
+    .join('')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80);
+}
+
+async function uniqueVenueSlugForLookup(strapi, name) {
+  const base = slugifyVenueNameForLookup(name) || 'venue';
+  for (let n = 0; n < 20; n += 1) {
+    const slug = n === 0 ? base : `${base}-${n + 1}`;
+    const rows = await strapi.entityService.findMany('api::venue.venue', {
+      filters: { slug },
+      fields: ['id'],
+      publicationState: 'preview',
+      limit: 1,
+    });
+    if (!Array.isArray(rows) || !rows.length) return slug;
+  }
+  return `${base}-${Date.now()}`;
 }
 
 function buildCmsVenueByMoreIdIndex(cmsVenues) {
@@ -867,6 +1103,16 @@ function buildCmsEventGroupCodeIndex(cmsItems, cmsVenues) {
         inCms: false,
       });
     }
+    for (const link of item.moreCodeLinks || []) {
+      add(link.code, {
+        contentType: item.contentType,
+        cmsId: item.id,
+        cmsTitle: item.title,
+        inCms: true,
+        catalogKindHint: link.catalogKind,
+        linkedManually: true,
+      });
+    }
   }
 
   for (const venue of cmsVenues) {
@@ -877,6 +1123,17 @@ function buildCmsEventGroupCodeIndex(cmsItems, cmsVenues) {
         cmsTitle: venue.name,
         venueType: venue.type,
         inCms: true,
+      });
+    }
+    for (const link of collectMoreCodeLinksFromRaw(venue)) {
+      add(link.code, {
+        contentType: 'venue',
+        cmsId: venue.id,
+        cmsTitle: venue.name,
+        venueType: venue.type,
+        inCms: true,
+        catalogKindHint: link.catalogKind,
+        linkedManually: true,
       });
     }
     const pending = String(venue.pending_event_group_code || '').trim();
@@ -901,6 +1158,12 @@ function buildCmsEventGroupCodeIndex(cmsItems, cmsVenues) {
  */
 function filterCmsRefsForCatalogEntry(entry, refs) {
   if (!Array.isArray(refs) || !refs.length) return [];
+  const expectedKind = catalogKindForCatalogEntry(entry);
+
+  const manual = refs.filter(
+    (ref) => ref.catalogKindHint === expectedKind && ref.inCms !== false && !ref.pending,
+  );
+  if (manual.length) return manual;
 
   if (entry.kind === 'venue_bundle') {
     return refs.filter((ref) => {
@@ -1633,10 +1896,14 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
 
   {
     progress('Κατάλογος More & σύγκριση CMS…');
-    const [cmsItems, cmsVenues] = await Promise.all([
+    const [cmsItems, cmsVenues, cmsVenuesForMatch] = await Promise.all([
       loadAllCmsItems(strapi),
       loadCmsVenues(strapi),
+      loadCmsVenuesForLookup(strapi),
     ]);
+    const cinemaVenuesMapped = cmsVenuesForMatch.filter(
+      (v) => !v.venueType || v.venueType === 'cinema',
+    );
     const cmsCodeIndex = buildCmsEventGroupCodeIndex(cmsItems, cmsVenues);
     const cmsVenueByMoreId = buildCmsVenueByMoreIdIndex(cmsVenues);
 
@@ -1673,13 +1940,34 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
 
     catalogOut = catalogOut.map((row) => {
       if (row.kind !== 'venue_bundle' || row.inCms) return row;
-      const suggestion = venueSuggestionByCode.get(row.eventGroupCode) || null;
+      const venuesForRow =
+        row.category === 'theater'
+          ? cmsVenuesForMatch.filter(
+              (v) => !v.venueType || v.venueType === 'theater' || v.venueType === 'other',
+            )
+          : cinemaVenuesMapped;
+      const fromMatches = venueSuggestionByCode.get(row.eventGroupCode) || null;
+      const venueSuggestions = suggestCmsVenuesForCatalogBundle(row, venuesForRow, minScore);
+      const best =
+        fromMatches ||
+        venueSuggestions[0] ||
+        null;
+      const suggestedCreateVenue = buildSuggestedVenueCreatePayload(row);
       return {
         ...row,
-        suggestedVenue: suggestion,
-        canApproveVenue: Boolean(suggestion),
+        suggestedVenue: best,
+        venueSuggestions,
+        suggestedCreateVenue,
+        canApproveVenue: Boolean(best),
+        canLinkVenue: true,
+        canCreateVenue: Boolean(row.eventGroupCode),
       };
     });
+
+    result.cmsVenueChoices = cmsVenuesForMatch
+      .map((v) => ({ id: v.id, title: v.title, slug: v.slug, venueType: v.venueType }))
+      .sort((a, b) => a.title.localeCompare(b.title, 'el'))
+      .slice(0, 400);
 
     result.catalog = catalogOut;
     result.stats.catalogShown = result.catalog.length;
@@ -1919,6 +2207,8 @@ module.exports = {
   approveMoreEventGroupCode,
   queueApproveMoreEventGroupCode,
   rejectMoreEventGroupCode,
+  linkMoreCodeToCms,
+  createVenueFromMoreCatalog,
   loadApprovedQueueItems,
   loadPendingApprovalItems,
   loadPendingApprovalMovies,

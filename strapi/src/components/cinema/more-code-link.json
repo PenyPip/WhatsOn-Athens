@@ -1,0 +1,24 @@
+{
+  "collectionName": "components_cinema_more_code_links",
+  "info": {
+    "displayName": "Σύνδεση More κωδικού",
+    "description": "Ρητή αντιστοίχιση κωδικού More → αυτή η εγγραφή CMS (για ταύτιση & επόμενες αναζητήσεις)."
+  },
+  "attributes": {
+    "code": {
+      "type": "string",
+      "required": true,
+      "description": "Κωδικός More (evg_*)."
+    },
+    "catalog_kind": {
+      "type": "enumeration",
+      "enum": ["movie", "venue_bundle", "show", "theater_venue"],
+      "required": true,
+      "description": "Τι kind έχει ο κωδικός στον κατάλογο More."
+    },
+    "more_title": {
+      "type": "string",
+      "description": "Τίτλος More κατά τη σύνδεση (audit)."
+    }
+  }
+}

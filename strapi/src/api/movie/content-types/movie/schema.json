@@ -92,6 +92,12 @@
       "component": "cinema.more-event-group",
       "description": "Επιπλέον More κωδικοί της ίδιας ταινίας — για ευρύτερη ταύτιση/συγχρονισμό (άλλη έκδοση, γλώσσα κ.λπ.)."
     },
+    "more_code_links": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.more-code-link",
+      "description": "Ρητές συνδέσεις More κωδικού → αυτή η ταινία (ταύτιση lookup)."
+    },
     "pending_event_group_code": {
       "type": "string",
       "private": true,

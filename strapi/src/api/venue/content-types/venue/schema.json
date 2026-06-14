@@ -54,6 +54,12 @@
       "component": "cinema.more-event-group",
       "description": "Επιπλέον venue bundle κωδικοί More."
     },
+    "more_code_links": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.more-code-link",
+      "description": "Ρητές συνδέσεις More κωδικού → αυτός ο χώρος (ταύτιση lookup)."
+    },
     "pending_event_group_code": {
       "type": "string",
       "private": true,

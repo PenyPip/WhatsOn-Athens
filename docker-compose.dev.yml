@@ -1,6 +1,7 @@
 services:
   strapi:
     container_name: whatson-cms-dev
+    image: whatson-strapi:dev
     env_file:
       - ./strapi/.env
     build:
@@ -15,9 +16,9 @@ services:
         condition: service_healthy
     volumes:
       - ./strapi:/cms
-      - /cms/node_modules
+      - strapi_node_modules:/cms/node_modules
       - whatson-uploads:/cms/public/uploads
-    entrypoint: ["/usr/local/bin/docker-entrypoint.dev.sh"]
+    entrypoint: ["/bin/sh", "/cms/docker-entrypoint.dev.sh"]
     command: ["npm", "run", "develop"]
     environment:
       NODE_ENV: development
@@ -41,8 +42,8 @@ services:
         ]
       interval: 15s
       timeout: 10s
-      retries: 30
-      start_period: 180s
+      retries: 40
+      start_period: 600s
 
   mysql:
     container_name: whatson-db-dev
@@ -68,6 +69,7 @@ services:
 
   frontend:
     container_name: whatson-frontend-dev
+    image: whatson-frontend:dev
     env_file:
       - ./frontend/.env
     build:
@@ -106,3 +108,4 @@ volumes:
   whatson-data:
   whatson-uploads:
   frontend-next-dev:
+  strapi_node_modules:

@@ -176,6 +176,10 @@ function venueScrapeTooltip(row) {
 }
 
 function catalogCmsStatusLabel(row) {
+  if (row.cmsRefs?.[0]?.linkedManually) {
+    if (row.cmsStatus === 'pending') return 'Σύνδεση CMS (ουρά)';
+    if (row.inCms) return 'Σύνδεση CMS';
+  }
   if (row.cmsStatus === 'in_cms') {
     if (row.kind === 'venue_bundle') return 'Χώρος στο CMS';
     return 'Στο CMS';
@@ -183,6 +187,56 @@ function catalogCmsStatusLabel(row) {
   if (row.cmsStatus === 'pending') return 'Προς έγκριση';
   if (row.kind === 'venue_bundle') return 'Λείπει (χώρος)';
   return 'Λείπει';
+}
+
+function cmsVenueChoicesForCatalogRow(row, allChoices = []) {
+  if (row.category === 'theater') {
+    return allChoices.filter(
+      (v) => !v.venueType || v.venueType === 'theater' || v.venueType === 'other',
+    );
+  }
+  return allChoices.filter((v) => !v.venueType || v.venueType === 'cinema');
+}
+
+function catalogVenueOptionList(row, cmsVenueChoices = []) {
+  const seen = new Set();
+  const options = [];
+  const add = (opt) => {
+    const id = Number(opt.id ?? opt.cmsId);
+    if (!Number.isFinite(id) || seen.has(id)) return;
+    seen.add(id);
+    options.push({
+      id,
+      title: opt.title || opt.cmsTitle || `#${id}`,
+      score: opt.score,
+    });
+  };
+  for (const suggestion of row.venueSuggestions || []) add(suggestion);
+  if (row.suggestedVenue) add(row.suggestedVenue);
+  for (const venue of cmsVenueChoicesForCatalogRow(row, cmsVenueChoices)) add(venue);
+  return options;
+}
+
+function CatalogVenuePicker({ row, cmsVenueChoices, value, onChange, disabled }) {
+  if (!row.canLinkVenue || row.inCms) return null;
+  const options = catalogVenueOptionList(row, cmsVenueChoices);
+  return (
+    <select
+      className="more-lookup-catalog-venue-select"
+      value={value || ''}
+      onChange={(event) => onChange(event.target.value)}
+      disabled={disabled}
+      title="Πρόταση ή επιλογή υπάρχοντος χώρου CMS"
+    >
+      <option value="">Επίλεξε χώρο CMS…</option>
+      {options.map((opt) => (
+        <option key={opt.id} value={String(opt.id)}>
+          {opt.title}
+          {opt.score != null ? ` (Sc ${Number(opt.score).toFixed(2)})` : ''}
+        </option>
+      ))}
+    </select>
+  );
 }
 
 function rowKey(row) {
@@ -839,6 +893,7 @@ const App = () => {
   const [pendingApproval, setPendingApproval] = useState([]);
   const [selectedPendingKeys, setSelectedPendingKeys] = useState(() => new Set());
   const [selectedMatchKeys, setSelectedMatchKeys] = useState(() => new Set());
+  const [catalogVenuePick, setCatalogVenuePick] = useState({});
   const { get, post } = useFetchClient();
   const toggleNotification = useNotification();
 
@@ -1044,6 +1099,23 @@ const App = () => {
   useEffect(() => {
     setCatalogPage(1);
   }, [result, catalogOnlyMissing, catalogKindFilter, matchContentFilter]);
+
+  useEffect(() => {
+    if (!result?.catalog?.length) return;
+    setCatalogVenuePick((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const row of result.catalog) {
+        if (row.kind !== 'venue_bundle' || row.inCms || !row.eventGroupCode) continue;
+        if (next[row.eventGroupCode]) continue;
+        if (row.suggestedVenue?.cmsId) {
+          next[row.eventGroupCode] = String(row.suggestedVenue.cmsId);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [result?.catalog]);
 
   const finishLookupJob = async (postBody) => {
     const res = await post('/api/more-lookup/run', postBody);
@@ -1530,13 +1602,20 @@ const App = () => {
   };
 
   const approveCatalogVenue = async (row) => {
-    if (!row.suggestedVenue?.cmsId || !row.eventGroupCode) return;
+    const cmsId =
+      catalogVenuePick[row.eventGroupCode] ||
+      row.suggestedVenue?.cmsId ||
+      null;
+    if (!cmsId || !row.eventGroupCode) {
+      toggleNotification({ type: 'warning', message: 'Επίλεξε χώρο CMS για έγκριση.' });
+      return;
+    }
     setLoading(true);
     try {
       const res = await post('/api/more-lookup/approve', {
         contentType: 'venue',
-        cmsId: row.suggestedVenue.cmsId,
-        venueId: row.suggestedVenue.cmsId,
+        cmsId: Number(cmsId),
+        venueId: Number(cmsId),
         eventGroupCode: row.eventGroupCode,
       });
       setResult((prev) => {
@@ -1554,15 +1633,157 @@ const App = () => {
           },
         };
       });
+      const pickedTitle =
+        catalogVenueOptionList(row, result?.cmsVenueChoices || []).find(
+          (opt) => opt.id === Number(cmsId),
+        )?.title || `#${cmsId}`;
       toggleNotification({
         type: 'success',
-        message: res?.data?.message || `Στην ουρά: ${row.eventGroupCode} → ${row.suggestedVenue.cmsTitle}`,
+        message: res?.data?.message || `Στην ουρά: ${row.eventGroupCode} → ${pickedTitle}`,
       });
     } catch (error) {
       const message =
         error?.response?.data?.error?.message ||
         error?.response?.data?.errors?.[0]?.error ||
         'Αποτυχία έγκρισης.';
+      toggleNotification({ type: 'warning', message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const linkCatalogVenue = async (row) => {
+    const cmsId = catalogVenuePick[row.eventGroupCode] || row.suggestedVenue?.cmsId || null;
+    if (!cmsId || !row.eventGroupCode) {
+      toggleNotification({ type: 'warning', message: 'Επίλεξε χώρο CMS για σύνδεση.' });
+      return;
+    }
+    setLoading(true);
+    try {
+      const res = await post('/api/more-lookup/link', {
+        contentType: 'venue',
+        cmsId: Number(cmsId),
+        venueId: Number(cmsId),
+        eventGroupCode: row.eventGroupCode,
+        catalogKind: 'venue_bundle',
+        moreTitle: row.moreTitle,
+      });
+      const pickedTitle =
+        catalogVenueOptionList(row, result?.cmsVenueChoices || []).find(
+          (opt) => opt.id === Number(cmsId),
+        )?.title ||
+        row.suggestedVenue?.cmsTitle ||
+        `#${cmsId}`;
+      setResult((prev) => {
+        if (!prev?.catalog?.length) return prev;
+        return {
+          ...prev,
+          catalog: prev.catalog.map((catRow) =>
+            catRow.eventGroupCode === row.eventGroupCode
+              ? {
+                  ...catRow,
+                  inCms: true,
+                  cmsStatus: 'in_cms',
+                  cmsRefs: [
+                    {
+                      contentType: 'venue',
+                      cmsId: Number(cmsId),
+                      cmsTitle: pickedTitle,
+                      inCms: true,
+                      linkedManually: true,
+                    },
+                  ],
+                  canApproveVenue: false,
+                  canLinkVenue: false,
+                  canCreateVenue: false,
+                }
+              : catRow,
+          ),
+          stats: {
+            ...prev.stats,
+            catalogInCms: (prev.stats?.catalogInCms ?? 0) + 1,
+            catalogMissing: Math.max(0, (prev.stats?.catalogMissing ?? 0) - 1),
+            approvedQueue: res?.data?.approval?.queued
+              ? (prev.stats?.approvedQueue ?? 0) + 1
+              : prev.stats?.approvedQueue,
+          },
+        };
+      });
+      toggleNotification({
+        type: 'success',
+        message: res?.data?.message || `Συνδέθηκε ${row.eventGroupCode} → ${pickedTitle}`,
+      });
+    } catch (error) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.errors?.[0]?.error ||
+        'Αποτυχία σύνδεσης.';
+      toggleNotification({ type: 'warning', message });
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const createCatalogVenue = async (row) => {
+    if (!row.eventGroupCode) return;
+    setLoading(true);
+    try {
+      const res = await post('/api/more-lookup/create-venue', {
+        eventGroupCode: row.eventGroupCode,
+        moreTitle: row.moreTitle,
+        moreUrl: row.moreUrl,
+        category: row.category,
+        verify: row.verify,
+      });
+      const venue = res?.data?.venue;
+      setResult((prev) => {
+        if (!prev?.catalog?.length) return prev;
+        return {
+          ...prev,
+          catalog: prev.catalog.map((catRow) =>
+            catRow.eventGroupCode === row.eventGroupCode
+              ? {
+                  ...catRow,
+                  inCms: Boolean(venue),
+                  cmsStatus: venue ? 'in_cms' : catRow.cmsStatus,
+                  cmsRefs: venue
+                    ? [
+                        {
+                          contentType: 'venue',
+                          cmsId: venue.id,
+                          cmsTitle: venue.name,
+                          inCms: true,
+                          linkedManually: true,
+                        },
+                      ]
+                    : catRow.cmsRefs,
+                  canApproveVenue: false,
+                  canLinkVenue: false,
+                  canCreateVenue: false,
+                }
+              : catRow,
+          ),
+          stats: {
+            ...prev.stats,
+            catalogInCms: venue ? (prev.stats?.catalogInCms ?? 0) + 1 : prev.stats?.catalogInCms,
+            catalogMissing: venue
+              ? Math.max(0, (prev.stats?.catalogMissing ?? 0) - 1)
+              : prev.stats?.catalogMissing,
+            approvedQueue: (prev.stats?.approvedQueue ?? 0) + 1,
+          },
+        };
+      });
+      toggleNotification({
+        type: 'success',
+        message:
+          res?.data?.message ||
+          (venue ? `Δημιουργήθηκε draft χώρος «${venue.name}»` : 'Δημιουργήθηκε χώρος.'),
+      });
+    } catch (error) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.errors?.[0]?.error ||
+        'Αποτυχία δημιουργίας χώρου.';
       toggleNotification({ type: 'warning', message });
     } finally {
       setLoading(false);
@@ -1707,8 +1928,8 @@ const App = () => {
                 <GridItem col={4} s={12}>
                   <WorkflowStep
                     number="2"
-                    title="Εγγραφή"
-                    detail="Έγκριση → ουρά · «Γράψε αυτόματα» → CMS"
+                    title="Εγγραφή & σύνδεση"
+                    detail="Έγκριση → ουρά · «Σύνδεση» → more_code_links · «Γράψε αυτόματα»"
                   />
                 </GridItem>
                 <GridItem col={4} s={12}>
@@ -2248,7 +2469,7 @@ const App = () => {
             <Box padding={4}>
               <PanelHeader
                 title="Πίνακας 3 — Κατάλογος More"
-                subtitle={`Κατάλογος More · ${catalogFiltered.length} εμφανίζονται · ${catalogMissingFiltered} λείπουν (με φίλτρα)`}
+                subtitle={`Κατάλογος More · ${catalogFiltered.length} εμφανίζονται · ${catalogMissingFiltered} λείπουν · σύνδεση / νέος χώρος / έγκριση`}
               />
               <Flex gap={4} wrap="wrap" paddingTop={3} alignItems="flex-end">
                 <TypeFilterBar
@@ -2301,7 +2522,7 @@ const App = () => {
                     <Typography variant="sigma">Scrape</Typography>
                   </Th>
                   <Th className="more-lookup-col-actions">
-                    <Typography variant="sigma">Έγκρ.</Typography>
+                    <Typography variant="sigma">Ενέργειες</Typography>
                   </Th>
                 </Tr>
               </Thead>
@@ -2336,11 +2557,38 @@ const App = () => {
                           {row.cmsRefs?.[0]?.cmsTitle ? `: ${row.cmsRefs[0].cmsTitle}` : ''}
                         </Badge>
                       ) : row.cmsStatus === 'pending' ? (
-                        <Badge>Προς έγκριση</Badge>
-                      ) : row.suggestedVenue ? (
                         <Badge>
-                          Πρόταση: {row.suggestedVenue.cmsTitle} (Sc {Number(row.suggestedVenue.score).toFixed(2)})
+                          {catalogCmsStatusLabel(row)}
+                          {row.cmsRefs?.[0]?.cmsTitle ? `: ${row.cmsRefs[0].cmsTitle}` : ''}
                         </Badge>
+                      ) : row.kind === 'venue_bundle' ? (
+                        <Flex direction="column" alignItems="flex-start" gap={2}>
+                          {row.suggestedVenue ? (
+                            <Badge>
+                              Πρόταση: {row.suggestedVenue.cmsTitle} (Sc{' '}
+                              {Number(row.suggestedVenue.score).toFixed(2)})
+                            </Badge>
+                          ) : (
+                            <Badge>Λείπει (χώρος)</Badge>
+                          )}
+                          <CatalogVenuePicker
+                            row={row}
+                            cmsVenueChoices={result?.cmsVenueChoices || []}
+                            value={catalogVenuePick[row.eventGroupCode] || ''}
+                            onChange={(next) =>
+                              setCatalogVenuePick((prev) => ({
+                                ...prev,
+                                [row.eventGroupCode]: next,
+                              }))
+                            }
+                            disabled={loading}
+                          />
+                          {row.suggestedCreateVenue?.name ? (
+                            <Typography variant="pi" textColor="neutral500">
+                              Νέος: {row.suggestedCreateVenue.name}
+                            </Typography>
+                          ) : null}
+                        </Flex>
                       ) : (
                         <Badge>Λείπει</Badge>
                       )}
@@ -2378,13 +2626,45 @@ const App = () => {
                       </SourceInfo>
                     </Td>
                     <Td className="more-lookup-col-actions">
-                      {row.canApproveVenue && !row.inCms ? (
+                      {row.kind === 'venue_bundle' && !row.inCms && row.cmsStatus !== 'pending' ? (
+                        <div className="more-lookup-row-actions">
+                          <Button
+                            size="S"
+                            variant="secondary"
+                            loading={loading}
+                            onClick={() => linkCatalogVenue(row)}
+                            disabled={!row.canLinkVenue}
+                            title="Ρητή σύνδεση κωδικού → more_code_links στο CMS"
+                          >
+                            Σύνδεση
+                          </Button>
+                          <Button
+                            size="S"
+                            variant="tertiary"
+                            loading={loading}
+                            onClick={() => createCatalogVenue(row)}
+                            disabled={!row.canCreateVenue}
+                            title="Δημιουργία draft χώρου από More"
+                          >
+                            Νέος
+                          </Button>
+                          <Button
+                            size="S"
+                            variant="success"
+                            loading={loading}
+                            onClick={() => approveCatalogVenue(row)}
+                            title="Μόνο στην ουρά έγκρισης (χωρίς more_code_links)"
+                          >
+                            Έγκρ.
+                          </Button>
+                        </div>
+                      ) : row.canApproveVenue && !row.inCms ? (
                         <Button
                           size="S"
                           variant="success"
                           loading={loading}
                           onClick={() => approveCatalogVenue(row)}
-                          title={`Έγκριση για ${row.suggestedVenue.cmsTitle}`}
+                          title="Έγκριση πρότασης"
                         >
                           Έγκρ.
                         </Button>
