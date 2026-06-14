@@ -232,6 +232,69 @@
   word-break: break-word;
 }
 
+/* Σελίδα plugin — μην κλειδώνει το scroll του Strapi admin. */
+.more-lookup-page {
+  overflow: visible;
+}
+
+.more-lookup-catalog-table {
+  overflow-x: auto;
+  overflow-y: visible;
+}
+
+.more-lookup-venue-picker {
+  width: 100%;
+  max-width: 18rem;
+}
+
+.more-lookup-venue-picker-list {
+  width: 100%;
+  max-height: 11rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #dcdce4;
+  border-radius: 0.25rem;
+  background: #ffffff;
+  -webkit-overflow-scrolling: touch;
+}
+
+.more-lookup-venue-picker-list--suggestions {
+  max-height: 8.5rem;
+}
+
+.more-lookup-venue-picker-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.4rem 0.55rem;
+  border: none;
+  border-bottom: 1px solid #f0f0f5;
+  background: transparent;
+  color: #32324d;
+  cursor: pointer;
+  font-size: 0.75rem;
+  line-height: 1.3;
+}
+
+.more-lookup-venue-picker-option:last-child {
+  border-bottom: none;
+}
+
+.more-lookup-venue-picker-option:hover:not(:disabled) {
+  background: #f6f6f9;
+}
+
+.more-lookup-venue-picker-option--selected {
+  background: #f0f0ff;
+  font-weight: 600;
+}
+
+.more-lookup-venue-picker-option:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .more-lookup-catalog-venue-select {
   width: 100%;
   max-width: 18rem;

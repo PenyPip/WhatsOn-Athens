@@ -198,7 +198,7 @@ function cmsVenueChoicesForCatalogRow(row, allChoices = []) {
   return allChoices.filter((v) => !v.venueType || v.venueType === 'cinema');
 }
 
-function catalogVenueOptionList(row, cmsVenueChoices = []) {
+function catalogVenueSuggestionOptions(row) {
   const seen = new Set();
   const options = [];
   const add = (opt) => {
@@ -213,29 +213,139 @@ function catalogVenueOptionList(row, cmsVenueChoices = []) {
   };
   for (const suggestion of row.venueSuggestions || []) add(suggestion);
   if (row.suggestedVenue) add(row.suggestedVenue);
+  return options;
+}
+
+function catalogVenueOptionList(row, cmsVenueChoices = []) {
+  const seen = new Set();
+  const options = [];
+  const add = (opt) => {
+    const id = Number(opt.id ?? opt.cmsId);
+    if (!Number.isFinite(id) || seen.has(id)) return;
+    seen.add(id);
+    options.push({
+      id,
+      title: opt.title || opt.cmsTitle || `#${id}`,
+      score: opt.score,
+    });
+  };
+  for (const suggestion of catalogVenueSuggestionOptions(row)) add(suggestion);
   for (const venue of cmsVenueChoicesForCatalogRow(row, cmsVenueChoices)) add(venue);
   return options;
 }
 
 function CatalogVenuePicker({ row, cmsVenueChoices, value, onChange, disabled }) {
+  const [showBrowse, setShowBrowse] = React.useState(false);
+  const [filter, setFilter] = React.useState('');
+
   if (!row.canLinkVenue || row.inCms) return null;
-  const options = catalogVenueOptionList(row, cmsVenueChoices);
+
+  const suggestions = React.useMemo(() => catalogVenueSuggestionOptions(row), [row]);
+  const browseOptions = React.useMemo(() => {
+    if (!showBrowse) return [];
+    const q = filter.trim().toLocaleLowerCase('el');
+    return cmsVenueChoicesForCatalogRow(row, cmsVenueChoices)
+      .filter((venue) => {
+        if (!q) return true;
+        return String(venue.title || '')
+          .toLocaleLowerCase('el')
+          .includes(q);
+      })
+      .slice(0, 60);
+  }, [showBrowse, filter, row, cmsVenueChoices]);
+
+  const selectedId = value ? Number(value) : null;
+  const selectedTitle = React.useMemo(() => {
+    if (!Number.isFinite(selectedId)) return '';
+    const fromList = catalogVenueOptionList(row, cmsVenueChoices).find((opt) => opt.id === selectedId);
+    return fromList?.title || `#${selectedId}`;
+  }, [selectedId, row, cmsVenueChoices]);
+
+  const pickVenue = (id) => {
+    onChange(String(id));
+    setShowBrowse(false);
+    setFilter('');
+  };
+
+  const renderVenueButton = (opt, { score } = {}) => {
+    const isSelected = selectedId === Number(opt.id);
+    return (
+      <button
+        key={opt.id}
+        type="button"
+        className={[
+          'more-lookup-venue-picker-option',
+          isSelected ? 'more-lookup-venue-picker-option--selected' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        disabled={disabled}
+        onClick={() => pickVenue(opt.id)}
+      >
+        {opt.title}
+        {score != null ? ` (Sc ${Number(score).toFixed(2)})` : ''}
+      </button>
+    );
+  };
+
   return (
-    <select
-      className="more-lookup-catalog-venue-select"
-      value={value || ''}
-      onChange={(event) => onChange(event.target.value)}
-      disabled={disabled}
-      title="Πρόταση ή επιλογή υπάρχοντος χώρου CMS"
-    >
-      <option value="">Επίλεξε χώρο CMS…</option>
-      {options.map((opt) => (
-        <option key={opt.id} value={String(opt.id)}>
-          {opt.title}
-          {opt.score != null ? ` (Sc ${Number(opt.score).toFixed(2)})` : ''}
-        </option>
-      ))}
-    </select>
+    <Flex direction="column" alignItems="flex-start" gap={2} className="more-lookup-venue-picker">
+      <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
+        Υπάρχων χώρος CMS
+      </Typography>
+      {selectedId ? (
+        <Typography variant="pi" textColor="primary600">
+          Επιλέχθηκε: {selectedTitle}
+        </Typography>
+      ) : (
+        <Typography variant="pi" textColor="neutral500">
+          Επίλεξε πρόταση ή αναζήτηση
+        </Typography>
+      )}
+      {suggestions.length > 0 ? (
+        <div
+          className="more-lookup-venue-picker-list more-lookup-venue-picker-list--suggestions"
+          role="listbox"
+          aria-label="Προτεινόμενοι χώροι CMS"
+        >
+          {suggestions.map((opt) => renderVenueButton(opt, { score: opt.score }))}
+        </div>
+      ) : null}
+      <Button
+        size="S"
+        variant="tertiary"
+        disabled={disabled}
+        onClick={() => setShowBrowse((open) => !open)}
+      >
+        {showBrowse ? 'Κλείσιμο λίστας CMS' : 'Όλοι οι χώροι CMS…'}
+      </Button>
+      {showBrowse ? (
+        <>
+          <input
+            className="more-lookup-catalog-venue-input"
+            type="search"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            disabled={disabled}
+            placeholder="Αναζήτηση χώρου…"
+            autoComplete="off"
+          />
+          <div
+            className="more-lookup-venue-picker-list"
+            role="listbox"
+            aria-label="Όλοι οι χώροι CMS"
+          >
+            {browseOptions.length > 0 ? (
+              browseOptions.map((venue) => renderVenueButton({ id: venue.id, title: venue.title }))
+            ) : (
+              <Typography variant="pi" textColor="neutral500" padding={2}>
+                Δεν βρέθηκε χώρος
+              </Typography>
+            )}
+          </div>
+        </>
+      ) : null}
+    </Flex>
   );
 }
 
@@ -2571,6 +2681,7 @@ const App = () => {
                 </Typography>
               </Box>
             ) : (
+            <Box className="more-lookup-catalog-table">
             <Table colCount={8} rowCount={catalogPageRows.length}>
               <Thead>
                 <Tr>
@@ -2758,6 +2869,7 @@ const App = () => {
                 ))}
               </Tbody>
             </Table>
+            </Box>
             )}
             {catalogFiltered.length > CATALOG_PAGE_SIZE ? (
               <Box padding={4}>
