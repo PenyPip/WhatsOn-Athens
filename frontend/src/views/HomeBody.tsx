@@ -6,7 +6,6 @@ import VenueCard from "@/components/VenueCard";
 import type { ReactNode } from "react";
 import { Fragment, useMemo } from "react";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
-import { useIsMobile } from "@/hooks/use-mobile";
 import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
 import {
   homeNeedsArticles,
@@ -326,7 +325,6 @@ type HomeBodyProps = {
 
 export default function HomeBody({ layout }: HomeBodyProps) {
   const sections = layout.sections;
-  const isMobile = useIsMobile();
   const needsVenues = homeNeedsVenues(sections);
   const needsTheater = homeNeedsTheater(sections);
   const needsDining = homeNeedsDining(sections);
@@ -335,8 +333,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsShowtimes = homeNeedsShowtimes(sections);
   const needsFullMovieCatalog = homeNeedsFullMovieCatalog(sections);
   const deferSecondary = useDeferUntilLcpDone();
-  /** Mobile: αναβολή catalog/API μέχρι το static LCP — λιγότερο TBT στο πρώτο paint. */
-  const deferProgramData = !isMobile || deferSecondary;
+  /** Αναβολή catalog/API μέχρι το static LCP — ίδιο pattern mobile/desktop, λιγότερο TBT στο πρώτο paint. */
+  const deferProgramData = deferSecondary;
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies(deferProgramData, {
     fullCatalog: needsFullMovieCatalog,
@@ -372,13 +370,14 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const theaterLoadFailed = needsTheater && theaterFetched && theaterError && theaterShows === undefined;
   const apiSectionFailed = moviesError || showtimesError || venuesError || restaurantsError;
 
-  const stList = useMemo(() => showtimes ?? [], [showtimes]);
+  const stList = useMemo(() => (deferSecondary ? showtimes ?? [] : []), [showtimes, deferSecondary]);
   const movieList = useMemo(() => {
+    if (!deferSecondary) return [];
     const cat = movies ?? [];
     if (cat.length) return enrichMoviesWithShowtimeGenre(cat, stList);
     if (stList.length) return moviesFromUpcomingShowtimes([], stList);
     return [];
-  }, [movies, stList]);
+  }, [movies, stList, deferSecondary]);
   const venueList = useMemo(() => venues ?? [], [venues]);
   const diningToShow = useMemo(() => {
     const all = restaurants ?? [];
@@ -443,7 +442,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
               <MostTalkedAboutHero
                 movies={mostTalkedAboutList}
                 showtimes={stList}
-                loading={awaitingMovies || (isMobile && !deferSecondary)}
+                loading={awaitingMovies || !deferSecondary}
               />,
             );
           case "strip":

@@ -142,10 +142,9 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
     if (typeof document === "undefined") return;
 
     const staticEl = document.getElementById("home-static-lcp");
-    const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
 
-    /** Mobile: χωρίς αναμονή loading (deadlock) — desktop: περίμενε live hero (CLS). */
-    if (staticEl && isMobileViewport) {
+    /** Static LCP: κρύψε overlay μετά paint + idle — αποφυγή deadlock με deferred queries. */
+    if (staticEl) {
       let cancelled = false;
       let idleId: number | undefined;
       const frame = requestAnimationFrame(() => {
@@ -192,9 +191,9 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
   const hasCarousel = movies.length > 1;
   const heroSwipe = useHeroSwipe(hasCarousel, activeIndex, goTo);
 
-  if (loading && movies.length === 0) {
+  if (loading) {
     if (hasStaticLcp) return null;
-    return <MostTalkedAboutHeroShell />;
+    if (movies.length === 0) return <MostTalkedAboutHeroShell />;
   }
 
   if (movies.length === 0) {
