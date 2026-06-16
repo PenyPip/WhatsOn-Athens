@@ -1,19 +1,19 @@
-import { useSyncExternalStore } from "react";
+import { useEffect, useState } from "react";
 
 const MOBILE_BREAKPOINT = 768;
 const MOBILE_MQL = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`;
 
-function subscribeMobile(onStoreChange: () => void) {
-  const mql = window.matchMedia(MOBILE_MQL);
-  mql.addEventListener("change", onStoreChange);
-  return () => mql.removeEventListener("change", onStoreChange);
-}
-
-function getMobileSnapshot(): boolean {
-  return window.matchMedia(MOBILE_MQL).matches;
-}
-
-/** Mobile viewport — server + hydration snapshot = false (desktop markup), μετά sync. */
+/** Mobile viewport — SSR/hydration snapshot false, sync μετά mount (χωρίς window στο prerender). */
 export function useIsMobile(): boolean {
-  return useSyncExternalStore(subscribeMobile, () => false, getMobileSnapshot);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const mql = window.matchMedia(MOBILE_MQL);
+    const update = () => setIsMobile(mql.matches);
+    update();
+    mql.addEventListener("change", update);
+    return () => mql.removeEventListener("change", update);
+  }, []);
+
+  return isMobile;
 }
