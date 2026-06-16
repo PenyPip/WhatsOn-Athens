@@ -1,8 +1,8 @@
 'use strict';
 
 /**
- * Κάθε Δευτέρα 06:00 (ώρα server) — `venue.updated` → no_new για όλα τα σινεμά.
- * Ο administrator το ξαναενεργοποιεί χειροκίνητα όταν ολοκληρώσει το πρόγραμμα της εβδομάδας.
+ * Κάθε Σάββατο 06:00 (ώρα server) — `venue.updated` → no_new για όλα τα σινεμά.
+ * Σημαίνει «δεν έχουν μπει ακόμα οι νέες προβολές της επόμενης εβδομάδας».
  */
 module.exports = {
   resetCinemaVenueUpdatedMonday: {
@@ -11,11 +11,11 @@ module.exports = {
         const { resetCinemaManualCompleted } = require('../src/api/venue/services/program-status');
         await resetCinemaManualCompleted(strapi);
       } catch (e) {
-        strapi.log.error('[cron] resetCinemaVenueUpdatedMonday', e);
+        strapi.log.error('[cron] resetCinemaVenueUpdatedSaturday', e);
       }
     },
     options: {
-      rule: '0 6 * * 1',
+      rule: '0 6 * * 6',
     },
   },
   deletePastCinemaShowtimesDaily: {

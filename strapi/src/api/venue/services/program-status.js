@@ -33,7 +33,7 @@ async function resetCinemaManualCompleted(strapi) {
   });
   const count = typeof result?.count === 'number' ? result.count : 0;
   if (count > 0) {
-    strapi.log.info(`[whatson] venue updated → no_new (Δευτέρα πρωί): ${count} σινεμά`);
+    strapi.log.info(`[whatson] venue updated → no_new (Σάββατο πρωί): ${count} σινεμά`);
   }
   return count;
 }

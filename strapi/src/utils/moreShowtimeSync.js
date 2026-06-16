@@ -2319,8 +2319,12 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     (report.createdCinemaVenues
       ? ` · νέα σινεμά: ${report.createdCinemaVenues}`
       : '') +
-    (report.venueUpdatedStatuses?.updated
-      ? ` · updated: ${report.venueUpdatedStatuses.complete} πλήρη · ${report.venueUpdatedStatuses.needs_manual} χειροκίνητα · ${report.venueUpdatedStatuses.no_new} χωρίς νέα`
+    (report.venueUpdatedStatuses?.updated || report.venueUpdatedStatuses?.preserved_complete
+      ? ` · updated: ${report.venueUpdatedStatuses.complete} πλήρη` +
+        (report.venueUpdatedStatuses.preserved_complete
+          ? ` (${report.venueUpdatedStatuses.preserved_complete} ήδη complete)`
+          : '') +
+        ` · ${report.venueUpdatedStatuses.needs_manual} χειροκίνητα`
       : '') +
     (report.createdTheaterVenues
       ? ` · νέοι χώροι θεάτρου: ${report.createdTheaterVenues}`

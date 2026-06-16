@@ -9,7 +9,7 @@ const VENUE_UPDATED_STATUS = {
 };
 
 const VENUE_UPDATED_LABELS = {
-  no_new: 'Χωρίς καινούργια',
+  no_new: 'Χωρίς νέες προβολές εβδομάδας',
   complete: 'Πλήρης ενημέρωση',
   needs_manual: 'Απαιτεί χειροκίνητη δουλειά',
 };
@@ -78,6 +78,9 @@ function createVenueSyncStatsTracker() {
 }
 
 /**
+ * Κατάσταση μετά More sync — ποτέ no_new (μόνο cron Σάββατο).
+ * complete = όλες οι προβολές πέρασαν · needs_manual = κάποιες όχι.
+ *
  * @param {ReturnType<createVenueSyncStatsTracker>['entries'] extends () => infer T ? T[number][1] : never} stats
  * @returns {VenueUpdatedStatus}
  */
@@ -89,11 +92,8 @@ function computeVenueUpdatedStatus(stats) {
     stats.skippedNoVenue > 0 ||
     stats.errors > 0;
 
-  if (stats.created > 0) {
-    return needsManual ? VENUE_UPDATED_STATUS.NEEDS_MANUAL : VENUE_UPDATED_STATUS.COMPLETE;
-  }
   if (needsManual) return VENUE_UPDATED_STATUS.NEEDS_MANUAL;
-  return VENUE_UPDATED_STATUS.NO_NEW;
+  return VENUE_UPDATED_STATUS.COMPLETE;
 }
 
 async function migrateVenueUpdatedBooleanToEnum(strapi) {
@@ -129,12 +129,45 @@ async function applyCinemaVenueUpdatedStatuses(strapi, tracker, { autoCreatedVen
     no_new: 0,
     complete: 0,
     needs_manual: 0,
+    preserved_complete: 0,
     updated: 0,
     venues: [],
   };
 
-  for (const [venueId, stats] of tracker.entries()) {
+  const entries = tracker.entries();
+  if (!entries.length) return summary;
+
+  const venueIds = entries.map(([venueId]) => venueId);
+  const existingRows = await strapi.entityService.findMany('api::venue.venue', {
+    filters: { id: { $in: venueIds } },
+    fields: ['id', 'updated'],
+    publicationState: 'preview',
+    pagination: { pageSize: Math.max(venueIds.length, 1) },
+  });
+  const currentById = new Map(
+    (Array.isArray(existingRows) ? existingRows : []).map((row) => [row.id, row.updated]),
+  );
+
+  for (const [venueId, stats] of entries) {
     if (autoCreated.has(venueId)) stats.autoCreated = true;
+
+    const current = currentById.get(venueId);
+    if (current === VENUE_UPDATED_STATUS.COMPLETE) {
+      summary.preserved_complete += 1;
+      summary.complete += 1;
+      summary.venues.push({
+        venueId,
+        status: VENUE_UPDATED_STATUS.COMPLETE,
+        statusLabel: VENUE_UPDATED_LABELS.complete,
+        preserved: true,
+        created: stats.created,
+        alreadyExists: stats.alreadyExists,
+        skippedUnknownEventId: stats.skippedUnknownEventId,
+        autoCreated: stats.autoCreated,
+      });
+      continue;
+    }
+
     const status = computeVenueUpdatedStatus(stats);
     await strapi.entityService.update('api::venue.venue', venueId, {
       data: { updated: status },
@@ -145,6 +178,7 @@ async function applyCinemaVenueUpdatedStatuses(strapi, tracker, { autoCreatedVen
       venueId,
       status,
       statusLabel: VENUE_UPDATED_LABELS[status],
+      preserved: false,
       created: stats.created,
       alreadyExists: stats.alreadyExists,
       skippedUnknownEventId: stats.skippedUnknownEventId,

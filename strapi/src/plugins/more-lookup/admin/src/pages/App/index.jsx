@@ -787,7 +787,8 @@ function SyncReportPanel({ report }) {
     report.durationMs != null ? `${(Number(report.durationMs) / 1000).toFixed(1)}s` : null;
 
   const venueStatus = report.venueUpdatedStatuses;
-  const hasVenueStatus = Number(venueStatus?.updated ?? 0) > 0;
+  const hasVenueStatus =
+    Number(venueStatus?.updated ?? 0) > 0 || Number(venueStatus?.preserved_complete ?? 0) > 0;
 
   return (
     <Box padding={5} background="primary100" hasRadius style={cardStyle}>
@@ -930,7 +931,12 @@ function SyncReportPanel({ report }) {
             <Flex gap={3} wrap="wrap" paddingTop={1}>
               <StatBadge label="Πλήρη" value={venueStatus.complete ?? 0} tone="success" />
               <StatBadge label="Χειροκίνητα" value={venueStatus.needs_manual ?? 0} tone="warning" />
-              <StatBadge label="Χωρίς νέα" value={venueStatus.no_new ?? 0} />
+              {(venueStatus.preserved_complete ?? 0) > 0 ? (
+                <StatBadge
+                  label="Ήδη complete (δεν άλλαξαν)"
+                  value={venueStatus.preserved_complete}
+                />
+              ) : null}
             </Flex>
           </SyncReportSection>
         </Box>
