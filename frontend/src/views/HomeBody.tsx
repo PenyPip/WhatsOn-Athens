@@ -335,7 +335,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsShowtimes = homeNeedsShowtimes(sections);
   const needsFullMovieCatalog = homeNeedsFullMovieCatalog(sections);
   const deferSecondary = useDeferUntilLcpDone();
-  /** Mobile: αναβολή catalog/API μέχρι static LCP. Desktop: eager queries (όπως πριν). */
+  /** Mobile: αναβολή catalog/API μέχρι το static LCP — λιγότερο TBT στο πρώτο paint. */
   const deferProgramData = !isMobile || deferSecondary;
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies(deferProgramData, {

@@ -38,10 +38,8 @@ type UrlBackedMemoryRouterProps = {
 };
 
 export default function UrlBackedMemoryRouter({ ssrPath, children }: UrlBackedMemoryRouterProps) {
-  const initial = typeof window === "undefined" ? ssrPath : pathFromWindow();
-
   return (
-    <MemoryRouter initialEntries={[initial]} initialIndex={0}>
+    <MemoryRouter initialEntries={[ssrPath]} initialIndex={0}>
       <UrlHistoryBridge />
       {children}
     </MemoryRouter>

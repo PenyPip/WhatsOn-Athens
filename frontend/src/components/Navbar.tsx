@@ -2,6 +2,7 @@ import { lazy, Suspense, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useIdleMount } from "@/hooks/useIdleMount";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
+import { useClientMounted } from "@/hooks/useClientMounted";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useStableMobileSafeArea } from "@/hooks/useStableMobileSafeArea";
 import { Link, useLocation } from "react-router-dom";
@@ -75,9 +76,10 @@ const Navbar = () => {
   const mobileSearchRef = useRef<NavSearchHandle>(null);
   const desktopSearchRef = useRef<NavSearchHandle>(null);
   const deferNav = useDeferUntilLcpDone();
+  const mounted = useClientMounted();
   const onHome = location.pathname === "/";
   const showSearch =
-    useIdleMount(isMobile ? 4500 : onHome ? 4500 : 2500) && (!isMobile || !onHome || deferNav);
+    useIdleMount(isMobile ? 4500 : 2500) && (!isMobile || !onHome || deferNav);
   useStableMobileSafeArea();
   const nav = useSiteNavigationData(!isMobile || deferNav);
 
@@ -208,7 +210,7 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {typeof document !== "undefined" && (!isMobile || deferNav)
+      {mounted && (!isMobile || deferNav)
         ? createPortal(mobileBottomNav, document.body)
         : null}
     </>
