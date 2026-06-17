@@ -593,10 +593,10 @@ async function main() {
   const criticalDynamicCount = dynamic.length + venueProgramUrls.length;
   if (SITEMAP_STRICT_MODE) {
     if (sitemapApiCollectionsOk === 0) {
-      throw new Error(
-        "[sitemap] strict: Strapi API unreachable — δεν δημιουργήθηκαν δυναμικές σελίδες",
-      );
-    }
+    throw new Error(
+      "[sitemap] strict: Strapi API unreachable — ξεκίνα πρώτα Strapi (deploy-production.sh) ή SITEMAP_STRICT_MODE=0",
+    );
+  }
     if (criticalDynamicCount === 0) {
       throw new Error(
         "[sitemap] strict: μηδενικές δυναμικές URLs παρά επιτυχή κλήσεις στο Strapi",

@@ -20,7 +20,13 @@ if ! docker compose ps strapi 2>/dev/null | grep -q '(healthy)'; then
 fi
 
 echo "==> 2/4 Frontend build (Strapi healthy · NODE_HEAP_MB=4096 · χρειάζεται ≥6GB RAM στο Docker/host)"
-docker compose build frontend
+if ! curl -sf --max-time 10 "http://127.0.0.1:1337/admin" >/dev/null; then
+  echo "Σφάλμα: το Strapi δεν απαντά στο host :1337 — το frontend build χρειάζεται live API (sitemap + SSR paths)"
+  exit 1
+fi
+docker compose build frontend \
+  --build-arg SITEMAP_STRICT_MODE=1 \
+  --build-arg SITEMAP_STRAPI_URL=http://host.docker.internal:1337
 
 echo "==> 3/4 Strapi rebuild (αν άλλαξε κώδικας)"
 docker compose build strapi
