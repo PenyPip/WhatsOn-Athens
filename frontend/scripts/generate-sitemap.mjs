@@ -17,6 +17,10 @@ const STRAPI_ORIGIN = (process.env.SITEMAP_STRAPI_URL || process.env.STRAPI_INTE
   "",
 );
 const SITEMAP_STRICT_MODE = process.env.SITEMAP_STRICT_MODE === "1";
+const SITEMAP_STRICT_MIN_DYNAMIC = Math.max(
+  0,
+  parseInt(process.env.SITEMAP_STRICT_MIN_DYNAMIC || "20", 10) || 20,
+);
 /** Πόσες συλλογές Strapi απάντησαν επιτυχώς (για strict mode). */
 let sitemapApiCollectionsOk = 0;
 
@@ -587,16 +591,26 @@ async function main() {
 
   const all = [...staticWithDates, ...dynamic, ...venueProgramUrls, ...genreUrls];
   const criticalDynamicCount = dynamic.length + venueProgramUrls.length;
-  if (criticalDynamicCount < 20) {
-    const msg = `[sitemap] suspiciously low dynamic URL count: ${criticalDynamicCount}`;
-    if (SITEMAP_STRICT_MODE && sitemapApiCollectionsOk > 0) {
-      throw new Error(msg);
+  if (SITEMAP_STRICT_MODE) {
+    if (sitemapApiCollectionsOk === 0) {
+      throw new Error(
+        "[sitemap] strict: Strapi API unreachable — δεν δημιουργήθηκαν δυναμικές σελίδες",
+      );
     }
-    if (SITEMAP_STRICT_MODE && sitemapApiCollectionsOk === 0) {
-      console.warn(`${msg} — Strapi API unreachable, strict mode skipped`);
-    } else {
-      console.log(`${msg} (continuing, SITEMAP_STRICT_MODE=0)`);
+    if (criticalDynamicCount === 0) {
+      throw new Error(
+        "[sitemap] strict: μηδενικές δυναμικές URLs παρά επιτυχή κλήσεις στο Strapi",
+      );
     }
+    if (criticalDynamicCount < SITEMAP_STRICT_MIN_DYNAMIC) {
+      console.warn(
+        `[sitemap] strict warning: λίγες δυναμικές URLs (${criticalDynamicCount} < ${SITEMAP_STRICT_MIN_DYNAMIC}) — συνεχίζουμε`,
+      );
+    }
+  } else if (criticalDynamicCount < SITEMAP_STRICT_MIN_DYNAMIC) {
+    console.log(
+      `[sitemap] low dynamic URL count: ${criticalDynamicCount} (continuing, SITEMAP_STRICT_MODE=0)`,
+    );
   }
   const xml = buildXml(all);
   const robots = buildRobots();
