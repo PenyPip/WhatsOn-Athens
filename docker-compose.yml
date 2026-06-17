@@ -78,15 +78,15 @@ services:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-      extra_hosts:
-        - "host.docker.internal:host-gateway"
+      # Linux VPS: το build βλέπει το host :1337 (Strapi). Το host-gateway στα extra_hosts σπάει σε BuildKit build.
+      network: host
       args:
         NEXT_PUBLIC_API_URL: /api
         NEXT_PUBLIC_SITE_URL: https://the37n.gr
-        SITEMAP_STRAPI_URL: http://host.docker.internal:1337
+        SITEMAP_STRAPI_URL: http://127.0.0.1:1337
         # 0 = build χωρίς live Strapi (parallel compose build). deploy-production.sh περνά 1 με healthy Strapi.
         SITEMAP_STRICT_MODE: "0"
-        NODE_HEAP_MB: "4096"
+        NODE_HEAP_MB: "3072"
     ports:
       - "3000:80"
     depends_on:

@@ -34,8 +34,8 @@ const nextConfig: NextConfig = {
       ? {
           /** Λιγότερη RAM στο `next build` (static export εκατοντάδες paths). */
           staticGenerationRetryCount: 1,
-          staticGenerationMaxConcurrency: 2,
-          staticGenerationMinPagesPerWorker: 50,
+          staticGenerationMaxConcurrency: 1,
+          staticGenerationMinPagesPerWorker: 25,
         }
       : {}),
   },

@@ -24,21 +24,22 @@ FROM base AS builder
 
 ARG NEXT_PUBLIC_API_URL=/api
 ARG NEXT_PUBLIC_SITE_URL=https://the37n.gr
-# Κατά build: Strapi στο host :1337 — docker compose περνά host.docker.internal (όχι network=host).
-ARG SITEMAP_STRAPI_URL=http://host.docker.internal:1337
+# Κατά build με network:host (docker-compose) — Strapi στο host :1337.
+ARG SITEMAP_STRAPI_URL=http://127.0.0.1:1337
 # Default 0: `docker compose build` δεν απαιτεί live Strapi. Production: deploy-production.sh περνά 1.
 ARG SITEMAP_STRICT_MODE=0
-# Next static export + prefetch — χρειάζεται μεγαλύτερο heap (VPS: 4096, Docker Desktop: αύξησε RAM ≥6GB).
-ARG NODE_HEAP_MB=4096
+# Next static export + prefetch — 3072 OK σε VPS 4GB+swap· 4096 αν έχεις ≥6GB.
+ARG NODE_HEAP_MB=3072
 
 ENV NEXT_PUBLIC_API_URL=$NEXT_PUBLIC_API_URL
 ENV NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
 ENV SITEMAP_STRAPI_URL=$SITEMAP_STRAPI_URL
+ENV STRAPI_INTERNAL_URL=$SITEMAP_STRAPI_URL
 ENV SITEMAP_STRICT_MODE=$SITEMAP_STRICT_MODE
 ENV NODE_OPTIONS=--max-old-space-size=${NODE_HEAP_MB}
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN npm run build
+RUN chmod +x /front/scripts/docker-prod-build.sh && /front/scripts/docker-prod-build.sh
 
 FROM nginx:alpine
 
