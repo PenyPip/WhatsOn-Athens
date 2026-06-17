@@ -27,7 +27,7 @@ export default function SpaRoot({
   suppressHydrationWarning,
 }: SpaRootProps) {
   const dehydratedState = useMemo(
-    () => readRqBootstrapState() ?? bootstrapState,
+    () => bootstrapState ?? readRqBootstrapState(),
     [bootstrapState],
   );
 

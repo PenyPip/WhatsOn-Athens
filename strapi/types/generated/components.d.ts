@@ -1,16 +1,5 @@
 import type { Attribute, Schema } from '@strapi/strapi';
 
-export interface CinemaApprovedMoreCode extends Schema.Component {
-  collectionName: 'components_cinema_approved_more_codes';
-  info: {
-    description: '\u039A\u03C9\u03B4\u03B9\u03BA\u03CC\u03C2 \u03C0\u03BF\u03C5 \u03B5\u03B3\u03BA\u03C1\u03AF\u03B8\u03B7\u03BA\u03B5 \u03B1\u03C0\u03CC admin \u2014 \u03B5\u03B3\u03B3\u03C1\u03AC\u03C6\u03B5\u03C4\u03B1\u03B9 \u03BC\u03B5 \u00AB\u0393\u03C1\u03AC\u03C8\u03B5 \u03B1\u03C5\u03C4\u03CC\u03BC\u03B1\u03C4\u03B1\u00BB.';
-    displayName: '\u0395\u03B3\u03BA\u03B5\u03BA\u03C1\u03B9\u03BC\u03AD\u03BD\u03BF\u03C2 More \u03BA\u03C9\u03B4\u03B9\u03BA\u03CC\u03C2';
-  };
-  attributes: {
-    code: Attribute.String & Attribute.Required;
-  };
-}
-
 export interface CinemaDayPrice extends Schema.Component {
   collectionName: 'components_cinema_day_prices';
   info: {
@@ -166,7 +155,6 @@ export interface SharedCastName extends Schema.Component {
 declare module '@strapi/types' {
   export module Shared {
     export interface Components {
-      'cinema.approved-more-code': CinemaApprovedMoreCode;
       'cinema.day-price': CinemaDayPrice;
       'cinema.more-code-link': CinemaMoreCodeLink;
       'cinema.more-event-group': CinemaMoreEventGroup;

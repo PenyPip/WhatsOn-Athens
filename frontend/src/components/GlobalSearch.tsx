@@ -211,7 +211,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
           aria-expanded={showPanel}
           aria-controls={showPanel ? panelId : undefined}
           aria-autocomplete="list"
-          className="min-w-0 flex-1 bg-transparent py-0.5 font-body text-white/90 outline-none placeholder:text-white/55 pr-3"
+          className="min-w-0 flex-1 bg-transparent py-0.5 font-body text-base text-white/90 outline-none placeholder:text-white/55 pr-3 md:text-sm"
         />
       </div>
 

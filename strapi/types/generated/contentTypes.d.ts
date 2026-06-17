@@ -697,11 +697,6 @@ export interface ApiMovieMovie extends Schema.CollectionType {
   };
   attributes: {
     age_rating: Attribute.String;
-    approved_more_codes: Attribute.Component<
-      'cinema.approved-more-code',
-      true
-    > &
-      Attribute.Private;
     articles: Attribute.Relation<
       'api::movie.movie',
       'oneToMany',
@@ -736,9 +731,6 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'api::movie-genre.movie-genre'
     >;
     original_title: Attribute.String & Attribute.Required & Attribute.Unique;
-    pending_event_group_code: Attribute.String & Attribute.Private;
-    pending_match_score: Attribute.Decimal & Attribute.Private;
-    pending_more_title: Attribute.String & Attribute.Private;
     poster: Attribute.Media<'images'>;
     publishedAt: Attribute.DateTime;
     rejected_more_codes: Attribute.Component<
@@ -987,11 +979,6 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     singularName: 'theater-show';
   };
   attributes: {
-    approved_more_codes: Attribute.Component<
-      'cinema.approved-more-code',
-      true
-    > &
-      Attribute.Private;
     articles: Attribute.Relation<
       'api::theater-show.theater-show',
       'oneToMany',
@@ -1022,9 +1009,6 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
     more_link: Attribute.String;
     on_tour: Attribute.Boolean & Attribute.DefaultTo<false>;
-    pending_event_group_code: Attribute.String & Attribute.Private;
-    pending_match_score: Attribute.Decimal & Attribute.Private;
-    pending_more_title: Attribute.String & Attribute.Private;
     poster: Attribute.Media<'images'>;
     rejected_more_codes: Attribute.Component<
       'cinema.rejected-more-code',
@@ -1120,11 +1104,6 @@ export interface ApiVenueVenue extends Schema.CollectionType {
   };
   attributes: {
     address: Attribute.String;
-    approved_more_codes: Attribute.Component<
-      'cinema.approved-more-code',
-      true
-    > &
-      Attribute.Private;
     city: Attribute.Enumeration<['athens', 'thessaloniki', 'other']>;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -1156,9 +1135,6 @@ export interface ApiVenueVenue extends Schema.CollectionType {
     more_link: Attribute.String;
     more_sync_log: Attribute.Text & Attribute.Private;
     name: Attribute.String & Attribute.Required;
-    pending_event_group_code: Attribute.String & Attribute.Private;
-    pending_match_score: Attribute.Decimal & Attribute.Private;
-    pending_more_title: Attribute.String & Attribute.Private;
     publishedAt: Attribute.DateTime;
     rejected_more_codes: Attribute.Component<
       'cinema.rejected-more-code',

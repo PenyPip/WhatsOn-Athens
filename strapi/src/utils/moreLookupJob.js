@@ -63,11 +63,10 @@ function startMoreLookupJob(strapi, options = {}) {
           matchCms: options.matchCms !== false,
           listAll: options.listAll === true,
           skipVerify: options.skipVerify === true,
-          syncPending: options.matchCms !== false,
           onProgress,
         });
         const message = options.matchCms !== false
-          ? `Ταύτιση: ${result.stats.matched} (ταινίες ${result.stats.cmsMovies} · θέατρο ${result.stats.cmsTheaterShows}) · ${result.stats.pendingApproval} προς έγκριση · κατάλογος: ${result.stats.catalogShown ?? result.catalog?.length ?? 0}`
+          ? `Ταύτιση: ${result.stats.matched} (ταινίες ${result.stats.cmsMovies} · θέατρο ${result.stats.cmsTheaterShows}) · κατάλογος: ${result.stats.catalogShown ?? result.catalog?.length ?? 0}`
           : `Κατάλογος More: ${result.stats.catalogShown ?? result.catalog?.length ?? 0} εγγραφές`;
         jobRef.result = { ...result, message };
         jobRef.progress = message;

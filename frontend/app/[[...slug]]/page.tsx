@@ -80,6 +80,7 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
       <RqBootstrapScript state={dehydratedState} />
       <SpaRoot
         ssrPath={path}
+        bootstrapState={dehydratedState}
         homeMainOverlap={showStaticLcp}
         homeStaticLcp={showStaticLcp}
         suppressHydrationWarning={showStaticLcp}

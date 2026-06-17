@@ -176,17 +176,34 @@ function venueScrapeTooltip(row) {
 }
 
 function catalogCmsStatusLabel(row) {
-  if (row.cmsRefs?.[0]?.linkedManually) {
-    if (row.cmsStatus === 'pending') return 'Σύνδεση CMS (ουρά)';
-    if (row.inCms) return 'Σύνδεση CMS';
-  }
-  if (row.cmsStatus === 'in_cms') {
+  if (catalogVenueLinkedOnly(row)) return 'Συνδεδεμένο (more_code_links)';
+  if (row.cmsRefs?.[0]?.linkedManually && row.inCms) return 'Σύνδεση CMS';
+  if (row.cmsStatus === 'in_cms' || catalogVenueResolved(row)) {
     if (row.kind === 'venue_bundle') return 'Χώρος στο CMS';
     return 'Στο CMS';
   }
-  if (row.cmsStatus === 'pending') return 'Προς έγκριση';
   if (row.kind === 'venue_bundle') return 'Λείπει (χώρος)';
   return 'Λείπει';
+}
+
+/** Έχει γραφτεί κωδικός στο CMS (όχι μόνο more_code_links). */
+function catalogVenueResolved(row) {
+  if (row.kind !== 'venue_bundle') return Boolean(row.inCms);
+  const refs = row.cmsRefs || [];
+  if (!refs.length) return false;
+  return refs.some((ref) => ref.inCms !== false && !ref.linkedManually);
+}
+
+/** Συνδεδεμένο via more_code_links — χρειάζεται «Γράψε αυτόματα». */
+function catalogVenueLinkedOnly(row) {
+  if (row.kind !== 'venue_bundle') return false;
+  if (row.linkedPendingApply) return true;
+  const refs = row.cmsRefs || [];
+  return refs.some((ref) => ref.linkedManually) && !catalogVenueResolved(row);
+}
+
+function catalogVenueNeedsSetup(row) {
+  return row.kind === 'venue_bundle' && !catalogVenueResolved(row) && !catalogVenueLinkedOnly(row);
 }
 
 function cmsVenueChoicesForCatalogRow(row, allChoices = []) {
@@ -234,11 +251,11 @@ function catalogVenueOptionList(row, cmsVenueChoices = []) {
   return options;
 }
 
-function CatalogVenuePicker({ row, cmsVenueChoices, value, onChange, disabled }) {
+function CatalogVenuePicker({ row, cmsVenueChoices, value, onChange, disabled, compact = false }) {
   const [showBrowse, setShowBrowse] = React.useState(false);
   const [filter, setFilter] = React.useState('');
 
-  if (!row.canLinkVenue || row.inCms) return null;
+  if (!catalogVenueNeedsSetup(row)) return null;
 
   const suggestions = React.useMemo(() => catalogVenueSuggestionOptions(row), [row]);
   const browseOptions = React.useMemo(() => {
@@ -290,9 +307,11 @@ function CatalogVenuePicker({ row, cmsVenueChoices, value, onChange, disabled })
 
   return (
     <Flex direction="column" alignItems="flex-start" gap={2} className="more-lookup-venue-picker">
-      <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
-        Υπάρχων χώρος CMS
-      </Typography>
+      {!compact ? (
+        <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
+          Άλλος χώρος CMS
+        </Typography>
+      ) : null}
       {selectedId ? (
         <Flex gap={2} alignItems="center" wrap="wrap">
           <Typography variant="pi" textColor="primary600">
@@ -374,7 +393,7 @@ function defaultCreateVenueName(row) {
 }
 
 function CatalogVenueCreateFields({ row, nameValue, onNameChange, disabled }) {
-  if (!row.canCreateVenue || row.inCms) return null;
+  if (!catalogVenueNeedsSetup(row)) return null;
   const venueType = row.category === 'theater' ? 'theater' : 'cinema';
   const sampleVenueId = row.verify?.sampleVenues?.[0]?.id;
   const nameHint = defaultCreateVenueName(row);
@@ -384,8 +403,7 @@ function CatalogVenueCreateFields({ row, nameValue, onNameChange, disabled }) {
         Νέος χώρος ({venueType === 'theater' ? 'θέατρο' : 'σινεμά'})
       </Typography>
       <Typography variant="pi" textColor="neutral500">
-        «Δημιουργία» = άμεσα draft στο CMS (Content Manager → Χώροι). Μετά «Γράψε αυτόματα» για
-        event_group_code.
+        Δημιουργεί draft χώρο + more_code_links. Μετά «Γράψε αυτόματα» για event_group_code.
       </Typography>
       <input
         className="more-lookup-catalog-venue-input"
@@ -410,23 +428,121 @@ function CatalogVenueCreateFields({ row, nameValue, onNameChange, disabled }) {
   );
 }
 
+function CatalogVenueBundlePanel({
+  row,
+  cmsVenueChoices,
+  pick,
+  onPickChange,
+  createName,
+  onCreateNameChange,
+  busyKey,
+  onLinkVenue,
+  onLinkSuggested,
+  onCreateVenue,
+}) {
+  if (catalogVenueLinkedOnly(row)) {
+    const title = row.cmsRefs?.[0]?.cmsTitle || '—';
+    return (
+      <Flex direction="column" alignItems="flex-start" gap={1} style={{ maxWidth: '16rem' }}>
+        <Badge>Συνδεδεμένο: {title}</Badge>
+        <Typography variant="pi" textColor="primary700">
+          Τρέξε «Γράψε αυτόματα» για event_group_code.
+        </Typography>
+      </Flex>
+    );
+  }
+
+  if (!catalogVenueNeedsSetup(row)) {
+    return (
+      <Typography variant="pi" textColor="neutral500">
+        —
+      </Typography>
+    );
+  }
+
+  const codeKey = row.eventGroupCode || '';
+  const linkBusy = busyKey === `link:${codeKey}`;
+  const createBusy = busyKey === `create:${codeKey}`;
+  const suggestedBusy = busyKey === `suggested:${codeKey}`;
+  const anyBusy = Boolean(busyKey);
+  const suggested = row.suggestedVenue;
+  const hasPick = Boolean(pick);
+
+  return (
+    <Flex direction="column" alignItems="stretch" gap={3} className="more-lookup-venue-bundle-panel">
+      {suggested ? (
+        <Flex direction="column" alignItems="flex-start" gap={1}>
+          <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
+            Πρόταση ταύτισης
+          </Typography>
+          <Button
+            size="S"
+            variant="success"
+            loading={suggestedBusy}
+            disabled={anyBusy && !suggestedBusy}
+            onClick={() => onLinkSuggested(row, suggested)}
+            title="Σύνδεση More κωδικού με τον προτεινόμενο χώρο CMS"
+          >
+            Σύνδεση με «{suggested.cmsTitle || suggested.title}»
+          </Button>
+          <Typography variant="pi" textColor="neutral500">
+            Score {Number(suggested.score || 0).toFixed(2)} · 1 κλικ
+          </Typography>
+        </Flex>
+      ) : null}
+
+      <Flex direction="column" alignItems="stretch" gap={2}>
+        <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
+          {suggested ? 'Ή άλλος χώρος' : 'Υπάρχων χώρος CMS'}
+        </Typography>
+        <CatalogVenuePicker
+          row={row}
+          cmsVenueChoices={cmsVenueChoices}
+          value={pick}
+          onChange={onPickChange}
+          disabled={anyBusy}
+          compact
+        />
+        <Button
+          size="S"
+          variant="secondary"
+          loading={linkBusy}
+          disabled={!hasPick || (anyBusy && !linkBusy)}
+          onClick={() => onLinkVenue(row)}
+        >
+          Σύνδεση
+        </Button>
+      </Flex>
+
+      <Flex direction="column" alignItems="stretch" gap={2}>
+        <CatalogVenueCreateFields
+          row={row}
+          nameValue={createName}
+          onNameChange={onCreateNameChange}
+          disabled={anyBusy}
+        />
+        <Button
+          size="S"
+          variant="default"
+          loading={createBusy}
+          disabled={anyBusy && !createBusy}
+          onClick={() => onCreateVenue(row)}
+        >
+          Δημιουργία χώρου
+        </Button>
+      </Flex>
+    </Flex>
+  );
+}
+
 function rowKey(row) {
   return `${row.contentType || 'movie'}:${row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId}`;
 }
 
-function pendingSelectionKey(row) {
-  return `${rowKey(row)}:${row.suggestedEventGroupCode || ''}`;
-}
-
-function mapPendingToApiRow(row) {
-  return {
-    contentType: row.contentType,
-    cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId,
-    movieId: row.movieId,
-    theaterShowId: row.theaterShowId,
-    venueId: row.venueId,
-    eventGroupCode: row.suggestedEventGroupCode,
-  };
+function catalogKindForMatchRow(row) {
+  if (row.contentType === 'venue') return 'venue_bundle';
+  if (row.contentType === 'theater_show') return 'show';
+  return 'movie';
 }
 
 function mapMatchToApiRow(row) {
@@ -515,21 +631,21 @@ function EllipsisCell({ text, tone = 'neutral800', mono = false }) {
   );
 }
 
-function MatchRowActions({ loading, onApprove, onReject, queued = false }) {
+function MatchRowActions({ loading, onLink, onReject }) {
   return (
     <div className="more-lookup-row-actions">
-      <Button size="S" variant="tertiary" loading={loading} onClick={onReject} title="Απόρριψη">
+      <Button size="S" variant="tertiary" loading={loading} disabled={loading} onClick={onReject} title="Απόρριψη">
         Απόρ.
       </Button>
       <Button
         size="S"
-        variant={queued ? 'secondary' : 'success'}
+        variant="success"
         loading={loading}
-        onClick={onApprove}
-        disabled={queued}
-        title={queued ? 'Στην ουρά εγγραφής' : 'Έγκριση'}
+        disabled={loading}
+        onClick={onLink}
+        title="Σύνδεση → more_code_links"
       >
-        {queued ? 'Στην ουρά' : 'Έγκρ.'}
+        Σύνδ.
       </Button>
     </div>
   );
@@ -564,7 +680,6 @@ function expandMatchRows(rows) {
           displayMoreUrl: match.moreUrl ?? row.moreUrl ?? null,
           displayMatchMethod: match.matchMethod ?? null,
           codeRole: index === 0 ? 'κύριος' : 'επιπλέον',
-          isQueued: (row.cmsApprovedMoreCodes || []).includes(code),
         };
       });
   });
@@ -1055,6 +1170,7 @@ const App = () => {
   const [catalogKindFilter, setCatalogKindFilter] = useState('all');
   const [matchContentFilter, setMatchContentFilter] = useState('all');
   const [loading, setLoading] = useState(false);
+  const [busyKey, setBusyKey] = useState(null);
   const [enabled, setEnabled] = useState(true);
   const [applyMinScore, setApplyMinScore] = useState(0.45);
   const [showtimeSyncEnabled, setShowtimeSyncEnabled] = useState(true);
@@ -1067,8 +1183,6 @@ const App = () => {
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupProgress, setLookupProgress] = useState(null);
   const [lookupJobKind, setLookupJobKind] = useState(null);
-  const [pendingApproval, setPendingApproval] = useState([]);
-  const [selectedPendingKeys, setSelectedPendingKeys] = useState(() => new Set());
   const [selectedMatchKeys, setSelectedMatchKeys] = useState(() => new Set());
   const [catalogVenuePick, setCatalogVenuePick] = useState({});
   const [catalogCreateName, setCatalogCreateName] = useState({});
@@ -1081,14 +1195,13 @@ const App = () => {
     return () => clearInterval(id);
   }, [syncLoading]);
 
-  const loadPending = useCallback(async () => {
-    try {
-      const res = await get('/api/more-lookup/pending');
-      setPendingApproval(Array.isArray(res?.data?.pending) ? res.data.pending : []);
-    } catch {
-      setPendingApproval([]);
-    }
-  }, [get]);
+  const mergeApplyIntoResult = useCallback((applyResult) => {
+    if (!applyResult) return;
+    setResult((prev) => ({
+      ...(prev || {}),
+      apply: applyResult.apply ?? prev?.apply,
+    }));
+  }, []);
 
   const applySyncStatus = useCallback((data) => {
     if (data?.progress) setSyncProgress(data.progress);
@@ -1154,20 +1267,6 @@ const App = () => {
     throw new Error('Το sync ξεπέρασε το χρονικό όριο αναμονής (~45 λεπτά).');
   }, [applySyncStatus, get, setSyncReport]);
 
-  const mergeApplyIntoResult = useCallback((applyResult) => {
-    if (!applyResult) return;
-    setResult((prev) => ({
-      ...(prev || {}),
-      apply: applyResult.apply ?? prev?.apply,
-      approvedQueue: applyResult.approvedQueue ?? prev?.approvedQueue,
-      stats: {
-        ...(prev?.stats || {}),
-        approvedQueue: applyResult.stats?.approvedQueue ?? prev?.stats?.approvedQueue,
-      },
-    }));
-    setPendingApproval(applyResult.pendingApproval ?? []);
-  }, []);
-
   const pollLookupJob = useCallback(async () => {
     for (let attempt = 0; attempt < 480; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 2500));
@@ -1202,7 +1301,6 @@ const App = () => {
         mergeApplyIntoResult(jobResult);
       } else {
         setResult(jobResult);
-        setPendingApproval(jobResult?.pendingApproval ?? []);
       }
       toggleNotification({
         type: 'success',
@@ -1262,13 +1360,12 @@ const App = () => {
       if (typeof res?.data?.applyMinScore === 'number') {
         setApplyMinScore(res.data.applyMinScore);
       }
-      await loadPending();
       await resumeLookupIfRunning();
       await resumeSyncIfRunning();
     } catch {
       setEnabled(true);
     }
-  }, [get, loadPending, resumeLookupIfRunning, resumeSyncIfRunning]);
+  }, [get, resumeLookupIfRunning, resumeSyncIfRunning]);
 
   useEffect(() => {
     loadStatus();
@@ -1277,6 +1374,24 @@ const App = () => {
   useEffect(() => {
     setCatalogPage(1);
   }, [result, catalogOnlyMissing, catalogKindFilter, matchContentFilter]);
+
+  useEffect(() => {
+    if (!result?.catalog?.length) return;
+    setCatalogVenuePick((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const row of result.catalog) {
+        if (!catalogVenueNeedsSetup(row)) continue;
+        if (next[row.eventGroupCode]) continue;
+        const suggestedId = row.suggestedVenue?.cmsId ?? row.suggestedVenue?.id;
+        if (suggestedId != null) {
+          next[row.eventGroupCode] = String(suggestedId);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [result?.catalog]);
 
   const finishLookupJob = async (postBody) => {
     const res = await post('/api/more-lookup/run', postBody);
@@ -1299,7 +1414,6 @@ const App = () => {
         matchCms: true,
       });
       setResult(lookupResult);
-      setPendingApproval(lookupResult?.pendingApproval ?? []);
       toggleNotification({
         type: 'success',
         message: lookupResult?.message || 'Η αναζήτηση ολοκληρώθηκε.',
@@ -1316,7 +1430,7 @@ const App = () => {
   const applyToCms = async () => {
     setLookupLoading(true);
     setLookupJobKind('apply');
-    setLookupProgress('Εγγραφή εγκεκριμένων κωδικών στο CMS…');
+    setLookupProgress('Εγγραφή συνδεδεμένων κωδικών στο CMS…');
     try {
       const applyResult = await finishLookupJob({
         apply: true,
@@ -1352,45 +1466,17 @@ const App = () => {
       ),
     [result?.matches, matchContentFilter],
   );
-  const pendingFiltered = useMemo(
-    () => pendingApproval.filter((r) => matchesCmsContentFilter(r, matchContentFilter)),
-    [pendingApproval, matchContentFilter],
-  );
-  const pendingVisibleKeys = useMemo(
-    () => pendingFiltered.map(pendingSelectionKey),
-    [pendingFiltered],
-  );
   const matchVisibleKeys = useMemo(
     () => matchDisplayRows.map((row) => row.displayKey),
     [matchDisplayRows],
   );
-  const pendingSelectedVisibleCount = pendingVisibleKeys.filter((key) =>
-    selectedPendingKeys.has(key),
-  ).length;
   const matchSelectedVisibleCount = matchVisibleKeys.filter((key) =>
     selectedMatchKeys.has(key),
   ).length;
-  const allPendingVisibleSelected =
-    pendingVisibleKeys.length > 0 && pendingSelectedVisibleCount === pendingVisibleKeys.length;
-  const somePendingVisibleSelected =
-    pendingSelectedVisibleCount > 0 && !allPendingVisibleSelected;
   const allMatchVisibleSelected =
     matchVisibleKeys.length > 0 && matchSelectedVisibleCount === matchVisibleKeys.length;
   const someMatchVisibleSelected =
     matchSelectedVisibleCount > 0 && !allMatchVisibleSelected;
-
-  useEffect(() => {
-    setSelectedPendingKeys((prev) => {
-      const visible = new Set(pendingVisibleKeys);
-      let changed = false;
-      const next = new Set();
-      for (const key of prev) {
-        if (visible.has(key)) next.add(key);
-        else changed = true;
-      }
-      return changed ? next : prev;
-    });
-  }, [pendingVisibleKeys]);
 
   useEffect(() => {
     setSelectedMatchKeys((prev) => {
@@ -1404,12 +1490,7 @@ const App = () => {
       return changed ? next : prev;
     });
   }, [matchVisibleKeys]);
-  const approvedQueueCount =
-    result?.stats?.approvedQueue ??
-    (result?.approvedQueue || []).reduce(
-      (sum, row) => sum + (row.approvedEventGroupCodes?.length || 0),
-      0,
-    );
+
   const catalog = result?.catalog ?? [];
   const catalogScope = catalog.filter((row) => !catalogOnlyMissing || !row.inCms);
   const catalogFilterOptions = CATALOG_KIND_FILTERS.map((opt) => ({
@@ -1422,13 +1503,6 @@ const App = () => {
       opt.id === 'all'
         ? (result?.matches ?? []).filter((r) => r.matched).length
         : (result?.matches ?? []).filter((r) => r.matched && matchesCmsContentFilter(r, opt.id)).length,
-  }));
-  const pendingFilterOptions = CMS_MATCH_FILTERS.map((opt) => ({
-    ...opt,
-    count:
-      opt.id === 'all'
-        ? pendingApproval.length
-        : pendingApproval.filter((r) => matchesCmsContentFilter(r, opt.id)).length,
   }));
   const catalogFiltered = catalogScope.filter((row) => catalogMatchesKindFilter(row, catalogKindFilter));
   const catalogMissingFiltered = catalogFiltered.filter((row) => !row.inCms).length;
@@ -1445,36 +1519,7 @@ const App = () => {
     Boolean(result) ||
     Boolean(syncReport) ||
     matchDisplayRows.length > 0 ||
-    pendingApproval.length > 0 ||
     (catalog.length > 0 && (!catalogOnlyMissing || catalogFiltered.length > 0));
-
-  const approveItem = async (row, overwrite = false) => {
-    setLoading(true);
-    try {
-      const res = await post('/api/more-lookup/approve', {
-        contentType: row.contentType,
-        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId,
-        movieId: row.movieId,
-        theaterShowId: row.theaterShowId,
-        venueId: row.venueId,
-        eventGroupCode: row.suggestedEventGroupCode,
-        overwriteExisting: overwrite,
-      });
-      setPendingApproval((prev) => prev.filter((r) => rowKey(r) !== rowKey(row)));
-      toggleNotification({
-        type: 'success',
-        message: res?.data?.message || 'Προστέθηκε στην ουρά εγγραφής.',
-      });
-    } catch (error) {
-      const message =
-        error?.response?.data?.error?.message ||
-        error?.response?.data?.errors?.[0]?.error ||
-        'Αποτυχία έγκρισης.';
-      toggleNotification({ type: 'warning', message });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const pruneMatchDisplayRow = (displayKey) => {
     setResult((prev) => {
@@ -1503,79 +1548,33 @@ const App = () => {
     });
   };
 
-  const queueMatchRow = (displayKey, code) => {
-    setResult((prev) => {
-      if (!prev?.matches?.length) return prev;
-      return {
-        ...prev,
-        matches: prev.matches.map((matchRow) => {
-          const key = `${rowKey(matchRow)}:${code}`;
-          if (key !== displayKey) return matchRow;
-          const approved = [...new Set([...(matchRow.cmsApprovedMoreCodes || []), code])];
-          return { ...matchRow, cmsApprovedMoreCodes: approved };
-        }),
-        stats: {
-          ...prev.stats,
-          approvedQueue: (prev.stats?.approvedQueue ?? 0) + 1,
-        },
-      };
-    });
-  };
-
-  const approveMatchCode = async (row) => {
-    setLoading(true);
+  const linkMatchCode = async (row) => {
+    const key = `match-link:${row.displayKey}`;
+    setBusyKey(key);
     try {
-      const res = await post('/api/more-lookup/approve', {
+      const res = await post('/api/more-lookup/link', {
         contentType: row.contentType,
         cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId,
         movieId: row.movieId,
         theaterShowId: row.theaterShowId,
         venueId: row.venueId,
         eventGroupCode: row.displayCode,
+        catalogKind: catalogKindForMatchRow(row),
+        moreTitle: row.displayMoreTitle,
       });
-      if (res?.data?.alreadyPresent) {
-        pruneMatchDisplayRow(row.displayKey);
-      } else {
-        queueMatchRow(row.displayKey, row.displayCode);
-      }
       toggleNotification({
         type: 'success',
-        message:
-          res?.data?.message ||
-          (res?.data?.queued
-            ? `Στην ουρά: ${row.displayCode}`
-            : `Εγκρίθηκε ${row.displayCode}`),
+        message: res?.data?.message || `Συνδέθηκε ${row.displayCode}`,
       });
     } catch (error) {
       const message =
         error?.response?.data?.error?.message ||
         error?.response?.data?.errors?.[0]?.error ||
-        'Αποτυχία έγκρισης.';
+        'Αποτυχία σύνδεσης.';
       toggleNotification({ type: 'warning', message });
     } finally {
-      setLoading(false);
+      setBusyKey(null);
     }
-  };
-
-  const unqueueMatchRow = (displayKey, code) => {
-    setResult((prev) => {
-      if (!prev?.matches?.length) return prev;
-      return {
-        ...prev,
-        matches: prev.matches.map((matchRow) => {
-          const key = `${rowKey(matchRow)}:${code}`;
-          if (key !== displayKey) return matchRow;
-          return {
-            ...matchRow,
-            cmsApprovedMoreCodes: (matchRow.cmsApprovedMoreCodes || []).filter((c) => c !== code),
-          };
-        }),
-        stats: {
-          ...prev.stats,
-          approvedQueue: Math.max(0, (prev.stats?.approvedQueue ?? 0) - 1),
-        },
-      };
-    });
   };
 
   const rejectMatchCode = async (row) => {
@@ -1589,7 +1588,6 @@ const App = () => {
         venueId: row.venueId,
         eventGroupCode: row.displayCode,
       });
-      if (row.isQueued) unqueueMatchRow(row.displayKey, row.displayCode);
       pruneMatchDisplayRow(row.displayKey);
       toggleNotification({
         type: 'info',
@@ -1600,39 +1598,6 @@ const App = () => {
     } finally {
       setLoading(false);
     }
-  };
-
-  const rejectItem = async (row) => {
-    setLoading(true);
-    try {
-      await post('/api/more-lookup/reject', {
-        contentType: row.contentType,
-        cmsId: row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId,
-        movieId: row.movieId,
-        theaterShowId: row.theaterShowId,
-        venueId: row.venueId,
-        eventGroupCode: row.suggestedEventGroupCode,
-      });
-      setPendingApproval((prev) => prev.filter((r) => rowKey(r) !== rowKey(row)));
-      toggleNotification({ type: 'info', message: 'Η πρόταση απορρίφθηκε.' });
-    } catch (error) {
-      toggleNotification({ type: 'warning', message: 'Αποτυχία απόρριψης.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const togglePendingSelection = (key, checked) => {
-    setSelectedPendingKeys((prev) => {
-      const next = new Set(prev);
-      if (checked) next.add(key);
-      else next.delete(key);
-      return next;
-    });
-  };
-
-  const toggleAllPendingSelection = (checked) => {
-    setSelectedPendingKeys(checked ? new Set(pendingVisibleKeys) : new Set());
   };
 
   const toggleMatchSelection = (key, checked) => {
@@ -1648,85 +1613,6 @@ const App = () => {
     setSelectedMatchKeys(checked ? new Set(matchVisibleKeys) : new Set());
   };
 
-  const approvePendingRows = async (rows, { clearSelection = false, bulkLabel = 'μαζική' } = {}) => {
-    if (!rows.length) return;
-    setLoading(true);
-    try {
-      const res = await post('/api/more-lookup/approve', {
-        approvals: rows.map(mapPendingToApiRow),
-        overwriteExisting: false,
-      });
-      const approvedKeys = new Set(rows.map((r) => rowKey(r)));
-      setPendingApproval((prev) => prev.filter((r) => !approvedKeys.has(rowKey(r))));
-      if (clearSelection) {
-        const cleared = new Set(rows.map(pendingSelectionKey));
-        setSelectedPendingKeys((prev) => {
-          const next = new Set(prev);
-          for (const key of cleared) next.delete(key);
-          return next;
-        });
-      }
-      toggleNotification({
-        type: res?.data?.ok ? 'success' : 'warning',
-        message: res?.data?.message || `Ολοκληρώθηκε η ${bulkLabel} έγκριση (${rows.length}).`,
-      });
-    } catch (error) {
-      toggleNotification({ type: 'warning', message: 'Αποτυχία μαζικής έγκρισης.' });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const rejectPendingRows = async (rows, { clearSelection = false, bulkLabel = 'μαζική' } = {}) => {
-    if (!rows.length) return;
-    setLoading(true);
-    try {
-      const res = await post('/api/more-lookup/reject', {
-        rejections: rows.map(mapPendingToApiRow),
-      });
-      const rejectedKeys = new Set(rows.map((r) => rowKey(r)));
-      setPendingApproval((prev) => prev.filter((r) => !rejectedKeys.has(rowKey(r))));
-      if (clearSelection) {
-        const cleared = new Set(rows.map(pendingSelectionKey));
-        setSelectedPendingKeys((prev) => {
-          const next = new Set(prev);
-          for (const key of cleared) next.delete(key);
-          return next;
-        });
-      }
-      toggleNotification({
-        type: res?.data?.ok ? 'info' : 'warning',
-        message: res?.data?.message || `Ολοκληρώθηκε η ${bulkLabel} απόρριψη (${rows.length}).`,
-      });
-    } catch (error) {
-      const message =
-        error?.response?.data?.error?.message ||
-        error?.response?.data?.errors?.[0]?.error ||
-        'Αποτυχία μαζικής απόρριψης.';
-      toggleNotification({ type: 'warning', message });
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const approveSelectedPending = () => {
-    const rows = pendingFiltered.filter((row) =>
-      selectedPendingKeys.has(pendingSelectionKey(row)),
-    );
-    return approvePendingRows(rows, { clearSelection: true, bulkLabel: 'επιλεγμένων' });
-  };
-
-  const rejectSelectedPending = () => {
-    const rows = pendingFiltered.filter((row) =>
-      selectedPendingKeys.has(pendingSelectionKey(row)),
-    );
-    return rejectPendingRows(rows, { clearSelection: true, bulkLabel: 'επιλεγμένων' });
-  };
-
-  const approveAllPending = () => approvePendingRows(pendingFiltered, { clearSelection: true });
-
-  const rejectAllPending = () => rejectPendingRows(pendingFiltered, { clearSelection: true });
-
   const rejectMatchRows = async (rows, { clearSelection = false, bulkLabel = 'μαζική' } = {}) => {
     if (!rows.length) return;
     setLoading(true);
@@ -1735,7 +1621,6 @@ const App = () => {
         rejections: rows.map(mapMatchToApiRow),
       });
       rows.forEach((row) => {
-        if (row.isQueued) unqueueMatchRow(row.displayKey, row.displayCode);
         pruneMatchDisplayRow(row.displayKey);
       });
       if (clearSelection) {
@@ -1762,67 +1647,50 @@ const App = () => {
     return rejectMatchRows(rows, { clearSelection: true, bulkLabel: 'επιλεγμένων' });
   };
 
-  const approveCatalogVenue = async (row) => {
-    const cmsId = catalogVenuePick[row.eventGroupCode] || null;
-    if (!cmsId || !row.eventGroupCode) {
-      toggleNotification({ type: 'warning', message: 'Επίλεξε πρώτα χώρο CMS (πρόταση ή λίστα).' });
-      return;
-    }
-    setLoading(true);
-    try {
-      const res = await post('/api/more-lookup/approve', {
-        contentType: 'venue',
-        cmsId: Number(cmsId),
-        venueId: Number(cmsId),
-        eventGroupCode: row.eventGroupCode,
-      });
-      setResult((prev) => {
-        if (!prev?.catalog?.length) return prev;
-        return {
-          ...prev,
-          catalog: prev.catalog.map((catRow) =>
-            catRow.eventGroupCode === row.eventGroupCode
-              ? { ...catRow, cmsStatus: 'pending', canApproveVenue: false }
-              : catRow,
-          ),
-          stats: {
-            ...prev.stats,
-            approvedQueue: (prev.stats?.approvedQueue ?? 0) + 1,
-          },
-        };
-      });
-      const pickedTitle =
-        catalogVenueOptionList(row, result?.cmsVenueChoices || []).find(
-          (opt) => opt.id === Number(cmsId),
-        )?.title || `#${cmsId}`;
-      toggleNotification({
-        type: 'success',
-        message: res?.data?.message || `Στην ουρά: ${row.eventGroupCode} → ${pickedTitle}`,
-      });
-    } catch (error) {
-      const message =
-        error?.response?.data?.error?.message ||
-        error?.response?.data?.errors?.[0]?.error ||
-        'Αποτυχία έγκρισης.';
-      toggleNotification({ type: 'warning', message });
-    } finally {
-      setLoading(false);
-    }
+  const markCatalogVenueLinked = (row, { cmsId, cmsTitle }) => {
+    setResult((prev) => {
+      if (!prev?.catalog?.length) return prev;
+      return {
+        ...prev,
+        catalog: prev.catalog.map((catRow) =>
+          catRow.eventGroupCode === row.eventGroupCode
+            ? {
+                ...catRow,
+                inCms: false,
+                linkedPendingApply: true,
+                cmsStatus: 'linked',
+                cmsRefs: [
+                  {
+                    contentType: 'venue',
+                    cmsId: Number(cmsId),
+                    cmsTitle,
+                    inCms: false,
+                    linkedManually: true,
+                  },
+                ],
+                canLinkVenue: false,
+                canCreateVenue: false,
+              }
+            : catRow,
+        ),
+      };
+    });
   };
 
-  const linkCatalogVenue = async (row) => {
-    const cmsId = catalogVenuePick[row.eventGroupCode] || null;
-    if (!cmsId || !row.eventGroupCode) {
-      toggleNotification({ type: 'warning', message: 'Επίλεξε πρώτα χώρο CMS (πρόταση ή λίστα).' });
+  const linkCatalogVenueWithId = async (row, cmsId, busySuffix = 'link') => {
+    const code = row.eventGroupCode;
+    if (!cmsId || !code) {
+      toggleNotification({ type: 'warning', message: 'Επίλεξε πρώτα χώρο CMS.' });
       return;
     }
-    setLoading(true);
+    const busy = `${busySuffix}:${code}`;
+    setBusyKey(busy);
     try {
       const res = await post('/api/more-lookup/link', {
         contentType: 'venue',
         cmsId: Number(cmsId),
         venueId: Number(cmsId),
-        eventGroupCode: row.eventGroupCode,
+        eventGroupCode: code,
         catalogKind: catalogKindForRow(row),
         moreTitle: row.moreTitle,
       });
@@ -1832,44 +1700,12 @@ const App = () => {
         )?.title ||
         row.suggestedVenue?.cmsTitle ||
         `#${cmsId}`;
-      setResult((prev) => {
-        if (!prev?.catalog?.length) return prev;
-        return {
-          ...prev,
-          catalog: prev.catalog.map((catRow) =>
-            catRow.eventGroupCode === row.eventGroupCode
-              ? {
-                  ...catRow,
-                  inCms: true,
-                  cmsStatus: 'in_cms',
-                  cmsRefs: [
-                    {
-                      contentType: 'venue',
-                      cmsId: Number(cmsId),
-                      cmsTitle: pickedTitle,
-                      inCms: true,
-                      linkedManually: true,
-                    },
-                  ],
-                  canApproveVenue: false,
-                  canLinkVenue: false,
-                  canCreateVenue: false,
-                }
-              : catRow,
-          ),
-          stats: {
-            ...prev.stats,
-            catalogInCms: (prev.stats?.catalogInCms ?? 0) + 1,
-            catalogMissing: Math.max(0, (prev.stats?.catalogMissing ?? 0) - 1),
-            approvedQueue: res?.data?.approval?.queued
-              ? (prev.stats?.approvedQueue ?? 0) + 1
-              : prev.stats?.approvedQueue,
-          },
-        };
-      });
+      markCatalogVenueLinked(row, { cmsId, cmsTitle: pickedTitle });
       toggleNotification({
         type: 'success',
-        message: res?.data?.message || `Συνδέθηκε ${row.eventGroupCode} → ${pickedTitle}`,
+        message:
+          res?.data?.message ||
+          `Συνδέθηκε ${code} → ${pickedTitle}. Τρέξε «Γράψε αυτόματα».`,
       });
     } catch (error) {
       const message =
@@ -1878,8 +1714,18 @@ const App = () => {
         'Αποτυχία σύνδεσης.';
       toggleNotification({ type: 'warning', message });
     } finally {
-      setLoading(false);
+      setBusyKey(null);
     }
+  };
+
+  const linkCatalogVenue = (row) => {
+    const cmsId = catalogVenuePick[row.eventGroupCode] || null;
+    return linkCatalogVenueWithId(row, cmsId, 'link');
+  };
+
+  const linkCatalogVenueSuggested = (row, suggestion) => {
+    const cmsId = suggestion?.cmsId ?? suggestion?.id;
+    return linkCatalogVenueWithId(row, cmsId, 'suggested');
   };
 
   const createCatalogVenue = async (row) => {
@@ -1893,7 +1739,8 @@ const App = () => {
       toggleNotification({ type: 'warning', message: 'Συμπλήρωσε όνομα για τον νέο χώρο.' });
       return;
     }
-    setLoading(true);
+    const code = row.eventGroupCode;
+    setBusyKey(`create:${code}`);
     try {
       const sampleVenueId = row.verify?.sampleVenues?.[0]?.id;
       const res = await post('/api/more-lookup/create-venue', {
@@ -1908,49 +1755,15 @@ const App = () => {
         verify: row.verify,
       });
       const venue = res?.data?.venue;
-      setResult((prev) => {
-        if (!prev?.catalog?.length) return prev;
-        return {
-          ...prev,
-          catalog: prev.catalog.map((catRow) =>
-            catRow.eventGroupCode === row.eventGroupCode
-              ? {
-                  ...catRow,
-                  inCms: Boolean(venue),
-                  cmsStatus: venue ? 'in_cms' : catRow.cmsStatus,
-                  cmsRefs: venue
-                    ? [
-                        {
-                          contentType: 'venue',
-                          cmsId: venue.id,
-                          cmsTitle: venue.name,
-                          inCms: true,
-                          linkedManually: true,
-                        },
-                      ]
-                    : catRow.cmsRefs,
-                  canApproveVenue: false,
-                  canLinkVenue: false,
-                  canCreateVenue: false,
-                }
-              : catRow,
-          ),
-          stats: {
-            ...prev.stats,
-            catalogInCms: venue ? (prev.stats?.catalogInCms ?? 0) + 1 : prev.stats?.catalogInCms,
-            catalogMissing: venue
-              ? Math.max(0, (prev.stats?.catalogMissing ?? 0) - 1)
-              : prev.stats?.catalogMissing,
-            approvedQueue: (prev.stats?.approvedQueue ?? 0) + 1,
-          },
-        };
-      });
+      if (venue) {
+        markCatalogVenueLinked(row, { cmsId: venue.id, cmsTitle: venue.name });
+      }
       toggleNotification({
         type: 'success',
         message:
           res?.data?.message ||
           (venue
-            ? `Δημιουργήθηκε άμεσα draft «${venue.name}» (#${venue.id}) — Content Manager → Χώροι`
+            ? `Δημιουργήθηκε «${venue.name}» (#${venue.id}) · τρέξε «Γράψε αυτόματα»`
             : 'Δημιουργήθηκε χώρος.'),
       });
     } catch (error) {
@@ -1960,7 +1773,7 @@ const App = () => {
         'Αποτυχία δημιουργίας χώρου.';
       toggleNotification({ type: 'warning', message });
     } finally {
-      setLoading(false);
+      setBusyKey(null);
     }
   };
 
@@ -2103,7 +1916,7 @@ const App = () => {
                   <WorkflowStep
                     number="2"
                     title="Εγγραφή & σύνδεση"
-                    detail="Έγκριση → ουρά · «Σύνδεση» → more_code_links · «Γράψε αυτόματα»"
+                    detail="Σύνδεση / δημιουργία χώρου · «Γράψε αυτόματα» → event_group_code"
                   />
                 </GridItem>
                 <GridItem col={4} s={12}>
@@ -2120,7 +1933,7 @@ const App = () => {
             <Box paddingTop={4} padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
               <PanelHeader
                 title="Βήμα 1 — Κωδικοί More"
-                subtitle="Έγκριση → ουρά · «Γράψε αυτόματα» γράφει μόνο εγκεκριμένους κωδικούς"
+                subtitle="Σύνδεση κωδικών → more_code_links · «Γράψε αυτόματα» γράφει στα πεδία CMS"
               />
               <Flex gap={3} paddingTop={2} wrap="wrap" alignItems="center">
                 <Button
@@ -2148,16 +1961,15 @@ const App = () => {
                   </Typography>
                   <Typography variant="pi" textColor="neutral500" paddingTop={1}>
                     {lookupJobKind === 'apply'
-                      ? 'Γράφει μόνο τους ήδη εγκεκριμένους κωδικούς — χωρίς νέα αναζήτηση More.'
+                      ? 'Γράφει τους συνδεδεμένους κωδικούς (more_code_links) — χωρίς νέα αναζήτηση More.'
                       : 'Η ταύτιση τρέχει στο server — μπορεί να διαρκέσει 1–5 λεπτά (κατάλογος More + επαλήθευση API).'}
                   </Typography>
                 </Box>
               ) : null}
               <Box paddingTop={4}>
                 <Typography variant="pi" textColor="neutral500">
-                  Η ταύτιση δείχνει μόνο κωδικούς που λείπουν από το CMS. Πάτα «Έγκρ.» ανά γραμμή, μετά
-                  «Γράψε αυτόματα» (μόνο εγγραφή, χωρίς ξανά-ταύτιση)
-                  {approvedQueueCount > 0 ? ` · ${approvedQueueCount} στην ουρά` : ''}.
+                  Η ταύτιση δείχνει κωδικούς που λείπουν από το CMS. Πάτα «Σύνδ.» για more_code_links, μετά
+                  «Γράψε αυτόματα».
                 </Typography>
               </Box>
             </Box>
@@ -2268,11 +2080,8 @@ const App = () => {
                 hint="eventId→CMS από more_link"
               />
             ) : null}
-            {result.stats.pendingApproval != null ? (
-              <StatBadge label="Προς έγκριση" value={result.stats.pendingApproval} />
-            ) : null}
-            {approvedQueueCount > 0 ? (
-              <StatBadge label="Ουρά εγγραφής" value={approvedQueueCount} tone="success" />
+            {result.stats.lowScoreMatches != null && result.stats.lowScoreMatches > 0 ? (
+              <StatBadge label="Χαμηλό score" value={result.stats.lowScoreMatches} tone="warning" />
             ) : null}
             <StatBadge label="Διάρκεια" value={`${result.durationMs}ms`} />
           </Flex>
@@ -2344,7 +2153,7 @@ const App = () => {
             <Box padding={4}>
               <PanelHeader
                 title="Πίνακας 1 — Προτάσεις ταύτισης"
-                subtitle={`Πρώτα «Έγκρ.» ανά γραμμή · μετά «Γράψε αυτόματα». ${matchDisplayRows.length} εμφανίζονται`}
+                subtitle={`«Σύνδ.» → more_code_links · μετά «Γράψε αυτόματα». ${matchDisplayRows.length} εμφανίζονται`}
                 action={
                   <Button
                     size="S"
@@ -2387,7 +2196,7 @@ const App = () => {
                     />
                   </Th>
                   <Th className="more-lookup-col-actions">
-                    <Typography variant="sigma">Απόρ./Έγκρ.</Typography>
+                    <Typography variant="sigma">Απόρ./Σύνδ.</Typography>
                   </Th>
                   <Th className="more-lookup-col-cms-title">
                     <Typography variant="sigma">CMS</Typography>
@@ -2422,10 +2231,9 @@ const App = () => {
                     </Td>
                     <Td className="more-lookup-col-actions">
                       <MatchRowActions
-                        loading={loading}
-                        queued={row.isQueued}
+                        loading={busyKey === `match-link:${row.displayKey}`}
                         onReject={() => rejectMatchCode(row)}
-                        onApprove={() => approveMatchCode(row)}
+                        onLink={() => linkMatchCode(row)}
                       />
                     </Td>
                     <Td className="more-lookup-col-cms-title">
@@ -2475,153 +2283,6 @@ const App = () => {
           </Box>
         ) : null}
 
-        {pendingApproval.length > 0 ? (
-          <Box paddingBottom={6} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
-            <Box padding={4}>
-              <PanelHeader
-                title={`Πίνακας 2 — Προς έγκριση (${pendingFiltered.length}/${pendingApproval.length})`}
-                subtitle={`Χαμηλό score (< ${applyMinScore.toFixed(2)}) — «Έγκρ.» → ουρά, μετά «Γράψε αυτόματα»`}
-                action={
-                  <Flex gap={2} wrap="wrap">
-                    <Button
-                      size="S"
-                      variant="tertiary"
-                      loading={loading}
-                      onClick={rejectSelectedPending}
-                      disabled={loading || pendingSelectedVisibleCount === 0}
-                    >
-                      Απόρριψη επιλεγμένων ({pendingSelectedVisibleCount})
-                    </Button>
-                    <Button
-                      size="S"
-                      variant="success"
-                      loading={loading}
-                      onClick={approveSelectedPending}
-                      disabled={loading || pendingSelectedVisibleCount === 0}
-                    >
-                      Έγκριση επιλεγμένων ({pendingSelectedVisibleCount})
-                    </Button>
-                    <Button
-                      size="S"
-                      variant="tertiary"
-                      loading={loading}
-                      onClick={rejectAllPending}
-                      disabled={loading || pendingFiltered.length === 0}
-                    >
-                      Απόρριψη όλων{pendingFiltered.length < pendingApproval.length ? ` (${pendingFiltered.length})` : ''}
-                    </Button>
-                    <Button
-                      size="S"
-                      variant="success"
-                      loading={loading}
-                      onClick={approveAllPending}
-                      disabled={loading || pendingFiltered.length === 0}
-                    >
-                      Έγκριση όλων{pendingFiltered.length < pendingApproval.length ? ` (${pendingFiltered.length})` : ''}
-                    </Button>
-                  </Flex>
-                }
-              />
-              <Box paddingTop={3}>
-                <TypeFilterBar
-                  label="Τύπος CMS"
-                  value={matchContentFilter}
-                  options={pendingFilterOptions}
-                  onChange={setMatchContentFilter}
-                />
-              </Box>
-            </Box>
-            {pendingFiltered.length === 0 ? (
-              <Box padding={4} paddingTop={0}>
-                <Typography variant="pi" textColor="neutral600">
-                  Δεν υπάρχουν εγγραφές προς έγκριση με το τρέχον φίλτρο τύπου.
-                </Typography>
-              </Box>
-            ) : (
-            <Box className="more-lookup-match-table more-lookup-match-table--pending">
-            <Table colCount={7} rowCount={pendingFiltered.length}>
-              <Thead>
-                <Tr>
-                  <Th className="more-lookup-col-select">
-                    <SelectCheckbox
-                      ariaLabel="Επιλογή όλων των ορατών εγγραφών προς έγκριση"
-                      checked={allPendingVisibleSelected}
-                      indeterminate={somePendingVisibleSelected}
-                      onChange={toggleAllPendingSelection}
-                      disabled={loading || pendingVisibleKeys.length === 0}
-                    />
-                  </Th>
-                  <Th className="more-lookup-col-actions">
-                    <Typography variant="sigma">Απόρ./Έγκρ.</Typography>
-                  </Th>
-                  <Th className="more-lookup-col-cms-title">
-                    <Typography variant="sigma">CMS</Typography>
-                  </Th>
-                  <Th className="more-lookup-col-more-title">
-                    <Typography variant="sigma">More</Typography>
-                  </Th>
-                  <Th className="more-lookup-col-code">
-                    <Typography variant="sigma">evg_</Typography>
-                  </Th>
-                  <Th className="more-lookup-col-score">
-                    <Typography variant="sigma">Sc</Typography>
-                  </Th>
-                  <Th className="more-lookup-col-type">
-                    <Typography variant="sigma">Τύπος</Typography>
-                  </Th>
-                </Tr>
-              </Thead>
-              <Tbody>
-                {pendingFiltered.map((row, rowIndex) => {
-                  const selectionKey = pendingSelectionKey(row);
-                  return (
-                  <Tr key={`${selectionKey}::${rowIndex}`}>
-                    <Td className="more-lookup-col-select">
-                      <SelectCheckbox
-                        ariaLabel={`Επιλογή ${row.cmsTitle}`}
-                        checked={selectedPendingKeys.has(selectionKey)}
-                        onChange={(next) => togglePendingSelection(selectionKey, next)}
-                        disabled={loading}
-                      />
-                    </Td>
-                    <Td className="more-lookup-col-actions">
-                      <MatchRowActions
-                        loading={loading}
-                        onReject={() => rejectItem(row)}
-                        onApprove={() => approveItem(row, Boolean(row.cmsEventGroupCode))}
-                      />
-                    </Td>
-                    <Td className="more-lookup-col-cms-title">
-                      <EllipsisCell text={row.cmsTitle} />
-                    </Td>
-                    <Td className="more-lookup-col-more-title">
-                      <EllipsisCell text={row.moreTitle || '—'} tone="neutral600" />
-                    </Td>
-                    <Td className="more-lookup-col-code">
-                      <SourceInfo
-                        title={buildSourceTooltip({
-                          apiUrl: moreEventsApiUrl(row.suggestedEventGroupCode),
-                        })}
-                      >
-                        <EllipsisCell text={row.suggestedEventGroupCode} mono />
-                      </SourceInfo>
-                    </Td>
-                    <Td className="more-lookup-col-score">
-                      <Typography variant="pi">{Number(row.score).toFixed(2)}</Typography>
-                    </Td>
-                    <Td className="more-lookup-col-type">
-                      <Badge>{cmsTypeLabel(row.contentType)}</Badge>
-                    </Td>
-                  </Tr>
-                  );
-                })}
-              </Tbody>
-            </Table>
-            </Box>
-            )}
-          </Box>
-        ) : null}
-
         {result?.unmatched?.length > 0 ? (
           <Box paddingBottom={4} padding={4} background="warning100" hasRadius style={cardStyle}>
             <Flex direction="column" alignItems="flex-start" gap={2}>
@@ -2642,8 +2303,8 @@ const App = () => {
           <Box paddingBottom={6} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
             <Box padding={4}>
               <PanelHeader
-                title="Πίνακας 3 — Κατάλογος More"
-                subtitle={`Κατάλογος More · ${catalogFiltered.length} εμφανίζονται · ${catalogMissingFiltered} λείπουν · σύνδεση / δημιουργία / έγκριση`}
+                title="Πίνακας 2 — Κατάλογος More"
+                subtitle={`Σύνδεση / δημιουργία χώρου · ${catalogFiltered.length} εμφανίζονται · ${catalogMissingFiltered} λείπουν`}
               />
               <Flex gap={4} wrap="wrap" paddingTop={3} alignItems="flex-end">
                 <TypeFilterBar
@@ -2726,49 +2387,29 @@ const App = () => {
                       </SourceInfo>
                     </Td>
                     <Td>
-                      {row.inCms ? (
+                      {catalogVenueResolved(row) || (row.inCms && row.kind !== 'venue_bundle') ? (
                         <Badge>
                           {catalogCmsStatusLabel(row)}
                           {row.cmsRefs?.[0]?.cmsTitle ? `: ${row.cmsRefs[0].cmsTitle}` : ''}
                         </Badge>
-                      ) : row.cmsStatus === 'pending' ? (
+                      ) : catalogVenueLinkedOnly(row) ? (
                         <Badge>
                           {catalogCmsStatusLabel(row)}
                           {row.cmsRefs?.[0]?.cmsTitle ? `: ${row.cmsRefs[0].cmsTitle}` : ''}
                         </Badge>
                       ) : row.kind === 'venue_bundle' ? (
-                        <Flex direction="column" alignItems="flex-start" gap={2}>
+                        <Flex direction="column" alignItems="flex-start" gap={1}>
+                          <Badge>Λείπει (χώρος)</Badge>
                           {row.suggestedVenue ? (
-                            <Badge>
+                            <Typography variant="pi" textColor="neutral600">
                               Πρόταση: {row.suggestedVenue.cmsTitle} (Sc{' '}
                               {Number(row.suggestedVenue.score).toFixed(2)})
-                            </Badge>
+                            </Typography>
                           ) : (
-                            <Badge>Λείπει (χώρος)</Badge>
+                            <Typography variant="pi" textColor="neutral500">
+                              Δεν βρέθηκε ταύτιση — δημιούργησε ή διάλεξε χώρο δεξιά
+                            </Typography>
                           )}
-                          <CatalogVenuePicker
-                            row={row}
-                            cmsVenueChoices={result?.cmsVenueChoices || []}
-                            value={catalogVenuePick[row.eventGroupCode] || ''}
-                            onChange={(next) =>
-                              setCatalogVenuePick((prev) => ({
-                                ...prev,
-                                [row.eventGroupCode]: next,
-                              }))
-                            }
-                            disabled={loading}
-                          />
-                          <CatalogVenueCreateFields
-                            row={row}
-                            nameValue={catalogCreateName[row.eventGroupCode] || ''}
-                            onNameChange={(next) =>
-                              setCatalogCreateName((prev) => ({
-                                ...prev,
-                                [row.eventGroupCode]: next,
-                              }))
-                            }
-                            disabled={loading}
-                          />
                         </Flex>
                       ) : (
                         <Badge>Λείπει</Badge>
@@ -2807,49 +2448,29 @@ const App = () => {
                       </SourceInfo>
                     </Td>
                     <Td className="more-lookup-col-actions">
-                      {row.kind === 'venue_bundle' && !row.inCms ? (
-                        <div className="more-lookup-row-actions more-lookup-row-actions--catalog">
-                          <Button
-                            size="S"
-                            variant="secondary"
-                            loading={loading}
-                            onClick={() => linkCatalogVenue(row)}
-                            disabled={!row.canLinkVenue || !catalogVenuePick[row.eventGroupCode]}
-                            title="Σύνδεση κωδικού More → επιλεγμένος χώρος CMS"
-                          >
-                            Σύνδεση
-                          </Button>
-                          <Button
-                            size="S"
-                            variant="default"
-                            loading={loading}
-                            onClick={() => createCatalogVenue(row)}
-                            disabled={!row.canCreateVenue}
-                            title="Δημιουργία draft χώρου στο CMS + σύνδεση κωδικού"
-                          >
-                            Δημιουργία
-                          </Button>
-                          <Button
-                            size="S"
-                            variant="success"
-                            loading={loading}
-                            onClick={() => approveCatalogVenue(row)}
-                            disabled={!catalogVenuePick[row.eventGroupCode]}
-                            title="Μόνο ουρά έγκρισης (χωρίς more_code_links)"
-                          >
-                            Έγκρ.
-                          </Button>
-                        </div>
-                      ) : row.canApproveVenue && !row.inCms ? (
-                        <Button
-                          size="S"
-                          variant="success"
-                          loading={loading}
-                          onClick={() => approveCatalogVenue(row)}
-                          title="Έγκριση πρότασης"
-                        >
-                          Έγκρ.
-                        </Button>
+                      {row.kind === 'venue_bundle' ? (
+                        <CatalogVenueBundlePanel
+                          row={row}
+                          cmsVenueChoices={result?.cmsVenueChoices || []}
+                          pick={catalogVenuePick[row.eventGroupCode] || ''}
+                          onPickChange={(next) =>
+                            setCatalogVenuePick((prev) => ({
+                              ...prev,
+                              [row.eventGroupCode]: next,
+                            }))
+                          }
+                          createName={catalogCreateName[row.eventGroupCode] || ''}
+                          onCreateNameChange={(next) =>
+                            setCatalogCreateName((prev) => ({
+                              ...prev,
+                              [row.eventGroupCode]: next,
+                            }))
+                          }
+                          busyKey={busyKey}
+                          onLinkVenue={linkCatalogVenue}
+                          onLinkSuggested={linkCatalogVenueSuggested}
+                          onCreateVenue={createCatalogVenue}
+                        />
                       ) : (
                         <Typography variant="pi" textColor="neutral500">
                           —

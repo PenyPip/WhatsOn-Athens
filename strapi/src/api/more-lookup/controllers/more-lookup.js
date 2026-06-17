@@ -3,12 +3,9 @@
 const {
   runMoreEventCodeLookup,
   applyMoreEventCodeMatches,
-  approveMoreEventGroupCode,
   rejectMoreEventGroupCode,
   linkMoreCodeToCms,
   createVenueFromMoreCatalog,
-  loadPendingApprovalItems,
-  clearCmsPending,
   DEFAULT_MIN_SCORE,
   DEFAULT_APPLY_MIN_SCORE,
 } = require('../../../utils/moreEventCodeLookup');
@@ -26,7 +23,6 @@ const { getMoreProxyStatus } = require('../../../utils/moreHttp');
 
 module.exports = {
   async status(ctx) {
-    const pending = await loadPendingApprovalItems(strapi);
     ctx.body = {
       enabled: process.env.MORE_LOOKUP_ENABLED !== 'false',
       showtimeSyncEnabled: process.env.MORE_SHOWTIME_SYNC_ENABLED !== 'false',
@@ -35,13 +31,7 @@ module.exports = {
       moreProxy: getMoreProxyStatus(),
       minScore: DEFAULT_MIN_SCORE,
       applyMinScore: DEFAULT_APPLY_MIN_SCORE,
-      pendingApprovalCount: pending.length,
     };
-  },
-
-  async pending(ctx) {
-    const pending = await loadPendingApprovalItems(strapi);
-    ctx.body = { ok: true, pending, count: pending.length };
   },
 
   async reject(ctx) {
@@ -62,7 +52,7 @@ module.exports = {
 
     if (!items.length) {
       ctx.status = 400;
-      ctx.body = { ok: false, error: { message: 'Απαιτείται cmsId ή rejections[]' } };
+      ctx.body = { ok: false, error: { message: 'Απαιτείται cmsId + eventGroupCode ή rejections[]' } };
       return;
     }
 
@@ -82,32 +72,31 @@ module.exports = {
       const eventGroupCode =
         typeof item.eventGroupCode === 'string' ? item.eventGroupCode.trim() : '';
 
+      if (!eventGroupCode) {
+        errors.push({ contentType, cmsId, error: 'Απαιτείται eventGroupCode' });
+        continue;
+      }
+
       try {
-        if (eventGroupCode) {
-          const result = await rejectMoreEventGroupCode(strapi, {
-            contentType,
-            cmsId,
-            movieId: item.movieId,
-            theaterShowId: item.theaterShowId,
-            venueId: item.venueId,
-            eventGroupCode,
-          });
-          rejected.push(result);
-        } else {
-          await clearCmsPending(strapi, contentType, cmsId);
-          rejected.push({ ok: true, contentType, cmsId });
-        }
+        const result = await rejectMoreEventGroupCode(strapi, {
+          contentType,
+          cmsId,
+          movieId: item.movieId,
+          theaterShowId: item.theaterShowId,
+          venueId: item.venueId,
+          eventGroupCode,
+        });
+        rejected.push(result);
       } catch (e) {
         errors.push({
           contentType,
           cmsId,
-          eventGroupCode: eventGroupCode || null,
+          eventGroupCode,
           error: e?.message || String(e),
         });
       }
     }
 
-    const pendingRemaining = (await loadPendingApprovalItems(strapi)).length;
     ctx.body = {
       ok: errors.length === 0,
       rejected,
@@ -118,67 +107,6 @@ module.exports = {
           : errors.length
             ? `Αποτυχία απόρριψης (${errors.length})`
             : 'Δεν υπάρχουν εγγραφές προς απόρριψη',
-      pendingRemaining,
-    };
-  },
-
-  async approve(ctx) {
-    const body = ctx.request.body ?? {};
-    const overwriteExisting = body.overwriteExisting === true;
-    const adminEmail = ctx.state?.admin?.email || 'unknown';
-
-    const items = Array.isArray(body.approvals)
-      ? body.approvals
-      : body.cmsId != null || body.movieId != null || body.theaterShowId != null || body.venueId != null
-        ? [{
-            contentType: body.contentType,
-            cmsId: body.cmsId,
-            movieId: body.movieId,
-            theaterShowId: body.theaterShowId,
-            venueId: body.venueId,
-            eventGroupCode: body.eventGroupCode,
-          }]
-        : [];
-
-    if (!items.length) {
-      ctx.status = 400;
-      ctx.body = { ok: false, error: { message: 'Απαιτείται cmsId ή approvals[]' } };
-      return;
-    }
-
-    const approved = [];
-    const errors = [];
-
-    for (const item of items) {
-      try {
-        const result = await approveMoreEventGroupCode(strapi, {
-          contentType: item.contentType,
-          cmsId: item.cmsId,
-          movieId: item.movieId,
-          theaterShowId: item.theaterShowId,
-          venueId: item.venueId,
-          eventGroupCode: item.eventGroupCode,
-          overwriteExisting,
-        });
-        approved.push(result);
-        strapi.log.info(
-          `[more-lookup] ${result.queued ? 'queued' : 'approved'} by ${adminEmail} ${result.contentType} ${result.cmsId} → ${result.eventGroupCode}`,
-        );
-      } catch (e) {
-        errors.push({
-          contentType: item.contentType,
-          cmsId: item.cmsId ?? item.movieId ?? item.theaterShowId ?? item.venueId,
-          error: e?.message || String(e),
-        });
-      }
-    }
-
-    ctx.body = {
-      ok: errors.length === 0,
-      approved,
-      errors,
-      message: `Στην ουρά: ${approved.length}${errors.length ? ` · ${errors.length} σφάλματα` : ''}`,
-      pendingRemaining: (await loadPendingApprovalItems(strapi)).length,
     };
   },
 
@@ -218,7 +146,6 @@ module.exports = {
           const result = await applyMoreEventCodeMatches(strapi, {
             overwriteExisting: body.overwriteExisting === true,
           });
-          result.pendingApproval = await loadPendingApprovalItems(strapi);
           ctx.body = result;
         } catch (e) {
           strapi.log.error('[more-lookup] apply failed', e);
@@ -235,12 +162,11 @@ module.exports = {
           matchCms,
           listAll,
           skipVerify,
-          syncPending: matchCms,
         });
         ctx.body = {
           ...result,
           message: matchCms
-            ? `Ταύτιση: ${result.stats.matched} (ταινίες ${result.stats.cmsMovies} · θέατρο ${result.stats.cmsTheaterShows}) · ${result.stats.pendingApproval} προς έγκριση · κατάλογος: ${result.stats.catalogShown ?? result.catalog?.length ?? 0}`
+            ? `Ταύτιση: ${result.stats.matched} (ταινίες ${result.stats.cmsMovies} · θέατρο ${result.stats.cmsTheaterShows}) · κατάλογος: ${result.stats.catalogShown ?? result.catalog?.length ?? 0}`
             : `Κατάλογος More: ${result.stats.catalogShown ?? result.catalog?.length ?? 0} εγγραφές`,
         };
       } catch (e) {
@@ -360,7 +286,6 @@ module.exports = {
         eventGroupCode: body.eventGroupCode,
         catalogKind: body.catalogKind,
         moreTitle: body.moreTitle,
-        queueApproval: body.queueApproval !== false,
         overwriteExisting: body.overwriteExisting === true,
       });
       strapi.log.info(
@@ -370,7 +295,7 @@ module.exports = {
         ...result,
         message: result.alreadyLinked
           ? `Ο κωδικός ${result.eventGroupCode} είναι ήδη συνδεδεμένος`
-          : `Συνδέθηκε ${result.eventGroupCode} → CMS #${result.cmsId}${result.approval?.queued ? ' · στην ουρά' : ''}`,
+          : `Συνδέθηκε ${result.eventGroupCode} → CMS #${result.cmsId}`,
       };
     } catch (e) {
       ctx.status = 400;

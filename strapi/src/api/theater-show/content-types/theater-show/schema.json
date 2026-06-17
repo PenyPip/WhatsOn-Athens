@@ -106,34 +106,12 @@
       "component": "cinema.more-code-link",
       "description": "Ρητές συνδέσεις More κωδικού → αυτή η παράσταση (ταύτιση lookup)."
     },
-    "pending_event_group_code": {
-      "type": "string",
-      "private": true,
-      "description": "Προτεινόμενος More κωδικός — αναμένει έγκριση admin."
-    },
-    "pending_more_title": {
-      "type": "string",
-      "private": true,
-      "description": "Τίτλος στο More για την προτεινόμενη ταύτιση."
-    },
-    "pending_match_score": {
-      "type": "decimal",
-      "private": true,
-      "description": "Score ταύτισης CMS↔More (0–1)."
-    },
     "rejected_more_codes": {
       "type": "component",
       "repeatable": true,
       "component": "cinema.rejected-more-code",
       "private": true,
       "description": "Απορριφθείσες προτάσεις ταύτισης — δεν εμφανίζονται ξανά."
-    },
-    "approved_more_codes": {
-      "type": "component",
-      "repeatable": true,
-      "component": "cinema.approved-more-code",
-      "private": true,
-      "description": "Εγκεκριμένοι κωδικοί προς εγγραφή CMS (κουμπί «Γράψε αυτόματα»)."
     },
     "theater_performances": {
       "type": "relation",

@@ -5,6 +5,7 @@ import { Check, Link2, Mail, MessageCircle, Share2 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { absolutePageUrl } from "@/lib/siteMetadata";
+import { useClientMounted } from "@/hooks/useClientMounted";
 
 type SharePageButtonProps = {
   path: string;
@@ -35,11 +36,12 @@ function openShareWindow(url: string) {
 export default function SharePageButton({ path, title, variant = "default", className }: SharePageButtonProps) {
   const [open, setOpen] = useState(false);
   const [copied, setCopied] = useState(false);
+  const mounted = useClientMounted();
 
   const url = useMemo(() => pageUrl(path), [path]);
   const shareTitle = title.trim() || "ταινία";
   const canNativeShare =
-    typeof navigator !== "undefined" && typeof navigator.share === "function";
+    mounted && typeof navigator !== "undefined" && typeof navigator.share === "function";
 
   const copyLink = useCallback(async () => {
     try {

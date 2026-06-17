@@ -136,11 +136,11 @@ const Navbar = () => {
               <NavSearch
                 ref={mobileSearchRef}
                 className="min-w-0 flex-1"
-                inputClassName="h-9 text-xs"
+                inputClassName="h-10 min-h-10"
               />
             </Suspense>
           ) : (
-            <NavSearchFallback className="h-9 min-w-0 flex-1" />
+            <NavSearchFallback className="h-10 min-h-10 min-w-0 flex-1" />
           )}
           <MobileNavMenuButton onClick={() => setMobileMenuOpen(true)} />
         </div>

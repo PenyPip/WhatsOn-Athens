@@ -12,24 +12,6 @@ module.exports = {
       },
     },
     {
-      method: 'GET',
-      path: '/more-lookup/pending',
-      handler: 'more-lookup.pending',
-      config: {
-        auth: false,
-        policies: ['global::is-admin'],
-      },
-    },
-    {
-      method: 'POST',
-      path: '/more-lookup/approve',
-      handler: 'more-lookup.approve',
-      config: {
-        auth: false,
-        policies: ['global::is-admin'],
-      },
-    },
-    {
       method: 'POST',
       path: '/more-lookup/reject',
       handler: 'more-lookup.reject',
