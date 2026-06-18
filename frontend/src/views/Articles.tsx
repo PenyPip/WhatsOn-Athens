@@ -70,7 +70,7 @@ export default function Articles() {
           })}
         </div>
 
-        {isLoading && !articles?.length ? (
+        {isLoading && articles == null ? (
           <LoadingState message="Φόρτωση άρθρων..." />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
