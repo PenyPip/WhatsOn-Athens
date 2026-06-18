@@ -1,5 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
 import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_SUBTITLE_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import LoadingState from "@/components/LoadingState";
@@ -12,6 +13,7 @@ import ArticleTags from "@/components/ArticleTags";
 import { resolveArticleRelatedListLabel } from "@/lib/articleRelated";
 import { articleTypeLabels, formatArticleDate } from "@/lib/articleLabels";
 import { ARTICLE_PAGE_CLASS } from "@/lib/articleTypography";
+import { prefetchArticleBySlug, prefetchArticleDetailChunk } from "@/lib/articlePrefetch";
 
 const articleTypes = [
   "all",
@@ -26,8 +28,13 @@ type ArticleFilterType = (typeof articleTypes)[number];
 
 export default function Articles() {
   usePageSeo(staticPageSeo.articles);
+  const queryClient = useQueryClient();
   const { data: articles, isLoading } = useArticles(true, 100);
   const [filter, setFilter] = useState<ArticleFilterType>("all");
+
+  useEffect(() => {
+    void prefetchArticleDetailChunk();
+  }, []);
 
   const filtered = useMemo(() => {
     const all = articles ?? [];
@@ -63,7 +70,7 @@ export default function Articles() {
           })}
         </div>
 
-        {isLoading ? (
+        {isLoading && !articles?.length ? (
           <LoadingState message="Φόρτωση άρθρων..." />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -75,7 +82,16 @@ export default function Articles() {
                 className="animate-stagger-in card-elevated overflow-hidden"
                 style={{ ["--stagger" as string]: Math.min(i, 8) }}
               >
-                <Link to={`/articles/${article.slug}`} className="group block p-5">
+                <Link
+                  to={`/articles/${article.slug}`}
+                  className="group block p-5"
+                  onMouseEnter={() => {
+                    void prefetchArticleBySlug(queryClient, article.slug);
+                  }}
+                  onFocus={() => {
+                    void prefetchArticleBySlug(queryClient, article.slug);
+                  }}
+                >
                   {article.featuredImageUrl ? (
                     <img
                       src={article.featuredImageUrl}

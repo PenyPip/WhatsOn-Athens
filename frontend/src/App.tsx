@@ -1,5 +1,6 @@
-import { lazy, Suspense, type ReactNode } from "react";
+import { lazy, Suspense, useEffect, type ReactNode } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
+import { prefetchArticleDetailChunk } from "@/lib/articlePrefetch";
 import { cn } from "@/lib/utils";
 import UrlBackedMemoryRouter from "@/components/UrlBackedMemoryRouter";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -73,6 +74,12 @@ type AppShellProps = {
 function AppShell({ homeMainOverlap }: AppShellProps) {
   const { pathname } = useLocation();
   const overlapHome = homeMainOverlap ?? pathname === "/";
+
+  useEffect(() => {
+    if (/^\/articles\/[^/]+$/.test(pathname)) {
+      void prefetchArticleDetailChunk();
+    }
+  }, [pathname]);
 
   return (
     <>

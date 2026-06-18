@@ -1,6 +1,7 @@
 import { useMemo } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { findArticleInListCache } from "@/lib/articlePrefetch";
 import { CONTENT_QUERY_OPTIONS } from "@/lib/contentQuery";
 import { PROGRAM_QUERY_OPTIONS, SHOWTIMES_CALENDAR_QUERY_KEY, THEATER_PERFORMANCES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 import { resolveHomepageLayout } from "@/config/home";
@@ -158,8 +159,18 @@ export const useArticles = (enabled = true, limit = 6) =>
     enabled,
   });
 
-export const useArticleBySlug = (slug: string) =>
-  useQuery({ queryKey: ["article", slug], queryFn: () => api.getArticleBySlug(slug), enabled: !!slug });
+export const useArticleBySlug = (slug: string) => {
+  const queryClient = useQueryClient();
+  return useQuery({
+    queryKey: ["article", slug],
+    queryFn: () => api.getArticleBySlug(slug),
+    enabled: !!slug,
+    ...CONTENT_QUERY_OPTIONS,
+    retry: 1,
+    throwOnError: false,
+    placeholderData: () => findArticleInListCache(queryClient, slug),
+  });
+};
 
 export const useArticlesForMovie = (movieSlug: string, enabled = true) =>
   useQuery({

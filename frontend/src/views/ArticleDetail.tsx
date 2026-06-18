@@ -16,7 +16,7 @@ export default function ArticleDetail() {
 
   usePageSeo(
     useMemo(() => {
-      if (isLoading) return { title: "Άρθρο", enabled: false };
+      if (isLoading && !article) return { title: "Άρθρο", enabled: false };
       if (!article) return { ...staticPageSeo.notFound, path: slug ? `/articles/${slug}` : "/articles" };
       return {
         title: article.title,
@@ -31,7 +31,7 @@ export default function ArticleDetail() {
     [article],
   );
 
-  if (isLoading) {
+  if (!article && isLoading) {
     return (
       <div className={PAGE_BELOW_NAV_CLASS}>
         <LoadingState />

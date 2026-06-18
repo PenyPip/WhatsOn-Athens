@@ -4,7 +4,9 @@ import EventCard from "@/components/EventCard";
 import RestaurantCard from "@/components/RestaurantCard";
 import VenueCard from "@/components/VenueCard";
 import type { ReactNode } from "react";
-import { Fragment, useMemo } from "react";
+import { Fragment, useEffect, useMemo } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { prefetchArticleBySlug, prefetchArticleDetailChunk } from "@/lib/articlePrefetch";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
@@ -326,6 +328,7 @@ type HomeBodyProps = {
 
 export default function HomeBody({ layout }: HomeBodyProps) {
   const sections = layout.sections;
+  const queryClient = useQueryClient();
   const isMobile = useIsMobile();
   const needsVenues = homeNeedsVenues(sections);
   const needsTheater = homeNeedsTheater(sections);
@@ -360,6 +363,12 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     needsArticles && deferSecondary,
     6,
   );
+
+  useEffect(() => {
+    if (needsArticles && deferSecondary) {
+      void prefetchArticleDetailChunk();
+    }
+  }, [needsArticles, deferSecondary]);
   const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(needsEvents && deferSecondary, 6);
   const {
     data: theaterShows,
@@ -726,6 +735,12 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                           <Link
                             to={`/articles/${article.slug}`}
                             className="group flex h-full gap-3 rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background"
+                            onMouseEnter={() => {
+                              void prefetchArticleBySlug(queryClient, article.slug);
+                            }}
+                            onFocus={() => {
+                              void prefetchArticleBySlug(queryClient, article.slug);
+                            }}
                           >
                             {article.featuredImageUrl ? (
                               <img

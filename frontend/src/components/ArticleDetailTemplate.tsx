@@ -53,7 +53,7 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
 
   return (
     <div className={cn(ARTICLE_PAGE_CLASS, "min-h-screen bg-white pb-20 md:pb-0")}>
-      <div className={cn(ARTICLE_COLUMN_CLASS, "animate-fade-in-up pt-20 pb-16 md:pt-28 md:pb-24 lg:pt-32")}>
+      <div className={cn(ARTICLE_COLUMN_CLASS, "pt-20 pb-16 md:pt-28 md:pb-24 lg:pt-32")}>
           <Link
             to="/articles"
             className="font-article-ui mb-10 inline-flex items-center gap-1.5 text-xs font-medium text-[#1C1D62]/55 transition-colors hover:text-[#7C2B76]"
@@ -97,6 +97,9 @@ export default function ArticleDetailTemplate({ article, contentHtml }: ArticleD
                   alt={article.featuredImageAlt || article.title}
                   className="h-full w-full object-cover object-center"
                   loading="eager"
+                  fetchPriority="high"
+                  width={1200}
+                  height={600}
                 />
               </div>
               {article.featuredImageAlt ? (
