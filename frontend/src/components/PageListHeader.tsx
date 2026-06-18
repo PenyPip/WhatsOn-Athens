@@ -1,16 +1,24 @@
 import { cn } from "@/lib/utils";
 import PageHeaderReveal from "@/components/PageHeaderReveal";
 
+/** Καθαρό κενό κάτω από fixed navbar (mobile ~4rem + safe area, desktop h-28). */
+export const PAGE_NAV_CLEARANCE_CLASS =
+  "pt-[max(calc(env(safe-area-inset-top,0px)+4.75rem),5.5rem)] md:pt-32";
+
 /** Shell wrapper για σελίδες λίστας — compact offset κάτω από fixed nav. */
 export const PAGE_LIST_SHELL_CLASS = "min-h-screen pb-20 md:pb-8";
 
-/** Compact indigo band κάτω από navbar (λίστες θεάτρου, events κ.λπ.). */
-export const PAGE_LIST_HERO_CLASS =
-  "section-black mb-6 max-md:-mt-16 max-md:py-5 max-md:pt-20 md:-mt-28 md:mb-8 md:py-8 md:pt-28";
+/** Indigo band κάτω από navbar (λίστες, venue program, events κ.λπ.). */
+export const PAGE_LIST_HERO_CLASS = cn(
+  "section-black mb-6 pb-6 md:mb-8 md:pb-10",
+  PAGE_NAV_CLEARANCE_CLASS,
+);
 
-/** Ακόμα πιο συμπαγές band για /movies (λίστα + φίλτρα). */
-export const PAGE_MOVIES_LIST_HERO_CLASS =
-  "section-black mb-5 max-md:-mt-14 max-md:py-3 max-md:pt-[4.25rem] md:-mt-28 md:mb-6 md:py-5 md:pt-28";
+/** Band για /movies (λίστα + φίλτρα / πρόγραμμα σινεμά). */
+export const PAGE_MOVIES_LIST_HERO_CLASS = cn(
+  "section-black mb-5 pb-5 md:mb-6 md:pb-8",
+  PAGE_NAV_CLEARANCE_CLASS,
+);
 
 export const PAGE_LIST_TITLE_CLASS =
   "font-display text-2xl font-bold text-white mb-1 md:mb-2 md:text-4xl";
@@ -22,15 +30,19 @@ export const PAGE_MOVIES_LIST_TITLE_CLASS =
 export const PAGE_LIST_SUBTITLE_CLASS = "text-sm text-white/60 md:text-base";
 
 /** Εσωτερικό padding για hero λεπτομέρειας (παράσταση, event). */
-export const PAGE_DETAIL_HERO_INNER_CLASS =
-  "relative z-10 container pb-6 pt-20 md:pb-8 md:pt-28";
+export const PAGE_DETAIL_HERO_INNER_CLASS = cn(
+  "relative z-10 container pb-6 md:pb-8",
+  PAGE_NAV_CLEARANCE_CLASS,
+);
 
-/** Συμπαγές hero σελίδας ταινίας — χωρίς επιπλέον κενό κάτω από navbar. */
-export const PAGE_MOVIE_DETAIL_HERO_INNER_CLASS =
-  "relative z-10 container pb-4 pt-[4.25rem] md:pb-6 md:pt-28";
+/** Hero σελίδας ταινίας — ίδιο clearance με λίστες. */
+export const PAGE_MOVIE_DETAIL_HERO_INNER_CLASS = cn(
+  "relative z-10 container pb-4 md:pb-6",
+  PAGE_NAV_CLEARANCE_CLASS,
+);
 
 /** Loading / not-found states κάτω από navbar. */
-export const PAGE_BELOW_NAV_CLASS = "min-h-screen pt-20 md:pt-28";
+export const PAGE_BELOW_NAV_CLASS = cn("min-h-screen", PAGE_NAV_CLEARANCE_CLASS);
 
 type PageListHeaderProps = {
   children: React.ReactNode;
