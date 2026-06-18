@@ -742,7 +742,7 @@ function mapRawMatchToResult(row, verified, applyMinScore) {
       ? verified.get(match.suggestedEventGroupCode) ?? null
       : null,
   }));
-  const cmsCodes = cms.eventGroupCodes || [];
+  const cmsCodes = cmsKnownEventGroupCodes(cms);
   const cmsCode = cms.eventGroupCode || cmsCodes[0] || null;
   const hasSuggested = cmsHasEventGroupCode(cms, suggestedCode);
 
@@ -1005,6 +1005,7 @@ function mapCmsVenueLookupRow(row) {
     eventGroupCode: row.event_group_code ?? '',
     eventGroupCodes,
     rejectedMoreCodes: collectRejectedMoreCodes(row),
+    moreCodeLinks: collectMoreCodeLinksFromRaw(row),
   };
 }
 
@@ -1173,14 +1174,22 @@ function annotateCatalogWithCmsStatus(entries, cmsCodeIndex, cmsVenueByMoreId) {
   });
 }
 
+function cmsKnownEventGroupCodes(cms) {
+  const written =
+    cms.eventGroupCodes?.length > 0
+      ? cms.eventGroupCodes
+      : cms.contentType === 'venue'
+        ? collectVenueBundleCodes(cms)
+        : resolveEventGroupCodesFromEntry(cms);
+  const linked = (cms.moreCodeLinks || [])
+    .map((link) => String(link.code || '').trim())
+    .filter(Boolean);
+  return [...new Set([...written, ...linked])];
+}
+
 function cmsHasEventGroupCode(cms, code) {
   if (!code) return false;
-  const codes = cms.eventGroupCodes?.length
-    ? cms.eventGroupCodes
-    : cms.contentType === 'venue'
-      ? collectVenueBundleCodes(cms)
-      : resolveEventGroupCodesFromEntry(cms);
-  return codes.includes(code);
+  return cmsKnownEventGroupCodes(cms).includes(code);
 }
 
 /** @deprecated */
@@ -1307,9 +1316,13 @@ async function loadMoreCodeLinkApplyQueue(strapi) {
   const queue = [];
 
   for (const { uid, contentType } of configs) {
+    const fields =
+      contentType === 'venue'
+        ? ['id', 'name', 'event_group_code', 'type']
+        : ['id', 'title', 'event_group_code'];
     const rows = await strapi.entityService.findMany(uid, {
       filters: { more_code_links: { $notNull: true } },
-      fields: ['id', contentType === 'venue' ? 'name' : 'title', 'event_group_code', 'type'],
+      fields,
       populate: { more_code_links: true, more_event_groups: true },
       publicationState: 'preview',
       pagination: { pageSize: 500 },

@@ -1492,7 +1492,9 @@ const App = () => {
   }, [matchVisibleKeys]);
 
   const catalog = result?.catalog ?? [];
-  const catalogScope = catalog.filter((row) => !catalogOnlyMissing || !row.inCms);
+  const catalogScope = catalog.filter(
+    (row) => !catalogOnlyMissing || (!row.inCms && !catalogVenueLinkedOnly(row)),
+  );
   const catalogFilterOptions = CATALOG_KIND_FILTERS.map((opt) => ({
     ...opt,
     count: catalogScope.filter((row) => catalogMatchesKindFilter(row, opt.id)).length,
@@ -1562,8 +1564,11 @@ const App = () => {
         catalogKind: catalogKindForMatchRow(row),
         moreTitle: row.displayMoreTitle,
       });
+      if (res?.data?.ok) {
+        pruneMatchDisplayRow(row.displayKey);
+      }
       toggleNotification({
-        type: 'success',
+        type: res?.data?.alreadyLinked ? 'info' : 'success',
         message: res?.data?.message || `Συνδέθηκε ${row.displayCode}`,
       });
     } catch (error) {
