@@ -24,7 +24,6 @@ export function prefetchArticleBySlug(queryClient: QueryClient, slug: string) {
     queryFn: () => api.getArticleBySlug(key),
     ...CONTENT_QUERY_OPTIONS,
     retry: 1,
-    throwOnError: false,
   });
 }
 

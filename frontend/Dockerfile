@@ -22,6 +22,8 @@ CMD ["sh", "/front/scripts/docker-dev-entrypoint.sh"]
 
 FROM base AS builder
 
+ENV NODE_ENV=production
+
 ARG NEXT_PUBLIC_API_URL=/api
 ARG NEXT_PUBLIC_SITE_URL=https://the37n.gr
 # Κατά build με network:host (docker-compose) — Strapi στο host :1337.

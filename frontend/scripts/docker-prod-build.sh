@@ -16,3 +16,10 @@ if ! npm run build; then
   echo "  - sitemap strict: SITEMAP_STRICT_MODE=0 για parallel compose build" >&2
   exit "${code}"
 fi
+
+if [ ! -d out ] || [ ! -f out/index.html ]; then
+  echo "[docker-build] ΑΠΟΤΥΧΙΑ: λείπει ο φάκελος out/ (static export). Έλεγξε NODE_ENV=production και logs του next build." >&2
+  exit 1
+fi
+
+echo "[docker-build] OK — $(find out -name '*.html' | wc -l | tr -d ' ') HTML files στο out/"
