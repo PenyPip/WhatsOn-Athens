@@ -26,10 +26,13 @@ export default function SpaRoot({
   homeStaticLcp = false,
   suppressHydrationWarning,
 }: SpaRootProps) {
-  const dehydratedState = useMemo(
-    () => bootstrapState ?? readRqBootstrapState(),
-    [bootstrapState],
-  );
+  const dehydratedState = useMemo(() => {
+    // Client: προτίμησε το inline `#__RQ_STATE__` (ίδιο JSON με το static HTML).
+    if (typeof document !== "undefined") {
+      return readRqBootstrapState() ?? bootstrapState;
+    }
+    return bootstrapState;
+  }, [bootstrapState]);
 
   return (
     <div suppressHydrationWarning={suppressHydrationWarning}>

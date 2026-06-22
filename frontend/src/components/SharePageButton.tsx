@@ -38,7 +38,11 @@ export default function SharePageButton({ path, title, variant = "default", clas
   const [copied, setCopied] = useState(false);
   const mounted = useClientMounted();
 
-  const url = useMemo(() => pageUrl(path), [path]);
+  const url = useMemo(() => {
+    const normalized = path.startsWith("/") ? path : `/${path}`;
+    if (!mounted) return absolutePageUrl(normalized);
+    return pageUrl(path);
+  }, [mounted, path]);
   const shareTitle = title.trim() || "ταινία";
   const canNativeShare =
     mounted && typeof navigator !== "undefined" && typeof navigator.share === "function";

@@ -8,6 +8,7 @@ import { Fragment, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { prefetchArticleBySlug, prefetchArticleDetailChunk } from "@/lib/articlePrefetch";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
+import { useSiteNow } from "@/hooks/useSiteNow";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
 import {
@@ -329,6 +330,7 @@ type HomeBodyProps = {
 export default function HomeBody({ layout }: HomeBodyProps) {
   const sections = layout.sections;
   const queryClient = useQueryClient();
+  const siteNow = useSiteNow();
   const isMobile = useIsMobile();
   const needsVenues = homeNeedsVenues(sections);
   const needsTheater = homeNeedsTheater(sections);
@@ -413,19 +415,25 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     [theaterShows],
   );
   const summerMoviesForHome = useMemo(
-    () => moviesWithSummerOutdoorShowtimeThisCinemaWeek(movieList, stList, venueList),
-    [movieList, stList, venueList],
+    () => moviesWithSummerOutdoorShowtimeThisCinemaWeek(movieList, stList, venueList, siteNow),
+    [movieList, stList, venueList, siteNow],
   );
-  const weekMovies = useMemo(() => moviesForUpcomingCinemaWeek(movieList, stList), [movieList, stList]);
-  const upcomingWeekLabel = useMemo(() => formatUpcomingCinemaWeekRange(), []);
-  const todayMovies = useMemo(() => moviesWithShowtimeToday(movieList, stList), [movieList, stList]);
+  const weekMovies = useMemo(
+    () => moviesForUpcomingCinemaWeek(movieList, stList, siteNow),
+    [movieList, stList, siteNow],
+  );
+  const upcomingWeekLabel = useMemo(() => formatUpcomingCinemaWeekRange(siteNow), [siteNow]);
+  const todayMovies = useMemo(
+    () => moviesWithShowtimeToday(movieList, stList, siteNow),
+    [movieList, stList, siteNow],
+  );
   const newMoviesList = useMemo(
-    () => moviesReleasedInLastDays(movieList, 10, stList, venueList),
-    [movieList, stList, venueList],
+    () => moviesReleasedInLastDays(movieList, 10, stList, venueList, siteNow),
+    [movieList, stList, venueList, siteNow],
   );
   const comingSoonMovies = useMemo(
-    () => moviesComingAfterUpcomingCinemaWeek(movieList, stList, venueList),
-    [movieList, stList, venueList],
+    () => moviesComingAfterUpcomingCinemaWeek(movieList, stList, venueList, siteNow),
+    [movieList, stList, venueList, siteNow],
   );
   const mostTalkedAboutList = useMemo(() => mostTalkedAboutMovies(movieList), [movieList]);
 
@@ -453,6 +461,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 movies={mostTalkedAboutList}
                 showtimes={stList}
                 loading={awaitingMovies || (isMobile && !deferSecondary)}
+                now={siteNow}
               />,
             );
           case "strip":

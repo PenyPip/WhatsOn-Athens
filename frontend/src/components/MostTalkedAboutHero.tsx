@@ -7,6 +7,7 @@ import { movieTitleLines, posterAltForMovie } from "@/lib/movieTitles";
 import { synopsisExcerpt } from "@/lib/synopsisExcerpt";
 import { HOME_HERO_COMPACT_SECTION_CLASS } from "@/lib/homeHeroLayout";
 import { useHomeLcpDone } from "@/hooks/useHomeLcpDone";
+import { useSiteNow } from "@/hooks/useSiteNow";
 import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
 import { posterLcpSrc } from "@/lib/posterDelivery";
@@ -77,6 +78,7 @@ type MostTalkedAboutHeroProps = {
   movies: StrapiMovie[];
   showtimes?: StrapiShowtime[];
   loading?: boolean;
+  now?: Date;
 };
 
 function HeroNavButton({
@@ -113,8 +115,10 @@ function heroMetaLine(movie: StrapiMovie): string {
   return parts.join(" · ");
 }
 
-const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAboutHeroProps) => {
+const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: MostTalkedAboutHeroProps) => {
   const markLcpDone = useHomeLcpDone();
+  const siteNow = useSiteNow();
+  const now = nowProp ?? siteNow;
   const staticLcpOnPage = useHomeStaticLcpOnPage();
   const [activeIndex, setActiveIndex] = useState(0);
 
@@ -202,7 +206,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading }: MostTalkedAbou
   const active = movies[activeIndex];
   const titles = movieTitleLines(active);
   const synopsis = heroSynopsisText(active);
-  const schedule = resolveHeroScheduleDisplay(active, showtimes);
+  const schedule = resolveHeroScheduleDisplay(active, showtimes, now);
   const cta = heroMovieCta(active.slug);
   const meta = heroMetaLine(active);
   return (

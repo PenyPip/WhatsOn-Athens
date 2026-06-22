@@ -6,10 +6,19 @@ export const articleTypeLabels: Record<string, string> = {
   politistiko_keimeno: "Πολιτιστικό",
 };
 
+function parseArticleDate(value: string): Date {
+  const s = value.trim();
+  if (!s) return new Date(Number.NaN);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
+    return new Date(`${s}T12:00:00+03:00`);
+  }
+  return new Date(s);
+}
+
 export function formatArticleDate(value: string): string {
-  const d = new Date(value);
+  const d = parseArticleDate(value);
   if (!Number.isFinite(d.getTime())) return "Χωρίς ημερομηνία";
-  return d.toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" });
+  return d.toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Athens" });
 }
 
 /** Για editorial header (π.χ. «3 ΙΟΥΝΙΟΥ 2026»). */

@@ -12,6 +12,7 @@ import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
 import { parseTheaterVenueProgramPath } from "@/lib/theaterVenuePath";
 import { SHOWTIMES_CALENDAR_QUERY_KEY, THEATER_PERFORMANCES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 import { finalizeBootstrapCache, minifyDehydratedState } from "@/lib/slimDehydrate";
+import { stampBootstrapNow } from "@/lib/siteClock";
 
 const queryDefaults = {
   staleTime: 300_000,
@@ -266,5 +267,6 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
     console.warn(`[ssrPrefetch] ${normalized}:`, err);
   }
 
+  stampBootstrapNow(qc);
   return minifyDehydratedState(dehydrate(qc));
 }
