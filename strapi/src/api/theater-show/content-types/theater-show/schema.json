@@ -104,7 +104,8 @@
       "type": "component",
       "repeatable": true,
       "component": "cinema.more-code-link",
-      "description": "Ρητές συνδέσεις More κωδικού → αυτή η παράσταση (ταύτιση lookup)."
+      "private": true,
+      "description": "Προσωρινές συνδέσεις More lookup (πριν «Γράψε αυτόματα»). Δεν εμφανίζεται στο CMS — χρησιμοποίησε More lookup."
     },
     "rejected_more_codes": {
       "type": "component",

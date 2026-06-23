@@ -647,11 +647,27 @@ async function linkMoreCodeToCms(strapi, options = {}) {
   if (!config) throw new Error(`Άγνωστος τύπος CMS: ${contentType}`);
 
   const entry = await strapi.entityService.findOne(config.uid, cmsId, {
-    fields: ['id', contentType === 'venue' ? 'name' : 'title'],
-    populate: { more_code_links: true },
+    fields: ['id', contentType === 'venue' ? 'name' : 'title', 'event_group_code'],
+    populate: { more_code_links: true, more_event_groups: true },
     publicationState: 'preview',
   });
   if (!entry) throw new Error(`Δεν βρέθηκε ${contentType} #${cmsId}`);
+
+  const written = writtenEventGroupCodesFromEntry(entry, contentType);
+  if (written.includes(code)) {
+    await pruneMoreCodeLinks(strapi, contentType, cmsId, [code]);
+    return {
+      ok: true,
+      linked: false,
+      alreadyLinked: true,
+      alreadyWritten: true,
+      contentType,
+      cmsId,
+      eventGroupCode: code,
+      catalogKind,
+      message: `Ο κωδικός ${code} υπάρχει ήδη στα πεδία CMS (event_group_code / more_event_groups).`,
+    };
+  }
 
   const existing = moreCodeLinksPayloadFromRaw(entry);
   const hasLink = existing.some((link) => link.code === code);
@@ -843,6 +859,41 @@ function moreCodeLinksPayloadFromRaw(row) {
     catalog_kind: link.catalogKind,
     more_title: link.moreTitle || undefined,
   }));
+}
+
+function writtenEventGroupCodesFromEntry(entry, contentType) {
+  if (contentType === 'venue') return collectVenueBundleCodes(entry);
+  return collectEventGroupCodes(entry);
+}
+
+/** more_code_links μόνο για κωδικούς που δεν έχουν γραφτεί ακόμα στα πεδία CMS. */
+function pendingMoreCodeLinksFromEntry(entry, contentType) {
+  const written = new Set(writtenEventGroupCodesFromEntry(entry, contentType));
+  return collectMoreCodeLinksFromRaw(entry).filter((link) => !written.has(link.code));
+}
+
+async function pruneMoreCodeLinks(strapi, contentType, entryId, codesToRemove) {
+  const config = CMS_LOOKUP_CONFIG[contentType];
+  if (!config || !entryId) return 0;
+  const removeSet = new Set(
+    (codesToRemove || []).map((code) => String(code || '').trim()).filter(Boolean),
+  );
+  if (!removeSet.size) return 0;
+
+  const entry = await strapi.entityService.findOne(config.uid, entryId, {
+    populate: { more_code_links: true },
+    publicationState: 'preview',
+  });
+  if (!entry) return 0;
+
+  const before = moreCodeLinksPayloadFromRaw(entry);
+  const after = before.filter((link) => !removeSet.has(link.code));
+  if (after.length === before.length) return 0;
+
+  await strapi.entityService.update(config.uid, entryId, {
+    data: { more_code_links: after },
+  });
+  return before.length - after.length;
 }
 
 function catalogKindForCatalogEntry(entry) {
@@ -1046,7 +1097,8 @@ function buildCmsEventGroupCodeIndex(cmsItems, cmsVenues) {
   };
 
   for (const item of cmsItems) {
-    for (const code of resolveEventGroupCodesFromEntry(item)) {
+    const written = resolveEventGroupCodesFromEntry(item);
+    for (const code of written) {
       add(code, {
         contentType: item.contentType,
         cmsId: item.id,
@@ -1055,6 +1107,7 @@ function buildCmsEventGroupCodeIndex(cmsItems, cmsVenues) {
       });
     }
     for (const link of item.moreCodeLinks || []) {
+      if (written.includes(link.code)) continue;
       add(link.code, {
         contentType: item.contentType,
         cmsId: item.id,
@@ -1067,7 +1120,8 @@ function buildCmsEventGroupCodeIndex(cmsItems, cmsVenues) {
   }
 
   for (const venue of cmsVenues) {
-    for (const code of collectVenueMoreCodes(venue)) {
+    const written = collectVenueMoreCodes(venue);
+    for (const code of written) {
       add(code, {
         contentType: 'venue',
         cmsId: venue.id,
@@ -1077,6 +1131,7 @@ function buildCmsEventGroupCodeIndex(cmsItems, cmsVenues) {
       });
     }
     for (const link of collectMoreCodeLinksFromRaw(venue)) {
+      if (written.includes(link.code)) continue;
       add(link.code, {
         contentType: 'venue',
         cmsId: venue.id,
@@ -1181,10 +1236,10 @@ function cmsKnownEventGroupCodes(cms) {
       : cms.contentType === 'venue'
         ? collectVenueBundleCodes(cms)
         : resolveEventGroupCodesFromEntry(cms);
-  const linked = (cms.moreCodeLinks || [])
+  const pendingLinks = (cms.moreCodeLinks || [])
     .map((link) => String(link.code || '').trim())
-    .filter(Boolean);
-  return [...new Set([...written, ...linked])];
+    .filter((code) => code && !written.includes(code));
+  return [...new Set([...written, ...pendingLinks])];
 }
 
 function cmsHasEventGroupCode(cms, code) {
@@ -1226,6 +1281,7 @@ async function mergeEventGroupCodesIntoCms(strapi, contentType, entry, codes, op
   const incoming = [...new Set((codes || []).map((code) => String(code || '').trim()).filter(Boolean))];
   const toAdd = incoming.filter((code) => !existingCodes.includes(code));
   if (!toAdd.length) {
+    await pruneMoreCodeLinks(strapi, contentType, entry.id, incoming);
     return { added: [], primary: String(entry.event_group_code || '').trim() || null, alreadyPresent: true };
   }
 
@@ -1249,6 +1305,8 @@ async function mergeEventGroupCodesIntoCms(strapi, contentType, entry, codes, op
   }
 
   await strapi.entityService.update(config.uid, entry.id, { data });
+
+  await pruneMoreCodeLinks(strapi, contentType, entry.id, toAdd);
 
   return {
     added: toAdd,
@@ -1332,6 +1390,12 @@ async function loadMoreCodeLinkApplyQueue(strapi) {
       const links = collectMoreCodeLinksFromRaw(row);
       const existingCodes =
         contentType === 'venue' ? collectVenueBundleCodes(row) : collectEventGroupCodes(row);
+      const staleCodes = links
+        .map((link) => link.code)
+        .filter((code) => code && existingCodes.includes(code));
+      if (staleCodes.length) {
+        await pruneMoreCodeLinks(strapi, contentType, row.id, staleCodes);
+      }
       const linkedEventGroupCodes = links
         .map((link) => link.code)
         .filter((code) => code && !existingCodes.includes(code));
@@ -1737,6 +1801,7 @@ async function applyMoreEventCodeMatches(strapi, options = {}) {
       const existingCodes =
         contentType === 'venue' ? collectVenueBundleCodes(entry) : collectEventGroupCodes(entry);
       if (existingCodes.includes(code)) {
+        await pruneMoreCodeLinks(strapi, contentType, cmsId, [code]);
         skipped.push({
           contentType,
           cmsId,

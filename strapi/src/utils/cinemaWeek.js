@@ -88,8 +88,18 @@ function formatWeekLabel(start, end) {
   return `${a} – ${b}`;
 }
 
+/** Exact datetime μέσα στην άμεση επόμενη εβδομάδα κινηματογράφου (μελλοντικές μόνο). */
+function isDatetimeInUpcomingCinemaWeek(dt, now = new Date()) {
+  if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return false;
+  if (dt.getTime() < now.getTime()) return false;
+  const { start, end } = getUpcomingCinemaWeekBounds(now);
+  const t = dt.getTime();
+  return t >= start.getTime() && t <= end.getTime();
+}
+
 module.exports = {
   getUpcomingCinemaWeekBounds,
   showtimeOverlapsRange,
   formatWeekLabel,
+  isDatetimeInUpcomingCinemaWeek,
 };

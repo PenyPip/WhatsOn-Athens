@@ -38,6 +38,9 @@ function createVenueSyncStatsTracker() {
         skippedNoVenue: 0,
         errors: 0,
         autoCreated: false,
+        weekExpected: 0,
+        weekSynced: 0,
+        weekFailed: 0,
       });
     }
     return byVenueId.get(id);
@@ -61,6 +64,16 @@ function createVenueSyncStatsTracker() {
       }
       return stats;
     },
+    /** Προβολή επόμενης εβδομάδας κινηματογράφου — για updated status. */
+    recordWeekEvent(venueId, outcome) {
+      if (!outcome) return ensure(venueId);
+      const stats = ensure(venueId);
+      if (!stats) return null;
+      stats.weekExpected += 1;
+      if (outcome === 'synced') stats.weekSynced += 1;
+      else if (outcome === 'failed') stats.weekFailed += 1;
+      return stats;
+    },
     markAutoCreated(venueId) {
       const stats = ensure(venueId);
       if (stats) stats.autoCreated = true;
@@ -78,22 +91,36 @@ function createVenueSyncStatsTracker() {
 }
 
 /**
- * Κατάσταση μετά More sync — ποτέ no_new (μόνο cron Σάββατο).
- * complete = όλες οι προβολές πέρασαν · needs_manual = κάποιες όχι.
+ * Κατάσταση μετά More sync.
+ * - complete: όλες οι προβολές επόμενης εβδομάδας πέρασαν
+ * - needs_manual: κάποιες όχι (άγνωστη ταινία, mismatch, μερικό sync)
+ * - null: καμία προβολή εβδομάδας στο More — κράτα no_new
  *
- * @param {ReturnType<createVenueSyncStatsTracker>['entries'] extends () => infer T ? T[number][1] : never} stats
- * @returns {VenueUpdatedStatus}
+ * @returns {VenueUpdatedStatus | null}
  */
 function computeVenueUpdatedStatus(stats) {
-  const needsManual =
+  const weekExpected = stats.weekExpected || 0;
+  const weekSynced = stats.weekSynced || 0;
+  const weekFailed = stats.weekFailed || 0;
+
+  if (weekExpected > 0) {
+    if (!stats.autoCreated && weekFailed === 0 && weekSynced >= weekExpected) {
+      return VENUE_UPDATED_STATUS.COMPLETE;
+    }
+    return VENUE_UPDATED_STATUS.NEEDS_MANUAL;
+  }
+
+  if (
     stats.autoCreated ||
     stats.skippedUnknownEventId > 0 ||
     stats.skippedVenueMismatch > 0 ||
     stats.skippedNoVenue > 0 ||
-    stats.errors > 0;
+    stats.errors > 0
+  ) {
+    return VENUE_UPDATED_STATUS.NEEDS_MANUAL;
+  }
 
-  if (needsManual) return VENUE_UPDATED_STATUS.NEEDS_MANUAL;
-  return VENUE_UPDATED_STATUS.COMPLETE;
+  return null;
 }
 
 async function migrateVenueUpdatedBooleanToEnum(strapi) {
@@ -130,6 +157,7 @@ async function applyCinemaVenueUpdatedStatuses(strapi, tracker, { autoCreatedVen
     complete: 0,
     needs_manual: 0,
     preserved_complete: 0,
+    unchanged_no_new: 0,
     updated: 0,
     venues: [],
   };
@@ -163,25 +191,68 @@ async function applyCinemaVenueUpdatedStatuses(strapi, tracker, { autoCreatedVen
         created: stats.created,
         alreadyExists: stats.alreadyExists,
         skippedUnknownEventId: stats.skippedUnknownEventId,
+        weekExpected: stats.weekExpected,
+        weekSynced: stats.weekSynced,
+        weekFailed: stats.weekFailed,
         autoCreated: stats.autoCreated,
       });
       continue;
     }
 
-    const status = computeVenueUpdatedStatus(stats);
+    const next = computeVenueUpdatedStatus(stats);
+    if (next === null) {
+      summary.unchanged_no_new += 1;
+      summary.no_new += 1;
+      summary.venues.push({
+        venueId,
+        status: VENUE_UPDATED_STATUS.NO_NEW,
+        statusLabel: VENUE_UPDATED_LABELS.no_new,
+        preserved: true,
+        reason: 'no_upcoming_week_events',
+        created: stats.created,
+        alreadyExists: stats.alreadyExists,
+        weekExpected: stats.weekExpected,
+        weekSynced: stats.weekSynced,
+        weekFailed: stats.weekFailed,
+        autoCreated: stats.autoCreated,
+      });
+      continue;
+    }
+
+    if (next === current) {
+      summary[next] += 1;
+      summary.venues.push({
+        venueId,
+        status: next,
+        statusLabel: VENUE_UPDATED_LABELS[next],
+        preserved: true,
+        created: stats.created,
+        alreadyExists: stats.alreadyExists,
+        skippedUnknownEventId: stats.skippedUnknownEventId,
+        weekExpected: stats.weekExpected,
+        weekSynced: stats.weekSynced,
+        weekFailed: stats.weekFailed,
+        autoCreated: stats.autoCreated,
+      });
+      continue;
+    }
+
     await strapi.entityService.update('api::venue.venue', venueId, {
-      data: { updated: status },
+      data: { updated: next },
     });
-    summary[status] += 1;
+    summary[next] += 1;
     summary.updated += 1;
     summary.venues.push({
       venueId,
-      status,
-      statusLabel: VENUE_UPDATED_LABELS[status],
+      status: next,
+      statusLabel: VENUE_UPDATED_LABELS[next],
       preserved: false,
       created: stats.created,
       alreadyExists: stats.alreadyExists,
       skippedUnknownEventId: stats.skippedUnknownEventId,
+      weekExpected: stats.weekExpected,
+      weekSynced: stats.weekSynced,
+      weekFailed: stats.weekFailed,
       autoCreated: stats.autoCreated,
     });
   }
