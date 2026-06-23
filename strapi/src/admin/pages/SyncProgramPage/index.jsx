@@ -23,7 +23,7 @@ const SyncProgramPage = () => {
               <Typography variant="pi" textColor="neutral600">
                 · <strong>no_new</strong> — δεν έχουν μπει ακόμα οι νέες προβολές της εβδομάδας
                 <br />
-                · <strong>complete</strong> — όλες οι προβολές του σινεμά πέρασαν από More sync (δεν αλλάζει σε επανάληψη sync)
+                · <strong>complete</strong> — όλες οι προβολές της επόμενης εβδομάδας κινηματογράφου (Πέμπτη→) πέρασαν από More sync · μόνο <strong>Δευτέρα–Παρασκευή</strong> (δεν αλλάζει σε επανάληψη sync)
                 <br />
                 · <strong>needs_manual</strong> — κάποιες προβολές δεν πέρασαν (λείπουν ταινίες, mismatch venue κ.λπ.)
                 <br />

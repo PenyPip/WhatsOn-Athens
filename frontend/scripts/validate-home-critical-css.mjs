@@ -13,7 +13,7 @@ const REQUIRED_IF_LCP = [
   "min-height:380px",
   "min-height:580px",
   "#home-static-lcp{position:absolute;inset:0",
-  "html.spa-lcp-done #home-hero-slot{display:none}",
+  "html.spa-lcp-layout-done #home-hero-slot{display:none}",
   "contain:layout style paint",
 ];
 

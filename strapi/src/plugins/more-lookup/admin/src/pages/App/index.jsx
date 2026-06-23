@@ -1052,6 +1052,12 @@ function SyncReportPanel({ report }) {
                   value={venueStatus.preserved_complete}
                 />
               ) : null}
+              {(venueStatus.pending_complete_until_monday ?? 0) > 0 ? (
+                <StatBadge
+                  label="Έτοιμα · complete από Δευτέρα"
+                  value={venueStatus.pending_complete_until_monday}
+                />
+              ) : null}
             </Flex>
           </SyncReportSection>
         </Box>

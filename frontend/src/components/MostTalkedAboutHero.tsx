@@ -6,7 +6,7 @@ import { heroMovieCta, resolveHeroScheduleDisplay } from "@/lib/heroScheduleLine
 import { movieTitleLines, posterAltForMovie } from "@/lib/movieTitles";
 import { synopsisExcerpt } from "@/lib/synopsisExcerpt";
 import { HOME_HERO_COMPACT_SECTION_CLASS } from "@/lib/homeHeroLayout";
-import { useHomeLcpDone } from "@/hooks/useHomeLcpDone";
+import { useHomeLcpLayoutDone, useHomeLcpOverlayDone } from "@/hooks/useHomeLcpDone";
 import { useSiteNow } from "@/hooks/useSiteNow";
 import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
@@ -116,7 +116,8 @@ function heroMetaLine(movie: StrapiMovie): string {
 }
 
 const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: MostTalkedAboutHeroProps) => {
-  const markLcpDone = useHomeLcpDone();
+  const markOverlayDone = useHomeLcpOverlayDone();
+  const markLayoutDone = useHomeLcpLayoutDone();
   const siteNow = useSiteNow();
   const now = nowProp ?? siteNow;
   const staticLcpOnPage = useHomeStaticLcpOnPage();
@@ -148,7 +149,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
     const staticEl = document.getElementById("home-static-lcp");
     const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
 
-    /** Mobile: χωρίς αναμονή loading (deadlock) — desktop: περίμενε live hero (CLS). */
+    /** Mobile: overlay μόνο (idle) — layout handoff όταν έρθουν ταινίες (CLS). */
     if (staticEl && isMobileViewport) {
       let cancelled = false;
       let idleId: number | undefined;
@@ -156,7 +157,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
         requestAnimationFrame(() => {
           if (cancelled) return;
           const finish = () => {
-            if (!cancelled) markLcpDone();
+            if (!cancelled) markOverlayDone();
           };
           if (typeof requestIdleCallback !== "undefined") {
             idleId = requestIdleCallback(finish, { timeout: 1200 });
@@ -175,19 +176,33 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
     }
 
     if (loading) return;
+    const finishHandoff = () => {
+      markOverlayDone();
+      markLayoutDone();
+    };
     if (movies.length === 0) {
-      markLcpDone();
+      finishHandoff();
       return;
     }
     if (!staticEl) {
-      markLcpDone();
+      finishHandoff();
       return;
     }
     const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => markLcpDone());
+      requestAnimationFrame(finishHandoff);
     });
     return () => cancelAnimationFrame(frame);
-  }, [loading, movies.length, markLcpDone]);
+  }, [loading, movies.length, markOverlayDone, markLayoutDone]);
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (!window.matchMedia("(max-width: 767px)").matches) return;
+    if (loading || movies.length === 0) return;
+    if (document.documentElement.classList.contains("spa-lcp-layout-done")) return;
+    if (!document.documentElement.classList.contains("spa-lcp-done")) return;
+    const frame = requestAnimationFrame(() => markLayoutDone());
+    return () => cancelAnimationFrame(frame);
+  }, [loading, movies.length, markLayoutDone]);
 
   const hasStaticLcp = staticLcpOnPage;
   const prioritizePoster = !hasStaticLcp && activeIndex === 0;

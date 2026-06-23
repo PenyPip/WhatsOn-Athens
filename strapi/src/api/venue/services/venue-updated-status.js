@@ -2,6 +2,8 @@
 
 /** @typedef {'no_new' | 'complete' | 'needs_manual'} VenueUpdatedStatus */
 
+const { isVenueCompleteEligible } = require('../../../utils/cinemaWeek');
+
 const VENUE_UPDATED_STATUS = {
   NO_NEW: 'no_new',
   COMPLETE: 'complete',
@@ -92,20 +94,24 @@ function createVenueSyncStatsTracker() {
 
 /**
  * Κατάσταση μετά More sync.
- * - complete: όλες οι προβολές επόμενης εβδομάδας πέρασαν
+ * - complete: όλες οι προβολές επόμενης εβδομάδας (Πέμπτη→) πέρασαν — μόνο Δευτέρα–Παρασκευή
  * - needs_manual: κάποιες όχι (άγνωστη ταινία, mismatch, μερικό sync)
- * - null: καμία προβολή εβδομάδας στο More — κράτα no_new
+ * - null: καμία προβολή εβδομάδας στο More — κράτα no_new (ή synced πριν Δευτέρα)
  *
  * @returns {VenueUpdatedStatus | null}
  */
-function computeVenueUpdatedStatus(stats) {
+function computeVenueUpdatedStatus(stats, now = new Date()) {
   const weekExpected = stats.weekExpected || 0;
   const weekSynced = stats.weekSynced || 0;
   const weekFailed = stats.weekFailed || 0;
 
   if (weekExpected > 0) {
-    if (!stats.autoCreated && weekFailed === 0 && weekSynced >= weekExpected) {
-      return VENUE_UPDATED_STATUS.COMPLETE;
+    const allWeekSynced = !stats.autoCreated && weekFailed === 0 && weekSynced >= weekExpected;
+    if (allWeekSynced) {
+      if (isVenueCompleteEligible(now)) {
+        return VENUE_UPDATED_STATUS.COMPLETE;
+      }
+      return null;
     }
     return VENUE_UPDATED_STATUS.NEEDS_MANUAL;
   }
@@ -148,7 +154,11 @@ async function migrateVenueUpdatedBooleanToEnum(strapi) {
   return migrated;
 }
 
-async function applyCinemaVenueUpdatedStatuses(strapi, tracker, { autoCreatedVenueIds = [] } = {}) {
+async function applyCinemaVenueUpdatedStatuses(
+  strapi,
+  tracker,
+  { autoCreatedVenueIds = [], now = new Date() } = {},
+) {
   const autoCreated = new Set(
     (autoCreatedVenueIds || []).map((id) => Number(id)).filter(Number.isFinite),
   );
@@ -158,6 +168,7 @@ async function applyCinemaVenueUpdatedStatuses(strapi, tracker, { autoCreatedVen
     needs_manual: 0,
     preserved_complete: 0,
     unchanged_no_new: 0,
+    pending_complete_until_monday: 0,
     updated: 0,
     venues: [],
   };
@@ -199,8 +210,16 @@ async function applyCinemaVenueUpdatedStatuses(strapi, tracker, { autoCreatedVen
       continue;
     }
 
-    const next = computeVenueUpdatedStatus(stats);
+    const next = computeVenueUpdatedStatus(stats, now);
     if (next === null) {
+      const weekReady =
+        (stats.weekExpected || 0) > 0 &&
+        !stats.autoCreated &&
+        (stats.weekFailed || 0) === 0 &&
+        (stats.weekSynced || 0) >= (stats.weekExpected || 0);
+      if (weekReady && !isVenueCompleteEligible(now)) {
+        summary.pending_complete_until_monday += 1;
+      }
       summary.unchanged_no_new += 1;
       summary.no_new += 1;
       summary.venues.push({
@@ -208,7 +227,9 @@ async function applyCinemaVenueUpdatedStatuses(strapi, tracker, { autoCreatedVen
         status: VENUE_UPDATED_STATUS.NO_NEW,
         statusLabel: VENUE_UPDATED_LABELS.no_new,
         preserved: true,
-        reason: 'no_upcoming_week_events',
+        reason: weekReady && !isVenueCompleteEligible(now)
+          ? 'week_synced_before_monday'
+          : 'no_upcoming_week_events',
         created: stats.created,
         alreadyExists: stats.alreadyExists,
         weekExpected: stats.weekExpected,

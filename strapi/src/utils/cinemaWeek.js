@@ -97,9 +97,20 @@ function isDatetimeInUpcomingCinemaWeek(dt, now = new Date()) {
   return t >= start.getTime() && t <= end.getTime();
 }
 
+/**
+ * complete μόνο Δευτέρα–Παρασκευή (Europe/Athens).
+ * Μετά το Σάββατο 06:00 reset, Σάββατο/Κυριακή δεν παίρνουν complete — περιμένουν Δευτέρα.
+ */
+function isVenueCompleteEligible(now = new Date()) {
+  const dow = athensLocalDate(now).getDay();
+  return dow >= 1 && dow <= 5;
+}
+
 module.exports = {
+  athensLocalDate,
   getUpcomingCinemaWeekBounds,
   showtimeOverlapsRange,
   formatWeekLabel,
   isDatetimeInUpcomingCinemaWeek,
+  isVenueCompleteEligible,
 };

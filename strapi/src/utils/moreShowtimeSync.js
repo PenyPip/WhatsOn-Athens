@@ -1863,6 +1863,7 @@ async function syncMovieShowtimesFromMore(strapi, {
     await migrateVenueUpdatedBooleanToEnum(strapi);
     report.venueUpdatedStatuses = await applyCinemaVenueUpdatedStatuses(strapi, venueSyncTracker, {
       autoCreatedVenueIds: (report.createdCinemaVenuesList || []).map((v) => v.id),
+      now,
     });
   }
 
@@ -2609,7 +2610,10 @@ async function syncShowtimesFromMore(strapi, options = {}) {
         (report.venueUpdatedStatuses.preserved_complete
           ? ` (${report.venueUpdatedStatuses.preserved_complete} ήδη complete)`
           : '') +
-        ` · ${report.venueUpdatedStatuses.needs_manual} χειροκίνητα`
+        ` · ${report.venueUpdatedStatuses.needs_manual} χειροκίνητα` +
+        (report.venueUpdatedStatuses.pending_complete_until_monday
+          ? ` · ${report.venueUpdatedStatuses.pending_complete_until_monday} έτοιμα (Δευτέρα+)`
+          : '')
       : '') +
     (report.createdTheaterVenues
       ? ` · νέοι χώροι θεάτρου: ${report.createdTheaterVenues}`

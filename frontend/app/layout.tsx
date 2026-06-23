@@ -7,8 +7,9 @@ import "@/index.css";
 const literata = Literata({
   subsets: ["greek", "latin"],
   display: "swap",
+  adjustFontFallback: true,
   variable: "--font-article",
-  weight: ["400", "500", "600", "700"],
+  weight: ["400", "600", "700"],
 });
 
 export const viewport: Viewport = {

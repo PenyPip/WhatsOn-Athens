@@ -152,7 +152,7 @@
   .section-black h1, .section-black h2, .section-black h3,
   .section-black h4, .section-black h5, .section-black h6 {
     color: #F0EDF8;
-    font-family: 'Literata', Georgia, serif;
+    font-family: Georgia, "Times New Roman", serif;
   }
 
   .section-black p, .section-black span {
