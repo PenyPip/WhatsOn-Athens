@@ -7,4 +7,8 @@ module.exports = {
     enabled: true,
     resolve: './src/plugins/more-lookup',
   },
+  'program-import': {
+    enabled: true,
+    resolve: './src/plugins/program-import',
+  },
 };

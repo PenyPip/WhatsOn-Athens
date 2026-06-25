@@ -89,6 +89,25 @@ function createVenueSyncStatsTracker() {
     entries() {
       return [...byVenueId.entries()];
     },
+    /** Συγχώνευση στατιστικών από άλλο tracker (π.χ. batches ταινιών + bundles). */
+    mergeFrom(other) {
+      if (!other?.entries) return this;
+      for (const [venueId, s] of other.entries()) {
+        this.record(venueId, {
+          created: s.created || 0,
+          alreadyExists: s.alreadyExists || 0,
+          skippedUnknownEventId: s.skippedUnknownEventId || 0,
+          skippedVenueMismatch: s.skippedVenueMismatch || 0,
+          skippedNoVenue: s.skippedNoVenue || 0,
+          errors: s.errors || 0,
+          weekExpected: s.weekExpected || 0,
+          weekSynced: s.weekSynced || 0,
+          weekFailed: s.weekFailed || 0,
+        });
+        if (s.autoCreated) this.markAutoCreated(venueId);
+      }
+      return this;
+    },
   };
 }
 

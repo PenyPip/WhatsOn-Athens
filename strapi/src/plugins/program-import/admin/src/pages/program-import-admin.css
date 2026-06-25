@@ -1,0 +1,41 @@
+.program-import-page textarea {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 13px;
+  line-height: 1.45;
+  min-height: 280px;
+}
+
+.program-import-preview-table {
+  overflow-x: auto;
+}
+
+.program-import-movie-block {
+  border: 1px solid var(--neutral150);
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 12px;
+}
+
+.program-import-movie-block h3 {
+  margin: 0 0 8px;
+  font-size: 15px;
+}
+
+.program-import-showtime-chip {
+  display: inline-block;
+  margin: 2px 6px 2px 0;
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: var(--neutral100);
+  font-size: 12px;
+}
+
+.program-import-showtime-chip.exists {
+  opacity: 0.55;
+  text-decoration: line-through;
+}
+
+.program-import-showtime-chip .note {
+  color: var(--neutral600);
+  font-style: italic;
+}

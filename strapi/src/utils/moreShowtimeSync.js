@@ -20,7 +20,7 @@ const {
   migrateVenueUpdatedBooleanToEnum,
   VENUE_UPDATED_STATUS,
 } = require('../api/venue/services/venue-updated-status');
-const { isDatetimeInUpcomingCinemaWeek } = require('./cinemaWeek');
+const { isDatetimeInTargetCinemaWeekForVenueStatus } = require('./cinemaWeek');
 const { buildMoreImportTrace } = require('./moreImportTrace');
 
 const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 150);
@@ -122,8 +122,9 @@ function parseMoreEventDatetime(raw) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function moreEventInUpcomingCinemaWeek(event, now) {
-  return isDatetimeInUpcomingCinemaWeek(parseMoreEventDatetime(event?.eventDate), now);
+/** Προβολές εβδομάδας-στόχου για venue.updated (Δευ–Τετ: επόμενη Πέμπτη, Πέμ–Κυρ: τρέχουσα). */
+function moreEventInTargetCinemaWeekForVenueStatus(event, now) {
+  return isDatetimeInTargetCinemaWeekForVenueStatus(parseMoreEventDatetime(event?.eventDate), now);
 }
 
 function weekSyncOutcomeFromUpsert(result) {
@@ -1567,6 +1568,99 @@ async function resolveTheaterShowFromEventId({
   return mapped;
 }
 
+/**
+ * Συμπληρώνει weekExpected/weekSynced για σινεμά όπου το sync δεν μέτρησε εβδομάδα
+ * (π.χ. λάθος bounds, skip bundle λόγω complete, χαμένα stats από batches ταινιών).
+ */
+async function fillCinemaVenueWeekStatsFromBundles(strapi, {
+  venuesWithBundle,
+  tracker,
+  eventsCache,
+  eventIdIndex,
+  showtimeExistenceIndex,
+  now,
+  report = null,
+}) {
+  if (!venuesWithBundle?.length || !tracker || !eventsCache) return { filled: 0 };
+
+  const scrapeCache = createVenueScrapeCache();
+  const supplementalEventIndex = new Map();
+  const moviesForTitle = await loadCmsEntriesForPlayTitleMatch(strapi, 'api::movie.movie', [
+    'id',
+    'title',
+    'slug',
+    'original_title',
+  ]);
+  const statsByVenueId = new Map(tracker.entries());
+  let filled = 0;
+
+  for (const venue of venuesWithBundle) {
+    if (venue.updated === VENUE_UPDATED_STATUS.COMPLETE) continue;
+    if (!venue.bundleCodes?.length) continue;
+
+    const existing = statsByVenueId.get(venue.id);
+    if (existing && (existing.weekExpected || 0) > 0) continue;
+
+    tracker.touch(venue.id);
+    let hadWeekEvents = false;
+
+    for (const code of venue.bundleCodes) {
+      let events = [];
+      try {
+        events = await eventsCache.get(code);
+      } catch {
+        events = [];
+      }
+
+      for (const event of events) {
+        const inWeek = moreEventInTargetCinemaWeekForVenueStatus(event, now);
+        if (!inWeek) continue;
+
+        hadWeekEvents = true;
+        const eventId = String(event.eventId ?? '').trim();
+        const mapped = await resolveCinemaMovieFromEventId({
+          eventId,
+          eventIdIndex,
+          supplementalIndex: supplementalEventIndex,
+          scrapeCache,
+          venue,
+          moviesForTitle,
+          report: report || { resolvedViaVenueScrape: 0 },
+        });
+        if (!mapped) {
+          tracker.recordWeekEvent(venue.id, 'failed');
+          tracker.record(venue.id, { skippedUnknownEventId: 1 });
+          continue;
+        }
+
+        if (venue.venue_id) {
+          const moreVenueId = String(event.venueId ?? '').trim();
+          const expected = String(venue.venue_id).trim();
+          if (expected && moreVenueId && moreVenueId !== expected) {
+            tracker.recordWeekEvent(venue.id, 'failed');
+            tracker.record(venue.id, { skippedVenueMismatch: 1 });
+            continue;
+          }
+        }
+
+        const datetime = parseMoreEventDatetime(event.eventDate);
+        if (!datetime || datetime < now) continue;
+
+        const exists = await showtimeExistsAt(
+          strapi,
+          { movieId: mapped.movieId, venueId: venue.id, datetime },
+          showtimeExistenceIndex,
+        );
+        tracker.recordWeekEvent(venue.id, exists ? 'synced' : 'failed');
+      }
+    }
+
+    if (hadWeekEvents) filled += 1;
+  }
+
+  return { filled };
+}
+
 async function syncMovieShowtimesFromMore(strapi, {
   movies,
   venueLookup,
@@ -1577,6 +1671,8 @@ async function syncMovieShowtimesFromMore(strapi, {
   onProgress,
   skipMovieLoop = false,
   skipVenueBundles = false,
+  sharedVenueSyncTracker = null,
+  deferVenueUpdatedApply = false,
   eventIdIndex: sharedEventIdIndex,
   progressOffset = 0,
   totalMoviesCount = null,
@@ -1600,7 +1696,7 @@ async function syncMovieShowtimesFromMore(strapi, {
   const pendingVenueCreates = new Map();
   const failedVenueKeys = new Set();
   const errorDedup = new Set();
-  const venueSyncTracker = createVenueSyncStatsTracker();
+  const venueSyncTracker = sharedVenueSyncTracker || createVenueSyncStatsTracker();
   const scrapeCache = createVenueScrapeCache();
   const supplementalEventIndex = new Map();
   const moviesForTitle = venuesWithBundle.length
@@ -1695,7 +1791,7 @@ async function syncMovieShowtimesFromMore(strapi, {
 
             registerVenueInPresenceIndex(venuePresenceIndex, venue);
             venueSyncTracker.touch(venue.id);
-            const inWeek = moreEventInUpcomingCinemaWeek(event, now);
+            const inWeek = moreEventInTargetCinemaWeekForVenueStatus(event, now);
             const result = await upsertShowtimeFromEvent(strapi, report, {
               event,
               movieId: movie.id,
@@ -1788,7 +1884,7 @@ async function syncMovieShowtimesFromMore(strapi, {
 
         for (const event of events) {
           const eventId = String(event.eventId ?? '').trim();
-          const inWeek = moreEventInUpcomingCinemaWeek(event, now);
+          const inWeek = moreEventInTargetCinemaWeekForVenueStatus(event, now);
           const mapped = await resolveCinemaMovieFromEventId({
             eventId,
             eventIdIndex,
@@ -1859,7 +1955,7 @@ async function syncMovieShowtimesFromMore(strapi, {
     }
   }
 
-  if (!skipVenueBundles && venueSyncTracker.entries().length > 0) {
+  if (!deferVenueUpdatedApply && !skipVenueBundles && venueSyncTracker.entries().length > 0) {
     await migrateVenueUpdatedBooleanToEnum(strapi);
     report.venueUpdatedStatuses = await applyCinemaVenueUpdatedStatuses(strapi, venueSyncTracker, {
       autoCreatedVenueIds: (report.createdCinemaVenuesList || []).map((v) => v.id),
@@ -2240,6 +2336,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     const moviesWithCodes = await listMoviesWithSyncCodes(strapi, progress);
     const totalWithCodes = moviesWithCodes.length;
     const cinemaEventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
+    const cinemaVenueSyncTracker = createVenueSyncStatsTracker();
     let showtimeExistenceIndex = null;
     if (!totalWithCodes) {
       progress('Δεν βρέθηκαν ταινίες με More κωδικό στο CMS — skip ταινιών.');
@@ -2269,6 +2366,8 @@ async function syncShowtimesFromMore(strapi, options = {}) {
           venuePresenceIndex,
           onProgress: progress,
           skipVenueBundles: true,
+          sharedVenueSyncTracker: cinemaVenueSyncTracker,
+          deferVenueUpdatedApply: true,
           eventIdIndex: cinemaEventIdIndex,
           totalMoviesCount: totalWithCodes,
           showtimeExistenceIndex,
@@ -2314,6 +2413,8 @@ async function syncShowtimesFromMore(strapi, options = {}) {
         venuePresenceIndex,
         onProgress: progress,
         skipMovieLoop: true,
+        sharedVenueSyncTracker: cinemaVenueSyncTracker,
+        deferVenueUpdatedApply: true,
         eventIdIndex: cinemaEventIdIndex,
         totalVenuesCount: cinemaVenuesWithBundle.length,
         showtimeExistenceIndex,
@@ -2322,6 +2423,35 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     } else {
       progress('Δεν βρέθηκαν σινεμά στο CMS — skip bundles.');
     }
+
+    if (cinemaVenueSyncTracker.entries().length > 0 || cinemaVenuesWithBundle.length > 0) {
+      if (cinemaVenuesWithBundle.length > 0) {
+        const fillReport = await fillCinemaVenueWeekStatsFromBundles(strapi, {
+          venuesWithBundle: cinemaVenuesWithBundle,
+          tracker: cinemaVenueSyncTracker,
+          eventsCache: cinemaEventsCache,
+          eventIdIndex: cinemaEventIdIndex,
+          showtimeExistenceIndex,
+          now,
+          report: movieReport,
+        });
+        if (fillReport.filled > 0) {
+          progress(
+            `venue.updated: συμπλήρωση στατιστικών εβδομάδας για ${fillReport.filled} σινεμά…`,
+          );
+        }
+      }
+      await migrateVenueUpdatedBooleanToEnum(strapi);
+      movieReport.venueUpdatedStatuses = await applyCinemaVenueUpdatedStatuses(
+        strapi,
+        cinemaVenueSyncTracker,
+        {
+          autoCreatedVenueIds: (movieReport?.createdCinemaVenuesList || []).map((v) => v.id),
+          now,
+        },
+      );
+    }
+
     cinemaEventsCache.clear();
     maybeGc();
   }

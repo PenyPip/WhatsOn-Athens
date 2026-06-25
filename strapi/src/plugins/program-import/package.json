@@ -1,0 +1,11 @@
+{
+  "name": "program-import",
+  "version": "1.0.0",
+  "private": true,
+  "strapi": {
+    "name": "program-import",
+    "displayName": "Εισαγωγή προγράμματος",
+    "description": "Δημιουργία προβολών από ελεύθερο κείμενο (Facebook, email κ.λπ.)",
+    "kind": "plugin"
+  }
+}

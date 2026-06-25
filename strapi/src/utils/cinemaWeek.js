@@ -38,6 +38,35 @@ function getUpcomingCinemaWeekBounds(now = new Date()) {
   return { start, end };
 }
 
+/**
+ * Εβδομάδα-στόχος για venue.updated (σινεμά).
+ * - Δευ–Τετ: η επόμενη εβδομάδα που ξεκινά Πέμπτη (προετοιμασία προγράμματος).
+ * - Πέμ–Κυρ: η τρέχουσα εβδομάδα κινηματογράφου (πρόγραμμα που μόλις άνοιξε).
+ */
+function getTargetCinemaWeekBoundsForVenueStatus(now = new Date()) {
+  const athensNow = athensLocalDate(now);
+  const currentStart = startOfCinemaWeek(athensNow);
+  const dow = athensNow.getDay();
+  let start;
+  if (dow >= 1 && dow <= 3) {
+    start = new Date(currentStart);
+    start.setDate(start.getDate() + 7);
+  } else {
+    start = new Date(currentStart);
+  }
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function isDatetimeInRange(dt, rangeStart, rangeEnd, now = new Date()) {
+  if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return false;
+  if (dt.getTime() < now.getTime()) return false;
+  const t = dt.getTime();
+  return t >= rangeStart.getTime() && t <= rangeEnd.getTime();
+}
+
 function parseLocalDay(raw) {
   const s = typeof raw === 'string' ? raw.trim() : '';
   if (!s) return null;
@@ -88,6 +117,12 @@ function formatWeekLabel(start, end) {
   return `${a} – ${b}`;
 }
 
+/** Exact datetime μέσα στην εβδομάδα-στόχο για venue.updated. */
+function isDatetimeInTargetCinemaWeekForVenueStatus(dt, now = new Date()) {
+  const { start, end } = getTargetCinemaWeekBoundsForVenueStatus(now);
+  return isDatetimeInRange(dt, start, end, now);
+}
+
 /** Exact datetime μέσα στην άμεση επόμενη εβδομάδα κινηματογράφου (μελλοντικές μόνο). */
 function isDatetimeInUpcomingCinemaWeek(dt, now = new Date()) {
   if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return false;
@@ -109,8 +144,10 @@ function isVenueCompleteEligible(now = new Date()) {
 module.exports = {
   athensLocalDate,
   getUpcomingCinemaWeekBounds,
+  getTargetCinemaWeekBoundsForVenueStatus,
   showtimeOverlapsRange,
   formatWeekLabel,
   isDatetimeInUpcomingCinemaWeek,
+  isDatetimeInTargetCinemaWeekForVenueStatus,
   isVenueCompleteEligible,
 };
