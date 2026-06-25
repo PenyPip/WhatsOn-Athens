@@ -48,6 +48,7 @@ function parseSourceLabel(source) {
 
 function statusLabel(status) {
   if (status === 'new') return 'Νέα';
+  if (status === 'manual') return 'Χειροκίνητη ταύτιση';
   if (status === 'exists') return 'Υπάρχει ήδη';
   if (status === 'unmatched') return 'Χωρίς ταινία CMS';
   return status;
@@ -123,24 +124,57 @@ export default function App() {
     [manualMovieByTitle],
   );
 
+  const setManualMovieForTitle = useCallback(
+    (title, movieId) => {
+      if (!movieId) return;
+      setManualMovieByTitle((prev) => ({ ...prev, [title]: Number(movieId) }));
+      setSkippedMovieTitles((prev) => {
+        if (!prev[title]) return prev;
+        const next = { ...prev };
+        delete next[title];
+        return next;
+      });
+      setApprovedById((prev) => {
+        const next = { ...prev };
+        for (const p of preview?.proposals || []) {
+          if (p.parsedTitle === title && !p.exists) next[p.id] = true;
+        }
+        return next;
+      });
+    },
+    [preview?.proposals],
+  );
+
+  const parsedMovieBlocks = useMemo(() => {
+    if (!preview?.movies) return [];
+    return preview.movies.map((m) => ({
+      parsedTitle: m.parsedTitle,
+      autoMatch: m.movieMatch,
+      alternatives: m.alternatives || [],
+      showtimeCount: m.showtimes?.length || 0,
+    }));
+  }, [preview?.movies]);
+
   const enrichedProposals = useMemo(() => {
     if (!preview?.proposals) return [];
     return preview.proposals.map((row) => {
+      const manualId = manualMovieByTitle[row.parsedTitle];
       const movieId = movieIdForTitle(row.parsedTitle, row.movieMatch);
       const cmsTitle = movieId ? cmsMovieById.get(movieId) || row.cmsTitle : null;
       const canApprove = Boolean(movieId) && !row.exists;
+      const defaultApproved = row.approved || Boolean(manualId);
       const approved =
-        approvedById[row.id] !== undefined ? approvedById[row.id] : row.approved;
+        approvedById[row.id] !== undefined ? approvedById[row.id] : defaultApproved;
       return {
         ...row,
         movieId,
         cmsTitle,
         canApprove,
         approved: canApprove ? approved : false,
-        status: !movieId ? 'unmatched' : row.exists ? 'exists' : 'new',
+        status: !movieId ? 'unmatched' : row.exists ? 'exists' : manualId ? 'manual' : 'new',
       };
     });
-  }, [approvedById, cmsMovieById, movieIdForTitle, preview]);
+  }, [approvedById, cmsMovieById, manualMovieByTitle, movieIdForTitle, preview]);
 
   const approvedCount = useMemo(
     () => enrichedProposals.filter((p) => p.approved).length,
@@ -533,52 +567,101 @@ export default function App() {
                 </Box>
               ) : null}
 
-              {pendingUnmatchedTitles.length > 0 ? (
+              {parsedMovieBlocks.length > 0 ? (
                 <Box padding={3} background="neutral100" hasRadius>
                   <Flex justifyContent="space-between" alignItems="center" gap={2} wrap="wrap" marginBottom={2}>
                     <Typography variant="pi" fontWeight="bold">
-                      Ταύτιση ταινιών CMS ({pendingUnmatchedTitles.length} χωρίς ταύτιση)
+                      Ταύτιση ταινιών CMS
+                      {pendingUnmatchedTitles.length > 0
+                        ? ` (${pendingUnmatchedTitles.length} χωρίς αυτόματη ταύτιση)`
+                        : ''}
                     </Typography>
-                    <Button variant="tertiary" size="S" onClick={skipAllUnmatchedTitles}>
-                      Παράλειψη όλων
-                    </Button>
+                    {pendingUnmatchedTitles.length > 0 ? (
+                      <Button variant="tertiary" size="S" onClick={skipAllUnmatchedTitles}>
+                        Παράλειψη όλων
+                      </Button>
+                    ) : null}
                   </Flex>
-                  <Typography variant="pi" textColor="neutral600" marginBottom={2}>
-                    Ταίριαξε με ταινία CMS ή παράλειψε — οι προβολές χωρίς ταινία δεν θα δημιουργηθούν.
+                  <Typography variant="pi" textColor="neutral600" marginBottom={3}>
+                    Οι ώρες προβολής βρέθηκαν — διάλεξε ταινία CMS αν δεν ταίριαξε αυτόματα (π.χ. «Αμελί»).
+                    Μπορείς να αλλάξεις και αυτόματη ταύτιση.
                   </Typography>
-                  <Flex direction="column" gap={2}>
-                    {pendingUnmatchedTitles.map((title) => (
-                      <Flex key={title} gap={2} alignItems="center" wrap="wrap">
-                        <Typography variant="pi" style={{ minWidth: 160 }}>
-                          {title}
-                        </Typography>
-                        <Box minWidth="260px">
-                          <SingleSelect
-                            placeholder="Επίλεξε ταινία CMS"
-                            value={
-                              manualMovieByTitle[title]
-                                ? String(manualMovieByTitle[title])
-                                : undefined
-                            }
-                            onChange={(val) =>
-                              setManualMovieByTitle((prev) => ({
-                                ...prev,
-                                [title]: Number(val),
-                              }))
-                            }
-                          >
-                            {(preview.cmsMovies || []).map((m) => (
-                              <SingleSelectOption key={m.id} value={String(m.id)}>
-                                {m.title}
-                              </SingleSelectOption>
-                            ))}
-                          </SingleSelect>
+                  <Flex direction="column" gap={3}>
+                    {parsedMovieBlocks.map((block) => {
+                      const resolvedId = movieIdForTitle(block.parsedTitle, block.autoMatch);
+                      const isManual = Boolean(manualMovieByTitle[block.parsedTitle]);
+                      const isSkipped = Boolean(skippedMovieTitles[block.parsedTitle]);
+                      const needsPick = !resolvedId && !isSkipped;
+                      return (
+                        <Box
+                          key={block.parsedTitle}
+                          padding={3}
+                          background={needsPick ? 'danger100' : 'neutral0'}
+                          hasRadius
+                          borderColor={needsPick ? 'danger200' : 'neutral200'}
+                          style={{ border: '1px solid' }}
+                        >
+                          <Flex justifyContent="space-between" alignItems="flex-start" gap={2} wrap="wrap" marginBottom={2}>
+                            <Flex direction="column" gap={1}>
+                              <Typography variant="pi" fontWeight="bold">
+                                {block.parsedTitle}
+                              </Typography>
+                              <Typography variant="pi" textColor="neutral600">
+                                {block.showtimeCount} προβολ{block.showtimeCount === 1 ? 'ή' : 'ές'}
+                                {block.autoMatch && !isManual
+                                  ? ` · αυτόματα: ${block.autoMatch.cmsTitle} (${block.autoMatch.score})`
+                                  : needsPick
+                                    ? ' · δεν ταίριαξε αυτόματα'
+                                    : isManual
+                                      ? ` · επιλέχθηκε: ${cmsMovieById.get(resolvedId) || '—'}`
+                                      : isSkipped
+                                        ? ' · παραλείφθηκε'
+                                        : ''}
+                              </Typography>
+                            </Flex>
+                            {needsPick ? (
+                              <Button variant="tertiary" size="S" onClick={() => skipUnmatchedTitle(block.parsedTitle)}>
+                                Παράλειψη
+                              </Button>
+                            ) : null}
+                          </Flex>
+                          {!isSkipped ? (
+                            <>
+                              {block.alternatives.length > 0 && !resolvedId ? (
+                                <Flex gap={1} wrap="wrap" marginBottom={2}>
+                                  <Typography variant="pi" textColor="neutral600" style={{ alignSelf: 'center' }}>
+                                    Προτάσεις:
+                                  </Typography>
+                                  {block.alternatives.map((alt) => (
+                                    <Button
+                                      key={alt.cmsId}
+                                      size="S"
+                                      variant="secondary"
+                                      onClick={() => setManualMovieForTitle(block.parsedTitle, alt.cmsId)}
+                                    >
+                                      {alt.cmsTitle} ({alt.score})
+                                    </Button>
+                                  ))}
+                                </Flex>
+                              ) : null}
+                              <Box minWidth="280px" maxWidth="480px">
+                                <SingleSelect
+                                  placeholder="Επίλεξε ταινία CMS"
+                                  value={resolvedId ? String(resolvedId) : undefined}
+                                  onChange={(val) => setManualMovieForTitle(block.parsedTitle, Number(val))}
+                                >
+                                  {(preview.cmsMovies || []).map((m) => (
+                                    <SingleSelectOption key={m.id} value={String(m.id)}>
+                                      {m.title}
+                                    </SingleSelectOption>
+                                  ))}
+                                </SingleSelect>
+                              </Box>
+                            </>
+                          ) : null}
                         </Box>
-                        <Button variant="tertiary" size="S" onClick={() => skipUnmatchedTitle(title)}>
-                          Παράλειψη
-                        </Button>
-                      </Flex>
-                    ))}
+                      );
+                    })}
                   </Flex>
                 </Box>
               ) : skippedUnmatchedCount > 0 ? (
@@ -621,9 +704,25 @@ export default function App() {
                           <Typography variant="pi">{p.parsedTitle}</Typography>
                         </Td>
                         <Td>
-                          <Typography variant="pi" textColor={p.cmsTitle ? 'neutral800' : 'danger600'}>
-                            {p.cmsTitle || '—'}
-                          </Typography>
+                          {!p.movieId ? (
+                            <Box minWidth="200px">
+                              <SingleSelect
+                                placeholder="Διάλεξε ταινία"
+                                value={undefined}
+                                onChange={(val) => setManualMovieForTitle(p.parsedTitle, Number(val))}
+                              >
+                                {(preview.cmsMovies || []).map((m) => (
+                                  <SingleSelectOption key={m.id} value={String(m.id)}>
+                                    {m.title}
+                                  </SingleSelectOption>
+                                ))}
+                              </SingleSelect>
+                            </Box>
+                          ) : (
+                            <Typography variant="pi" textColor="neutral800">
+                              {p.cmsTitle}
+                            </Typography>
+                          )}
                         </Td>
                         <Td>
                           <Typography variant="pi">
