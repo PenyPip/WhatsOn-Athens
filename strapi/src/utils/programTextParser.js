@@ -94,6 +94,135 @@ const DOW_STIS_RE = new RegExp(
 
 const STIS_TIMES_RE = /(\d{1,2}):(\d{2})/g;
 
+const ORES_PROBOLIS_RE = /ώρες\s+προβολής\s*:\s*(.+)$/iu;
+
+const QUOTED_LINE_RE = /^[«"'].+[»"']$/u;
+
+function parseGreekDateRangeFromMatch(m, refYear) {
+  if (!m) return null;
+  const y1 = resolveYear(m[3], refYear);
+  const m1 = monthNameToNumber(m[2]);
+  const d1 = Number(m[1]);
+  const y2 = resolveYear(m[6], y1);
+  const m2 = monthNameToNumber(m[5]);
+  const d2 = Number(m[4]);
+  if (!m1 || !m2 || !d1 || !d2) return null;
+  const start = localDate(y1, m1, d1);
+  let end = localDate(y2, m2, d2);
+  if (!m[6] && end.getTime() < start.getTime()) {
+    end.setFullYear(end.getFullYear() + 1);
+  }
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
+function eachCalendarDay(rangeStart, rangeEnd) {
+  const out = [];
+  const cursor = new Date(rangeStart);
+  cursor.setHours(0, 0, 0, 0);
+  const last = new Date(rangeEnd);
+  last.setHours(23, 59, 59, 999);
+  while (cursor.getTime() <= last.getTime()) {
+    out.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return out;
+}
+
+function pushCalendarShowtimes(showtimes, range, times) {
+  if (!range || !times.length) return;
+  for (const dayDate of eachCalendarDay(range.start, range.end)) {
+    for (const { hour, minute } of times) {
+      const datetime = buildAthensDatetimeFromLocalDate(dayDate, hour, minute);
+      const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+      showtimes.push({ dayLabel, timeLabel, datetime, note: null });
+    }
+  }
+}
+
+/** «Παρασκευή 26 Ιουνίου 2026 έως Κυριακή 28 Ιουνίου 2026» + «Ώρες προβολής: 20:40». */
+function parseOreresProbolisSchedule(scheduleText, refYear) {
+  const showtimes = [];
+  const lines = String(scheduleText || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  let pendingRange = null;
+
+  for (const line of lines) {
+    const rangeMatch = line.match(GREEK_DATE_RANGE_RE);
+    if (rangeMatch) {
+      pendingRange = parseGreekDateRangeFromMatch(rangeMatch, refYear);
+      const sameLineTimes = line.match(ORES_PROBOLIS_RE);
+      if (sameLineTimes) {
+        pushCalendarShowtimes(showtimes, pendingRange, parseTimesList(sameLineTimes[1]));
+        pendingRange = null;
+      }
+      continue;
+    }
+
+    const timesLine = line.match(ORES_PROBOLIS_RE);
+    if (timesLine && pendingRange) {
+      pushCalendarShowtimes(showtimes, pendingRange, parseTimesList(timesLine[1]));
+      pendingRange = null;
+    }
+  }
+
+  return showtimes;
+}
+
+function isQuotedSubtitleLine(line) {
+  const s = String(line || '').trim();
+  return QUOTED_LINE_RE.test(s);
+}
+
+function isScheduleLine(line) {
+  const s = String(line || '').trim();
+  if (!s) return false;
+  if (GREEK_DATE_RANGE_RE.test(s)) return true;
+  if (ORES_PROBOLIS_RE.test(normalizeGreek(s))) return true;
+  return lineHasShowtime(s);
+}
+
+function cleanMovieTitle(raw) {
+  const s = stripLineDecorators(raw);
+  const paren = s.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  if (paren) return paren[1].trim();
+  return s;
+}
+
+function parseMovieBlockFromChunk(chunk) {
+  const lines = String(chunk || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (!lines.length) return null;
+
+  let title = null;
+  const scheduleLines = [];
+
+  for (const line of lines) {
+    if (isQuotedSubtitleLine(line)) continue;
+    if (!title && !isScheduleLine(line)) {
+      title = cleanMovieTitle(line);
+      continue;
+    }
+    scheduleLines.push(line);
+  }
+
+  if (!title) {
+    const candidate = lines.find((line) => !isQuotedSubtitleLine(line) && !isScheduleLine(line));
+    if (candidate) title = cleanMovieTitle(candidate);
+  }
+
+  if (!title) return null;
+  return {
+    title,
+    scheduleText: scheduleLines.join('\n').trim(),
+  };
+}
+
 const LEADING_DECOR_RE = /^[\s🎬🎥📽️▪️•\-–—*»«"']+/u;
 const LEADING_ENUM_RE = /^\d+[.)]\s*/u;
 
@@ -536,6 +665,7 @@ function parseShowtimesFromText(scheduleText, rangeStart, rangeEnd, refYear) {
   return dedupeShowtimes([
     ...showtimes,
     ...parseDowRangeStisShowtimes(hay, rangeStart, rangeEnd),
+    ...parseOreresProbolisSchedule(hay, refYear),
     ...parseDateShowtimesFromText(hay, refYear),
   ]);
 }
@@ -649,39 +779,25 @@ function splitMovieBlocksFreeForm(text) {
 function splitMovieBlocksByParagraph(text) {
   const normalized = String(text || '').replace(/\r\n/g, '\n').trim();
   const chunks = normalized.split(/\n\s*\n+/).map((c) => c.trim()).filter(Boolean);
-  if (chunks.length < 2) return null;
+  if (!chunks.length) return null;
 
   let header = '';
   let startIdx = 0;
-  if (chunks[0] && !lineHasShowtime(chunks[0]) && isLikelyHeaderLine(chunks[0])) {
+  const firstLines = chunks[0].split('\n').map((line) => line.trim()).filter(Boolean);
+  if (
+    chunks.length > 1 &&
+    firstLines.length === 1 &&
+    isLikelyHeaderLine(firstLines[0]) &&
+    !lineHasShowtime(firstLines[0])
+  ) {
     header = chunks[0];
     startIdx = 1;
   }
 
   const movies = [];
   for (let i = startIdx; i < chunks.length; i += 1) {
-    const lines = chunks[i].split('\n').map((line) => line.trim()).filter(Boolean);
-    if (!lines.length) continue;
-
-    const joined = lines.join(' ');
-    const firstSplit = splitTitleAndSchedule(lines[0]) || splitTitleAndSchedule(joined);
-    if (firstSplit?.title) {
-      const scheduleParts = [];
-      if (firstSplit.schedulePart) scheduleParts.push(firstSplit.schedulePart);
-      scheduleParts.push(...lines.slice(1));
-      movies.push({
-        title: firstSplit.title,
-        scheduleText: scheduleParts.join(' ').trim() || joined,
-      });
-      continue;
-    }
-
-    if (looksLikeTitle(stripLineDecorators(lines[0]))) {
-      movies.push({
-        title: stripLineDecorators(lines[0]),
-        scheduleText: lines.slice(1).join(' ').trim(),
-      });
-    }
+    const block = parseMovieBlockFromChunk(chunks[i]);
+    if (block?.title) movies.push(block);
   }
 
   return movies.length ? { header, movies } : null;
@@ -726,7 +842,7 @@ function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now 
       refYear,
     );
     if (!showtimes.length && movie.scheduleText.trim()) {
-      warnings.push(`«${movie.title}»: δεν αναγνωρίστηκαν ώρες (π.χ. Πέμπτη 17.20 ή Πέμπτη έως Κυριακή στις 20:50).`);
+      warnings.push(`«${movie.title}»: δεν αναγνωρίστηκαν ώρες (π.χ. Ώρες προβολής: 20:40 ή Πέμπτη έως Κυριακή στις 20:50).`);
     }
     return {
       title: movie.title,
