@@ -1,6 +1,6 @@
 'use strict';
 
-const { parseProgramText, parseProgramFromImages, isAiEnabled } = require('./programTextParse');
+const { parseProgramText, parseProgramFromImages, isAiEnabled, isOcrAvailable } = require('./programTextParse');
 const { aiConfig, MAX_VISION_IMAGES } = require('./programTextAiParser');
 const { formatWeekLabel } = require('./cinemaWeek');
 const {
@@ -109,6 +109,7 @@ function getProgramImportStatus() {
   const cfg = aiConfig();
   return {
     aiEnabled: isAiEnabled(),
+    ocrEnabled: isOcrAvailable(),
     aiModel: cfg.model,
     visionModel: cfg.visionModel,
     maxImages: MAX_VISION_IMAGES,
@@ -205,6 +206,7 @@ async function buildPreviewFromParsed(strapi, { venue, parsed, inputKind = 'text
     movies,
     proposals,
     cmsMovies: cmsMovies.map((m) => ({ id: m.id, title: m.title })),
+    ocrPreview: parsed.ocrPreview,
     summary: {
       movieCount: movies.length,
       totalShowtimes,
@@ -236,12 +238,6 @@ async function previewProgramTextImport(strapi, { text, images, venueId, refYear
   let inputKind = 'text';
 
   if (imageList.length > 0) {
-    if (!isAiEnabled()) {
-      return {
-        ok: false,
-        error: 'Η ανάλυση εικόνας απαιτεί AI — όρισε PROGRAM_IMPORT_OPENAI_API_KEY ή OPENAI_API_KEY.',
-      };
-    }
     inputKind = 'image';
     parsed = await parseProgramFromImages(imageList, {
       refYear,
@@ -262,11 +258,12 @@ async function previewProgramTextImport(strapi, { text, images, venueId, refYear
     return {
       ok: false,
       error:
-        parsed.parseSource === 'ai_failed'
+        parsed.parseSource === 'ai_failed' || parsed.parseSource === 'ocr_failed'
           ? parsed.warnings?.[0] || 'Η ανάλυση δεν βρήκε ταινίες.'
           : 'Δεν βρέθηκαν ταινίες ή προβολές.',
       warnings: parsed.warnings,
       parseSource: parsed.parseSource,
+      ocrPreview: parsed.ocrPreview,
     };
   }
 

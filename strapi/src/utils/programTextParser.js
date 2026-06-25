@@ -5,12 +5,19 @@ const { buildAthensDatetime, formatAthensWallClock } = require('./athensTime');
 
 const GREEK_DOW = {
   κυριακη: 0,
+  κυρ: 0,
   δευτερα: 1,
+  δευ: 1,
   τριτη: 2,
+  τρι: 2,
   τεταρτη: 3,
+  τετ: 3,
   πεμπτη: 4,
+  πεμ: 4,
   παρασκευη: 5,
+  παρ: 5,
   σαββατο: 6,
+  σαβ: 6,
 };
 
 const GREEK_DOW_LABEL = {
@@ -23,15 +30,69 @@ const GREEK_DOW_LABEL = {
   6: 'Σάββατο',
 };
 
-const DAY_NAMES = 'Δευτέρα|Τρίτη|Τετάρτη|Πέμπτη|Παρασκευή|Σάββατο|Κυριακή';
+const DAY_NAMES =
+  'Δευτέρα|Δευ\\.?|Τρίτη|Τρι\\.?|Τετάρτη|Τετ\\.?|Πέμπτη|Πεμ\\.?|Πέμ\\.?|Παρασκευή|Παρ\\.?|Σάββατο|Σαβ\\.?|Κυριακή|Κυρ\\.?';
 
 const SHOWTIME_RE = new RegExp(
-  `(?:^|[\\s,;·])(${DAY_NAMES})\\s+(\\d{1,2})[.:](\\d{2})\\b`,
+  `(?:^|[\\s,;·|])(${DAY_NAMES})\\s+(\\d{1,2})[.:](\\d{2})\\b`,
+  'giu',
+);
+
+const DATE_SHOWTIME_RE = new RegExp(
+  `(?:^|[\\s,;·|])((?:\\d{1,2})[/.](?:\\d{1,2})(?:[/.](?:\\d{2,4}))?)\\s+(\\d{1,2})[.:](\\d{2})\\b`,
   'giu',
 );
 
 const DATE_RANGE_RE =
   /(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?\s*[–\-—]\s*(?:\S+\s+)?(\d{1,2})[/.](\d{1,2})(?:[/.](\d{2,4}))?/i;
+
+const GREEK_MONTH_NAMES =
+  'Ιανουαρίου|Φεβρουαρίου|Μαρτίου|Απριλίου|Μαΐου|Μαίου|Ιουνίου|Ιουλίου|Αυγούστου|Σεπτεμβρίου|Οκτωβρίου|Νοεμβρίου|Δεκεμβρίου';
+
+const GREEK_MONTHS = {
+  ιανουαριου: 1,
+  ιαν: 1,
+  φεβρουαριου: 2,
+  φεβ: 2,
+  μαρτιου: 3,
+  μαρ: 3,
+  απριλιου: 4,
+  απρ: 4,
+  μαιου: 5,
+  μαϊου: 5,
+  μαι: 5,
+  ιουνιου: 6,
+  ιουν: 6,
+  ιουλιου: 7,
+  ιουλ: 7,
+  αυγουστου: 8,
+  αυγ: 8,
+  σεπτεμβριου: 9,
+  σεπ: 9,
+  οκτωβριου: 10,
+  οκτ: 10,
+  νοεμβριου: 11,
+  νοε: 11,
+  δεκεμβριου: 12,
+  δεκ: 12,
+};
+
+const GREEK_DATE_RANGE_RE = new RegExp(
+  `(?:[Α-Ωα-ωάέήίόύώ]+\\s+)?(\\d{1,2})\\s+(${GREEK_MONTH_NAMES})(?:\\s+(\\d{4}))?\\s+(?:έως|εως|ως|–|—|-)(?:\\s+και)?\\s+(?:[Α-Ωα-ωάέήίόύώ]+\\s+)?(\\d{1,2})\\s+(${GREEK_MONTH_NAMES})(?:\\s+(\\d{4}))?`,
+  'iu',
+);
+
+const DOW_RANGE_STIS_RE = new RegExp(
+  `(${DAY_NAMES})\\s+(?:έως|εως|ως|–|—|-)\\s+(${DAY_NAMES})\\s+στις\\s+((?:\\d{1,2}:\\d{2})(?:\\s*(?:&|,|και)\\s*\\d{1,2}:\\d{2})*)`,
+  'giu',
+);
+
+const DOW_STIS_RE = new RegExp(
+  `(?:^|[\\s,;·|])(${DAY_NAMES})\\s+στις\\s+((?:\\d{1,2}:\\d{2})(?:\\s*(?:&|,|και)\\s*\\d{1,2}:\\d{2})*)`,
+  'giu',
+);
+
+const STIS_TIMES_RE = /(\d{1,2}):(\d{2})/g;
 
 const LEADING_DECOR_RE = /^[\s🎬🎥📽️▪️•\-–—*»«"']+/u;
 const LEADING_ENUM_RE = /^\d+[.)]\s*/u;
@@ -57,9 +118,59 @@ function localDate(year, month, day) {
   return d;
 }
 
-/** dd/mm [–] dd/mm — αναζήτηση σε όλο το κείμενο. */
+function monthNameToNumber(raw) {
+  const n = normalizeGreek(raw).replace(/\./g, '');
+  if (GREEK_MONTHS[n] != null) return GREEK_MONTHS[n];
+  const prefix = n.slice(0, 3);
+  for (const [key, month] of Object.entries(GREEK_MONTHS)) {
+    if (key.startsWith(prefix) || prefix.startsWith(key.slice(0, 3))) return month;
+  }
+  return null;
+}
+
+/** dd/mm ή «25 Ιουνίου έως 1 Ιουλίου» (ανά γραμμή — όχι σε όλο το κείμενο). */
 function parseProgramDateRange(text, refYear = new Date().getFullYear()) {
-  const hay = String(text || '');
+  const lines = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  for (const line of lines) {
+    const greek = line.match(GREEK_DATE_RANGE_RE);
+    if (greek) {
+      const y1 = resolveYear(greek[3], refYear);
+      const m1 = monthNameToNumber(greek[2]);
+      const d1 = Number(greek[1]);
+      const y2 = resolveYear(greek[6], y1);
+      const m2 = monthNameToNumber(greek[5]);
+      const d2 = Number(greek[4]);
+      if (m1 && m2 && d1 && d2) {
+        const start = localDate(y1, m1, d1);
+        let end = localDate(y2, m2, d2);
+        if (!greek[6] && end.getTime() < start.getTime()) {
+          end.setFullYear(end.getFullYear() + 1);
+        }
+        end.setHours(23, 59, 59, 999);
+        return { start, end, inferred: false };
+      }
+    }
+
+    const m = line.match(DATE_RANGE_RE);
+    if (m) {
+      const y1 = resolveYear(m[3], refYear);
+      const start = localDate(y1, Number(m[2]), Number(m[1]));
+      const y2 = resolveYear(m[6], y1);
+      const end = localDate(y2, Number(m[5]), Number(m[4]));
+      if (!m[6] && end.getTime() < start.getTime()) {
+        end.setFullYear(end.getFullYear() + 1);
+      }
+      end.setHours(23, 59, 59, 999);
+      return { start, end, inferred: false };
+    }
+  }
+
+  const hay = lines.join('\n');
   const m = hay.match(DATE_RANGE_RE);
   if (!m) return null;
 
@@ -111,8 +222,79 @@ function firstShowtimeMatch(line) {
   return { match: m, dayStart: dayStart >= 0 ? dayStart : m.index };
 }
 
+function dayNameToDow(raw) {
+  const n = normalizeGreek(raw).replace(/\./g, '');
+  if (GREEK_DOW[n] != null) return GREEK_DOW[n];
+  const prefix = n.slice(0, 3);
+  for (const [key, dow] of Object.entries(GREEK_DOW)) {
+    if (key.startsWith(prefix) || prefix.startsWith(key.slice(0, 3))) return dow;
+  }
+  return null;
+}
+
+function parseTimesList(raw) {
+  const times = [];
+  const hay = String(raw || '');
+  STIS_TIMES_RE.lastIndex = 0;
+  let m;
+  while ((m = STIS_TIMES_RE.exec(hay)) !== null) {
+    const hour = Number(m[1]);
+    const minute = Number(m[2]);
+    if (hour <= 23 && minute <= 59) times.push({ hour, minute });
+  }
+  return times;
+}
+
+function dowsInInclusiveRange(startDow, endDow) {
+  const days = [];
+  let d = startDow;
+  for (let guard = 0; guard < 7; guard += 1) {
+    days.push(d);
+    if (d === endDow) break;
+    d = (d + 1) % 7;
+  }
+  return days;
+}
+
+function datesForDowsInRange(dows, rangeStart, rangeEnd) {
+  const out = [];
+  const cursor = new Date(rangeStart);
+  cursor.setHours(0, 0, 0, 0);
+  const last = new Date(rangeEnd);
+  last.setHours(23, 59, 59, 999);
+  const wanted = new Set(dows);
+  while (cursor.getTime() <= last.getTime()) {
+    if (wanted.has(cursor.getDay())) out.push(new Date(cursor));
+    cursor.setDate(cursor.getDate() + 1);
+  }
+  return out;
+}
+
+function firstDowRangeStisMatch(line) {
+  const hay = String(line || '');
+  DOW_RANGE_STIS_RE.lastIndex = 0;
+  const m = DOW_RANGE_STIS_RE.exec(hay);
+  if (!m) return null;
+  const start = hay.indexOf(m[0], Math.max(0, m.index));
+  return { match: m, start: start >= 0 ? start : m.index };
+}
+
+function firstDowStisMatch(line) {
+  const hay = String(line || '');
+  DOW_STIS_RE.lastIndex = 0;
+  const m = DOW_STIS_RE.exec(hay);
+  if (!m) return null;
+  const start = hay.indexOf(m[1], Math.max(0, m.index));
+  return { match: m, start: start >= 0 ? start : m.index };
+}
+
 function lineHasShowtime(line) {
-  return firstShowtimeMatch(line) != null;
+  return (
+    firstShowtimeMatch(line) != null ||
+    firstDateShowtimeMatch(line) != null ||
+    firstDowRangeStisMatch(line) != null ||
+    firstDowStisMatch(line) != null
+  );
 }
 
 function isLikelyHeaderLine(line) {
@@ -120,8 +302,20 @@ function isLikelyHeaderLine(line) {
   if (!stripped) return false;
   const n = normalizeGreek(stripped);
   if (/προγραμμα|κιν\/φου|κινηματογραφ|cinema|program/.test(n)) return true;
+  if (GREEK_DATE_RANGE_RE.test(stripped) && !firstDowRangeStisMatch(stripped) && !firstDowStisMatch(stripped)) {
+    return true;
+  }
   if (DATE_RANGE_RE.test(stripped) && !lineHasShowtime(stripped)) return true;
   return false;
+}
+
+function firstDateShowtimeMatch(line) {
+  const hay = String(line || '');
+  DATE_SHOWTIME_RE.lastIndex = 0;
+  const m = DATE_SHOWTIME_RE.exec(hay);
+  if (!m) return null;
+  const start = hay.indexOf(m[1], Math.max(0, m.index));
+  return { match: m, start: start >= 0 ? start : m.index };
 }
 
 function looksLikeTitle(text) {
@@ -129,10 +323,14 @@ function looksLikeTitle(text) {
   if (s.length < 2 || s.length > 160) return false;
   if (lineHasShowtime(s)) return false;
   const n = normalizeGreek(s);
-  if (/^προγραμμα|^κιν/.test(n)) return false;
+  if (/^προγραμμα|^κιν|^ωρες|^προβολ/.test(n)) return false;
   if (DATE_RANGE_RE.test(s) && !lineHasShowtime(s)) return false;
-  // καθαρά αριθμητική γραμμή ή μόνο ημερομηνία
   if (/^\d{1,2}[/.]\d{1,2}(?:[/.]\d{2,4})?$/.test(s)) return false;
+  const letters = s.replace(/[^a-zA-ZΑ-Ωα-ωάέήίόύώΰϊϋ]/gu, '');
+  if (letters.length >= 3) {
+    const upper = letters.replace(/[^A-ZΑ-ΩΆΈΉΊΌΎΏΪΫ]/gu, '');
+    if (upper.length / letters.length >= 0.75) return true;
+  }
   return true;
 }
 
@@ -141,9 +339,33 @@ function splitTitleAndSchedule(line) {
   const stripped = stripLineDecorators(line);
   if (!stripped) return null;
 
+  const dashSplit = stripped.match(/^(.+?)\s*[—–\-|:]\s*(.+)$/u);
+  if (dashSplit && lineHasShowtime(dashSplit[2])) {
+    const title = dashSplit[1].replace(/[\s\-–—:|*]+$/, '').trim();
+    if (title.length >= 2) {
+      return { title, schedulePart: dashSplit[2].trim() };
+    }
+  }
+
+  const rangeStis = firstDowRangeStisMatch(stripped) || firstDowStisMatch(stripped);
+  if (rangeStis && rangeStis.start > 0) {
+    const title = stripped
+      .slice(0, rangeStis.start)
+      .replace(/[\s\-–—:|]+$/, '')
+      .trim();
+    const schedulePart = stripped.slice(rangeStis.start).trim();
+    if (title.length >= 2 && schedulePart) {
+      return { title, schedulePart };
+    }
+  }
+
   const showtimeStart = (() => {
-    const hit = firstShowtimeMatch(stripped);
-    return hit ? hit.dayStart : -1;
+    const hit =
+      firstShowtimeMatch(stripped) ||
+      firstDateShowtimeMatch(stripped) ||
+      firstDowRangeStisMatch(stripped) ||
+      firstDowStisMatch(stripped);
+    return hit ? hit.dayStart ?? hit.start : -1;
   })();
 
   if (showtimeStart >= 0) {
@@ -187,38 +409,135 @@ function extractNoteAfterTime(scheduleText, matchIndex, matchLength) {
   return note || null;
 }
 
-function parseShowtimesFromText(scheduleText, rangeStart, rangeEnd) {
+function parseDateShowtimesFromText(scheduleText, refYear) {
   const showtimes = [];
   const hay = String(scheduleText || '');
-  if (!hay.trim() || !rangeStart || !rangeEnd) return showtimes;
+  if (!hay.trim()) return showtimes;
 
-  SHOWTIME_RE.lastIndex = 0;
+  DATE_SHOWTIME_RE.lastIndex = 0;
   let m;
-  while ((m = SHOWTIME_RE.exec(hay)) !== null) {
-    const dayKey = normalizeGreek(m[1]);
-    const dow = GREEK_DOW[dayKey];
-    if (dow == null) continue;
-
+  while ((m = DATE_SHOWTIME_RE.exec(hay)) !== null) {
+    const dateParts = m[1].split(/[/.]/);
+    const day = Number(dateParts[0]);
+    const month = Number(dateParts[1]);
+    const year = resolveYear(dateParts[2], refYear);
     const hour = Number(m[2]);
     const minute = Number(m[3]);
-    if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour > 23 || minute > 59) continue;
+    if (!day || !month || hour > 23 || minute > 59) continue;
 
-    const dayDate = dateForDowInRange(dow, rangeStart, rangeEnd);
-    if (!dayDate) continue;
-
+    const dayDate = localDate(year, month, day);
     const datetime = buildAthensDatetimeFromLocalDate(dayDate, hour, minute);
     const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
     const note = extractNoteAfterTime(hay, m.index, m[0].length);
 
-    showtimes.push({
-      dayLabel,
-      timeLabel,
-      datetime,
-      note,
-    });
+    showtimes.push({ dayLabel, timeLabel, datetime, note });
   }
 
   return showtimes;
+}
+
+function dedupeShowtimes(showtimes) {
+  const seen = new Set();
+  const out = [];
+  for (const st of showtimes) {
+    const key = st.datetime.toISOString();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(st);
+  }
+  return out.sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+}
+
+function parseDowRangeStisShowtimes(scheduleText, rangeStart, rangeEnd) {
+  const showtimes = [];
+  const hay = String(scheduleText || '');
+  if (!hay.trim() || !rangeStart || !rangeEnd) return showtimes;
+
+  const covered = [];
+
+  DOW_RANGE_STIS_RE.lastIndex = 0;
+  let m;
+  while ((m = DOW_RANGE_STIS_RE.exec(hay)) !== null) {
+    covered.push([m.index, m.index + m[0].length]);
+    const startDow = dayNameToDow(m[1]);
+    const endDow = dayNameToDow(m[2]);
+    if (startDow == null || endDow == null) continue;
+
+    const times = parseTimesList(m[3]);
+    if (!times.length) continue;
+
+    const dows = dowsInInclusiveRange(startDow, endDow);
+    const dates = datesForDowsInRange(dows, rangeStart, rangeEnd);
+    for (const dayDate of dates) {
+      for (const { hour, minute } of times) {
+        const datetime = buildAthensDatetimeFromLocalDate(dayDate, hour, minute);
+        const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+        showtimes.push({ dayLabel, timeLabel, datetime, note: null });
+      }
+    }
+  }
+
+  const isCovered = (index) =>
+    covered.some(([start, end]) => index >= start && index < end);
+
+  DOW_STIS_RE.lastIndex = 0;
+  while ((m = DOW_STIS_RE.exec(hay)) !== null) {
+    if (isCovered(m.index)) continue;
+    const dow = dayNameToDow(m[1]);
+    if (dow == null) continue;
+    const times = parseTimesList(m[2]);
+    if (!times.length) continue;
+
+    const dayDate = dateForDowInRange(dow, rangeStart, rangeEnd);
+    if (!dayDate) continue;
+
+    for (const { hour, minute } of times) {
+      const datetime = buildAthensDatetimeFromLocalDate(dayDate, hour, minute);
+      const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+      showtimes.push({ dayLabel, timeLabel, datetime, note: null });
+    }
+  }
+
+  return showtimes;
+}
+
+function parseShowtimesFromText(scheduleText, rangeStart, rangeEnd, refYear) {
+  const showtimes = [];
+  const hay = String(scheduleText || '');
+  if (!hay.trim()) return showtimes;
+
+  if (rangeStart && rangeEnd) {
+    SHOWTIME_RE.lastIndex = 0;
+    let m;
+    while ((m = SHOWTIME_RE.exec(hay)) !== null) {
+      const dow = dayNameToDow(m[1]);
+      if (dow == null) continue;
+
+      const hour = Number(m[2]);
+      const minute = Number(m[3]);
+      if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour > 23 || minute > 59) continue;
+
+      const dayDate = dateForDowInRange(dow, rangeStart, rangeEnd);
+      if (!dayDate) continue;
+
+      const datetime = buildAthensDatetimeFromLocalDate(dayDate, hour, minute);
+      const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+      const note = extractNoteAfterTime(hay, m.index, m[0].length);
+
+      showtimes.push({
+        dayLabel,
+        timeLabel,
+        datetime,
+        note,
+      });
+    }
+  }
+
+  return dedupeShowtimes([
+    ...showtimes,
+    ...parseDowRangeStisShowtimes(hay, rangeStart, rangeEnd),
+    ...parseDateShowtimesFromText(hay, refYear),
+  ]);
 }
 
 function splitMovieBlocksByEmoji(text) {
@@ -327,9 +646,52 @@ function splitMovieBlocksFreeForm(text) {
   };
 }
 
+function splitMovieBlocksByParagraph(text) {
+  const normalized = String(text || '').replace(/\r\n/g, '\n').trim();
+  const chunks = normalized.split(/\n\s*\n+/).map((c) => c.trim()).filter(Boolean);
+  if (chunks.length < 2) return null;
+
+  let header = '';
+  let startIdx = 0;
+  if (chunks[0] && !lineHasShowtime(chunks[0]) && isLikelyHeaderLine(chunks[0])) {
+    header = chunks[0];
+    startIdx = 1;
+  }
+
+  const movies = [];
+  for (let i = startIdx; i < chunks.length; i += 1) {
+    const lines = chunks[i].split('\n').map((line) => line.trim()).filter(Boolean);
+    if (!lines.length) continue;
+
+    const joined = lines.join(' ');
+    const firstSplit = splitTitleAndSchedule(lines[0]) || splitTitleAndSchedule(joined);
+    if (firstSplit?.title) {
+      const scheduleParts = [];
+      if (firstSplit.schedulePart) scheduleParts.push(firstSplit.schedulePart);
+      scheduleParts.push(...lines.slice(1));
+      movies.push({
+        title: firstSplit.title,
+        scheduleText: scheduleParts.join(' ').trim() || joined,
+      });
+      continue;
+    }
+
+    if (looksLikeTitle(stripLineDecorators(lines[0]))) {
+      movies.push({
+        title: stripLineDecorators(lines[0]),
+        scheduleText: lines.slice(1).join(' ').trim(),
+      });
+    }
+  }
+
+  return movies.length ? { header, movies } : null;
+}
+
 function splitMovieBlocks(text) {
   const emojiSplit = splitMovieBlocksByEmoji(text);
   if (emojiSplit) return emojiSplit;
+  const paragraphSplit = splitMovieBlocksByParagraph(text);
+  if (paragraphSplit) return paragraphSplit;
   return splitMovieBlocksFreeForm(text);
 }
 
@@ -344,7 +706,7 @@ function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now 
 
   if (!movies.length) {
     warnings.push(
-      'Δεν αναγνωρίστηκαν ταινίες. Βεβαιώσου ότι κάθε τίτλος είναι σε ξεχωριστή γραμμή (ή με 🎬) και ακολουθούν μέρες+ώρες (π.χ. «Πέμπτη 17.20»).',
+      'Δεν αναγνωρίστηκαν ταινίες. Κάθε γραμμή: τίτλος + πρόγραμμα (π.χ. «Πέμπτη έως Κυριακή στις 20:50» ή «Πέμπτη 17.20»).',
     );
   }
 
@@ -357,9 +719,14 @@ function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now 
   }
 
   const parsedMovies = movies.map((movie) => {
-    const showtimes = parseShowtimesFromText(movie.scheduleText, dateRange.start, dateRange.end);
+    const showtimes = parseShowtimesFromText(
+      movie.scheduleText,
+      dateRange.start,
+      dateRange.end,
+      refYear,
+    );
     if (!showtimes.length && movie.scheduleText.trim()) {
-      warnings.push(`«${movie.title}»: δεν αναγνωρίστηκαν ώρες (μέρα + ώρα, π.χ. Πέμπτη 17.20).`);
+      warnings.push(`«${movie.title}»: δεν αναγνωρίστηκαν ώρες (π.χ. Πέμπτη 17.20 ή Πέμπτη έως Κυριακή στις 20:50).`);
     }
     return {
       title: movie.title,
@@ -385,6 +752,7 @@ module.exports = {
   parseCinemaProgramText,
   parseProgramDateRange,
   parseShowtimesFromText,
+  parseDateShowtimesFromText,
   splitMovieBlocks,
   buildAthensDatetime,
   GREEK_DOW_LABEL,

@@ -38,8 +38,11 @@ const MAX_IMAGES_DEFAULT = 4;
 
 function parseSourceLabel(source) {
   if (source === 'ai_vision') return 'AI (εικόνα)';
+  if (source === 'ai_ocr') return 'AI (OCR εικόνας)';
   if (source === 'ai') return 'AI (κείμενο)';
-  if (source === 'regex') return 'Κανόνες (fallback)';
+  if (source === 'ocr') return 'OCR + κανόνες';
+  if (source === 'regex') return 'Κανόνες';
+  if (source === 'ocr_failed') return 'OCR απέτυχε';
   return source || '—';
 }
 
@@ -160,9 +163,7 @@ export default function App() {
   const skippedUnmatchedCount = unmatchedTitles.length - pendingUnmatchedTitles.length;
 
   const canParse =
-    venueId &&
-    (inputMode === 'text' ? text.trim().length > 0 : images.length > 0) &&
-    (inputMode !== 'image' || aiStatus?.aiEnabled);
+    venueId && (inputMode === 'text' ? text.trim().length > 0 : images.length > 0);
 
   const runPreview = useCallback(
     async ({ venueId: vId, mode, textValue, imageValues }) => {
@@ -198,13 +199,6 @@ export default function App() {
     }
     if (inputMode === 'image' && !images.length) {
       toggleNotification({ type: 'warning', message: 'Ανέβασε τουλάχιστον μία εικόνα.' });
-      return;
-    }
-    if (inputMode === 'image' && !aiStatus?.aiEnabled) {
-      toggleNotification({
-        type: 'warning',
-        message: 'Η ανάλυση εικόνας απαιτεί OPENAI_API_KEY στο Strapi.',
-      });
       return;
     }
 
@@ -366,7 +360,7 @@ export default function App() {
     <Layout>
       <HeaderLayout
         title="Εισαγωγή προγράμματος"
-        subtitle="AI από κείμενο ή screenshot · έγκριση πριν τη δημιουργία προβολών"
+        subtitle="Κείμενο ή screenshot · AI ή OCR · έγκριση πριν τη δημιουργία προβολών"
         as="section"
       />
       <ContentLayout>
@@ -376,11 +370,14 @@ export default function App() {
               <Flex gap={2} alignItems="center" wrap="wrap">
                 <Typography variant="beta">1. Κινηματογράφος & πηγή</Typography>
                 {aiStatus ? (
-                  <Badge>
-                    {aiStatus.aiEnabled
-                      ? `AI: ${aiStatus.visionModel || aiStatus.aiModel}`
-                      : 'AI: off'}
-                  </Badge>
+                  <>
+                    <Badge>
+                      {aiStatus.aiEnabled
+                        ? `AI: ${aiStatus.visionModel || aiStatus.aiModel}`
+                        : 'AI: off'}
+                    </Badge>
+                    <Badge>{aiStatus.ocrEnabled ? 'OCR: on' : 'OCR: off'}</Badge>
+                  </>
                 ) : null}
               </Flex>
             </GridItem>
@@ -435,7 +432,7 @@ export default function App() {
                   name="program-text"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder="Επικόλλησε ελεύθερο κείμενο — τίτλοι, μέρες, ώρες…"
+                  placeholder="Επικόλλησε ελεύθερο κείμενο — τίτλοι, μέρες (Πεμ/Πέμπτη), ώρες (17.20), ημερομηνίες (25/6 19:00)…"
                 />
               </GridItem>
             ) : (
@@ -444,8 +441,7 @@ export default function App() {
                   Screenshot προγράμματος
                 </Typography>
                 <Typography variant="pi" textColor="neutral600" style={{ marginTop: 4 }}>
-                  Ανέβασε 1–{maxImages} εικόνες (Facebook post, site, αφίσα). Το AI διαβάζει το πρόγραμμα·
-                  εσύ εγκρίνεις τι μπαίνει στο CMS.
+                  Ανέβασε 1–{maxImages} εικόνες. Με API key: AI vision. Χωρίς: OCR + κανόνες (πιο αδύναμο).
                 </Typography>
                 <Flex gap={2} marginTop={2} wrap="wrap">
                   <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
@@ -479,10 +475,16 @@ export default function App() {
                     ))}
                   </div>
                 ) : null}
-                {!aiStatus?.aiEnabled ? (
+                {!aiStatus?.aiEnabled && !aiStatus?.ocrEnabled ? (
                   <Box marginTop={2}>
-                    <Alert variant="danger" title="AI απενεργοποιημένο">
-                      Για εικόνες χρειάζεται OPENAI_API_KEY στο Strapi (.env).
+                    <Alert variant="danger" title="Ανάλυση εικόνας">
+                      Χρειάζεται OPENAI_API_KEY ή εγκατεστημένο tesseract.js στο Strapi.
+                    </Alert>
+                  </Box>
+                ) : !aiStatus?.aiEnabled ? (
+                  <Box marginTop={2}>
+                    <Alert variant="default" title="Χωρίς AI" closeLabel="Κλείσιμο">
+                      Οι εικόνες θα αναλυθούν με OCR + κανόνες — λιγότερο ακριβές από AI.
                     </Alert>
                   </Box>
                 ) : null}
@@ -519,6 +521,17 @@ export default function App() {
                   {w}
                 </Alert>
               ))}
+
+              {preview.ocrPreview ? (
+                <Box padding={3} background="neutral100" hasRadius>
+                  <Typography variant="pi" fontWeight="bold" marginBottom={2}>
+                    Κείμενο από OCR (απόσπασμα)
+                  </Typography>
+                  <Typography variant="pi" textColor="neutral600" style={{ whiteSpace: 'pre-wrap' }}>
+                    {preview.ocrPreview}
+                  </Typography>
+                </Box>
+              ) : null}
 
               {pendingUnmatchedTitles.length > 0 ? (
                 <Box padding={3} background="neutral100" hasRadius>
