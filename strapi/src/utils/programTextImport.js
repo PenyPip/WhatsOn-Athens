@@ -1,7 +1,7 @@
 'use strict';
 
-const { parseProgramText, isAiEnabled } = require('./programTextParse');
-const { aiConfig } = require('./programTextAiParser');
+const { parseProgramText, parseProgramFromImages, isAiEnabled } = require('./programTextParse');
+const { aiConfig, MAX_VISION_IMAGES } = require('./programTextAiParser');
 const { formatWeekLabel } = require('./cinemaWeek');
 const {
   findBestCmsMatchByPlayTitle,
@@ -86,22 +86,7 @@ function movieAlternatives(parsedTitle, cmsMovies, { limit = ALT_MATCH_LIMIT } =
   return scored.slice(0, limit);
 }
 
-function formatDisplayDatetime(datetime) {
-  const d = datetime instanceof Date ? datetime : new Date(datetime);
-  if (Number.isNaN(d.getTime())) return { dateLabel: '—', timeLabel: '—' };
-  return {
-    dateLabel: d.toLocaleDateString('el-GR', {
-      weekday: 'long',
-      day: 'numeric',
-      month: 'short',
-    }),
-    timeLabel: d.toLocaleTimeString('el-GR', {
-      hour: '2-digit',
-      minute: '2-digit',
-      hour12: false,
-    }),
-  };
-}
+const { formatAthensWallClock } = require('./athensTime');
 
 async function showtimeExistsAt(strapi, { movieId, venueId, datetime }) {
   const t = datetime instanceof Date ? datetime.getTime() : new Date(datetime).getTime();
@@ -125,29 +110,13 @@ function getProgramImportStatus() {
   return {
     aiEnabled: isAiEnabled(),
     aiModel: cfg.model,
+    visionModel: cfg.visionModel,
+    maxImages: MAX_VISION_IMAGES,
     matchMinScore: PREVIEW_MIN_SCORE,
   };
 }
 
-async function previewProgramTextImport(strapi, { text, venueId, refYear } = {}) {
-  const venue = await loadVenue(strapi, venueId);
-  if (!venue) {
-    return { ok: false, error: 'Άκυρος ή ελλιπής κινηματογράφος (venueId).' };
-  }
-  if (venue.type !== 'cinema') {
-    return { ok: false, error: 'Ο επιλεγμένος χώρος δεν είναι κινηματογράφος.' };
-  }
-
-  const trimmed = String(text || '').trim();
-  if (!trimmed) {
-    return { ok: false, error: 'Κενό κείμενο προγράμματος.' };
-  }
-
-  const parsed = await parseProgramText(trimmed, {
-    refYear,
-    venueName: venue.name,
-    now: new Date(),
-  });
+async function buildPreviewFromParsed(strapi, { venue, parsed, inputKind = 'text' }) {
   const cmsMovies = await findAllMovies(strapi);
   const now = new Date();
 
@@ -177,7 +146,7 @@ async function previewProgramTextImport(strapi, { text, venueId, refYear } = {})
           : false;
       if (exists) existingShowtimes += 1;
 
-      const { dateLabel, timeLabel } = formatDisplayDatetime(st.datetime);
+      const { dateLabel, timeLabel } = formatAthensWallClock(st.datetime);
       const row = {
         id: `p-${proposalIdx}`,
         parsedTitle: movie.title,
@@ -220,8 +189,10 @@ async function previewProgramTextImport(strapi, { text, venueId, refYear } = {})
   return {
     ok: true,
     venue: { id: venue.id, name: venue.name, slug: venue.slug },
+    inputKind,
     header: parsed.header,
     parseSource: parsed.parseSource || 'regex',
+    imageCount: parsed.imageCount || 0,
     dateRange: parsed.dateRange
       ? {
           start: parsed.dateRange.start.toISOString(),
@@ -247,6 +218,59 @@ async function previewProgramTextImport(strapi, { text, venueId, refYear } = {})
     defaultMatchMinScore: MIN_PLAY_TITLE_MATCH,
     ai: getProgramImportStatus(),
   };
+}
+
+async function previewProgramTextImport(strapi, { text, images, venueId, refYear } = {}) {
+  const venue = await loadVenue(strapi, venueId);
+  if (!venue) {
+    return { ok: false, error: 'Άκυρος ή ελλιπής κινηματογράφος (venueId).' };
+  }
+  if (venue.type !== 'cinema') {
+    return { ok: false, error: 'Ο επιλεγμένος χώρος δεν είναι κινηματογράφος.' };
+  }
+
+  const imageList = Array.isArray(images) ? images.filter(Boolean) : [];
+  const trimmed = String(text || '').trim();
+
+  let parsed;
+  let inputKind = 'text';
+
+  if (imageList.length > 0) {
+    if (!isAiEnabled()) {
+      return {
+        ok: false,
+        error: 'Η ανάλυση εικόνας απαιτεί AI — όρισε PROGRAM_IMPORT_OPENAI_API_KEY ή OPENAI_API_KEY.',
+      };
+    }
+    inputKind = 'image';
+    parsed = await parseProgramFromImages(imageList, {
+      refYear,
+      venueName: venue.name,
+      now: new Date(),
+    });
+  } else if (trimmed) {
+    parsed = await parseProgramText(trimmed, {
+      refYear,
+      venueName: venue.name,
+      now: new Date(),
+    });
+  } else {
+    return { ok: false, error: 'Δώσε κείμενο ή εικόνα προγράμματος.' };
+  }
+
+  if (!parsed.movies?.length) {
+    return {
+      ok: false,
+      error:
+        parsed.parseSource === 'ai_failed'
+          ? parsed.warnings?.[0] || 'Η ανάλυση δεν βρήκε ταινίες.'
+          : 'Δεν βρέθηκαν ταινίες ή προβολές.',
+      warnings: parsed.warnings,
+      parseSource: parsed.parseSource,
+    };
+  }
+
+  return buildPreviewFromParsed(strapi, { venue, parsed, inputKind });
 }
 
 async function createProgramTextShowtimes(strapi, { venueId, items, now = new Date() } = {}) {
@@ -317,7 +341,7 @@ async function createProgramTextShowtimes(strapi, { venueId, items, now = new Da
 
         const note = st.note ? String(st.note).trim() : '';
         const traceParts = [
-          'Εισαγωγή από κείμενο προγράμματος',
+          'Εισαγωγή προγράμματος (admin)',
           `venue=${venue.name}`,
           parsedTitle ? `title=${parsedTitle}` : null,
           note ? `note=${note}` : null,

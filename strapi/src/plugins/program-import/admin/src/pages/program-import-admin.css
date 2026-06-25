@@ -35,7 +35,38 @@
   text-decoration: line-through;
 }
 
-.program-import-showtime-chip .note {
-  color: var(--neutral600);
-  font-style: italic;
+.program-import-image-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.program-import-image-thumb {
+  position: relative;
+  width: 120px;
+  border: 1px solid var(--neutral200);
+  border-radius: 4px;
+  overflow: hidden;
+  background: var(--neutral100);
+}
+
+.program-import-image-thumb img {
+  display: block;
+  width: 100%;
+  height: auto;
+  max-height: 160px;
+  object-fit: contain;
+}
+
+.program-import-image-thumb button {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+}
+
+.program-import-mode-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 8px;
 }

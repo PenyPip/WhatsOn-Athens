@@ -1,6 +1,7 @@
 'use strict';
 
 const { getTargetCinemaWeekBoundsForVenueStatus } = require('./cinemaWeek');
+const { buildAthensDatetime, formatAthensWallClock } = require('./athensTime');
 
 const GREEK_DOW = {
   κυριακη: 0,
@@ -90,13 +91,8 @@ function dateForDowInRange(dow, rangeStart, rangeEnd) {
   return null;
 }
 
-function buildAthensDatetime(date, hour, minute) {
-  const y = date.getFullYear();
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const d = String(date.getDate()).padStart(2, '0');
-  const hh = String(hour).padStart(2, '0');
-  const mm = String(minute).padStart(2, '0');
-  return new Date(`${y}-${m}-${d}T${hh}:${mm}:00+03:00`);
+function buildAthensDatetimeFromLocalDate(date, hour, minute) {
+  return buildAthensDatetime(date, hour, minute);
 }
 
 function stripLineDecorators(line) {
@@ -210,12 +206,13 @@ function parseShowtimesFromText(scheduleText, rangeStart, rangeEnd) {
     const dayDate = dateForDowInRange(dow, rangeStart, rangeEnd);
     if (!dayDate) continue;
 
-    const datetime = buildAthensDatetime(dayDate, hour, minute);
+    const datetime = buildAthensDatetimeFromLocalDate(dayDate, hour, minute);
+    const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
     const note = extractNoteAfterTime(hay, m.index, m[0].length);
 
     showtimes.push({
-      dayLabel: GREEK_DOW_LABEL[dow],
-      timeLabel: `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`,
+      dayLabel,
+      timeLabel,
       datetime,
       note,
     });

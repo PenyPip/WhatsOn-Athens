@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import '../program-import-admin.css';
 import {
   Layout,
@@ -22,7 +22,9 @@ import {
   Th,
   Td,
   Checkbox,
+  IconButton,
 } from '@strapi/design-system';
+import { Cross } from '@strapi/icons';
 import { useFetchClient, useNotification } from '@strapi/helper-plugin';
 
 const EXAMPLE_TEXT = `Πρόγραμμα κιν/φου ΔΙΑΝΑ Πέμπτη 25/6 - Τετάρτη 1/7:
@@ -32,8 +34,11 @@ const EXAMPLE_TEXT = `Πρόγραμμα κιν/φου ΔΙΑΝΑ Πέμπτη 2
 Πέμπτη 19.10, Παρασκευή 18.10, Σάββατο 18.40, Κυριακή 21.45
 Δευτέρα 17.00, Τετάρτη 20.40`;
 
+const MAX_IMAGES_DEFAULT = 4;
+
 function parseSourceLabel(source) {
-  if (source === 'ai') return 'AI';
+  if (source === 'ai_vision') return 'AI (εικόνα)';
+  if (source === 'ai') return 'AI (κείμενο)';
   if (source === 'regex') return 'Κανόνες (fallback)';
   return source || '—';
 }
@@ -45,20 +50,34 @@ function statusLabel(status) {
   return status;
 }
 
+function readFileAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(new Error('Αποτυχία ανάγνωσης αρχείου'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function App() {
   const { get, post } = useFetchClient();
   const toggleNotification = useNotification();
+  const fileInputRef = useRef(null);
 
   const [cinemas, setCinemas] = useState([]);
   const [aiStatus, setAiStatus] = useState(null);
   const [venueId, setVenueId] = useState('');
+  const [inputMode, setInputMode] = useState('text');
   const [text, setText] = useState('');
+  const [images, setImages] = useState([]);
   const [preview, setPreview] = useState(null);
   const [manualMovieByTitle, setManualMovieByTitle] = useState({});
   const [approvedById, setApprovedById] = useState({});
   const [loadingCinemas, setLoadingCinemas] = useState(true);
   const [parsing, setParsing] = useState(false);
   const [creating, setCreating] = useState(false);
+
+  const maxImages = aiStatus?.maxImages || MAX_IMAGES_DEFAULT;
 
   useEffect(() => {
     let cancelled = false;
@@ -132,21 +151,20 @@ export default function App() {
     return [...set];
   }, [enrichedProposals]);
 
-  const handleParse = useCallback(async () => {
-    if (!venueId) {
-      toggleNotification({ type: 'warning', message: 'Επίλεξε κινηματογράφο.' });
-      return;
-    }
-    if (!text.trim()) {
-      toggleNotification({ type: 'warning', message: 'Επικόλλησε το κείμενο προγράμματος.' });
-      return;
-    }
-    setParsing(true);
-    setPreview(null);
-    setManualMovieByTitle({});
-    setApprovedById({});
-    try {
-      const res = await post('/api/program-import/preview', { venueId: Number(venueId), text });
+  const canParse =
+    venueId &&
+    (inputMode === 'text' ? text.trim().length > 0 : images.length > 0) &&
+    (inputMode !== 'image' || aiStatus?.aiEnabled);
+
+  const runPreview = useCallback(
+    async ({ venueId: vId, mode, textValue, imageValues }) => {
+      const payload = { venueId: Number(vId) };
+      if (mode === 'image') {
+        payload.images = imageValues.map((img) => img.dataUrl);
+      } else {
+        payload.text = textValue;
+      }
+      const res = await post('/api/program-import/preview', payload);
       const data = res?.data;
       if (!data?.ok) throw new Error(data?.error || 'Αποτυχία ανάλυσης');
       setPreview(data);
@@ -155,6 +173,43 @@ export default function App() {
         initialApproved[p.id] = p.approved;
       }
       setApprovedById(initialApproved);
+      return data;
+    },
+    [post],
+  );
+
+  const handleParse = useCallback(async () => {
+    if (!venueId) {
+      toggleNotification({ type: 'warning', message: 'Επίλεξε κινηματογράφο.' });
+      return;
+    }
+    if (inputMode === 'text' && !text.trim()) {
+      toggleNotification({ type: 'warning', message: 'Επικόλλησε το κείμενο προγράμματος.' });
+      return;
+    }
+    if (inputMode === 'image' && !images.length) {
+      toggleNotification({ type: 'warning', message: 'Ανέβασε τουλάχιστον μία εικόνα.' });
+      return;
+    }
+    if (inputMode === 'image' && !aiStatus?.aiEnabled) {
+      toggleNotification({
+        type: 'warning',
+        message: 'Η ανάλυση εικόνας απαιτεί OPENAI_API_KEY στο Strapi.',
+      });
+      return;
+    }
+
+    setParsing(true);
+    setPreview(null);
+    setManualMovieByTitle({});
+    setApprovedById({});
+    try {
+      const data = await runPreview({
+        venueId,
+        mode: inputMode,
+        textValue: text,
+        imageValues: images,
+      });
       toggleNotification({
         type: 'success',
         message: `${data.summary.totalShowtimes} προβολές · ${parseSourceLabel(data.parseSource)}`,
@@ -164,7 +219,46 @@ export default function App() {
     } finally {
       setParsing(false);
     }
-  }, [post, text, toggleNotification, venueId]);
+  }, [aiStatus, images, inputMode, runPreview, text, toggleNotification, venueId]);
+
+  const handleFilesSelected = useCallback(
+    async (event) => {
+      const files = [...(event.target.files || [])];
+      event.target.value = '';
+      if (!files.length) return;
+
+      const remaining = maxImages - images.length;
+      if (remaining <= 0) {
+        toggleNotification({ type: 'warning', message: `Μέγιστο ${maxImages} εικόνες.` });
+        return;
+      }
+
+      const slice = files.slice(0, remaining);
+      try {
+        const next = [];
+        for (const file of slice) {
+          if (!file.type.startsWith('image/')) {
+            toggleNotification({ type: 'warning', message: `Παράλειψη «${file.name}» — όχι εικόνα.` });
+            continue;
+          }
+          const dataUrl = await readFileAsDataUrl(file);
+          next.push({
+            id: `${file.name}-${file.size}-${Date.now()}-${Math.random()}`,
+            name: file.name,
+            dataUrl,
+          });
+        }
+        if (next.length) setImages((prev) => [...prev, ...next]);
+      } catch (e) {
+        toggleNotification({ type: 'warning', message: e?.message || 'Αποτυχία φόρτωσης εικόνας' });
+      }
+    },
+    [images.length, maxImages, toggleNotification],
+  );
+
+  const removeImage = useCallback((id) => {
+    setImages((prev) => prev.filter((img) => img.id !== id));
+  }, []);
 
   const toggleProposal = useCallback((id, checked) => {
     setApprovedById((prev) => ({ ...prev, [id]: checked }));
@@ -209,13 +303,28 @@ export default function App() {
         type: 'success',
         message: `Δημιουργήθηκαν ${s.created} προβολές · ${s.skippedNotApproved || 0} δεν εγκρίθηκαν`,
       });
-      await handleParse();
+      await runPreview({
+        venueId: preview.venue.id,
+        mode: preview.inputKind || inputMode,
+        textValue: text,
+        imageValues: images,
+      });
     } catch (e) {
       toggleNotification({ type: 'warning', message: e?.message || 'Αποτυχία δημιουργίας' });
     } finally {
       setCreating(false);
     }
-  }, [approvedCount, enrichedProposals, handleParse, post, preview, toggleNotification]);
+  }, [
+    approvedCount,
+    enrichedProposals,
+    images,
+    inputMode,
+    post,
+    preview,
+    runPreview,
+    text,
+    toggleNotification,
+  ]);
 
   const allApprovableSelected = useMemo(() => {
     const approvable = enrichedProposals.filter((p) => p.canApprove);
@@ -226,7 +335,7 @@ export default function App() {
     <Layout>
       <HeaderLayout
         title="Εισαγωγή προγράμματος"
-        subtitle="AI ανάλυση ελεύθερου κειμένου · έγκριση πριν τη δημιουργία προβολών"
+        subtitle="AI από κείμενο ή screenshot · έγκριση πριν τη δημιουργία προβολών"
         as="section"
       />
       <ContentLayout>
@@ -234,9 +343,13 @@ export default function App() {
           <Grid gap={4}>
             <GridItem col={12}>
               <Flex gap={2} alignItems="center" wrap="wrap">
-                <Typography variant="beta">1. Κινηματογράφος & κείμενο</Typography>
+                <Typography variant="beta">1. Κινηματογράφος & πηγή</Typography>
                 {aiStatus ? (
-                  <Badge>{aiStatus.aiEnabled ? `AI: ${aiStatus.aiModel}` : 'AI: off (μόνο κανόνες)'}</Badge>
+                  <Badge>
+                    {aiStatus.aiEnabled
+                      ? `AI: ${aiStatus.visionModel || aiStatus.aiModel}`
+                      : 'AI: off'}
+                  </Badge>
                 ) : null}
               </Flex>
             </GridItem>
@@ -259,29 +372,95 @@ export default function App() {
               </SingleSelect>
             </GridItem>
             <GridItem col={12}>
-              <Flex justifyContent="space-between" alignItems="center" gap={2}>
-                <Typography variant="pi" fontWeight="bold" as="label" htmlFor="program-text">
-                  Κείμενο προγράμματος
-                </Typography>
-                <Button variant="tertiary" size="S" onClick={() => setText(EXAMPLE_TEXT)}>
-                  Φόρτωσε παράδειγμα
+              <div className="program-import-mode-tabs">
+                <Button
+                  variant={inputMode === 'text' ? 'default' : 'tertiary'}
+                  onClick={() => setInputMode('text')}
+                >
+                  Κείμενο
                 </Button>
-              </Flex>
-              <Textarea
-                id="program-text"
-                className="program-import-page"
-                name="program-text"
-                value={text}
-                onChange={(e) => setText(e.target.value)}
-                placeholder="Επικόλλησε ελεύθερο κείμενο — τίτλοι, μέρες, ώρες, ημερομηνίες…"
-              />
-              <Typography variant="pi" textColor="neutral600" style={{ marginTop: 8 }}>
-                Ελεύθερη μορφή. Το AI εξάγει ταινίες και προβολές· εσύ εγκρίνεις τι θα μπει στο CMS.
-              </Typography>
+                <Button
+                  variant={inputMode === 'image' ? 'default' : 'tertiary'}
+                  onClick={() => setInputMode('image')}
+                >
+                  Εικόνα / screenshot
+                </Button>
+              </div>
             </GridItem>
+
+            {inputMode === 'text' ? (
+              <GridItem col={12}>
+                <Flex justifyContent="space-between" alignItems="center" gap={2}>
+                  <Typography variant="pi" fontWeight="bold" as="label" htmlFor="program-text">
+                    Κείμενο προγράμματος
+                  </Typography>
+                  <Button variant="tertiary" size="S" onClick={() => setText(EXAMPLE_TEXT)}>
+                    Φόρτωσε παράδειγμα
+                  </Button>
+                </Flex>
+                <Textarea
+                  id="program-text"
+                  className="program-import-page"
+                  name="program-text"
+                  value={text}
+                  onChange={(e) => setText(e.target.value)}
+                  placeholder="Επικόλλησε ελεύθερο κείμενο — τίτλοι, μέρες, ώρες…"
+                />
+              </GridItem>
+            ) : (
+              <GridItem col={12}>
+                <Typography variant="pi" fontWeight="bold" as="label">
+                  Screenshot προγράμματος
+                </Typography>
+                <Typography variant="pi" textColor="neutral600" style={{ marginTop: 4 }}>
+                  Ανέβασε 1–{maxImages} εικόνες (Facebook post, site, αφίσα). Το AI διαβάζει το πρόγραμμα·
+                  εσύ εγκρίνεις τι μπαίνει στο CMS.
+                </Typography>
+                <Flex gap={2} marginTop={2} wrap="wrap">
+                  <Button variant="secondary" onClick={() => fileInputRef.current?.click()}>
+                    Επιλογή εικόνων
+                  </Button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp,image/gif"
+                    multiple
+                    hidden
+                    onChange={handleFilesSelected}
+                  />
+                  {images.length ? (
+                    <Typography variant="pi" textColor="neutral600">
+                      {images.length}/{maxImages} εικόνες
+                    </Typography>
+                  ) : null}
+                </Flex>
+                {images.length > 0 ? (
+                  <div className="program-import-image-grid">
+                    {images.map((img) => (
+                      <div key={img.id} className="program-import-image-thumb">
+                        <img src={img.dataUrl} alt={img.name} />
+                        <IconButton
+                          label={`Αφαίρεση ${img.name}`}
+                          icon={<Cross />}
+                          onClick={() => removeImage(img.id)}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : null}
+                {!aiStatus?.aiEnabled ? (
+                  <Box marginTop={2}>
+                    <Alert variant="danger" title="AI απενεργοποιημένο">
+                      Για εικόνες χρειάζεται OPENAI_API_KEY στο Strapi (.env).
+                    </Alert>
+                  </Box>
+                ) : null}
+              </GridItem>
+            )}
+
             <GridItem col={12}>
-              <Button onClick={handleParse} loading={parsing} disabled={!venueId || !text.trim()}>
-                Ανάλυση (AI)
+              <Button onClick={handleParse} loading={parsing} disabled={!canParse}>
+                Ανάλυση & προεπισκόπηση
               </Button>
             </GridItem>
           </Grid>
@@ -297,6 +476,9 @@ export default function App() {
                 </Typography>
                 <Flex gap={2}>
                   <Badge>{parseSourceLabel(preview.parseSource)}</Badge>
+                  {preview.imageCount > 0 ? (
+                    <Badge>{preview.imageCount} εικόν{preview.imageCount === 1 ? 'α' : 'ες'}</Badge>
+                  ) : null}
                   <Badge>{approvedCount} επιλεγμένες</Badge>
                 </Flex>
               </Flex>
@@ -357,7 +539,7 @@ export default function App() {
                           onChange={(e) => toggleAllApprovals(e.target.checked)}
                         />
                       </Th>
-                      <Th>Ταινία (κείμενο)</Th>
+                      <Th>Ταινία (πηγή)</Th>
                       <Th>Ταινία CMS</Th>
                       <Th>Ημ/νία & ώρα</Th>
                       <Th>Σημείωση</Th>

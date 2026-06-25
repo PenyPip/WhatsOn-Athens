@@ -21,6 +21,7 @@ module.exports = {
     const body = ctx.request.body ?? {};
     const result = await previewProgramTextImport(strapi, {
       text: body.text,
+      images: body.images,
       venueId: body.venueId,
       refYear: body.refYear != null ? Number(body.refYear) : undefined,
     });

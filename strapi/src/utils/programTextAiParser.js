@@ -1,6 +1,8 @@
 'use strict';
 
-const AI_TIMEOUT_MS = Number(process.env.PROGRAM_IMPORT_AI_TIMEOUT_MS || 45_000);
+const AI_TIMEOUT_MS = Number(process.env.PROGRAM_IMPORT_AI_TIMEOUT_MS || 90_000);
+const MAX_VISION_IMAGES = Number(process.env.PROGRAM_IMPORT_MAX_IMAGES || 4);
+const MAX_IMAGE_BYTES = Number(process.env.PROGRAM_IMPORT_MAX_IMAGE_BYTES || 4 * 1024 * 1024);
 
 function aiConfig() {
   const apiKey =
@@ -9,10 +11,15 @@ function aiConfig() {
     '';
   const enabled =
     process.env.PROGRAM_IMPORT_AI_ENABLED !== 'false' && Boolean(apiKey.trim());
+  const visionModel =
+    process.env.PROGRAM_IMPORT_VISION_MODEL ||
+    process.env.PROGRAM_IMPORT_AI_MODEL ||
+    'gpt-4o-mini';
   return {
     enabled,
     apiKey: apiKey.trim(),
     model: process.env.PROGRAM_IMPORT_AI_MODEL || 'gpt-4o-mini',
+    visionModel,
     baseUrl: (process.env.PROGRAM_IMPORT_AI_BASE_URL || 'https://api.openai.com/v1').replace(
       /\/$/,
       '',
@@ -24,20 +31,12 @@ function isAiEnabled() {
   return aiConfig().enabled;
 }
 
-function buildAthensDatetimeFromParts(dateStr, timeStr) {
-  const dateMatch = String(dateStr || '').trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
-  const timeMatch = String(timeStr || '').trim().match(/^(\d{1,2}):(\d{2})$/);
-  if (!dateMatch || !timeMatch) return null;
-  const y = Number(dateMatch[1]);
-  const m = Number(dateMatch[2]);
-  const d = Number(dateMatch[3]);
-  const hh = Number(timeMatch[1]);
-  const mm = Number(timeMatch[2]);
-  if (hh > 23 || mm > 59) return null;
-  return new Date(
-    `${y}-${String(m).padStart(2, '0')}-${String(d).padStart(2, '0')}T${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}:00+03:00`,
-  );
-}
+const {
+  buildAthensDatetimeFromParts,
+  athensStartOfDay,
+  athensEndOfDay,
+  formatAthensWallClock,
+} = require('./athensTime');
 
 function normalizeAiPayload(raw, { refYear = new Date().getFullYear() } = {}) {
   const movies = [];
@@ -54,12 +53,7 @@ function normalizeAiPayload(raw, { refYear = new Date().getFullYear() } = {}) {
         buildAthensDatetimeFromParts(st?.datetime?.slice(0, 10), st?.time);
       if (!datetime || Number.isNaN(datetime.getTime())) continue;
 
-      const dayLabel = datetime.toLocaleDateString('el-GR', { weekday: 'long' });
-      const timeLabel = datetime.toLocaleTimeString('el-GR', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      });
+      const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
 
       showtimes.push({
         dayLabel,
@@ -81,8 +75,10 @@ function normalizeAiPayload(raw, { refYear = new Date().getFullYear() } = {}) {
   let dateRange = null;
   const dr = raw?.dateRange;
   if (dr?.start && dr?.end) {
-    const start = new Date(`${dr.start}T00:00:00+03:00`);
-    const end = new Date(`${dr.end}T23:59:59+03:00`);
+    const [y1, m1, d1] = dr.start.split('-').map(Number);
+    const [y2, m2, d2] = dr.end.split('-').map(Number);
+    const start = athensStartOfDay(y1, m1, d1);
+    const end = athensEndOfDay(y2, m2, d2);
     if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
       dateRange = { start, end, inferred: false };
     }
@@ -138,18 +134,23 @@ function extractJsonFromResponse(text) {
   }
 }
 
-function buildSystemPrompt({ refYear, venueName, todayIso }) {
+function buildSystemPrompt({ refYear, venueName, todayIso, fromImage = false }) {
+  const source = fromImage
+    ? 'εικόνα/screenshot προγράμματος (Facebook, site, αφίσα κ.λπ.)'
+    : 'ελεύθερο ελληνικό κείμενο (Facebook, email, site)';
   return `Είσαι βοηθός εισαγωγής προγράμματος κινηματογράφου στο CMS.
-Ανάλυσε ελεύθερο ελληνικό κείμενο (Facebook, email, site) και επέστρεψε ΜΟΝΟ έγκυρο JSON.
+Ανάλυσε ${source} και επέστρεψε ΜΟΝΟ έγκυρο JSON.
 
 Κανόνες:
 - Βρες τίτλους ταινιών και όλες τις προβολές (ημερομηνία + ώρα Europe/Athens).
 - Ώρες: 24h, μορφή time "HH:MM" (π.χ. "17:20" όχι "17.20").
 - Ημερομηνίες: μορφή date "YYYY-MM-DD".
-- Αν το κείμενο δίνει εύρος (π.χ. 25/6–1/7), χρησιμοποίησε έτος ${refYear} εκτός αν αναφέρεται άλλο.
+- Αν φαίνεται εύρος (π.χ. 25/6–1/7), χρησιμοποίησε έτος ${refYear} εκτός αν αναφέρεται άλλο.
+- Αν δίνονται μόνο μέρες (Πέμπτη, Σάββατο), υπολόγισε την πραγματική ημερομηνία μέσα στο εύρος.
 - Σημειώσεις (μεταγλωττισμένο, υποτιτλισμένο, παρουσία συντελεστών) στο πεδίο note.
-- Μην εφευρίσκεις προβολές που δεν υπάρχουν στο κείμενο.
+- Μην εφευρίσκεις προβολές που δεν φαίνονται.
 - Σήμερα: ${todayIso}. Κινηματογράφος: ${venueName || 'άγνωστος'}.
+${fromImage ? '- Αν υπάρχουν πολλές εικόνες, συνένωσε το πρόγραμμα χωρίς διπλότυπα.' : ''}
 
 Schema JSON:
 {
@@ -230,9 +231,157 @@ async function parseCinemaProgramTextWithAi(text, { refYear, venueName, now = ne
   }
 }
 
+function normalizeImageDataUrl(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return null;
+
+  if (/^data:image\/[a-z+]+;base64,/i.test(s)) {
+    const m = s.match(/^data:(image\/[a-z0-9+.-]+);base64,([a-z0-9+/=\s]+)$/i);
+    if (!m) return null;
+    const base64 = m[2].replace(/\s/g, '');
+    return { mime: m[1].toLowerCase(), base64, dataUrl: `data:${m[1]};base64,${base64}` };
+  }
+
+  const base64 = s.replace(/\s/g, '');
+  if (!/^[a-z0-9+/=]+$/i.test(base64)) return null;
+  return {
+    mime: 'image/jpeg',
+    base64,
+    dataUrl: `data:image/jpeg;base64,${base64}`,
+  };
+}
+
+function estimateBase64Bytes(base64) {
+  const len = String(base64 || '').replace(/\s/g, '').length;
+  return Math.floor((len * 3) / 4);
+}
+
+function validateVisionImages(images) {
+  const list = Array.isArray(images) ? images : images ? [images] : [];
+  if (!list.length) {
+    return { ok: false, error: 'Δεν δόθηκαν εικόνες.' };
+  }
+  if (list.length > MAX_VISION_IMAGES) {
+    return { ok: false, error: `Μέγιστο ${MAX_VISION_IMAGES} εικόνες ανά ανάλυση.` };
+  }
+
+  const normalized = [];
+  let totalBytes = 0;
+  for (const raw of list) {
+    const img = normalizeImageDataUrl(raw);
+    if (!img) {
+      return { ok: false, error: 'Μη έγκυρη εικόνα (αναμένεται JPEG/PNG/WebP base64).' };
+    }
+    const bytes = estimateBase64Bytes(img.base64);
+    if (bytes > MAX_IMAGE_BYTES) {
+      return {
+        ok: false,
+        error: `Η εικόνα υπερβαίνει ${Math.round(MAX_IMAGE_BYTES / (1024 * 1024))}MB — δοκίμασε μικρότερο screenshot.`,
+      };
+    }
+    totalBytes += bytes;
+    normalized.push(img);
+  }
+
+  if (totalBytes > MAX_IMAGE_BYTES * MAX_VISION_IMAGES) {
+    return { ok: false, error: 'Πολύ μεγάλο συνολικό μέγεθος εικόνων.' };
+  }
+
+  return { ok: true, images: normalized };
+}
+
+/**
+ * Ανάλυση προγράμματος από screenshot(s) με vision LLM.
+ */
+async function parseCinemaProgramImagesWithAi(images, { refYear, venueName, now = new Date() } = {}) {
+  const cfg = aiConfig();
+  if (!cfg.enabled) {
+    return { error: 'AI απενεργοποιημένο — όρισε OPENAI_API_KEY.', parseSource: 'ai_failed' };
+  }
+
+  const validated = validateVisionImages(images);
+  if (!validated.ok) {
+    return { error: validated.error, parseSource: 'ai_failed' };
+  }
+
+  const todayIso = now.toISOString().slice(0, 10);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
+
+  const userContent = [
+    {
+      type: 'text',
+      text:
+        validated.images.length > 1
+          ? `Διάβασε το πρόγραμμα από τις ${validated.images.length} εικόνες και επέστρεψε ενιαίο JSON.`
+          : 'Διάβασε το πρόγραμμα από την εικόνα και επέστρεψε JSON.',
+    },
+    ...validated.images.map((img) => ({
+      type: 'image_url',
+      image_url: { url: img.dataUrl, detail: 'high' },
+    })),
+  ];
+
+  try {
+    const res = await fetch(`${cfg.baseUrl}/chat/completions`, {
+      method: 'POST',
+      signal: controller.signal,
+      headers: {
+        Authorization: `Bearer ${cfg.apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: cfg.visionModel,
+        temperature: 0.1,
+        response_format: { type: 'json_object' },
+        messages: [
+          {
+            role: 'system',
+            content: buildSystemPrompt({ refYear, venueName, todayIso, fromImage: true }),
+          },
+          {
+            role: 'user',
+            content: userContent,
+          },
+        ],
+      }),
+    });
+
+    if (!res.ok) {
+      const errBody = await res.text().catch(() => '');
+      throw new Error(`Vision AI HTTP ${res.status}: ${errBody.slice(0, 200)}`);
+    }
+
+    const data = await res.json();
+    const content = data?.choices?.[0]?.message?.content;
+    const parsed = extractJsonFromResponse(content);
+    if (!parsed?.movies?.length) {
+      throw new Error('Το AI δεν βρήκε ταινίες στην εικόνα');
+    }
+
+    const result = normalizeAiPayload(parsed, { refYear });
+    return {
+      ...result,
+      parseSource: 'ai_vision',
+      imageCount: validated.images.length,
+    };
+  } catch (e) {
+    const msg = e?.name === 'AbortError' ? 'AI timeout' : e?.message || String(e);
+    return {
+      error: msg,
+      parseSource: 'ai_failed',
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 module.exports = {
   aiConfig,
   isAiEnabled,
   parseCinemaProgramTextWithAi,
+  parseCinemaProgramImagesWithAi,
+  validateVisionImages,
   normalizeAiPayload,
+  MAX_VISION_IMAGES,
 };
