@@ -932,20 +932,34 @@ function isAuditoriumLine(line) {
   return /^αιθουσα\s/i.test(normalizeGreek(line));
 }
 
+/** Γραμμή προβολών: «Αίθουσα …» ή «Λαΐς Θερινός Πέμ., …: 23.00». */
+function isScreenScheduleLine(line) {
+  const raw = String(line || '').trim();
+  if (!raw) return false;
+  if (isAuditoriumLine(raw)) return true;
+  if (isProbolesLine(raw) || isAnalytikoLine(raw)) return false;
+  if (!/\d{1,2}[.:]\d{2}/.test(raw)) return false;
+  return new RegExp(
+    `(?:${DAY_NAMES})\\s*[,\\.]\\s*|(?:${DAY_NAMES})\\s*[-–]\\s*|(?:${DAY_NAMES})[^\\n]{0,48}:\\s*\\d{1,2}[.:]\\d{2}`,
+    'iu',
+  ).test(raw);
+}
+
 function looksLikeCatalogProgram(text) {
   const hay = String(text || '');
-  const auditoriumCount = (hay.match(/^Αίθουσα\s/gim) || []).length;
-  return auditoriumCount >= 1 && /Προβολές/im.test(hay);
+  if (!/Προβολές/im.test(hay)) return false;
+  const lines = hay.split('\n').map((line) => line.trim()).filter(Boolean);
+  return lines.some((line) => isScreenScheduleLine(line));
 }
 
 function extractAuditoriumSchedule(line) {
   const raw = String(line || '').trim();
-  if (!isAuditoriumLine(raw)) return null;
-  const rest = raw.replace(/^Αίθουσα\s+/iu, '');
+  if (!isScreenScheduleLine(raw)) return null;
+  const rest = isAuditoriumLine(raw) ? raw.replace(/^Αίθουσα\s+/iu, '') : raw;
   const dayStart = rest.search(new RegExp(`(?:^|\\s)(${DAY_NAMES})`, 'iu'));
   if (dayStart < 0) return null;
   return {
-    room: rest.slice(0, dayStart).trim(),
+    room: dayStart > 0 ? rest.slice(0, dayStart).trim() : null,
     schedule: rest.slice(dayStart).trim(),
   };
 }
@@ -1053,7 +1067,7 @@ function parseCatalogMoviesFromLines(lines) {
   const list = lines.map((line) => line.trim());
 
   while (i < list.length) {
-    while (i < list.length && (!list[i] || isAnalytikoLine(list[i]) || isAuditoriumLine(list[i]))) i += 1;
+    while (i < list.length && (!list[i] || isAnalytikoLine(list[i]) || isScreenScheduleLine(list[i]))) i += 1;
     if (i >= list.length) break;
 
     const title = cleanMovieTitle(list[i]);
@@ -1069,7 +1083,7 @@ function parseCatalogMoviesFromLines(lines) {
         i += 1;
         continue;
       }
-      if (!isAuditoriumLine(list[i])) break;
+      if (!isScreenScheduleLine(list[i])) break;
       auditoriumLines.push(list[i]);
       i += 1;
     }
