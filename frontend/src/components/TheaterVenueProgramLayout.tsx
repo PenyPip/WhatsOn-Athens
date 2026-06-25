@@ -71,13 +71,16 @@ export default function TheaterVenueProgramLayout({
               >
                 <div className="mb-3 flex gap-3 border-b border-border/60 pb-3">
                   {posterUrl ? (
-                    <div className="h-24 w-16 shrink-0 overflow-hidden rounded-md bg-muted">
+                    <div className="flex h-14 w-24 shrink-0 items-center justify-center overflow-hidden rounded-md bg-muted px-1">
                       <PosterPicture
                         src={posterUrl}
                         alt=""
                         aria-hidden
-                        className="h-full w-full object-cover"
-                        sizes="64px"
+                        fit="contain"
+                        width={96}
+                        height={56}
+                        className=""
+                        sizes="96px"
                       />
                     </div>
                   ) : null}

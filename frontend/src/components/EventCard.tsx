@@ -147,7 +147,9 @@ const EventCard = ({
         <div
           className={cn(
             "relative w-full shrink-0 overflow-hidden",
-            landscapePoster ? "aspect-video bg-[#ebe8f2]" : "aspect-[2/3] bg-secondary",
+            landscapePoster
+              ? "flex h-28 items-center justify-center bg-[#ebe8f2] px-2 py-2 sm:h-32 md:h-36"
+              : "aspect-[2/3] bg-secondary",
             !posterUrl && !showGradientFallback && !landscapePoster && "bg-secondary",
             !posterUrl && !showGradientFallback && landscapePoster && "bg-[#ebe8f2]",
           )}
@@ -160,8 +162,9 @@ const EventCard = ({
               src={posterUrl}
               srcSet={posterSrcSet}
               alt={posterAlt}
-              width={400}
-              height={600}
+              width={landscapePoster ? 520 : 400}
+              height={landscapePoster ? 390 : 600}
+              fit={landscapePoster ? "contain" : "cover"}
               loading={posterPriority ? "eager" : "lazy"}
               fetchPriority={posterPriority ? "high" : undefined}
               sizes={
@@ -169,12 +172,7 @@ const EventCard = ({
                   ? "(max-width: 640px) 82vw, (max-width: 1024px) 42vw, 360px"
                   : "(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 200px"
               }
-              className={cn(
-                "h-full w-full transition-transform duration-500",
-                landscapePoster
-                  ? "object-cover object-top group-hover:scale-[1.02]"
-                  : "object-cover object-center group-hover:scale-105",
-              )}
+              className={landscapePoster ? undefined : "transition-transform duration-500 group-hover:scale-105"}
             />
           ) : null}
           {isMovie ? (
