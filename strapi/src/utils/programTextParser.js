@@ -98,6 +98,13 @@ const ORES_PROBOLIS_RE = /ώρες\s+προβολής\s*:\s*(.+)$/iu;
 
 const QUOTED_LINE_RE = /^[«"'].+[»"']$/u;
 
+const TIME_ONLY_LINE_RE = /^(\d{1,2}):(\d{2})$/;
+
+const DAY_DDMM_HEADER_RE = new RegExp(
+  `^(?:${DAY_NAMES})\\s+(\\d{1,2})/(\\d{1,2})(?:/(\\d{2,4}))?\\s*$`,
+  'iu',
+);
+
 function parseGreekDateRangeFromMatch(m, refYear) {
   if (!m) return null;
   const y1 = resolveYear(m[3], refYear);
@@ -450,6 +457,8 @@ function firstDateShowtimeMatch(line) {
 function looksLikeTitle(text) {
   const s = String(text || '').trim();
   if (s.length < 2 || s.length > 160) return false;
+  if (DAY_DDMM_HEADER_RE.test(s)) return false;
+  if (TIME_ONLY_LINE_RE.test(s)) return false;
   if (lineHasShowtime(s)) return false;
   const n = normalizeGreek(s);
   if (/^προγραμμα|^κιν|^ωρες|^προβολ/.test(n)) return false;
@@ -811,6 +820,106 @@ function splitMovieBlocks(text) {
   return splitMovieBlocksFreeForm(text);
 }
 
+function parseDayHeaderDate(match, refYear) {
+  const day = Number(match[1]);
+  const month = Number(match[2]);
+  const year = resolveYear(match[3], refYear);
+  if (!day || !month) return null;
+  return localDate(year, month, day);
+}
+
+function parseMovieLineTitle(line) {
+  const s = String(line || '').trim();
+  if (!s || DAY_DDMM_HEADER_RE.test(s) || TIME_ONLY_LINE_RE.test(s)) return null;
+
+  const paren = s.match(/^(.+?)\s*\(([^)]+)\)\s*$/);
+  const withoutVenue = paren ? paren[1].trim() : s;
+  const venueNote = paren ? paren[2].trim() : null;
+  const dashIdx = withoutVenue.indexOf(' - ');
+  const title = (dashIdx >= 0 ? withoutVenue.slice(0, dashIdx) : withoutVenue).replace(/\s+/g, ' ').trim();
+  if (!title) return null;
+
+  return { title, note: venueNote };
+}
+
+function looksLikeDayCentricProgram(text) {
+  const lines = String(text || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  return lines.filter((line) => DAY_DDMM_HEADER_RE.test(line)).length >= 2;
+}
+
+/** Μορφή: «Πέμπτη 25/06» → «20:50» → «ΤΑΙΝΙΑ - …» (ανά ημέρα). */
+function parseDayCentricCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+  const lines = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const movieMap = new Map();
+  let currentDate = null;
+  let pendingTime = null;
+
+  for (const line of lines) {
+    const dayHeader = line.match(DAY_DDMM_HEADER_RE);
+    if (dayHeader) {
+      currentDate = parseDayHeaderDate(dayHeader, refYear);
+      pendingTime = null;
+      continue;
+    }
+
+    const timeMatch = line.match(TIME_ONLY_LINE_RE);
+    if (timeMatch && currentDate) {
+      pendingTime = { hour: Number(timeMatch[1]), minute: Number(timeMatch[2]) };
+      continue;
+    }
+
+    if (!pendingTime || !currentDate) continue;
+
+    const parsed = parseMovieLineTitle(line);
+    if (!parsed?.title) continue;
+
+    const datetime = buildAthensDatetimeFromLocalDate(currentDate, pendingTime.hour, pendingTime.minute);
+    const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+    if (!movieMap.has(parsed.title)) {
+      movieMap.set(parsed.title, { title: parsed.title, scheduleText: '', showtimes: [] });
+    }
+    movieMap.get(parsed.title).showtimes.push({
+      dayLabel,
+      timeLabel,
+      datetime,
+      note: parsed.note,
+    });
+    pendingTime = null;
+  }
+
+  const movies = [...movieMap.values()].map((m) => ({
+    title: m.title,
+    scheduleText: m.scheduleText,
+    showtimes: dedupeShowtimes(m.showtimes),
+  }));
+
+  const allTimes = movies.flatMap((m) => m.showtimes.map((s) => s.datetime.getTime()));
+  let dateRange;
+  if (allTimes.length) {
+    const start = new Date(Math.min(...allTimes));
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(Math.max(...allTimes));
+    end.setHours(23, 59, 59, 999);
+    dateRange = { start, end, inferred: false };
+  } else {
+    dateRange = inferDateRangeFromCinemaWeek(now);
+  }
+
+  const warnings = movies.length
+    ? []
+    : ['Δεν αναγνωρίστηκαν προβολές στη μορφή ημέρα / ώρα / ταινία.'];
+
+  return { header: '', dateRange, movies, warnings };
+}
+
 /**
  * Ανάλυση ελεύθερου κειμένου προγράμματος σινεμά.
  * Δεν απαιτεί συγκεκριμένη μορφή — αρκούν μέρες, ώρες και (ιδανικά) εύρος ημερομηνιών.
@@ -818,6 +927,11 @@ function splitMovieBlocks(text) {
 function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
   const warnings = [];
   const normalized = String(text || '').replace(/\r\n/g, '\n').trim();
+
+  if (looksLikeDayCentricProgram(normalized)) {
+    return parseDayCentricCinemaProgram(normalized, { refYear, now });
+  }
+
   const { header, movies } = splitMovieBlocks(normalized);
 
   if (!movies.length) {
