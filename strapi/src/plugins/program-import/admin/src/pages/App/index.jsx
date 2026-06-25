@@ -73,6 +73,7 @@ export default function App() {
   const [preview, setPreview] = useState(null);
   const [manualMovieByTitle, setManualMovieByTitle] = useState({});
   const [approvedById, setApprovedById] = useState({});
+  const [skippedMovieTitles, setSkippedMovieTitles] = useState({});
   const [loadingCinemas, setLoadingCinemas] = useState(true);
   const [parsing, setParsing] = useState(false);
   const [creating, setCreating] = useState(false);
@@ -151,6 +152,13 @@ export default function App() {
     return [...set];
   }, [enrichedProposals]);
 
+  const pendingUnmatchedTitles = useMemo(
+    () => unmatchedTitles.filter((title) => !skippedMovieTitles[title]),
+    [skippedMovieTitles, unmatchedTitles],
+  );
+
+  const skippedUnmatchedCount = unmatchedTitles.length - pendingUnmatchedTitles.length;
+
   const canParse =
     venueId &&
     (inputMode === 'text' ? text.trim().length > 0 : images.length > 0) &&
@@ -173,6 +181,7 @@ export default function App() {
         initialApproved[p.id] = p.approved;
       }
       setApprovedById(initialApproved);
+      setSkippedMovieTitles({});
       return data;
     },
     [post],
@@ -203,6 +212,7 @@ export default function App() {
     setPreview(null);
     setManualMovieByTitle({});
     setApprovedById({});
+    setSkippedMovieTitles({});
     try {
       const data = await runPreview({
         venueId,
@@ -275,6 +285,23 @@ export default function App() {
     [enrichedProposals],
   );
 
+  const skipUnmatchedTitle = useCallback((title) => {
+    setSkippedMovieTitles((prev) => ({ ...prev, [title]: true }));
+    setManualMovieByTitle((prev) => {
+      if (!prev[title]) return prev;
+      const next = { ...prev };
+      delete next[title];
+      return next;
+    });
+  }, []);
+
+  const skipAllUnmatchedTitles = useCallback(() => {
+    const next = {};
+    for (const title of pendingUnmatchedTitles) next[title] = true;
+    setSkippedMovieTitles((prev) => ({ ...prev, ...next }));
+    setManualMovieByTitle({});
+  }, [pendingUnmatchedTitles]);
+
   const handleCreate = useCallback(async () => {
     if (!preview || approvedCount === 0) return;
 
@@ -299,9 +326,13 @@ export default function App() {
       const data = res?.data;
       if (!data?.ok) throw new Error(data?.error || 'Αποτυχία δημιουργίας');
       const s = data.summary;
+      const skippedParts = [
+        s.skippedNotApproved ? `${s.skippedNotApproved} δεν εγκρίθηκαν` : null,
+        s.skippedNoMovie ? `${s.skippedNoMovie} χωρίς ταινία CMS` : null,
+      ].filter(Boolean);
       toggleNotification({
         type: 'success',
-        message: `Δημιουργήθηκαν ${s.created} προβολές · ${s.skippedNotApproved || 0} δεν εγκρίθηκαν`,
+        message: `Δημιουργήθηκαν ${s.created} προβολές${skippedParts.length ? ` · ${skippedParts.join(' · ')}` : ''}`,
       });
       await runPreview({
         venueId: preview.venue.id,
@@ -489,13 +520,21 @@ export default function App() {
                 </Alert>
               ))}
 
-              {unmatchedTitles.length > 0 ? (
+              {pendingUnmatchedTitles.length > 0 ? (
                 <Box padding={3} background="neutral100" hasRadius>
-                  <Typography variant="pi" fontWeight="bold" marginBottom={2}>
-                    Ταύτιση ταινιών CMS
+                  <Flex justifyContent="space-between" alignItems="center" gap={2} wrap="wrap" marginBottom={2}>
+                    <Typography variant="pi" fontWeight="bold">
+                      Ταύτιση ταινιών CMS ({pendingUnmatchedTitles.length} χωρίς ταύτιση)
+                    </Typography>
+                    <Button variant="tertiary" size="S" onClick={skipAllUnmatchedTitles}>
+                      Παράλειψη όλων
+                    </Button>
+                  </Flex>
+                  <Typography variant="pi" textColor="neutral600" marginBottom={2}>
+                    Ταίριαξε με ταινία CMS ή παράλειψε — οι προβολές χωρίς ταινία δεν θα δημιουργηθούν.
                   </Typography>
                   <Flex direction="column" gap={2}>
-                    {unmatchedTitles.map((title) => (
+                    {pendingUnmatchedTitles.map((title) => (
                       <Flex key={title} gap={2} alignItems="center" wrap="wrap">
                         <Typography variant="pi" style={{ minWidth: 160 }}>
                           {title}
@@ -522,10 +561,18 @@ export default function App() {
                             ))}
                           </SingleSelect>
                         </Box>
+                        <Button variant="tertiary" size="S" onClick={() => skipUnmatchedTitle(title)}>
+                          Παράλειψη
+                        </Button>
                       </Flex>
                     ))}
                   </Flex>
                 </Box>
+              ) : skippedUnmatchedCount > 0 ? (
+                <Alert variant="default" title="Παραλείφθηκαν ταινίες" closeLabel="Κλείσιμο">
+                  {skippedUnmatchedCount} ταινί{skippedUnmatchedCount === 1 ? 'α' : 'ες'} χωρίς εισαγωγή στο CMS —
+                  οι προβολές τους δεν θα δημιουργηθούν.
+                </Alert>
               ) : null}
 
               <div className="program-import-preview-table">
@@ -585,16 +632,14 @@ export default function App() {
               </div>
 
               <Flex gap={2} alignItems="center" wrap="wrap">
-                <Button
-                  onClick={handleCreate}
-                  loading={creating}
-                  disabled={approvedCount === 0 || unmatchedTitles.length > 0}
-                >
+                <Button onClick={handleCreate} loading={creating} disabled={approvedCount === 0}>
                   Έγκριση & δημιουργία {approvedCount} προβολών
                 </Button>
-                {unmatchedTitles.length > 0 ? (
-                  <Typography variant="pi" textColor="danger600">
-                    Ολοκλήρωσε την ταύτιση όλων των ταινιών πριν τη δημιουργία.
+                {pendingUnmatchedTitles.length > 0 ? (
+                  <Typography variant="pi" textColor="neutral600">
+                    {pendingUnmatchedTitles.length} ταινί
+                    {pendingUnmatchedTitles.length === 1 ? 'α' : 'ες'} χωρίς ταύτιση — θα παραλειφθούν αν δεν
+                    τις ταιριάξεις.
                   </Typography>
                 ) : null}
               </Flex>

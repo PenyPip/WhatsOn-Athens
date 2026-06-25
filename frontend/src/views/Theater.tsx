@@ -9,7 +9,11 @@ import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { cn } from "@/lib/utils";
 import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
-import { performanceOverlapsDateRange, theaterPerformanceSummary } from "@/lib/theaterPerformances";
+import {
+  performanceOverlapsDateRange,
+  theaterPerformanceSummary,
+  theaterShowHasUpcomingPerformances,
+} from "@/lib/theaterPerformances";
 
 function ymdToMs(ymd: string): number {
   const [y, m, d] = ymd.split("-").map((x) => Number(x));
@@ -40,12 +44,12 @@ function dateFilterMatch(
 const TheaterPage = () => {
   usePageSeo(staticPageSeo.theater);
 
-  const { data: theaterShows, isLoading } = useTheaterShows();
-  const { data: theaterPerformances } = useTheaterPerformances();
+  const { data: theaterShows, isLoading: showsLoading } = useTheaterShows();
+  const { data: theaterPerformances, isLoading: performancesLoading } = useTheaterPerformances();
+  const isLoading = showsLoading || performancesLoading;
   const [onlyTour, setOnlyTour] = useState(false);
   const [dateFrom, setDateFrom] = useState("");
   const [dateTo, setDateTo] = useState("");
-  const allShows = useMemo(() => theaterShows ?? [], [theaterShows]);
   const performancesByShowSlug = useMemo(() => {
     const m = new Map<string, NonNullable<typeof theaterPerformances>>();
     for (const p of theaterPerformances ?? []) {
@@ -57,14 +61,20 @@ const TheaterPage = () => {
     }
     return m;
   }, [theaterPerformances]);
+  const upcomingShows = useMemo(() => {
+    return (theaterShows ?? []).filter((show) => {
+      const perfs = performancesByShowSlug.get(show.slug) ?? [];
+      return theaterShowHasUpcomingPerformances(perfs);
+    });
+  }, [theaterShows, performancesByShowSlug]);
   const filteredShows = useMemo(() => {
-    return allShows.filter((show) => {
+    return upcomingShows.filter((show) => {
       if (onlyTour && !show.onTour) return false;
       const perfs = performancesByShowSlug.get(show.slug) ?? [];
       return dateFilterMatch(show, dateFrom, dateTo, perfs);
     });
-  }, [allShows, onlyTour, dateFrom, dateTo, performancesByShowSlug]);
-  const hasShows = allShows.length > 0;
+  }, [upcomingShows, onlyTour, dateFrom, dateTo, performancesByShowSlug]);
+  const hasShows = upcomingShows.length > 0;
 
   return (
     <div className={PAGE_LIST_SHELL_CLASS}>

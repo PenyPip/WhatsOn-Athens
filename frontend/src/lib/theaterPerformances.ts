@@ -71,6 +71,12 @@ function formatPerformanceChip(p: StrapiTheaterPerformance): string {
   return `${day} ${time}${venueSuffix}`;
 }
 
+export function theaterShowHasUpcomingPerformances(
+  performances: StrapiTheaterPerformance[],
+): boolean {
+  return performances.some((p) => showtimeIsUpcoming(p));
+}
+
 /** Σύντομη γραμμή για κάρτα λίστας θεάτρου. */
 export function theaterPerformanceSummary(
   performances: StrapiTheaterPerformance[],
