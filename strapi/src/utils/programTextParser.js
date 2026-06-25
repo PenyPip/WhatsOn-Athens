@@ -94,7 +94,7 @@ const DOW_STIS_RE = new RegExp(
 
 const STIS_TIMES_RE = /(\d{1,2}):(\d{2})/g;
 
-const ORES_PROBOLIS_RE = /ώρες\s+προβολής\s*:\s*(.+)$/iu;
+const ORES_PROBOLIS_RE = /ωρες\s+προβολης\s*:\s*(.+)$/iu;
 
 const QUOTED_LINE_RE = /^[«"'].+[»"']$/u;
 
@@ -161,7 +161,7 @@ function parseOreresProbolisSchedule(scheduleText, refYear) {
     const rangeMatch = line.match(GREEK_DATE_RANGE_RE);
     if (rangeMatch) {
       pendingRange = parseGreekDateRangeFromMatch(rangeMatch, refYear);
-      const sameLineTimes = line.match(ORES_PROBOLIS_RE);
+      const sameLineTimes = normalizeGreek(line).match(ORES_PROBOLIS_RE);
       if (sameLineTimes) {
         pushCalendarShowtimes(showtimes, pendingRange, parseTimesList(sameLineTimes[1]));
         pendingRange = null;
@@ -169,7 +169,7 @@ function parseOreresProbolisSchedule(scheduleText, refYear) {
       continue;
     }
 
-    const timesLine = line.match(ORES_PROBOLIS_RE);
+    const timesLine = normalizeGreek(line).match(ORES_PROBOLIS_RE);
     if (timesLine && pendingRange) {
       pushCalendarShowtimes(showtimes, pendingRange, parseTimesList(timesLine[1]));
       pendingRange = null;
@@ -920,6 +920,217 @@ function parseDayCentricCinemaProgram(text, { refYear = new Date().getFullYear()
   return { header: '', dateRange, movies, warnings };
 }
 
+function isProbolesLine(line) {
+  return /^προβολες\s*$/i.test(normalizeGreek(line));
+}
+
+function isAnalytikoLine(line) {
+  return /^αναλυτικο\s+προγραμμα/i.test(normalizeGreek(line));
+}
+
+function isAuditoriumLine(line) {
+  return /^αιθουσα\s/i.test(normalizeGreek(line));
+}
+
+function looksLikeCatalogProgram(text) {
+  const hay = String(text || '');
+  const auditoriumCount = (hay.match(/^Αίθουσα\s/gim) || []).length;
+  return auditoriumCount >= 1 && /Προβολές/im.test(hay);
+}
+
+function extractAuditoriumSchedule(line) {
+  const raw = String(line || '').trim();
+  if (!isAuditoriumLine(raw)) return null;
+  const rest = raw.replace(/^Αίθουσα\s+/iu, '');
+  const dayStart = rest.search(new RegExp(`(?:^|\\s)(${DAY_NAMES})`, 'iu'));
+  if (dayStart < 0) return null;
+  return {
+    room: rest.slice(0, dayStart).trim(),
+    schedule: rest.slice(dayStart).trim(),
+  };
+}
+
+function parseDayListFromString(raw) {
+  const dows = [];
+  const chunks = String(raw || '')
+    .split(',')
+    .map((s) => s.trim())
+    .filter(Boolean);
+  for (const chunk of chunks) {
+    const range = chunk.match(new RegExp(`^(${DAY_NAMES})\\s*[-–]\\s*(${DAY_NAMES})\\.?\\s*$`, 'iu'));
+    if (range) {
+      const a = dayNameToDow(range[1]);
+      const b = dayNameToDow(range[2]);
+      if (a != null && b != null) dows.push(...dowsInInclusiveRange(a, b));
+      continue;
+    }
+    const d = dayNameToDow(chunk.replace(/\.+\s*$/, '').replace(/:.*$/, '').trim());
+    if (d != null) dows.push(d);
+  }
+  return [...new Set(dows)];
+}
+
+function parseTimesAndNote(raw) {
+  let s = String(raw || '').trim();
+  let note = null;
+  const paren = s.match(/\(([^)]+)\)\s*$/);
+  if (paren) {
+    note = paren[1].trim();
+    s = s.slice(0, paren.index).trim();
+  }
+  const meta = s.match(/\b(μεταγλω?ττισμένο|μεταγλ\.?|υποτ\.?|υποτιτλισμένο)\b/giu);
+  if (meta) {
+    note = note ? `${note}; ${meta.join(', ')}` : meta.join(', ');
+    for (const m of meta) s = s.replace(m, '');
+    s = s.trim();
+  }
+  const times = [];
+  for (const bit of s.split('/')) {
+    const m = bit.trim().match(/(\d{1,2})[.:](\d{2})/);
+    if (m) times.push({ hour: Number(m[1]), minute: Number(m[2]) });
+  }
+  return { times, note };
+}
+
+function splitScheduleClauses(schedule) {
+  const clauses = [];
+  let buf = '';
+  const hasTime = (s) => /\d{1,2}[.:]\d{2}/.test(String(s || ''));
+
+  for (const piece of String(schedule || '').split(',')) {
+    const trimmed = piece.trim();
+    if (!trimmed) continue;
+    if (buf && hasTime(buf) && new RegExp(`^(?:${DAY_NAMES})`, 'iu').test(trimmed)) {
+      clauses.push(buf.trim());
+      buf = trimmed;
+    } else {
+      buf = buf ? `${buf}, ${trimmed}` : trimmed;
+    }
+  }
+  if (buf) clauses.push(buf.trim());
+  return clauses;
+}
+
+function parseAuditoriumScheduleText(schedule, rangeStart, rangeEnd) {
+  const showtimes = [];
+  if (!schedule || !rangeStart || !rangeEnd) return showtimes;
+
+  for (const clause of splitScheduleClauses(schedule)) {
+    const colonIdx = clause.indexOf(':');
+    let dayPart;
+    let timePart;
+    if (colonIdx >= 0) {
+      dayPart = clause.slice(0, colonIdx);
+      timePart = clause.slice(colonIdx + 1);
+    } else {
+      const timeMatch = clause.match(/(\d{1,2}[.:]\d{2}(?:\s*\/\s*\d{1,2}[.:]\d{2})*[^,]*)/);
+      if (!timeMatch) continue;
+      timePart = timeMatch[1];
+      dayPart = clause.slice(0, clause.length - timeMatch[1].length);
+    }
+
+    const dows = parseDayListFromString(dayPart);
+    const { times, note } = parseTimesAndNote(timePart);
+    if (!dows.length || !times.length) continue;
+
+    for (const dow of dows) {
+      const dayDate = dateForDowInRange(dow, rangeStart, rangeEnd);
+      if (!dayDate) continue;
+      for (const { hour, minute } of times) {
+        const datetime = buildAthensDatetimeFromLocalDate(dayDate, hour, minute);
+        const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+        showtimes.push({ dayLabel, timeLabel, datetime, note });
+      }
+    }
+  }
+
+  return showtimes;
+}
+
+function parseCatalogMoviesFromLines(lines) {
+  const movies = [];
+  let i = 0;
+  const list = lines.map((line) => line.trim());
+
+  while (i < list.length) {
+    while (i < list.length && (!list[i] || isAnalytikoLine(list[i]) || isAuditoriumLine(list[i]))) i += 1;
+    if (i >= list.length) break;
+
+    const title = cleanMovieTitle(list[i]);
+    i += 1;
+
+    while (i < list.length && !isProbolesLine(list[i]) && !isAnalytikoLine(list[i])) i += 1;
+    if (i >= list.length || isAnalytikoLine(list[i])) continue;
+    i += 1;
+
+    const auditoriumLines = [];
+    while (i < list.length) {
+      if (!list[i]) {
+        i += 1;
+        continue;
+      }
+      if (!isAuditoriumLine(list[i])) break;
+      auditoriumLines.push(list[i]);
+      i += 1;
+    }
+
+    if (title && auditoriumLines.length) {
+      movies.push({ title, auditoriumLines });
+    }
+  }
+
+  return movies;
+}
+function parseCatalogCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+  const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
+
+  let dateRange = parseProgramDateRange(text, refYear);
+  const warnings = [];
+  if (!dateRange) {
+    dateRange = inferDateRangeFromCinemaWeek(now);
+    warnings.push(
+      'Δεν βρέθηκε ρητό εύρος ημερομηνιών — χρησιμοποιείται η τρέχουσα/επόμενη εβδομάδα κινηματογράφου.',
+    );
+  }
+  warnings.push('Οι αίθουσες αγνοήθηκαν — οι προβολές μπαίνουν στον επιλεγμένο κινηματογράφο.');
+
+  const blocks = parseCatalogMoviesFromLines(lines);
+  const movies = blocks.map((block) => {
+    const showtimes = [];
+    for (const line of block.auditoriumLines) {
+      const extracted = extractAuditoriumSchedule(line);
+      if (!extracted?.schedule) continue;
+      showtimes.push(
+        ...parseAuditoriumScheduleText(extracted.schedule, dateRange.start, dateRange.end),
+      );
+    }
+    return {
+      title: block.title,
+      scheduleText: block.auditoriumLines.join('\n'),
+      showtimes: dedupeShowtimes(showtimes),
+    };
+  });
+
+  const parsedMovies = movies.map((movie) => {
+    if (!movie.showtimes.length && movie.scheduleText.trim()) {
+      warnings.push(`«${movie.title}»: δεν αναγνωρίστηκαν ώρες στις γραμμές αιθουσών.`);
+    }
+    return movie;
+  });
+
+  const withShowtimes = parsedMovies.filter((m) => m.showtimes.length > 0);
+  if (parsedMovies.length && !withShowtimes.length) {
+    warnings.push('Βρέθηκαν ταινίες αλλά καμία προβολή — έλεγξε τις γραμμές «Αίθουσα …».');
+  }
+
+  return {
+    header: '',
+    dateRange,
+    movies: parsedMovies,
+    warnings: [...new Set(warnings)],
+  };
+}
+
 /**
  * Ανάλυση ελεύθερου κειμένου προγράμματος σινεμά.
  * Δεν απαιτεί συγκεκριμένη μορφή — αρκούν μέρες, ώρες και (ιδανικά) εύρος ημερομηνιών.
@@ -927,6 +1138,10 @@ function parseDayCentricCinemaProgram(text, { refYear = new Date().getFullYear()
 function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
   const warnings = [];
   const normalized = String(text || '').replace(/\r\n/g, '\n').trim();
+
+  if (looksLikeCatalogProgram(normalized)) {
+    return parseCatalogCinemaProgram(normalized, { refYear, now });
+  }
 
   if (looksLikeDayCentricProgram(normalized)) {
     return parseDayCentricCinemaProgram(normalized, { refYear, now });
