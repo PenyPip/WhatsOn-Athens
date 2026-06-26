@@ -111,6 +111,8 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         name: r.name,
         cuisine: r.cuisine,
         cuisineSlug: r.cuisineSlug,
+        category: r.category,
+        categorySlug: r.categorySlug,
         neighborhood: r.neighborhood,
         city: r.city,
         priceRange: r.priceRange,

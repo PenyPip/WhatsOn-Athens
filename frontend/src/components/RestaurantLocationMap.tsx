@@ -3,7 +3,7 @@ import { restaurantLocationQuery, restaurantMapsEmbedSrc, restaurantMapsHref } f
 import type { StrapiRestaurant } from "@/lib/api";
 
 type Props = {
-  restaurant: Pick<StrapiRestaurant, "name" | "address" | "neighborhood" | "city">;
+  restaurant: Pick<StrapiRestaurant, "name" | "address" | "neighborhood" | "city" | "googleMapsUrl">;
   className?: string;
 };
 

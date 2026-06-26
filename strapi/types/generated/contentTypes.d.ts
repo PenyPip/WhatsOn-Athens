@@ -765,6 +765,48 @@ export interface ApiMovieMovie extends Schema.CollectionType {
   };
 }
 
+export interface ApiRestaurantCategoryRestaurantCategory
+  extends Schema.CollectionType {
+  collectionName: 'restaurant_categories';
+  info: {
+    description: '\u03A4\u03CD\u03C0\u03BF\u03C2 \u03C7\u03CE\u03C1\u03BF\u03C5 (wine bar, bistro, \u03C6\u03BF\u03CD\u03C1\u03BD\u03BF\u03C2 \u03BA.\u03BB\u03C0.) \u2014 dropdown \u03C3\u03C4\u03BF Restaurant \u03BA\u03B1\u03B9 \u03C6\u03AF\u03BB\u03C4\u03C1\u03BF \u03C3\u03C4\u03B7 \u03C3\u03B5\u03BB\u03AF\u03B4\u03B1 \u03A6\u03B1\u03B3\u03B7\u03C4\u03CC.';
+    displayName: '\u039A\u03B1\u03C4\u03B7\u03B3\u03BF\u03C1\u03AF\u03B1 \u03B5\u03C3\u03C4\u03B9\u03B1\u03C4\u03BF\u03C1\u03AF\u03BF\u03C5';
+    pluralName: 'restaurant-categories';
+    singularName: 'restaurant-category';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::restaurant-category.restaurant-category',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    label: Attribute.String & Attribute.Required;
+    restaurants: Attribute.Relation<
+      'api::restaurant-category.restaurant-category',
+      'oneToMany',
+      'api::restaurant.restaurant'
+    >;
+    slug: Attribute.UID<
+      'api::restaurant-category.restaurant-category',
+      'label'
+    > &
+      Attribute.Required;
+    sort_order: Attribute.Integer & Attribute.DefaultTo<0>;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::restaurant-category.restaurant-category',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+  };
+}
+
 export interface ApiRestaurantRestaurant extends Schema.CollectionType {
   collectionName: 'restaurants';
   info: {
@@ -774,6 +816,11 @@ export interface ApiRestaurantRestaurant extends Schema.CollectionType {
   };
   attributes: {
     address: Attribute.String;
+    category: Attribute.Relation<
+      'api::restaurant.restaurant',
+      'manyToOne',
+      'api::restaurant-category.restaurant-category'
+    >;
     city: Attribute.Enumeration<['athens', 'thessaloniki', 'other']>;
     createdAt: Attribute.DateTime;
     createdBy: Attribute.Relation<
@@ -793,6 +840,7 @@ export interface ApiRestaurantRestaurant extends Schema.CollectionType {
       'api::editorial-review.editorial-review'
     >;
     editorial_score: Attribute.Decimal;
+    google_maps_url: Attribute.String;
     instagram: Attribute.String;
     is_new: Attribute.Boolean & Attribute.DefaultTo<true>;
     name: Attribute.String & Attribute.Required;
@@ -1618,6 +1666,7 @@ declare module '@strapi/types' {
       'api::homepage.homepage': ApiHomepageHomepage;
       'api::movie-genre.movie-genre': ApiMovieGenreMovieGenre;
       'api::movie.movie': ApiMovieMovie;
+      'api::restaurant-category.restaurant-category': ApiRestaurantCategoryRestaurantCategory;
       'api::restaurant.restaurant': ApiRestaurantRestaurant;
       'api::showtime.showtime': ApiShowtimeShowtime;
       'api::site-navigation.site-navigation': ApiSiteNavigationSiteNavigation;

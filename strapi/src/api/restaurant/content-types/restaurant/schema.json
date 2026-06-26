@@ -25,6 +25,12 @@
       "target": "api::cuisine.cuisine",
       "inversedBy": "restaurants"
     },
+    "category": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::restaurant-category.restaurant-category",
+      "inversedBy": "restaurants"
+    },
     "neighborhood": {
       "type": "string"
     },
@@ -41,6 +47,10 @@
     },
     "address": {
       "type": "string"
+    },
+    "google_maps_url": {
+      "type": "string",
+      "description": "Σύνδεσμος Google Maps (share/embed) — προτιμάται έναντι αυτόματης αναζήτησης από διεύθυνση."
     },
     "phone": {
       "type": "string"

@@ -165,6 +165,18 @@ function cuisineFromRestaurantRaw(r: Record<string, unknown>): { cuisine: string
   return { cuisine: "", cuisineSlug: "" };
 }
 
+function mapRestaurantCategory(raw: unknown): StrapiRestaurantCategory {
+  return mapMovieGenre(raw) as StrapiRestaurantCategory;
+}
+
+function categoryFromRestaurantRaw(r: Record<string, unknown>): { category: string; categorySlug: string } {
+  for (const entry of relationDataEntries(r.category)) {
+    const c = mapRestaurantCategory(entry);
+    if (c.label) return { category: c.label, categorySlug: c.slug };
+  }
+  return { category: "", categorySlug: "" };
+}
+
 type StrapiMediaAttrs = Record<string, unknown>;
 
 function strapiMediaAttributes(media: unknown): StrapiMediaAttrs | null {
@@ -681,6 +693,7 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
 function mapRestaurant(raw: unknown): StrapiRestaurant {
   const r = unwrapStrapiEntry(raw);
   const { cuisine, cuisineSlug } = cuisineFromRestaurantRaw(r as Record<string, unknown>);
+  const { category, categorySlug } = categoryFromRestaurantRaw(r as Record<string, unknown>);
   return {
     id: r.id,
     documentId: r.documentId,
@@ -689,10 +702,16 @@ function mapRestaurant(raw: unknown): StrapiRestaurant {
     synopsis: r.synopsis,
     cuisine,
     cuisineSlug: cuisineSlug || undefined,
+    category,
+    categorySlug: categorySlug || undefined,
     neighborhood: r.neighborhood,
     city: r.city,
     priceRange: r.price_range,
     address: r.address,
+    googleMapsUrl:
+      typeof r.google_maps_url === "string" && r.google_maps_url.trim()
+        ? r.google_maps_url.trim()
+        : undefined,
     phone: r.phone,
     website: r.website,
     instagram: r.instagram,
@@ -1257,6 +1276,8 @@ export interface StrapiCuisine {
   sortOrder: number;
 }
 
+export type StrapiRestaurantCategory = StrapiCuisine;
+
 export interface StrapiRestaurant {
   id: number;
   documentId: string;
@@ -1265,10 +1286,13 @@ export interface StrapiRestaurant {
   synopsis: string;
   cuisine: string;
   cuisineSlug?: string;
+  category: string;
+  categorySlug?: string;
   neighborhood: string;
   city: string;
   priceRange: string;
   address: string;
+  googleMapsUrl?: string;
   phone?: string;
   website?: string;
   instagram?: string;
@@ -1488,9 +1512,20 @@ const RESTAURANT_PUBLIC_QUERY: Record<string, string> = {
   "populate[cuisine][fields][0]": "label",
   "populate[cuisine][fields][1]": "slug",
   "populate[cuisine][fields][2]": "sort_order",
+  "populate[category][fields][0]": "label",
+  "populate[category][fields][1]": "slug",
+  "populate[category][fields][2]": "sort_order",
 };
 
 const CUISINE_PUBLIC_QUERY: Record<string, string> = {
+  "pagination[pageSize]": "100",
+  "sort[0]": "sort_order:asc",
+  "fields[0]": "label",
+  "fields[1]": "slug",
+  "fields[2]": "sort_order",
+};
+
+const RESTAURANT_CATEGORY_PUBLIC_QUERY: Record<string, string> = {
   "pagination[pageSize]": "100",
   "sort[0]": "sort_order:asc",
   "fields[0]": "label",
@@ -1783,6 +1818,11 @@ export const api = {
   getCuisines: () =>
     fetchAPI<unknown[]>("/cuisines", CUISINE_PUBLIC_QUERY).then((d) =>
       (Array.isArray(d) ? d : []).map((x) => mapCuisine(x)).filter((c) => c.label && c.slug),
+    ),
+
+  getRestaurantCategories: () =>
+    fetchAPI<unknown[]>("/restaurant-categories", RESTAURANT_CATEGORY_PUBLIC_QUERY).then((d) =>
+      (Array.isArray(d) ? d : []).map((x) => mapRestaurantCategory(x)).filter((c) => c.label && c.slug),
     ),
 
   getRestaurants: () =>

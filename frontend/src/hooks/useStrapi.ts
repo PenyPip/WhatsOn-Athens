@@ -100,6 +100,16 @@ export const useCuisines = (enabled = true) =>
     enabled,
   });
 
+export const useRestaurantCategories = (enabled = true) =>
+  useQuery({
+    queryKey: ["restaurantCategories"],
+    queryFn: api.getRestaurantCategories,
+    ...CONTENT_QUERY_OPTIONS,
+    retry: 1,
+    throwOnError: false,
+    enabled,
+  });
+
 export const useRestaurants = (enabled = true) =>
   useQuery({
     queryKey: ["restaurants"],

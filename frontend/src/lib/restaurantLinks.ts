@@ -22,17 +22,17 @@ export function restaurantLocationQuery(
 }
 
 export function restaurantMapsHref(
-  restaurant: Pick<StrapiRestaurant, "name" | "address" | "neighborhood" | "city">,
+  restaurant: Pick<StrapiRestaurant, "name" | "address" | "neighborhood" | "city" | "googleMapsUrl">,
 ): string | null {
   const query = restaurantLocationQuery(restaurant);
-  return query ? resolveGoogleMapsHref(null, query) : null;
+  return resolveGoogleMapsHref(restaurant.googleMapsUrl, query || restaurant.address);
 }
 
 export function restaurantMapsEmbedSrc(
-  restaurant: Pick<StrapiRestaurant, "name" | "address" | "neighborhood" | "city">,
+  restaurant: Pick<StrapiRestaurant, "name" | "address" | "neighborhood" | "city" | "googleMapsUrl">,
 ): string | null {
   const query = restaurantLocationQuery(restaurant);
-  return query ? resolveGoogleMapsEmbedSrc(null, query) : null;
+  return resolveGoogleMapsEmbedSrc(restaurant.googleMapsUrl, query);
 }
 
 export function restaurantWebsiteHref(raw: string | undefined | null): string | null {

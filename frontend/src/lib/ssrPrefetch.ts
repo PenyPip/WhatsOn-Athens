@@ -215,11 +215,13 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
       await Promise.all([
         qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants }),
         qc.prefetchQuery({ queryKey: ["cuisines"], queryFn: api.getCuisines }),
+        qc.prefetchQuery({ queryKey: ["restaurantCategories"], queryFn: api.getRestaurantCategories }),
       ]);
     } else if (diningSlug) {
       await Promise.all([
         qc.prefetchQuery({ queryKey: ["restaurant", diningSlug], queryFn: () => api.getRestaurantBySlug(diningSlug) }),
         qc.prefetchQuery({ queryKey: ["restaurants"], queryFn: api.getRestaurants }),
+        qc.prefetchQuery({ queryKey: ["restaurantCategories"], queryFn: api.getRestaurantCategories }),
       ]);
     } else if (normalized === "/reviews") {
       await qc.prefetchQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews });

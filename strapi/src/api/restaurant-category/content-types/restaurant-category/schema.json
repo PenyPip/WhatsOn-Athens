@@ -1,0 +1,35 @@
+{
+  "kind": "collectionType",
+  "collectionName": "restaurant_categories",
+  "info": {
+    "singularName": "restaurant-category",
+    "pluralName": "restaurant-categories",
+    "displayName": "Κατηγορία εστιατορίου",
+    "description": "Τύπος χώρου (wine bar, bistro, φούρνος κ.λπ.) — dropdown στο Restaurant και φίλτρο στη σελίδα Φαγητό."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "label": {
+      "type": "string",
+      "required": true
+    },
+    "slug": {
+      "type": "uid",
+      "targetField": "label",
+      "required": true
+    },
+    "sort_order": {
+      "type": "integer",
+      "default": 0,
+      "description": "Μικρότερο = πρώτο στα φίλτρα."
+    },
+    "restaurants": {
+      "type": "relation",
+      "relation": "oneToMany",
+      "target": "api::restaurant.restaurant",
+      "mappedBy": "category"
+    }
+  }
+}

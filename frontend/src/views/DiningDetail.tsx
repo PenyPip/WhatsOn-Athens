@@ -36,7 +36,7 @@ const DiningDetail = () => {
         title: restaurant.name,
         description: truncateDescription(
           (restaurant.synopsis ?? "").trim() ||
-            `${restaurant.name} — ${restaurant.cuisine}${place ? `, ${place}` : ""}.`,
+            `${restaurant.name} — ${[restaurant.category, restaurant.cuisine].filter(Boolean).join(" · ")}${place ? `, ${place}` : ""}.`,
         ),
         path: `/dining/${restaurant.slug}`,
         image: restaurant.posterUrl,
@@ -110,10 +110,15 @@ const DiningDetail = () => {
             </div>
             <h1 className="font-display text-3xl md:text-5xl font-bold mb-4 text-white">{restaurant.name}</h1>
             <div className="flex flex-wrap items-center gap-3 text-sm text-white/50">
-              <span className="flex items-center gap-1">
-                <UtensilsCrossed className="w-3.5 h-3.5" /> {restaurant.cuisine}
-              </span>
-              <span>·</span>
+              {[restaurant.category, restaurant.cuisine].filter(Boolean).length > 0 ? (
+                <>
+                  <span className="flex items-center gap-1">
+                    <UtensilsCrossed className="w-3.5 h-3.5" />{" "}
+                    {[restaurant.category, restaurant.cuisine].filter(Boolean).join(" · ")}
+                  </span>
+                  <span>·</span>
+                </>
+              ) : null}
               <span>{restaurant.priceRange}</span>
               <span>·</span>
               <span className="flex items-center gap-1">

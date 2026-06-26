@@ -45,7 +45,9 @@ const RestaurantCard = ({ restaurant }: { restaurant: StrapiRestaurant; index?: 
           <h3 className="font-display mb-1 text-base font-semibold leading-tight transition-colors group-hover:text-primary">
             {restaurant.name}
           </h3>
-          <p className="mb-2 text-sm text-muted-foreground">{restaurant.cuisine}</p>
+          <p className="mb-2 text-sm text-muted-foreground">
+            {[restaurant.category, restaurant.cuisine].filter(Boolean).join(" · ")}
+          </p>
           <div className="flex items-center justify-between">
             <span className="flex items-center gap-1 text-sm text-muted-foreground">
               <MapPin className="h-3.5 w-3.5" />
