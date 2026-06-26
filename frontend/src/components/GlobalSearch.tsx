@@ -8,10 +8,13 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type ReactNode,
 } from "react";
-import { useNavigate } from "react-router-dom";
+import { createPortal } from "react-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import { Building2, Clapperboard, Loader2, Search, Theater } from "lucide-react";
 import { useMovies, useTheaterShows, useVenues, useShowtimes } from "@/hooks/useStrapi";
+import { useClientMounted } from "@/hooks/useClientMounted";
 import type { StrapiMovie, StrapiTheaterShow, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre, showtimeIsUpcoming } from "@/lib/homeMovieFilters";
@@ -53,6 +56,12 @@ function cmpShowTitles(a: StrapiTheaterShow, b: StrapiTheaterShow): number {
 
 const CAP_EMPTY = 10;
 
+type PanelRect = {
+  top: number;
+  left: number;
+  width: number;
+};
+
 export type NavSearchHandle = {
   focus: () => void;
 };
@@ -67,15 +76,22 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   ref,
 ) {
   const navigate = useNavigate();
+  const location = useLocation();
+  const clientMounted = useClientMounted();
   const uid = useId();
   const inputId = `nav-search-input${uid.replace(/:/g, "")}`;
   const panelId = `nav-search-results${uid.replace(/:/g, "")}`;
   const rootRef = useRef<HTMLDivElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const hasOpenedRef = useRef(false);
   const [search, setSearch] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
+  const [panelRect, setPanelRect] = useState<PanelRect | null>(null);
 
-  const searchActive = panelOpen;
+  if (panelOpen) hasOpenedRef.current = true;
+
+  const searchActive = panelOpen || hasOpenedRef.current;
   const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies(searchActive);
   const { data: showtimes } = useShowtimes(searchActive);
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(searchActive);
@@ -99,6 +115,17 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
     setSearch("");
   }, []);
 
+  const updatePanelRect = useCallback(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    setPanelRect({
+      top: rect.bottom + 6,
+      left: rect.left,
+      width: rect.width,
+    });
+  }, []);
+
   useImperativeHandle(ref, () => ({
     focus: () => {
       setPanelOpen(true);
@@ -107,14 +134,34 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   }));
 
   useEffect(() => {
+    setPanelOpen(false);
+    setSearch("");
+  }, [location.pathname, location.search]);
+
+  useEffect(() => {
+    if (!panelOpen) {
+      setPanelRect(null);
+      return;
+    }
+    updatePanelRect();
+    const onLayout = () => updatePanelRect();
+    window.addEventListener("resize", onLayout);
+    window.addEventListener("scroll", onLayout, true);
+    return () => {
+      window.removeEventListener("resize", onLayout);
+      window.removeEventListener("scroll", onLayout, true);
+    };
+  }, [panelOpen, updatePanelRect]);
+
+  useEffect(() => {
     if (!panelOpen) return;
     const onPointerDown = (e: PointerEvent) => {
-      if (!rootRef.current?.contains(e.target as Node)) {
-        setPanelOpen(false);
-      }
+      const target = e.target as Node;
+      if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+      setPanelOpen(false);
     };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [panelOpen]);
 
   const movieHits = useMemo(() => {
@@ -182,6 +229,140 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
     }
   };
 
+  let panelBody: ReactNode;
+  if (loading) {
+    panelBody = (
+      <div className="flex items-center gap-2 px-4 py-6 text-sm text-white/60">
+        <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+        Φόρτωση…
+      </div>
+    );
+  } else if (listsError) {
+    panelBody = (
+      <p className="px-4 py-6 text-sm leading-relaxed text-red-300">
+        Δεν ήταν δυνατή η φόρτωση. Δοκίμασε ξανά αργότερα.
+      </p>
+    );
+  } else if (!hasHits) {
+    panelBody = <p className="px-4 py-6 text-sm text-white/55">Δεν βρέθηκαν αποτελέσματα.</p>;
+  } else {
+    panelBody = (
+      <>
+        {movieHits.length > 0 ? (
+          <section className="px-2 pb-1">
+            <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">Ταινίες</p>
+            <ul>
+              {movieHits.map((m) => {
+                const tl = movieTitleLines(m);
+                return (
+                  <li key={`movie-${m.id}`}>
+                    <button
+                      type="button"
+                      role="option"
+                      aria-selected="false"
+                      className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => runMovie(m.slug ?? "")}
+                    >
+                      <Clapperboard className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate font-medium">{tl.primary || "Τίτλος"}</span>
+                        {tl.secondary ? (
+                          <span className="block truncate text-xs text-white/50">{tl.secondary}</span>
+                        ) : null}
+                        {(m.director || m.genre) && (
+                          <span className="mt-0.5 block truncate text-xs text-white/45">
+                            {[m.director, m.genre].filter(Boolean).join(" · ")}
+                          </span>
+                        )}
+                      </span>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          </section>
+        ) : null}
+        {theaterHits.length > 0 ? (
+          <section className="px-2 pb-1">
+            <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">Παραστάσεις</p>
+            <ul>
+              {theaterHits.map((s) => (
+                <li key={`theater-${s.id}`}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected="false"
+                    className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => runTheaterShow(s.slug ?? "")}
+                  >
+                    <Theater className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{s.title || "Παράσταση"}</span>
+                      {s.director ? (
+                        <span className="mt-0.5 block truncate text-xs text-white/45">{s.director}</span>
+                      ) : null}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+        {venueHits.length > 0 ? (
+          <section className="px-2">
+            <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">Χώροι</p>
+            <ul>
+              {venueHits.map((v) => (
+                <li key={`venue-${v.id}`}>
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected="false"
+                    className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => runVenue(v)}
+                  >
+                    <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-medium">{v.name || "Χώρος"}</span>
+                      {v.city || v.address ? (
+                        <span className="block truncate text-xs text-white/50">
+                          {[v.address, v.city].filter(Boolean).join(" · ")}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+      </>
+    );
+  }
+
+  const panel =
+    showPanel && panelRect && clientMounted
+      ? createPortal(
+          <div
+            ref={panelRef}
+            id={panelId}
+            role="listbox"
+            className="fixed z-[100] max-h-[min(420px,60vh)] overflow-y-auto rounded-xl border border-white/15 bg-[#1a1b3a] py-2 text-[#F0EDF8] shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
+            style={{
+              top: panelRect.top,
+              left: panelRect.left,
+              width: panelRect.width,
+            }}
+          >
+            {panelBody}
+          </div>,
+          document.body,
+        )
+      : null;
+
   return (
     <div ref={rootRef} className={cn("relative min-w-0", className)}>
       <label htmlFor={inputId} className="sr-only">
@@ -214,123 +395,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
           className="min-w-0 flex-1 bg-transparent py-0.5 font-body text-base text-white/90 outline-none placeholder:text-white/55 pr-3 md:text-sm"
         />
       </div>
-
-      {showPanel ? (
-        <div
-          id={panelId}
-          role="listbox"
-          className="absolute left-0 right-0 top-[calc(100%+6px)] z-[70] max-h-[min(420px,60vh)] overflow-y-auto rounded-xl border border-white/15 bg-[#1a1b3a] py-2 text-[#F0EDF8] shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
-        >
-          {loading ? (
-            <div className="flex items-center gap-2 px-4 py-6 text-sm text-white/60">
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              Φόρτωση…
-            </div>
-          ) : listsError ? (
-            <p className="px-4 py-6 text-sm leading-relaxed text-red-300">
-              Δεν ήταν δυνατή η φόρτωση. Δοκίμασε ξανά αργότερα.
-            </p>
-          ) : !hasHits ? (
-            <p className="px-4 py-6 text-sm text-white/55">Δεν βρέθηκαν αποτελέσματα.</p>
-          ) : (
-            <>
-              {movieHits.length > 0 ? (
-                <section className="px-2 pb-1">
-                  <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">Ταινίες</p>
-                  <ul>
-                    {movieHits.map((m) => {
-                      const tl = movieTitleLines(m);
-                      return (
-                        <li key={`movie-${m.id}`}>
-                          <button
-                            type="button"
-                            role="option"
-                            aria-selected="false"
-                            className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
-                            onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => runMovie(m.slug ?? "")}
-                          >
-                            <Clapperboard className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
-                            <span className="min-w-0 flex-1">
-                              <span className="block truncate font-medium">{tl.primary || "Τίτλος"}</span>
-                              {tl.secondary ? (
-                                <span className="block truncate text-xs text-white/50">{tl.secondary}</span>
-                              ) : null}
-                              {(m.director || m.genre) && (
-                                <span className="mt-0.5 block truncate text-xs text-white/45">
-                                  {[m.director, m.genre].filter(Boolean).join(" · ")}
-                                </span>
-                              )}
-                            </span>
-                          </button>
-                        </li>
-                      );
-                    })}
-                  </ul>
-                </section>
-              ) : null}
-              {theaterHits.length > 0 ? (
-                <section className="px-2 pb-1">
-                  <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">Παραστάσεις</p>
-                  <ul>
-                    {theaterHits.map((s) => (
-                      <li key={`theater-${s.id}`}>
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected="false"
-                          className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => runTheaterShow(s.slug ?? "")}
-                        >
-                          <Theater className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-medium">{s.title || "Παράσταση"}</span>
-                            {s.director ? (
-                              <span className="mt-0.5 block truncate text-xs text-white/45">{s.director}</span>
-                            ) : null}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-              {venueHits.length > 0 ? (
-                <section className="px-2">
-                  <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">
-                    Χώροι
-                  </p>
-                  <ul>
-                    {venueHits.map((v) => (
-                      <li key={`venue-${v.id}`}>
-                        <button
-                          type="button"
-                          role="option"
-                          aria-selected="false"
-                          className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
-                          onMouseDown={(e) => e.preventDefault()}
-                          onClick={() => runVenue(v)}
-                        >
-                          <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
-                          <span className="min-w-0 flex-1">
-                            <span className="block truncate font-medium">{v.name || "Χώρος"}</span>
-                            {v.city || v.address ? (
-                              <span className="block truncate text-xs text-white/50">
-                                {[v.address, v.city].filter(Boolean).join(" · ")}
-                              </span>
-                            ) : null}
-                          </span>
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                </section>
-              ) : null}
-            </>
-          )}
-        </div>
-      ) : null}
+      {panel}
     </div>
   );
 });

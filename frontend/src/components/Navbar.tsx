@@ -73,8 +73,7 @@ const Navbar = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const mobileSearchRef = useRef<NavSearchHandle>(null);
-  const desktopSearchRef = useRef<NavSearchHandle>(null);
+  const searchRef = useRef<NavSearchHandle>(null);
   const deferNav = useDeferUntilLcpDone();
   const mounted = useClientMounted();
   const onHome = location.pathname === "/";
@@ -82,6 +81,35 @@ const Navbar = () => {
     useIdleMount(isMobile ? 4500 : 2500) && (!isMobile || !onHome || deferNav);
   useStableMobileSafeArea();
   const nav = useSiteNavigationData(!isMobile || deferNav);
+
+  const mobileSearchClassName = "min-w-0 flex-1";
+  const mobileSearchInputClassName = "h-10 min-h-10";
+  const desktopSearchClassName = "w-full max-w-md";
+  const desktopSearchInputClassName = "h-11 text-sm";
+
+  const mobileSearch = showSearch ? (
+    <Suspense fallback={<NavSearchFallback className="h-9 min-w-0 flex-1" />}>
+      <NavSearch
+        ref={searchRef}
+        className={mobileSearchClassName}
+        inputClassName={mobileSearchInputClassName}
+      />
+    </Suspense>
+  ) : (
+    <NavSearchFallback className="h-10 min-h-10 min-w-0 flex-1" />
+  );
+
+  const desktopSearch = showSearch ? (
+    <Suspense fallback={<NavSearchFallback className="h-11 w-full max-w-md" />}>
+      <NavSearch
+        ref={searchRef}
+        className={desktopSearchClassName}
+        inputClassName={desktopSearchInputClassName}
+      />
+    </Suspense>
+  ) : (
+    <NavSearchFallback className="h-11 w-full max-w-md" />
+  );
 
   const desktopLinks = nav.desktopLinks;
   const mobileTabLinks = nav.mobileTabLinks;
@@ -131,17 +159,7 @@ const Navbar = () => {
       >
         <div className="container flex min-h-14 items-center gap-2.5 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <BrandLogo compact tagline={nav.brandTagline} />
-          {showSearch ? (
-            <Suspense fallback={<NavSearchFallback className="h-9 min-w-0 flex-1" />}>
-              <NavSearch
-                ref={mobileSearchRef}
-                className="min-w-0 flex-1"
-                inputClassName="h-10 min-h-10"
-              />
-            </Suspense>
-          ) : (
-            <NavSearchFallback className="h-10 min-h-10 min-w-0 flex-1" />
-          )}
+          {isMobile ? mobileSearch : <NavSearchFallback className="h-10 min-h-10 min-w-0 flex-1" />}
           <MobileNavMenuButton onClick={() => setMobileMenuOpen(true)} />
         </div>
       </nav>
@@ -159,17 +177,7 @@ const Navbar = () => {
           <BrandLogo tagline={nav.brandTagline} />
 
           <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex">
-            {showSearch ? (
-              <Suspense fallback={<NavSearchFallback className="h-11 w-full max-w-md" />}>
-                <NavSearch
-                  ref={desktopSearchRef}
-                  className="w-full max-w-md"
-                  inputClassName="h-11 text-sm"
-                />
-              </Suspense>
-            ) : (
-              <NavSearchFallback className="h-11 w-full max-w-md" />
-            )}
+            {!isMobile ? desktopSearch : <NavSearchFallback className="h-11 w-full max-w-md" />}
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-4 md:contents">

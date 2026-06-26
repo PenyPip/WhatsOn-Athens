@@ -25,6 +25,7 @@ export default {
     "left-[50%]",
     "translate-x-[-50%]",
     "translate-y-[-50%]",
+    "z-[100]",
     "z-[200]",
   ],
   theme: {
