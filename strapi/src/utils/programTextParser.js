@@ -574,16 +574,26 @@ function parseDateShowtimesFromText(scheduleText, refYear) {
   return showtimes;
 }
 
+function isSummerScreeningLabel(text) {
+  const hay = normalizeGreek(String(text || ''));
+  if (!hay) return false;
+  return /θεριν[οόςη]|therino|\bsummer\b/i.test(hay);
+}
+
 function dedupeShowtimes(showtimes) {
-  const seen = new Set();
-  const out = [];
+  const byKey = new Map();
   for (const st of showtimes) {
     const key = st.datetime.toISOString();
-    if (seen.has(key)) continue;
-    seen.add(key);
-    out.push(st);
+    const prev = byKey.get(key);
+    if (!prev) {
+      byKey.set(key, st);
+      continue;
+    }
+    if (st.summer_screening && !prev.summer_screening) {
+      byKey.set(key, { ...prev, summer_screening: true });
+    }
   }
-  return out.sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
+  return [...byKey.values()].sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
 }
 
 function parseDowRangeStisShowtimes(scheduleText, rangeStart, rangeEnd) {
@@ -1025,7 +1035,7 @@ function splitScheduleClauses(schedule) {
   return clauses;
 }
 
-function parseAuditoriumScheduleText(schedule, rangeStart, rangeEnd) {
+function parseAuditoriumScheduleText(schedule, rangeStart, rangeEnd, { summerScreening = false } = {}) {
   const showtimes = [];
   if (!schedule || !rangeStart || !rangeEnd) return showtimes;
 
@@ -1053,7 +1063,13 @@ function parseAuditoriumScheduleText(schedule, rangeStart, rangeEnd) {
       for (const { hour, minute } of times) {
         const datetime = buildAthensDatetimeFromLocalDate(dayDate, hour, minute);
         const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
-        showtimes.push({ dayLabel, timeLabel, datetime, note });
+        showtimes.push({
+          dayLabel,
+          timeLabel,
+          datetime,
+          note,
+          summer_screening: summerScreening === true,
+        });
       }
     }
   }
@@ -1107,6 +1123,7 @@ function parseCatalogCinemaProgram(text, { refYear = new Date().getFullYear(), n
     );
   }
   warnings.push('Οι αίθουσες αγνοήθηκαν — οι προβολές μπαίνουν στον επιλεγμένο κινηματογράφο.');
+  warnings.push('Γραμμές με «Θερινός» σημειώνονται ως θερινή προβολή — οι υπόλοιπες όχι.');
 
   const blocks = parseCatalogMoviesFromLines(lines);
   const movies = blocks.map((block) => {
@@ -1114,8 +1131,12 @@ function parseCatalogCinemaProgram(text, { refYear = new Date().getFullYear(), n
     for (const line of block.auditoriumLines) {
       const extracted = extractAuditoriumSchedule(line);
       if (!extracted?.schedule) continue;
+      const summerScreening =
+        isSummerScreeningLabel(extracted.room) || isSummerScreeningLabel(line);
       showtimes.push(
-        ...parseAuditoriumScheduleText(extracted.schedule, dateRange.start, dateRange.end),
+        ...parseAuditoriumScheduleText(extracted.schedule, dateRange.start, dateRange.end, {
+          summerScreening,
+        }),
       );
     }
     return {

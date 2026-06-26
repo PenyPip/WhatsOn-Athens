@@ -159,6 +159,7 @@ async function buildPreviewFromParsed(strapi, { venue, parsed, inputKind = 'text
         timeLabel,
         dayLabel: st.dayLabel,
         note: st.note,
+        summer_screening: st.summer_screening === true,
         exists,
         approved: !exists && Boolean(match?.cmsId),
         status: exists ? 'exists' : match?.cmsId ? 'new' : 'unmatched',
@@ -169,6 +170,7 @@ async function buildPreviewFromParsed(strapi, { venue, parsed, inputKind = 'text
         timeLabel: st.timeLabel,
         datetime: st.datetime.toISOString(),
         note: st.note,
+        summer_screening: st.summer_screening === true,
         exists,
       });
       proposals.push(row);
@@ -350,7 +352,7 @@ async function createProgramTextShowtimes(strapi, { venueId, items, now = new Da
             datetime: datetime.toISOString(),
             movie: movieId,
             venue: venue.id,
-            summer_screening: venue.summer_outdoor === true,
+            summer_screening: st.summer_screening === true,
             import_source: 'manual',
             import_trace: traceParts.join(' · '),
           },

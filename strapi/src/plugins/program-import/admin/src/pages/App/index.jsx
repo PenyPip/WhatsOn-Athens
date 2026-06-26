@@ -341,6 +341,7 @@ export default function App() {
       byTitle.get(p.parsedTitle).showtimes.push({
         datetime: p.datetime,
         note: p.note,
+        summer_screening: p.summer_screening === true,
         approved: p.approved,
       });
     }
@@ -725,9 +726,12 @@ export default function App() {
                           )}
                         </Td>
                         <Td>
-                          <Typography variant="pi">
-                            {p.dateLabel} · {p.timeLabel}
-                          </Typography>
+                          <Flex gap={1} alignItems="center" wrap="wrap">
+                            <Typography variant="pi">
+                              {p.dateLabel} · {p.timeLabel}
+                            </Typography>
+                            {p.summer_screening ? <Badge>Θερινή</Badge> : null}
+                          </Flex>
                         </Td>
                         <Td>
                           <Typography variant="pi" textColor="neutral600">

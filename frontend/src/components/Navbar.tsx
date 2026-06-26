@@ -1,4 +1,4 @@
-import { lazy, Suspense, useRef, useState } from "react";
+import { lazy, Suspense, useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useIdleMount } from "@/hooks/useIdleMount";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
@@ -73,6 +73,8 @@ const Navbar = () => {
   const location = useLocation();
   const isMobile = useIsMobile();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [mobileSearchSlot, setMobileSearchSlot] = useState<HTMLDivElement | null>(null);
+  const [desktopSearchSlot, setDesktopSearchSlot] = useState<HTMLDivElement | null>(null);
   const searchRef = useRef<NavSearchHandle>(null);
   const deferNav = useDeferUntilLcpDone();
   const mounted = useClientMounted();
@@ -82,33 +84,33 @@ const Navbar = () => {
   useStableMobileSafeArea();
   const nav = useSiteNavigationData(!isMobile || deferNav);
 
-  const mobileSearchClassName = "min-w-0 flex-1";
-  const mobileSearchInputClassName = "h-10 min-h-10";
-  const desktopSearchClassName = "w-full max-w-md";
-  const desktopSearchInputClassName = "h-11 text-sm";
+  const bindMobileSearchSlot = useCallback((node: HTMLDivElement | null) => {
+    setMobileSearchSlot(node);
+  }, []);
 
-  const mobileSearch = showSearch ? (
-    <Suspense fallback={<NavSearchFallback className="h-9 min-w-0 flex-1" />}>
+  const bindDesktopSearchSlot = useCallback((node: HTMLDivElement | null) => {
+    setDesktopSearchSlot(node);
+  }, []);
+
+  const activeSearchSlot = isMobile ? mobileSearchSlot : desktopSearchSlot;
+  const searchNode = showSearch ? (
+    <Suspense
+      fallback={
+        <NavSearchFallback
+          className={isMobile ? "h-10 min-h-10 w-full" : "h-11 w-full max-w-md"}
+        />
+      }
+    >
       <NavSearch
         ref={searchRef}
-        className={mobileSearchClassName}
-        inputClassName={mobileSearchInputClassName}
+        className={isMobile ? "min-w-0 w-full" : "w-full max-w-md"}
+        inputClassName={isMobile ? "h-10 min-h-10" : "h-11 text-sm"}
       />
     </Suspense>
   ) : (
-    <NavSearchFallback className="h-10 min-h-10 min-w-0 flex-1" />
-  );
-
-  const desktopSearch = showSearch ? (
-    <Suspense fallback={<NavSearchFallback className="h-11 w-full max-w-md" />}>
-      <NavSearch
-        ref={searchRef}
-        className={desktopSearchClassName}
-        inputClassName={desktopSearchInputClassName}
-      />
-    </Suspense>
-  ) : (
-    <NavSearchFallback className="h-11 w-full max-w-md" />
+    <NavSearchFallback
+      className={isMobile ? "h-10 min-h-10 w-full" : "h-11 w-full max-w-md"}
+    />
   );
 
   const desktopLinks = nav.desktopLinks;
@@ -159,7 +161,7 @@ const Navbar = () => {
       >
         <div className="container flex min-h-14 items-center gap-2.5 px-3 pb-2 pt-[max(0.5rem,env(safe-area-inset-top))]">
           <BrandLogo compact tagline={nav.brandTagline} />
-          {isMobile ? mobileSearch : <NavSearchFallback className="h-10 min-h-10 min-w-0 flex-1" />}
+          <div ref={bindMobileSearchSlot} className="min-w-0 flex-1" />
           <MobileNavMenuButton onClick={() => setMobileMenuOpen(true)} />
         </div>
       </nav>
@@ -177,7 +179,7 @@ const Navbar = () => {
           <BrandLogo tagline={nav.brandTagline} />
 
           <div className="hidden min-w-0 flex-1 justify-center px-2 md:flex">
-            {!isMobile ? desktopSearch : <NavSearchFallback className="h-11 w-full max-w-md" />}
+            <div ref={bindDesktopSearchSlot} className="w-full max-w-md" />
           </div>
 
           <div className="flex flex-1 items-center justify-end gap-4 md:contents">
@@ -217,6 +219,8 @@ const Navbar = () => {
           </div>
         </div>
       </nav>
+
+      {mounted && activeSearchSlot ? createPortal(searchNode, activeSearchSlot) : null}
 
       {mounted && (!isMobile || deferNav)
         ? createPortal(mobileBottomNav, document.body)

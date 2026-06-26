@@ -4,6 +4,7 @@ import {
   useEffect,
   useId,
   useImperativeHandle,
+  useLayoutEffect,
   useMemo,
   useRef,
   useState,
@@ -62,6 +63,31 @@ type PanelRect = {
   width: number;
 };
 
+function measurePanelRect(anchor: HTMLElement | null): PanelRect | null {
+  if (!anchor) return null;
+  const rect = anchor.getBoundingClientRect();
+  if (rect.width < 8) return null;
+  return {
+    top: rect.bottom + 6,
+    left: rect.left,
+    width: rect.width,
+  };
+}
+
+function eventHitsSearchUi(
+  event: Event,
+  root: HTMLElement | null,
+  panel: HTMLElement | null,
+): boolean {
+  const path = typeof event.composedPath === "function" ? event.composedPath() : [];
+  if (path.length > 0) {
+    return path.some((node) => node === root || node === panel);
+  }
+  const target = event.target;
+  if (!(target instanceof Node)) return false;
+  return Boolean(root?.contains(target) || panel?.contains(target));
+}
+
 export type NavSearchHandle = {
   focus: () => void;
 };
@@ -85,6 +111,8 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const hasOpenedRef = useRef(false);
+  const routePathRef = useRef(location.pathname);
+  const layoutFrameRef = useRef<number | null>(null);
   const [search, setSearch] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelRect, setPanelRect] = useState<PanelRect | null>(null);
@@ -113,18 +141,32 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   const close = useCallback(() => {
     setPanelOpen(false);
     setSearch("");
+    setPanelRect(null);
   }, []);
 
-  const updatePanelRect = useCallback(() => {
-    const el = rootRef.current;
-    if (!el) return;
-    const rect = el.getBoundingClientRect();
-    setPanelRect({
-      top: rect.bottom + 6,
-      left: rect.left,
-      width: rect.width,
+  const syncPanelRect = useCallback(() => {
+    const next = measurePanelRect(rootRef.current);
+    setPanelRect((prev) => {
+      if (!next) return prev;
+      if (
+        prev &&
+        prev.top === next.top &&
+        prev.left === next.left &&
+        prev.width === next.width
+      ) {
+        return prev;
+      }
+      return next;
     });
   }, []);
+
+  const schedulePanelRectSync = useCallback(() => {
+    if (layoutFrameRef.current !== null) return;
+    layoutFrameRef.current = window.requestAnimationFrame(() => {
+      layoutFrameRef.current = null;
+      syncPanelRect();
+    });
+  }, [syncPanelRect]);
 
   useImperativeHandle(ref, () => ({
     focus: () => {
@@ -134,34 +176,50 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   }));
 
   useEffect(() => {
+    if (routePathRef.current === location.pathname) return;
+    routePathRef.current = location.pathname;
     setPanelOpen(false);
     setSearch("");
-  }, [location.pathname, location.search]);
+    setPanelRect(null);
+  }, [location.pathname]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!panelOpen) {
       setPanelRect(null);
       return;
     }
-    updatePanelRect();
-    const onLayout = () => updatePanelRect();
-    window.addEventListener("resize", onLayout);
-    window.addEventListener("scroll", onLayout, true);
-    return () => {
-      window.removeEventListener("resize", onLayout);
-      window.removeEventListener("scroll", onLayout, true);
-    };
-  }, [panelOpen, updatePanelRect]);
+    syncPanelRect();
+  }, [panelOpen, syncPanelRect]);
 
   useEffect(() => {
     if (!panelOpen) return;
-    const onPointerDown = (e: PointerEvent) => {
-      const target = e.target as Node;
-      if (rootRef.current?.contains(target) || panelRef.current?.contains(target)) return;
+
+    const onLayout = () => schedulePanelRectSync();
+    window.addEventListener("resize", onLayout);
+    window.addEventListener("scroll", onLayout, true);
+    window.visualViewport?.addEventListener("resize", onLayout);
+    window.visualViewport?.addEventListener("scroll", onLayout);
+
+    return () => {
+      window.removeEventListener("resize", onLayout);
+      window.removeEventListener("scroll", onLayout, true);
+      window.visualViewport?.removeEventListener("resize", onLayout);
+      window.visualViewport?.removeEventListener("scroll", onLayout);
+      if (layoutFrameRef.current !== null) {
+        window.cancelAnimationFrame(layoutFrameRef.current);
+        layoutFrameRef.current = null;
+      }
+    };
+  }, [panelOpen, schedulePanelRectSync]);
+
+  useEffect(() => {
+    if (!panelOpen) return;
+    const onPointerDown = (event: PointerEvent) => {
+      if (eventHitsSearchUi(event, rootRef.current, panelRef.current)) return;
       setPanelOpen(false);
     };
-    document.addEventListener("pointerdown", onPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onPointerDown, true);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => document.removeEventListener("pointerdown", onPointerDown);
   }, [panelOpen]);
 
   const movieHits = useMemo(() => {
@@ -196,10 +254,11 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   const runMovie = useCallback(
     (slug: string) => {
       if (!slug?.trim()) return;
+      const target = `/movies/${slug.trim()}`;
       close();
-      navigate(`/movies/${slug.trim()}`);
+      if (location.pathname !== target) navigate(target);
     },
-    [close, navigate],
+    [close, location.pathname, navigate],
   );
 
   const runVenue = useCallback(
@@ -207,18 +266,19 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
       const href = programHrefForVenue(venue);
       if (!href) return;
       close();
-      navigate(href);
+      if (`${location.pathname}${location.search}` !== href) navigate(href);
     },
-    [close, navigate],
+    [close, location.pathname, location.search, navigate],
   );
 
   const runTheaterShow = useCallback(
     (slug: string) => {
       if (!slug?.trim()) return;
+      const target = `/theater/${slug.trim()}`;
       close();
-      navigate(`/theater/${slug.trim()}`);
+      if (location.pathname !== target) navigate(target);
     },
-    [close, navigate],
+    [close, location.pathname, navigate],
   );
 
   const onInputKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -261,8 +321,10 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                       role="option"
                       aria-selected="false"
                       className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => runMovie(m.slug ?? "")}
+                      onPointerDown={(e) => {
+                        e.preventDefault();
+                        runMovie(m.slug ?? "");
+                      }}
                     >
                       <Clapperboard className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
                       <span className="min-w-0 flex-1">
@@ -294,8 +356,10 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                     role="option"
                     aria-selected="false"
                     className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => runTheaterShow(s.slug ?? "")}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      runTheaterShow(s.slug ?? "");
+                    }}
                   >
                     <Theater className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
                     <span className="min-w-0 flex-1">
@@ -321,8 +385,10 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                     role="option"
                     aria-selected="false"
                     className="flex w-full gap-3 rounded-lg px-3 py-2.5 text-left transition hover:bg-white/10"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => runVenue(v)}
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      runVenue(v);
+                    }}
                   >
                     <Building2 className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
                     <span className="min-w-0 flex-1">
@@ -330,7 +396,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                       {v.city || v.address ? (
                         <span className="block truncate text-xs text-white/50">
                           {[v.address, v.city].filter(Boolean).join(" · ")}
-                        </span>
+                      </span>
                       ) : null}
                     </span>
                   </button>
@@ -350,7 +416,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
             ref={panelRef}
             id={panelId}
             role="listbox"
-            className="fixed z-[100] max-h-[min(420px,60vh)] overflow-y-auto rounded-xl border border-white/15 bg-[#1a1b3a] py-2 text-[#F0EDF8] shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
+            className="fixed z-[200] max-h-[min(420px,60vh)] overflow-y-auto rounded-xl border border-white/15 bg-[#1a1b3a] py-2 text-[#F0EDF8] shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
             style={{
               top: panelRect.top,
               left: panelRect.left,
@@ -380,9 +446,13 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
           id={inputId}
           ref={inputRef}
           type="search"
+          enterKeyHint="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          onFocus={() => setPanelOpen(true)}
+          onFocus={() => {
+            setPanelOpen(true);
+            schedulePanelRectSync();
+          }}
           onKeyDown={onInputKeyDown}
           placeholder="Ταινίες, παραστάσεις, σινεμά…"
           autoComplete="off"
