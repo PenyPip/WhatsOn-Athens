@@ -1,4 +1,5 @@
-import { useState, useMemo, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { useSearchParams } from "react-router-dom";
 import RestaurantCard from "@/components/RestaurantCard";
 import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_SUBTITLE_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import LoadingState from "@/components/LoadingState";
@@ -6,8 +7,24 @@ import Footer from "@/components/Footer";
 import { useCuisines, useRestaurantCategories, useRestaurants } from "@/hooks/useStrapi";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+import {
+  ATHENS_DISTRICT_FILTER_OPTIONS,
+  parseVenueAreaFilterParam,
+  parseVenueDistrictParam,
+  VENUE_AREA_FILTER_OPTIONS,
+  venueMatchesAreaFilter,
+  venueMatchesDistrictFilter,
+  type AthensDistrictFilter,
+  type AthensDistrictKey,
+  type VenueAreaFilter,
+  type VenueAreaKey,
+} from "@/lib/venueArea";
 
 const priceRanges = ["Όλα", "€€", "€€€", "€€€€"];
+
+function activeDistrictFilter(districtParam: AthensDistrictKey | null): AthensDistrictFilter {
+  return districtParam ?? "all";
+}
 
 function FilterChip({
   active,
@@ -35,6 +52,26 @@ function FilterChip({
 
 const Dining = () => {
   usePageSeo(staticPageSeo.dining);
+
+  const [searchParams, setSearchParams] = useSearchParams();
+  const areaUi = parseVenueAreaFilterParam(searchParams.get("area"));
+  const districtFilter = parseVenueDistrictParam(searchParams.get("district"));
+  const districtUi = activeDistrictFilter(districtFilter);
+
+  const setAreaParam = (next: VenueAreaFilter) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === "athens") params.delete("area");
+    else params.set("area", next);
+    if (next !== "athens") params.delete("district");
+    setSearchParams(params, { replace: true });
+  };
+
+  const setDistrictParam = (next: AthensDistrictFilter) => {
+    const params = new URLSearchParams(searchParams);
+    if (next === "all") params.delete("district");
+    else params.set("district", next);
+    setSearchParams(params, { replace: true });
+  };
 
   const { data: restaurants, isLoading } = useRestaurants();
   const { data: cuisinesList } = useCuisines();
@@ -65,12 +102,18 @@ const Dining = () => {
   const filtered = useMemo(() => {
     if (!restaurants) return [];
     let result = restaurants;
+    if (areaUi !== "all") {
+      result = result.filter((r) => venueMatchesAreaFilter(r, areaUi as VenueAreaKey));
+    }
+    if (districtFilter) {
+      result = result.filter((r) => venueMatchesDistrictFilter(r, districtFilter));
+    }
     if (categorySlug) result = result.filter((r) => r.categorySlug === categorySlug);
     if (cuisineSlug) result = result.filter((r) => r.cuisineSlug === cuisineSlug);
     if (price !== "Όλα") result = result.filter((r) => r.priceRange === price);
     if (showNewOnly) result = result.filter((r) => r.isNew);
     return result;
-  }, [restaurants, categorySlug, cuisineSlug, price, showNewOnly]);
+  }, [restaurants, areaUi, districtFilter, categorySlug, cuisineSlug, price, showNewOnly]);
 
   return (
     <div className={PAGE_LIST_SHELL_CLASS}>
@@ -80,6 +123,30 @@ const Dining = () => {
       </PageListHeader>
 
       <div className="container">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Πόλη:</span>
+          {VENUE_AREA_FILTER_OPTIONS.map((opt) => (
+            <FilterChip key={opt.value} active={areaUi === opt.value} onClick={() => setAreaParam(opt.value)}>
+              {opt.label}
+            </FilterChip>
+          ))}
+        </div>
+
+        {areaUi === "athens" ? (
+          <div className="flex flex-wrap items-center gap-2 mb-4">
+            <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Περιοχή:</span>
+            {ATHENS_DISTRICT_FILTER_OPTIONS.map((opt) => (
+              <FilterChip
+                key={opt.value}
+                active={districtUi === opt.value}
+                onClick={() => setDistrictParam(opt.value)}
+              >
+                {opt.label}
+              </FilterChip>
+            ))}
+          </div>
+        ) : null}
+
         {categoryFilters.length > 0 ? (
           <div className="flex flex-wrap items-center gap-2 mb-4">
             <span className="text-sm text-muted-foreground mr-1 uppercase tracking-wider">Κατηγορία:</span>

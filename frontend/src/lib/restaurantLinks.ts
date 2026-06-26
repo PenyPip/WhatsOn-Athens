@@ -1,13 +1,25 @@
-import { normalizeVenueCity, VENUE_AREA_LABELS } from "@/lib/venueArea";
+import {
+  ATHENS_DISTRICT_LABELS,
+  normalizeVenueCity,
+  VENUE_AREA_LABELS,
+  type AthensDistrictKey,
+} from "@/lib/venueArea";
 import { normalizeHttpUrl, resolveGoogleMapsEmbedSrc, resolveGoogleMapsHref } from "@/lib/venueResolve";
 import type { StrapiRestaurant } from "@/lib/api";
 
-/** Γραμμή τοποθεσίας: περιοχή (CMS neighborhood) + πόλη. */
-export function restaurantAreaLine(restaurant: Pick<StrapiRestaurant, "neighborhood" | "city">): string {
-  const area = typeof restaurant.neighborhood === "string" ? restaurant.neighborhood.trim() : "";
+/** Γραμμή τοποθεσίας: γειτονιά, υποπεριοχή Αθήνας (district), πόλη. */
+export function restaurantAreaLine(
+  restaurant: Pick<StrapiRestaurant, "neighborhood" | "city" | "district">,
+): string {
+  const neighborhood = typeof restaurant.neighborhood === "string" ? restaurant.neighborhood.trim() : "";
   const cityKey = normalizeVenueCity(restaurant.city);
   const city = cityKey ? VENUE_AREA_LABELS[cityKey] : typeof restaurant.city === "string" ? restaurant.city.trim() : "";
-  return [area, city].filter(Boolean).join(", ");
+  const districtKey = restaurant.district as AthensDistrictKey | undefined;
+  const district =
+    cityKey === "athens" && districtKey && ATHENS_DISTRICT_LABELS[districtKey]
+      ? ATHENS_DISTRICT_LABELS[districtKey]
+      : "";
+  return [neighborhood, district, city].filter(Boolean).join(", ");
 }
 
 /** Κείμενο αναζήτησης χάρτη: διεύθυνση, περιοχή, όνομα. */

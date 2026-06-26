@@ -834,6 +834,9 @@ export interface ApiRestaurantRestaurant extends Schema.CollectionType {
       'manyToOne',
       'api::cuisine.cuisine'
     >;
+    district: Attribute.Enumeration<
+      ['center', 'north', 'south', 'west', 'east', 'piraeus', 'greater_other']
+    >;
     editorial_reviews: Attribute.Relation<
       'api::restaurant.restaurant',
       'oneToMany',

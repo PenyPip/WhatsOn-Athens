@@ -706,6 +706,7 @@ function mapRestaurant(raw: unknown): StrapiRestaurant {
     categorySlug: categorySlug || undefined,
     neighborhood: r.neighborhood,
     city: r.city,
+    district: typeof r.district === "string" && r.district ? r.district : undefined,
     priceRange: r.price_range,
     address: r.address,
     googleMapsUrl:
@@ -1290,6 +1291,7 @@ export interface StrapiRestaurant {
   categorySlug?: string;
   neighborhood: string;
   city: string;
+  district?: string;
   priceRange: string;
   address: string;
   googleMapsUrl?: string;

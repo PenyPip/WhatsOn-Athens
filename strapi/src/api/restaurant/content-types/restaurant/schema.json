@@ -42,6 +42,11 @@
         "other"
       ]
     },
+    "district": {
+      "type": "enumeration",
+      "enum": ["center", "north", "south", "west", "east", "piraeus", "greater_other"],
+      "description": "Υποπεριοχή (κυρίως για Αθήνα) — ίδιες τιμές με τους χώρους σινεμά."
+    },
     "price_range": {
       "type": "string"
     },
