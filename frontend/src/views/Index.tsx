@@ -1,11 +1,37 @@
-import HomeBody from "@/views/HomeBody";
+import { lazy, Suspense } from "react";
+import HomePageBodyShell from "@/components/HomePageBodyShell";
+import HomeStaticLcpHandoff from "@/components/HomeStaticLcpHandoff";
 import HomeSeoIntro from "@/components/HomeSeoIntro";
 import MarkLcpDone from "@/components/MarkLcpDone";
 import { layoutShowsHero } from "@/config/home";
 import { SITE_INSTAGRAM_URL } from "@/config/siteLinks";
+import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { usePageSeo } from "@/hooks/usePageSeo";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useHomeLayout } from "@/hooks/useStrapi";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+import type { ResolvedHomepageLayout } from "@/config/home";
+
+const HomeBody = lazy(() => import(/* webpackChunkName: "home-body" */ "@/views/HomeBody"));
+
+function HomeBodyMountGate({
+  hasHero,
+  ready,
+  layout,
+}: {
+  hasHero: boolean;
+  ready: boolean;
+  layout: ResolvedHomepageLayout;
+}) {
+  if (!ready) {
+    return hasHero ? <HomePageBodyShell /> : null;
+  }
+  return (
+    <Suspense fallback={hasHero ? <HomePageBodyShell /> : null}>
+      <HomeBody layout={layout} />
+    </Suspense>
+  );
+}
 
 const Index = () => {
   usePageSeo(staticPageSeo.home);
@@ -13,13 +39,19 @@ const Index = () => {
   const layout = useHomeLayout();
   const hasHero = layoutShowsHero(layout);
   const homeBodyReady = layout.sections.length > 0;
+  const isMobile = useIsMobile();
+  const deferLcp = useDeferUntilLcpDone();
+  /** Mobile: μην φορτώνεις το βαρύ HomeBody chunk πριν το static LCP handoff — μικρότερο TBT. */
+  const mountHomeBody = homeBodyReady && (!isMobile || deferLcp);
 
   return (
     <div className="min-h-screen md:pb-0">
-      {!hasHero ? <MarkLcpDone /> : null}
+      {!hasHero ? <MarkLcpDone /> : <HomeStaticLcpHandoff />}
 
-      {homeBodyReady ? <HomeBody layout={layout} /> : null}
-      <div className="home-below-fold">
+      {homeBodyReady ? (
+        <HomeBodyMountGate hasHero={hasHero} ready={mountHomeBody} layout={layout} />
+      ) : null}
+      <div>
         <HomeSeoIntro />
 
         <footer className="section-black border-t border-white/10 py-12">

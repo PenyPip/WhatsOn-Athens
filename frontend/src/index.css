@@ -37,14 +37,6 @@
   animation-delay: calc(var(--stagger, 0) * 70ms);
 }
 
-/** Αρχική mobile: sections κάτω από hero — λιγότερο layout/paint (χωρίς επίδραση desktop). */
-@media (max-width: 767px) {
-  .home-below-fold {
-    content-visibility: auto;
-    contain-intrinsic-size: auto 480px;
-  }
-}
-
 @layer base {
   :root {
     --mobile-tab-bar-h: 3.5rem;

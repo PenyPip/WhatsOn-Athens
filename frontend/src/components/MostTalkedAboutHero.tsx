@@ -155,30 +155,10 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
     const staticEl = document.getElementById("home-static-lcp");
     const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
 
-    /** Mobile: overlay μόνο (idle) — layout handoff όταν έρθουν ταινίες (CLS). */
+    /** Mobile: handoff από HomeStaticLcpHandoff στο Index (πριν mount HomeBody). */
     if (staticEl && isMobileViewport) {
-      let cancelled = false;
-      let idleId: number | undefined;
-      const frame = requestAnimationFrame(() => {
-        requestAnimationFrame(() => {
-          if (cancelled) return;
-          const finish = () => {
-            if (!cancelled) markOverlayDone();
-          };
-          if (typeof requestIdleCallback !== "undefined") {
-            idleId = requestIdleCallback(finish, { timeout: 1200 });
-          } else {
-            finish();
-          }
-        });
-      });
-      return () => {
-        cancelled = true;
-        cancelAnimationFrame(frame);
-        if (idleId !== undefined && typeof cancelIdleCallback !== "undefined") {
-          cancelIdleCallback(idleId);
-        }
-      };
+      if (document.documentElement.classList.contains("spa-lcp-done")) return;
+      return;
     }
 
     if (loading) return;
