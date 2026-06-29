@@ -7,12 +7,97 @@ const {
   parseCinemaProgramImagesWithAi,
 } = require('./programTextAiParser');
 const { isOcrAvailable, ocrProgramImagesToText } = require('./programTextOcr');
+const { scorePlayTitleMatch } = require('./morePlayTitleMatch');
 
 function buildRegexTextResult(regexResult, warnings, parseSource = 'regex') {
   return {
     ...regexResult,
     parseSource,
     warnings: [...new Set(warnings)],
+  };
+}
+
+/** Συμπληρώνει κενές προβολές AI από regex (συχνό σε catalog paste με σύνοψη + «Ώρες προβολής»). */
+function mergeMovieShowtimesFromRegex(aiMovies, regexMovies) {
+  const usedRegex = new Set();
+  return (aiMovies || []).map((ai) => {
+    if (ai.showtimes?.length) return ai;
+    let best = null;
+    let bestScore = 0;
+    for (let i = 0; i < (regexMovies || []).length; i += 1) {
+      if (usedRegex.has(i)) continue;
+      const rm = regexMovies[i];
+      if (!rm?.showtimes?.length) continue;
+      const score = scorePlayTitleMatch(ai.title, rm.title);
+      if (score > bestScore) {
+        bestScore = score;
+        best = { rm, i };
+      }
+    }
+    if (best && bestScore >= 0.45) {
+      usedRegex.add(best.i);
+      return {
+        ...ai,
+        scheduleText: best.rm.scheduleText || ai.scheduleText,
+        showtimes: best.rm.showtimes,
+      };
+    }
+    return ai;
+  });
+}
+
+function enrichAiParseWithRegex(aiResult, text, { refYear, now }) {
+  const regexResult = parseCinemaProgramText(text, { refYear, now });
+  const aiShowtimeCount = (aiResult.movies || []).reduce(
+    (n, m) => n + (m.showtimes?.length || 0),
+    0,
+  );
+  if (aiShowtimeCount > 0) {
+    return {
+      ...aiResult,
+      warnings: [
+        ...(aiResult.aiNotes || []),
+        'Ανάλυση με AI — έλεγξε προσεκτικά πριν την έγκριση.',
+      ],
+    };
+  }
+
+  const regexShowtimeCount = (regexResult.movies || []).reduce(
+    (n, m) => n + (m.showtimes?.length || 0),
+    0,
+  );
+  if (regexShowtimeCount === 0) {
+    return {
+      ...aiResult,
+      warnings: [
+        ...(aiResult.aiNotes || []),
+        'Ανάλυση με AI — δεν εντοπίστηκαν ώρες ούτε από κανόνες.',
+      ],
+    };
+  }
+
+  const movies = mergeMovieShowtimesFromRegex(aiResult.movies, regexResult.movies);
+  const mergedCount = movies.reduce((n, m) => n + (m.showtimes?.length || 0), 0);
+  if (mergedCount === 0) {
+    return buildRegexTextResult(
+      regexResult,
+      [
+        ...(regexResult.warnings || []),
+        'AI δεν εξήγαγε ώρες — χρησιμοποιήθηκαν κανόνες.',
+      ],
+      'regex',
+    );
+  }
+
+  return {
+    ...aiResult,
+    movies,
+    dateRange: aiResult.dateRange || regexResult.dateRange,
+    parseSource: 'ai+regex',
+    warnings: [
+      ...(aiResult.aiNotes || []),
+      'Ταινίες από AI, ώρες προβολών από κανόνες — έλεγξε προσεκτικά πριν την έγκριση.',
+    ],
   };
 }
 
@@ -109,7 +194,7 @@ async function parseProgramFromImages(images, { refYear, venueName, now = new Da
 /**
  * Ενιαία ανάλυση κειμένου: πρώτα AI (αν διαθέσιμο), μετά κανόνες.
  */
-async function parseProgramText(text, { refYear, venueName, now = new Date(), preferAi = true } = {}) {
+async function parseProgramText(text, { refYear, venueName, now = new Date(), preferAi = false } = {}) {
   const trimmed = String(text || '').trim();
   if (!trimmed) {
     return {
@@ -131,13 +216,7 @@ async function parseProgramText(text, { refYear, venueName, now = new Date(), pr
       now,
     });
     if (aiResult && !aiResult.error && aiResult.movies?.length) {
-      return {
-        ...aiResult,
-        warnings: [
-          ...(aiResult.aiNotes || []),
-          'Ανάλυση με AI — έλεγξε προσεκτικά πριν την έγκριση.',
-        ],
-      };
+      return enrichAiParseWithRegex(aiResult, trimmed, { refYear: year, now });
     }
   }
 
@@ -149,7 +228,7 @@ async function parseProgramText(text, { refYear, venueName, now = new Date(), pr
   } else if (preferAi && isAiEnabled()) {
     warnings.unshift('AI δεν επέστρεψε αποτέλεσμα — χρησιμοποιήθηκαν κανόνες.');
   } else if (!isAiEnabled()) {
-    warnings.unshift('Ανάλυση με κανόνες (χωρίς API key) — δοκίμασε δομημένο κείμενο ή όρισε OPENAI_API_KEY για AI.');
+    warnings.unshift('Ανάλυση με κανόνες (AI απενεργοποιημένο — όρισε PROGRAM_IMPORT_AI_ENABLED=true για AI).');
   }
 
   return buildRegexTextResult(regexResult, warnings, 'regex');

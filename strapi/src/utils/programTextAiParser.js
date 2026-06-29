@@ -10,7 +10,7 @@ function aiConfig() {
     process.env.OPENAI_API_KEY ||
     '';
   const enabled =
-    process.env.PROGRAM_IMPORT_AI_ENABLED !== 'false' && Boolean(apiKey.trim());
+    process.env.PROGRAM_IMPORT_AI_ENABLED === 'true' && Boolean(apiKey.trim());
   const visionModel =
     process.env.PROGRAM_IMPORT_VISION_MODEL ||
     process.env.PROGRAM_IMPORT_AI_MODEL ||

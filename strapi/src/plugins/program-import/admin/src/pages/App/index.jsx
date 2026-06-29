@@ -40,6 +40,7 @@ function parseSourceLabel(source) {
   if (source === 'ai_vision') return 'AI (εικόνα)';
   if (source === 'ai_ocr') return 'AI (OCR εικόνας)';
   if (source === 'ai') return 'AI (κείμενο)';
+  if (source === 'ai+regex') return 'AI + κανόνες (ώρες)';
   if (source === 'ocr') return 'OCR + κανόνες';
   if (source === 'regex') return 'Κανόνες';
   if (source === 'ocr_failed') return 'OCR απέτυχε';
@@ -395,7 +396,7 @@ export default function App() {
     <Layout>
       <HeaderLayout
         title="Εισαγωγή προγράμματος"
-        subtitle="Κείμενο ή screenshot · AI ή OCR · έγκριση πριν τη δημιουργία προβολών"
+        subtitle="Κείμενο ή screenshot · κανόνες (AI μόνο αν ενεργοποιηθεί) · έγκριση πριν τις προβολές"
         as="section"
       />
       <ContentLayout>
@@ -409,7 +410,7 @@ export default function App() {
                     <Badge>
                       {aiStatus.aiEnabled
                         ? `AI: ${aiStatus.visionModel || aiStatus.aiModel}`
-                        : 'AI: off'}
+                        : 'AI: off (μόνο κανόνες)'}
                     </Badge>
                     <Badge>{aiStatus.ocrEnabled ? 'OCR: on' : 'OCR: off'}</Badge>
                   </>
