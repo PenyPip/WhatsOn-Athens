@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import PosterPicture from "@/components/PosterPicture";
-import type { StrapiMovie } from "@/lib/api";
+import type { StrapiMovie, StrapiVenue } from "@/lib/api";
 import {
   endOfCinemaWeek,
   formatCinemaWeekHeading,
@@ -12,9 +12,9 @@ import MoviePosterMeta from "@/components/MoviePosterMeta";
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import { isValidExternalUrl } from "@/lib/venueResolve";
-import type { StrapiVenue } from "@/lib/api";
-import { cn } from "@/lib/utils";
+import type { OtherVenueLink } from "@/lib/otherVenuesForMovie";
 import { eachDayInclusiveInRange } from "@/lib/showtimeSchedule";
+import { cn } from "@/lib/utils";
 
 type ShowingSlot = {
   datetime: Date;
@@ -200,7 +200,15 @@ function groupProgramByCinemaWeek(lines: ProgramLine[], now: Date): ProgramWeekG
     .filter((w): w is ProgramWeekGroup => w !== null);
 }
 
-function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number }) {
+function VenueMoviePoster({
+  movie,
+  index,
+  otherVenues,
+}: {
+  movie: StrapiMovie;
+  index: number;
+  otherVenues?: OtherVenueLink[];
+}) {
   const tl = movieTitleLines(movie);
   const alt = posterAltForMovie(movie);
 
@@ -240,6 +248,20 @@ function VenueMoviePoster({ movie, index }: { movie: StrapiMovie; index: number 
           {tl.primary}
         </p>
       </Link>
+      {otherVenues?.length ? (
+        <p className="mt-1 text-[10px] leading-snug text-muted-foreground sm:text-[11px]">
+          Και σε{" "}
+          {otherVenues.slice(0, 2).map((v, i) => (
+            <span key={v.venueId}>
+              {i > 0 ? ", " : ""}
+              <Link to={v.href} className="underline decoration-border underline-offset-2 hover:text-primary">
+                {v.name}
+              </Link>
+            </span>
+          ))}
+          {otherVenues.length > 2 ? ` +${otherVenues.length - 2}` : ""}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -455,9 +477,11 @@ function VenueProgramCalendarWeek({ week, now }: { week: ProgramWeekGroup; now: 
 export default function VenueProgramLayout({
   sections,
   venue,
+  otherVenuesByMovieId,
 }: {
   sections: VenueProgramSection[];
   venue?: StrapiVenue;
+  otherVenuesByMovieId?: Map<number, OtherVenueLink[]>;
 }) {
   const now = useMemo(() => new Date(), []);
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
@@ -526,7 +550,12 @@ export default function VenueProgramLayout({
           <h2 className="font-display mb-3 text-lg font-semibold md:mb-4 md:text-2xl">Ταινίες</h2>
           <div className="grid grid-cols-3 gap-2.5 sm:grid-cols-4 sm:gap-3 md:grid-cols-6 lg:grid-cols-7 xl:grid-cols-8">
             {availableMovies.map((movie, i) => (
-              <VenueMoviePoster key={movie.id} movie={movie} index={i} />
+              <VenueMoviePoster
+                key={movie.id}
+                movie={movie}
+                index={i}
+                otherVenues={otherVenuesByMovieId?.get(movie.id)}
+              />
             ))}
           </div>
         </section>

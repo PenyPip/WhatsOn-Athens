@@ -1,4 +1,5 @@
 import { cinemaVenueProgramSeo } from "@/lib/cinemaVenueProgramSeo";
+import { buildCinemaVenueFaqJsonLd } from "@/lib/jsonLdCinemaVenue";
 import { crawlEntityByPath, crawlSeoCopyForPath, crawlVenueByProgramPath, crawlVenueByTheaterProgramPath, type PageSeoCopy } from "@/lib/crawlEnrichment";
 import { buildCulturalEventJsonLd } from "@/lib/jsonLdCulturalEvent";
 import { movieDetailSeo } from "@/lib/movieDetailSeo";
@@ -402,6 +403,17 @@ export function buildPageJsonLd(path: string): JsonLdNode {
   if (entity) {
     if (Array.isArray(entity)) graph.push(...entity);
     else graph.push(entity);
+  }
+
+  const parts = normalized.split("/").filter(Boolean);
+  if (parts[0] === "movies" && parts[1] === "venue" && parts[2]) {
+    const venue = crawlVenueByProgramPath(normalized);
+    if (venue) {
+      const faq = buildCinemaVenueFaqJsonLd(pageUrl, venue.name, {
+        address: venue.address,
+      });
+      if (faq) graph.push(faq);
+    }
   }
 
   return {

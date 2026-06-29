@@ -14,7 +14,10 @@ import { cinemaVenueProgramSeo } from "@/lib/cinemaVenueProgramSeo";
 import { moviesAreaSeo, moviesGenreSeo, moviesSectionSeo } from "@/lib/moviesFilterSeo";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import CinemaVenueProgramIntro from "@/components/CinemaVenueProgramIntro";
+import CinemaVenueProgramFaq from "@/components/CinemaVenueProgramFaq";
 import MoviesSectionIntro from "@/components/MoviesSectionIntro";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
+import { VenueDayPricesTable } from "@/components/VenueDayPricesTable";
 import EventCard from "@/components/EventCard";
 import MoviesGridSkeleton from "@/components/MoviesGridSkeleton";
 import Footer from "@/components/Footer";
@@ -42,7 +45,7 @@ import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import VenueProgramLayout from "@/components/VenueProgramDay";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
-import { cn } from "@/lib/utils";
+import { buildOtherVenuesByMovieId } from "@/lib/otherVenuesForMovie";
 import {
   formatShowtimeWeekRangeLabel,
   moviesDaySectionMeta,
@@ -442,8 +445,12 @@ const Movies = () => {
 
   const needsCatalogMovies = moviesSection === "new" || moviesSection === "soon" || moviesSection === "week";
   const { data: movies, isLoading: moviesLoading } = useMovies(needsCatalogMovies);
-  const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(true, venueSlug || undefined);
+  const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(true);
   const { data: venues, isLoading: venuesLoading } = useVenuesForProgram();
+  const { data: venueDetail, isLoading: venueDetailLoading } = useVenueBySlug(
+    venueSlug || undefined,
+    Boolean(venueSlug),
+  );
   const venueInList = useMemo(
     () => (venueSlug && venues?.length ? findVenueByProgramSlug(venues, venueSlug) : null),
     [venueSlug, venues],
@@ -452,7 +459,8 @@ const Movies = () => {
     () => (venueSlug && showtimes?.length ? venueFromShowtimesBySlug(showtimes, venueSlug) : null),
     [venueSlug, showtimes],
   );
-  const needsVenueFetch = Boolean(venueSlug) && !venueInList && !venueFromShowtimes && !venuesLoading;
+  const needsVenueFetch =
+    Boolean(venueSlug) && !venueDetail && !venueInList && !venueFromShowtimes && !venuesLoading && !venueDetailLoading;
   const { data: venueFetched, isLoading: venueFetchedLoading } = useVenueBySlug(
     venueSlug || undefined,
     needsVenueFetch,
@@ -526,13 +534,13 @@ const Movies = () => {
 
   const venueFilter = useMemo((): StrapiVenue | null => {
     if (!venueSlug) return null;
-    return venueInList ?? venueFromShowtimes ?? venueFetched ?? null;
-  }, [venueSlug, venueInList, venueFromShowtimes, venueFetched]);
+    return venueDetail ?? venueInList ?? venueFromShowtimes ?? venueFetched ?? null;
+  }, [venueSlug, venueDetail, venueInList, venueFromShowtimes, venueFetched]);
 
   const venueLookupPending =
     Boolean(venueSlug) &&
     !venueFilter &&
-    (venuesLoading || showtimesLoading || (needsVenueFetch && venueFetchedLoading));
+    (venuesLoading || showtimesLoading || venueDetailLoading || (needsVenueFetch && venueFetchedLoading));
 
   /** Λίστα /movies: μόνο Αθήνα· άλλες πόλεις μόνο από SEO path (/movies/area/…). */
   const effectiveAreaFilter: AreaKey | null = areaFilter ?? (venueFilter ? null : "athens");
@@ -832,6 +840,24 @@ const Movies = () => {
   const sectionIntro =
     pathFilters.section && "intro" in listSeo && listSeo.intro ? listSeo.intro : undefined;
 
+  const breadcrumbItems = useMemo(() => {
+    const home = { label: "Αρχική", href: "/" };
+    const moviesCrumb = { label: "Ταινίες", href: "/movies" };
+    if (venueFilter) return [home, moviesCrumb, { label: venueFilter.name }];
+    if (pathFilters.section || pathFilters.genreSlug || pathFilters.area) {
+      return [home, moviesCrumb, { label: listSeo.h1 }];
+    }
+    return [home, { label: listSeo.h1 }];
+  }, [venueFilter, pathFilters.section, pathFilters.genreSlug, pathFilters.area, listSeo.h1]);
+
+  const otherVenuesByMovieId = useMemo(() => {
+    if (!venueFilter?.id || !showtimes?.length || !venues?.length || !groupedMovies.length) return undefined;
+    const movieIds = [
+      ...new Set(groupedMovies.flatMap((section) => section.entries.map((entry) => entry.movie.id))),
+    ];
+    return buildOtherVenuesByMovieId(movieIds, venueFilter.id, showtimes, venues);
+  }, [venueFilter, groupedMovies, showtimes, venues]);
+
   usePageSeo({
     title: listSeo.title,
     description: listSeo.description,
@@ -923,7 +949,21 @@ const Movies = () => {
         <MoviesSectionIntro sectionLabel={listSeo.h1} intro={sectionIntro} />
       ) : null}
 
+      {venueFilter && (venueFilter.dayPrices?.length || isValidExternalUrl(venueFilter.moreLink)) ? (
+        <section className="border-b border-border/40 bg-muted/20" aria-label="Τιμές και κράτηση">
+          <div className="container flex flex-wrap items-start justify-between gap-6 py-4 md:py-5">
+            {venueFilter.dayPrices?.length ? (
+              <VenueDayPricesTable venue={venueFilter} className="min-w-[14rem] max-w-md flex-1" />
+            ) : null}
+            {isValidExternalUrl(venueFilter.moreLink) ? (
+              <VenueBookingLink venue={venueFilter} variant="button" className="shrink-0 self-start" />
+            ) : null}
+          </div>
+        </section>
+      ) : null}
+
       <div className="container">
+        <PageBreadcrumbs items={breadcrumbItems} />
         {venueSlug && !venueFilter && !venueLookupPending ? (
           <div className="mb-6 flex flex-wrap items-center justify-between gap-3 rounded-xl bg-amber-950/[0.09] px-4 py-3.5 ring-1 ring-amber-600/18">
             <p className="text-sm text-amber-100/90">
@@ -1054,7 +1094,11 @@ const Movies = () => {
         ) : (
           <div className="space-y-10">
             {venueFilter && groupedMovies.length > 0 ? (
-              <VenueProgramLayout sections={groupedMovies} venue={venueFilter} />
+              <VenueProgramLayout
+                sections={groupedMovies}
+                venue={venueFilter}
+                otherVenuesByMovieId={otherVenuesByMovieId}
+              />
             ) : null}
             {!venueFilter
               ? groupedMovies.map((section) => {
@@ -1199,6 +1243,13 @@ const Movies = () => {
           </div>
         )}
       </div>
+      {venueFilter ? (
+        <CinemaVenueProgramFaq
+          venueName={venueFilter.name}
+          hasBookingLink={isValidExternalUrl(venueFilter.moreLink)}
+          address={venueFilter.address}
+        />
+      ) : null}
       <Footer />
     </div>
   );

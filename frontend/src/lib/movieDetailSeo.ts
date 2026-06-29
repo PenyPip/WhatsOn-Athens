@@ -1,11 +1,15 @@
 import type { StrapiMovie } from "@/lib/api";
 import { movieDisplayName, movieTitleLines } from "@/lib/movieTitles";
 import { truncateDescription } from "@/lib/siteMetadata";
+import { formatShowtimeShareLabel } from "@/lib/movieShowtimeShare";
 
 /** Στοιχεία προβολών για πλουσιότερα meta (build-time ή client). */
 export type MovieShowtimeSeoHint = {
   venueNames?: string[];
   venueCount?: number;
+  /** Συγκεκριμένη προβολή για OG / share (query deep link). */
+  focusVenueName?: string;
+  focusDatetime?: string;
 };
 
 function primaryGenreLabel(genreLine?: string): string {
@@ -77,7 +81,11 @@ export function movieDetailSeo(
     ? `${name} — παίζεται ${venueShort}`
     : `${name} — πού παίζεται · σινεμά`;
 
-  const ogDescription = venueList
+  const ogDescription = hint?.focusVenueName && hint?.focusDatetime
+    ? truncateDescription(
+        `«${tl.primary}» — ${formatShowtimeShareLabel(hint.focusDatetime, hint.focusVenueName)}. Δες ώρες, σινεμά και εισιτήρια.`,
+      )
+    : venueList
     ? truncateDescription(
         `«${tl.primary}» παίζεται τώρα στο ${venueList}. Δες ώρες προβολών, σινεμά και εισιτήρια.`,
       )

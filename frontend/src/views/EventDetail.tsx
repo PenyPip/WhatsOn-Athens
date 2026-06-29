@@ -1,9 +1,11 @@
-import { useParams, Link } from "react-router-dom";
+import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
 import { Clock, Globe, ArrowLeft, MapPin, Play } from "lucide-react";
 import SharePageButton from "@/components/SharePageButton";
+import MovieWatchlistButton from "@/components/MovieWatchlistButton";
+import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Button } from "@/components/ui/button";
 import {
   useMovies,
@@ -54,6 +56,10 @@ import { cn } from "@/lib/utils";
 import MovieDetailIntro from "@/components/MovieDetailIntro";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { movieDetailSeo, staticPageSeo, theaterPageDescription } from "@/lib/pageSeoCopy";
+import {
+  buildMovieShowtimeShareUrl,
+  parseMovieShowtimeDeepLink,
+} from "@/lib/movieShowtimeShare";
 import ImdbRatingBadge from "@/components/ImdbRatingBadge";
 import { resolveImdbRating } from "@/lib/movieImdb";
 import { buildMovieDetailJsonLd } from "@/lib/jsonLdMovieDetail";
@@ -90,18 +96,22 @@ function ShowtimeCompactRow({
   st,
   venue,
   emphasized = false,
+  highlighted = false,
 }: {
   st: StrapiShowtime;
   venue?: StrapiVenue | null;
   emphasized?: boolean;
+  highlighted?: boolean;
 }) {
   if (showtimeIsWeekBlock(st)) {
     const weekLabel = formatShowtimeWeekRangeLabel(st);
     return (
       <li
+        id={st.id ? `st-${st.id}` : undefined}
         className={cn(
           "flex flex-col gap-0.5 border-b border-border/80 last:border-0",
           emphasized ? "py-3 text-sm sm:py-3.5" : "py-3.5 text-sm",
+          highlighted && "rounded-md bg-amber-50/90 ring-1 ring-amber-400/40 px-2 -mx-2",
         )}
       >
         <p className="font-medium text-foreground">
@@ -119,9 +129,11 @@ function ShowtimeCompactRow({
 
   return (
     <li
+      id={st.id ? `st-${st.id}` : undefined}
       className={cn(
         "flex flex-col gap-0.5 border-b border-border/80 last:border-0",
         emphasized ? "py-3 text-sm sm:py-3.5" : "py-3.5 text-sm",
+        highlighted && "rounded-md bg-amber-50/90 ring-1 ring-amber-400/40 px-2 -mx-2",
       )}
     >
       <div className="flex items-center justify-between gap-3">
@@ -189,6 +201,11 @@ function reviewContentMatchesMovie(contentTitle: string, movie: StrapiMovie): bo
 
 const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { slug } = useParams();
+  const [searchParams] = useSearchParams();
+  const deepLink = useMemo(
+    () => parseMovieShowtimeDeepLink(searchParams.toString()),
+    [searchParams],
+  );
   const isMovieRoute = type === "movie";
   const isTheaterRoute = type === "theater";
   const [loadRelatedMovies, setLoadRelatedMovies] = useState(false);
@@ -297,13 +314,61 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     [eventShowtimes, groupShowtimesByVenue],
   );
 
-  const movieSeoHint = useMemo(
-    () => ({
+  const focusedShowtime = useMemo((): StrapiShowtime | null => {
+    if (type !== "movie" || !eventShowtimes.length) return null;
+    if (deepLink.showtimeId != null) {
+      return eventShowtimes.find((st) => st.id === deepLink.showtimeId) ?? null;
+    }
+    if (deepLink.datetime) {
+      const target = new Date(deepLink.datetime).getTime();
+      if (Number.isNaN(target)) return null;
+      let best: StrapiShowtime | null = null;
+      let bestDiff = Infinity;
+      for (const st of eventShowtimes) {
+        if (
+          deepLink.venueSlug &&
+          st.venueSlug?.trim().toLowerCase() !== deepLink.venueSlug.trim().toLowerCase()
+        ) {
+          continue;
+        }
+        const diff = Math.abs(new Date(st.datetime).getTime() - target);
+        if (diff < bestDiff) {
+          bestDiff = diff;
+          best = st;
+        }
+      }
+      return bestDiff <= 3 * 60 * 60 * 1000 ? best : null;
+    }
+    return null;
+  }, [type, eventShowtimes, deepLink]);
+
+  const movieSeoHint = useMemo(() => {
+    const focusVenue = focusedShowtime
+      ? showtimesByVenue.find((g) => g.slots.some((s) => s.id === focusedShowtime.id))?.venueName
+      : undefined;
+    return {
       venueNames: showtimesByVenue.map((group) => group.venueName).filter(Boolean),
       venueCount: showtimesByVenue.length,
-    }),
-    [showtimesByVenue],
-  );
+      focusVenueName: focusVenue,
+      focusDatetime: focusedShowtime?.datetime,
+    };
+  }, [showtimesByVenue, focusedShowtime]);
+
+  useEffect(() => {
+    if (type !== "movie" || isLoading) return;
+    const wantsScroll =
+      typeof window !== "undefined" &&
+      (window.location.hash.includes("showtimes") || deepLink.showtimeId != null || Boolean(deepLink.datetime));
+    if (!wantsScroll) return;
+    const timer = window.setTimeout(() => {
+      if (deepLink.showtimeId != null) {
+        document.getElementById(`st-${deepLink.showtimeId}`)?.scrollIntoView({ behavior: "smooth", block: "center" });
+        return;
+      }
+      document.getElementById("showtimes")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }, 350);
+    return () => window.clearTimeout(timer);
+  }, [type, isLoading, deepLink.showtimeId, deepLink.datetime]);
 
   const mergedMovieForDisplay = useMemo((): (StrapiMovie & { summerScreening?: boolean }) | null => {
     if (type !== "movie" || !slug) return null;
@@ -520,6 +585,32 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const movieSeo =
     isMovie && movie ? movieDetailSeo(movie, genreLabel, movieSeoHint) : null;
 
+  const movieSharePath = (() => {
+    if (!slug || !isMovie) return slug ? `/movies/${slug}` : "/movies";
+    if (focusedShowtime?.id) {
+      return buildMovieShowtimeShareUrl(slug, { showtimeId: focusedShowtime.id });
+    }
+    if (focusedShowtime?.datetime) {
+      return buildMovieShowtimeShareUrl(slug, {
+        datetime: focusedShowtime.datetime,
+        venueSlug: focusedShowtime.venueSlug,
+      });
+    }
+    return `/movies/${slug}`;
+  })();
+
+  const breadcrumbItems = isMovie
+    ? [
+        { label: "Αρχική", href: "/" },
+        { label: "Ταινίες", href: "/movies" },
+        { label: headline.primary },
+      ]
+    : [
+        { label: "Αρχική", href: "/" },
+        { label: "Θέατρο", href: "/theater" },
+        { label: headline.primary },
+      ];
+
   const imdbRating = movie ? resolveImdbRating(movie) : null;
 
   const hasCast = castList.length > 0;
@@ -645,7 +736,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </div>
                 <ShowtimesExpandable listClassName="min-h-0 flex-1">
                   {slots.map((st) => (
-                    <ShowtimeCompactRow key={st.id} st={st} venue={venue} emphasized />
+                    <ShowtimeCompactRow
+                      key={st.id}
+                      st={st}
+                      venue={venue}
+                      emphasized
+                      highlighted={focusedShowtime?.id != null && st.id === focusedShowtime.id}
+                    />
                   ))}
                 </ShowtimesExpandable>
                 {isValidExternalUrl(venue?.moreLink) ? (
@@ -859,7 +956,18 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </a>
               ) : null}
               {isMovie && slug ? (
-                <SharePageButton variant="hero" path={`/movies/${slug}`} title={headline.primary} />
+                <>
+                  <MovieWatchlistButton
+                    slug={slug}
+                    title={headline.primary}
+                    className="inline-flex items-center gap-1.5 rounded border border-white/35 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/20 md:px-6 md:py-3"
+                  />
+                  <SharePageButton
+                    variant="hero"
+                    path={movieSharePath}
+                    title={headline.primary}
+                  />
+                </>
               ) : null}
             </div>
             </div>
@@ -912,6 +1020,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           isMovie ? "mt-8 md:mt-10" : "mt-6 md:mt-8",
         )}
       >
+        <PageBreadcrumbs items={breadcrumbItems} />
         {isMovie ? (
           <>
             <section className="max-w-5xl animate-fade-in-up md:max-w-6xl">

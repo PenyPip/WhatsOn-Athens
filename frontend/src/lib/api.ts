@@ -1846,14 +1846,14 @@ export const api = {
     const s = slug.trim();
     if (!s) return undefined;
     const bySlug = await fetchAPI<any[]>("/venues", {
-      ...VENUE_PROGRAM_QUERY,
+      ...VENUE_PUBLIC_QUERY,
       "filters[slug][$eq]": s,
       "pagination[pageSize]": "1",
     }).then((rows) => (Array.isArray(rows) ? rows[0] : undefined));
     if (bySlug) return mapVenue(bySlug);
     const pathNeedle = `/cinemas/${s.toLowerCase()}`;
     const byMoreLink = await fetchAPI<any[]>("/venues", {
-      ...VENUE_PROGRAM_QUERY,
+      ...VENUE_PUBLIC_QUERY,
       "filters[more_link][$containsi]": pathNeedle,
       "pagination[pageSize]": "5",
     }).then((rows) => (Array.isArray(rows) ? rows : []).map((x) => mapVenue(x)));
