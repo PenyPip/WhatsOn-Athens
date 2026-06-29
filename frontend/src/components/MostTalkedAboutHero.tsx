@@ -74,6 +74,11 @@ export function MostTalkedAboutHeroShell() {
   );
 }
 
+/** Κρατάει 380/580px στο overlap main όσο το static LCP είναι ενεργό — αποφυγή CLS όταν φορτώνει το live hero. */
+export function HomeHeroLayoutReserve() {
+  return <section className={cn(HOME_HERO_COMPACT_SECTION_CLASS, "invisible")} aria-hidden="true" />;
+}
+
 type MostTalkedAboutHeroProps = {
   movies: StrapiMovie[];
   showtimes?: StrapiShowtime[];
@@ -122,6 +127,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
   const now = nowProp ?? siteNow;
   const staticLcpOnPage = useHomeStaticLcpOnPage();
   const [activeIndex, setActiveIndex] = useState(0);
+  const [heroPosterReady, setHeroPosterReady] = useState(false);
 
   const goTo = useCallback(
     (index: number) => {
@@ -176,45 +182,73 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
     }
 
     if (loading) return;
-    const finishHandoff = () => {
-      markOverlayDone();
-      markLayoutDone();
-    };
+
     if (movies.length === 0) {
-      finishHandoff();
+      markOverlayDone();
+      if (!staticEl) markLayoutDone();
       return;
     }
+
     if (!staticEl) {
-      finishHandoff();
-      return;
+      const frame = requestAnimationFrame(() => markOverlayDone());
+      return () => cancelAnimationFrame(frame);
     }
+
+    /** Desktop: μόνο overlay — το layout (margin/slot) αλλάζει αφού φορτώσει η αφίσα. */
+    let cancelled = false;
     const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(finishHandoff);
+      requestAnimationFrame(() => {
+        if (!cancelled) markOverlayDone();
+      });
     });
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelled = true;
+      cancelAnimationFrame(frame);
+    };
   }, [loading, movies.length, markOverlayDone, markLayoutDone]);
+
+  const activeMovieId = movies[activeIndex]?.id;
+  const activePosterUrl = movies[activeIndex]?.posterUrl;
+
+  useEffect(() => {
+    setHeroPosterReady(false);
+  }, [activeMovieId, activeIndex]);
+
+  const onHeroPosterLoad = useCallback(() => {
+    setHeroPosterReady(true);
+  }, []);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    if (!window.matchMedia("(max-width: 767px)").matches) return;
     if (loading || movies.length === 0) return;
     if (document.documentElement.classList.contains("spa-lcp-layout-done")) return;
     if (!document.documentElement.classList.contains("spa-lcp-done")) return;
-    const frame = requestAnimationFrame(() => markLayoutDone());
+    const needsPoster = Boolean(activePosterUrl?.trim());
+    if (needsPoster && !heroPosterReady) {
+      const img = document.querySelector("[data-home-hero-live] img");
+      if (img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0) {
+        const frame = requestAnimationFrame(() => {
+          requestAnimationFrame(() => markLayoutDone());
+        });
+        return () => cancelAnimationFrame(frame);
+      }
+      return;
+    }
+
+    const frame = requestAnimationFrame(() => {
+      requestAnimationFrame(() => markLayoutDone());
+    });
     return () => cancelAnimationFrame(frame);
-  }, [loading, movies.length, markLayoutDone]);
+  }, [loading, movies.length, activeMovieId, activePosterUrl, heroPosterReady, markLayoutDone]);
 
   const hasStaticLcp = staticLcpOnPage;
   const prioritizePoster = !hasStaticLcp && activeIndex === 0;
   const hasCarousel = movies.length > 1;
   const heroSwipe = useHeroSwipe(hasCarousel, activeIndex, goTo);
 
-  if (loading && movies.length === 0) {
-    if (hasStaticLcp) return null;
-    return <MostTalkedAboutHeroShell />;
-  }
-
   if (movies.length === 0) {
+    if (hasStaticLcp) return <HomeHeroLayoutReserve />;
+    if (loading) return <MostTalkedAboutHeroShell />;
     return null;
   }
 
@@ -319,6 +353,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
                   decoding={prioritizePoster ? "sync" : "async"}
                   sizes="(max-width: 768px) 192px, 256px"
                   className="h-full w-full object-contain object-center"
+                  onLoad={active.posterUrl ? onHeroPosterLoad : undefined}
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-[#2a2444] text-sm text-white/40">Χωρίς αφίσα</div>

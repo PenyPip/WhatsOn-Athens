@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { prefetchArticleBySlug, prefetchArticleDetailChunk } from "@/lib/articlePrefetch";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { useDeferUntilIdleAfterLcp } from "@/hooks/useDeferUntilIdleAfterLcp";
+import { useHeroLayoutDone } from "@/hooks/useHeroLayoutDone";
 import { useSiteNow } from "@/hooks/useSiteNow";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
@@ -44,14 +45,11 @@ import {
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
-import HomeBelowFoldSectionShell from "@/components/HomeBelowFoldSectionShell";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { filterTouringShowsForHome } from "@/lib/theaterTours";
-
-const ABOVE_FOLD_HOME_SECTIONS = new Set<HomeSectionId>(["hero", "strip", "movies_today"]);
 import { siteSeo } from "@/lib/siteMetadata";
 
 const MOVIE_ROW_MIN_H = "min-h-[20rem] md:min-h-[22rem]";
@@ -169,6 +167,18 @@ function MovieRowScroll({
             >
               {title}
             </h2>
+            {subtitle ? (
+              <p
+                className={
+                  muted
+                    ? "mt-1 h-5 max-w-xl animate-pulse rounded bg-[#1C1D62]/10 font-body text-sm"
+                    : "mt-1 h-5 max-w-xl animate-pulse rounded bg-white/10 font-body text-sm"
+                }
+                aria-hidden
+              >
+                &nbsp;
+              </p>
+            ) : null}
             <div className="mt-6">
               <HomeMovieCardsSkeleton layout={layout} />
             </div>
@@ -177,6 +187,7 @@ function MovieRowScroll({
         <span className="sr-only" role="status" aria-live="polite">
           {loadingMessage}
         </span>
+        {moviesMoreHref ? <div className="pb-12 pt-4" aria-hidden /> : null}
       </>,
     );
   }
@@ -344,6 +355,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsShowtimes = homeNeedsShowtimes(sections);
   const needsFullMovieCatalog = homeNeedsFullMovieCatalog(sections);
   const deferSecondary = useDeferUntilLcpDone();
+  const heroLayoutDone = useHeroLayoutDone();
+  /** Mobile: κράτα σειρές ταινιών σε σταθερό skeleton μέχρι hero handoff — λιγότερο CLS. */
+  const holdMovieRowsForHero = isMobile && !heroLayoutDone;
   /** Desktop: below-fold queries/DOM μετά idle — μικρότερο TBT στο lab. Mobile: ίδιο με deferSecondary. */
   const idleAfterLcp = useDeferUntilIdleAfterLcp(deferSecondary);
   const deferHomeExtra = isMobile ? deferSecondary : idleAfterLcp;
@@ -460,9 +474,6 @@ export default function HomeBody({ layout }: HomeBodyProps) {
         </div>
       ) : null}
       {sections.map((id) => {
-        if (!isMobile && !deferHomeExtra && !ABOVE_FOLD_HOME_SECTIONS.has(id)) {
-          return sectionEl(id, <HomeBelowFoldSectionShell id={id} />);
-        }
         switch (id) {
           case "hero":
             return sectionEl(
@@ -495,7 +506,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "movies_today",
               <MovieRowScroll
-                loading={awaitingShowtimeProgram}
+                loading={awaitingShowtimeProgram || holdMovieRowsForHero}
                 loadingMessage="Φόρτωση προβολών της ημέρας..."
                 fetchErrorMessage={
                   moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
@@ -511,7 +522,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "summer_cinema",
               <MovieRowScroll
-                loading={awaitingSummerMovies}
+                loading={awaitingSummerMovies || holdMovieRowsForHero}
                 loadingMessage="Φόρτωση θερινών προβολών..."
                 fetchErrorMessage={
                   moviesError || showtimesError || venuesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
@@ -698,7 +709,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "new_movies",
               <MovieRowScroll
-                loading={awaitingMovies}
+                loading={awaitingMovies || holdMovieRowsForHero}
                 loadingMessage="Φόρτωση ταινιών..."
                 fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={newMoviesList}
@@ -899,7 +910,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "movies_week",
               <MovieRowScroll
-                loading={awaitingShowtimeProgram}
+                loading={awaitingShowtimeProgram || holdMovieRowsForHero}
                 loadingMessage="Φόρτωση ταινιών εβδομάδας..."
                 fetchErrorMessage={moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={weekMovies}
@@ -915,7 +926,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "coming_soon",
               <MovieRowScroll
-                loading={awaitingMovies}
+                loading={awaitingMovies || holdMovieRowsForHero}
                 loadingMessage="Φόρτωση ταινιών..."
                 fetchErrorMessage={moviesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={comingSoonMovies}

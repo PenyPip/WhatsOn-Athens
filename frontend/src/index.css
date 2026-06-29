@@ -37,15 +37,11 @@
   animation-delay: calc(var(--stagger, 0) * 70ms);
 }
 
-/** Αρχική mobile: sections κάτω από hero — λιγότερο layout/paint. Desktop: ίδιο μετά idle mount. */
-.home-below-fold {
-  content-visibility: auto;
-  contain-intrinsic-size: auto 480px;
-}
-
-@media (min-width: 768px) {
+/** Αρχική mobile: sections κάτω από hero — λιγότερο layout/paint (χωρίς επίδραση desktop). */
+@media (max-width: 767px) {
   .home-below-fold {
-    contain-intrinsic-size: auto 560px;
+    content-visibility: auto;
+    contain-intrinsic-size: auto 480px;
   }
 }
 

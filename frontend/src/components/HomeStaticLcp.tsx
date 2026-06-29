@@ -2,7 +2,7 @@
 import { lcpImageSrc } from "@/lib/lcpImageSrc";
 import { HOME_HERO_CRITICAL_CSS } from "@/lib/homeHeroLayout";
 
-/** Server LCP μέσα στο #home-hero-slot — in-flow, όχι fixed (λιγότερο CLS). */
+/** Server LCP μέσα στο #home-hero-slot — absolute overlay, χωρίς negative-margin handoff (CLS). */
 type HomeStaticLcpProps = {
   posterHref: string;
   title: string;
