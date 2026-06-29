@@ -1,7 +1,10 @@
 import { cinemaVenueProgramSeo } from "@/lib/cinemaVenueProgramSeo";
-import { crawlEntityByPath, crawlSeoCopyForPath, crawlVenueByProgramPath, type PageSeoCopy } from "@/lib/crawlEnrichment";
+import { crawlEntityByPath, crawlSeoCopyForPath, crawlVenueByProgramPath, crawlVenueByTheaterProgramPath, type PageSeoCopy } from "@/lib/crawlEnrichment";
 import { buildCulturalEventJsonLd } from "@/lib/jsonLdCulturalEvent";
+import { movieDetailSeo } from "@/lib/movieDetailSeo";
 import { isMoviesReservedSegment, parseMoviesFilterPath } from "@/lib/moviesFilterPaths";
+import { moviesSectionSeo } from "@/lib/moviesFilterSeo";
+import { theaterVenueProgramSeo } from "@/lib/theaterVenueProgramSeo";
 import { absolutePageUrl, resolvePublicAssetUrl, siteSeo, truncateDescription } from "@/lib/siteMetadata";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
@@ -68,6 +71,24 @@ export function seoCopyForPath(path: string): PageSeoCopy {
   if (staticByPath[normalized]) {
     const s = staticByPath[normalized];
     return { title: s.title, description: s.description };
+  }
+
+  const filterPath = parseMoviesFilterPath(normalized);
+  if (filterPath.section) {
+    const s = moviesSectionSeo(filterPath.section);
+    return { title: s.title, description: s.description };
+  }
+
+  const theaterVenue = crawlVenueByTheaterProgramPath(normalized);
+  if (theaterVenue) {
+    const s = theaterVenueProgramSeo(theaterVenue);
+    return { title: s.title, description: s.description, ogTitle: s.ogTitle, ogDescription: s.ogDescription };
+  }
+
+  const cinemaVenue = crawlVenueByProgramPath(normalized);
+  if (cinemaVenue) {
+    const s = cinemaVenueProgramSeo(cinemaVenue);
+    return { title: s.title, description: s.description, ogTitle: s.ogTitle, ogDescription: s.ogDescription };
   }
 
   const parts = normalized.split("/").filter(Boolean);
@@ -180,10 +201,41 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
       ...(venue?.address ? { address: { "@type": "PostalAddress", streetAddress: venue.address } } : {}),
     });
   }
+  if (parts[0] === "theater" && parts[1] === "venue" && parts[2]) {
+    const venue = crawlVenueByTheaterProgramPath(path);
+    const seo = venue ? theaterVenueProgramSeo(venue) : null;
+    return stripEmpty({
+      "@type": "PerformingArtsTheater",
+      "@id": `${pageUrl}#theater`,
+      name: venue?.name ?? pageName.split(" — ")[0] ?? pageName,
+      url: pageUrl,
+      ...(seo?.description ? { description: seo.description } : {}),
+      ...(venue?.address ? { address: { "@type": "PostalAddress", streetAddress: venue.address } } : {}),
+    });
+  }
   if (parts[0] === "movies" && parts.length === 2 && !isMoviesReservedSegment(parts[1])) {
     const hit = crawlEntityByPath(path);
     const movie = hit?.kind === "movie" ? hit.entity : null;
     const poster = movie?.posterUrl ? resolvePublicAssetUrl(movie.posterUrl) : undefined;
+    const venueHint =
+      movie?.showtimeVenues?.length || movie?.showtimeVenueCount
+        ? {
+            venueNames: movie.showtimeVenues,
+            venueCount: movie.showtimeVenueCount ?? movie.showtimeVenues?.length,
+          }
+        : undefined;
+    const seo = movie
+      ? movieDetailSeo(
+          {
+            title: movie.title,
+            originalTitle: movie.originalTitle,
+            synopsis: movie.synopsis ?? "",
+            director: movie.director ?? "",
+          },
+          movie.genreLine,
+          venueHint,
+        )
+      : null;
     return stripEmpty({
       "@type": "Movie",
       "@id": `${pageUrl}#movie`,
@@ -191,7 +243,7 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
       url: pageUrl,
       inLanguage: "el",
       ...(poster ? { image: poster, thumbnailUrl: poster } : {}),
-      ...(movie?.synopsis?.trim() ? { description: truncateDescription(movie.synopsis.trim()) } : {}),
+      ...(seo?.description ? { description: seo.description } : {}),
     });
   }
   if (parts[0] === "theater" && parts.length >= 2) {

@@ -8,6 +8,7 @@ import { Fragment, useEffect, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { prefetchArticleBySlug, prefetchArticleDetailChunk } from "@/lib/articlePrefetch";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
+import { useDeferUntilIdleAfterLcp } from "@/hooks/useDeferUntilIdleAfterLcp";
 import { useSiteNow } from "@/hooks/useSiteNow";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
@@ -43,11 +44,14 @@ import {
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
+import HomeBelowFoldSectionShell from "@/components/HomeBelowFoldSectionShell";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { filterTouringShowsForHome } from "@/lib/theaterTours";
+
+const ABOVE_FOLD_HOME_SECTIONS = new Set<HomeSectionId>(["hero", "strip", "movies_today"]);
 import { siteSeo } from "@/lib/siteMetadata";
 
 const MOVIE_ROW_MIN_H = "min-h-[20rem] md:min-h-[22rem]";
@@ -340,6 +344,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsShowtimes = homeNeedsShowtimes(sections);
   const needsFullMovieCatalog = homeNeedsFullMovieCatalog(sections);
   const deferSecondary = useDeferUntilLcpDone();
+  /** Desktop: below-fold queries/DOM μετά idle — μικρότερο TBT στο lab. Mobile: ίδιο με deferSecondary. */
+  const idleAfterLcp = useDeferUntilIdleAfterLcp(deferSecondary);
+  const deferHomeExtra = isMobile ? deferSecondary : idleAfterLcp;
   /** Mobile: αναβολή catalog/API μέχρι το static LCP — λιγότερο TBT στο πρώτο paint. */
   const deferProgramData = !isMobile || deferSecondary;
 
@@ -357,28 +364,28 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     !deferProgramData ||
     awaitingShowtimes ||
     (showtimesFetching && (showtimes?.length ?? 0) === 0 && !showtimesError);
-  const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues && deferSecondary);
+  const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues && deferHomeExtra);
   const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(
-    needsDining && deferSecondary,
+    needsDining && deferHomeExtra,
   );
   const { data: articles, isLoading: articlesLoading, isError: articlesError } = useArticles(
-    needsArticles && deferSecondary,
+    needsArticles && deferHomeExtra,
     6,
   );
 
   useEffect(() => {
-    if (needsArticles && deferSecondary) {
+    if (needsArticles && deferHomeExtra) {
       void prefetchArticleDetailChunk();
     }
-  }, [needsArticles, deferSecondary]);
-  const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(needsEvents && deferSecondary, 6);
+  }, [needsArticles, deferHomeExtra]);
+  const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(needsEvents && deferHomeExtra, 6);
   const {
     data: theaterShows,
     isPending: theaterPending,
     isFetching: theaterFetching,
     isError: theaterError,
     isFetched: theaterFetched,
-  } = useTheaterShows(needsTheater && deferSecondary);
+  } = useTheaterShows(needsTheater && deferHomeExtra);
   const theaterAwaiting = needsTheater && !theaterFetched && (theaterPending || theaterFetching);
   const theaterLoadFailed = needsTheater && theaterFetched && theaterError && theaterShows === undefined;
   const apiSectionFailed = moviesError || showtimesError || venuesError || restaurantsError;
@@ -404,7 +411,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
       return (a.startDate || "").localeCompare(b.startDate || "");
     });
   }, [events]);
-  const summerVenuesAwaiting = needsVenues && deferSecondary && venues === undefined && venuesLoading;
+  const summerVenuesAwaiting = needsVenues && deferHomeExtra && venues === undefined && venuesLoading;
   const awaitingSummerMovies = awaitingShowtimeProgram || summerVenuesAwaiting;
   const summerVenuesForHome = useMemo(
     () => summerVenuesWithShowtimesOrAll(venueList, stList),
@@ -453,6 +460,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
         </div>
       ) : null}
       {sections.map((id) => {
+        if (!isMobile && !deferHomeExtra && !ABOVE_FOLD_HOME_SECTIONS.has(id)) {
+          return sectionEl(id, <HomeBelowFoldSectionShell id={id} />);
+        }
         switch (id) {
           case "hero":
             return sectionEl(
@@ -519,7 +529,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "summer_venues",
               <>
-                {(needsVenues && !deferSecondary) || (venues === undefined && venuesLoading) ? (
+                {(needsVenues && !deferHomeExtra) || (venues === undefined && venuesLoading) ? (
                   <section className="relative section-black border-y border-white/[0.07] py-10 md:py-14 min-h-[28rem] md:min-h-[32rem]">
                     <div className="container max-w-7xl">
                       <div className="mb-8 h-8 w-48 animate-pulse rounded bg-white/10" />
@@ -615,7 +625,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                       Περιοδείες & παραστάσεις που ταξιδεύουν
                     </h2>
                   </div>
-                  {(needsTheater && !deferSecondary) || theaterAwaiting ? (
+                  {(needsTheater && !deferHomeExtra) || theaterAwaiting ? (
                     <div className="mt-10 flex min-h-[14rem] gap-4 overflow-hidden pb-2">
                       {[0, 1, 2, 3].map((i) => (
                         <div
@@ -701,7 +711,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
           case "new_articles":
             return sectionEl(
               "new_articles",
-              (needsArticles && !deferSecondary) || (articlesLoading && latestArticles.length === 0) ? (
+              (needsArticles && !deferHomeExtra) || (articlesLoading && latestArticles.length === 0) ? (
                 <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10 min-h-[22rem]">
                   <div className="container max-w-7xl">
                     <div className="mb-2 h-3 w-20 animate-pulse rounded bg-[#1C1D62]/10" />
@@ -793,7 +803,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
           case "events":
             return sectionEl(
               "events",
-              (needsEvents && !deferSecondary) || (eventsLoading && latestEvents.length === 0) ? (
+              (needsEvents && !deferHomeExtra) || (eventsLoading && latestEvents.length === 0) ? (
                 <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10 min-h-[22rem]">
                   <div className="container max-w-7xl">
                     <div className="mb-2 h-3 w-20 animate-pulse rounded bg-[#1C1D62]/10" />
@@ -919,7 +929,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
           case "dining":
             return sectionEl(
               "dining",
-              (needsDining && !deferSecondary) || (restaurants === undefined && restaurantsLoading) ? (
+              (needsDining && !deferHomeExtra) || (restaurants === undefined && restaurantsLoading) ? (
                 <div className="section-black border-y border-white/[0.07] py-10 min-h-[18rem]">
                   <div className="container max-w-7xl">
                     <div className="mb-6 h-7 w-40 animate-pulse rounded bg-white/10" />

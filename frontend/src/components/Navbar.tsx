@@ -77,12 +77,15 @@ const Navbar = () => {
   const [desktopSearchSlot, setDesktopSearchSlot] = useState<HTMLDivElement | null>(null);
   const searchRef = useRef<NavSearchHandle>(null);
   const deferNav = useDeferUntilLcpDone();
+  const deferNavIdle = useIdleMount(1800);
   const mounted = useClientMounted();
   const onHome = location.pathname === "/";
+  const navQueriesEnabled =
+    !onHome || (isMobile ? deferNav : deferNav && deferNavIdle);
   const showSearch =
     useIdleMount(isMobile ? 4500 : 2500) && (!isMobile || !onHome || deferNav);
   useStableMobileSafeArea();
-  const nav = useSiteNavigationData(!isMobile || deferNav);
+  const nav = useSiteNavigationData(navQueriesEnabled);
 
   const bindMobileSearchSlot = useCallback((node: HTMLDivElement | null) => {
     setMobileSearchSlot(node);

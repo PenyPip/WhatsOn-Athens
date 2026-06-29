@@ -1,16 +1,6 @@
 import type { Metadata, Viewport } from "next";
-import { Literata } from "next/font/google";
 import { getMetadataBase, siteSeo } from "@/lib/siteMetadata";
 import "@/index.css";
-
-/** Serif για άρθρα — κοντά στο brand (Georgia) αλλά optimized για long-form + ελληνικά. */
-const literata = Literata({
-  subsets: ["greek", "latin"],
-  display: "swap",
-  adjustFontFallback: true,
-  variable: "--font-article",
-  weight: ["400", "600", "700"],
-});
 
 export const viewport: Viewport = {
   width: "device-width",
@@ -64,7 +54,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="el" className={`h-full ${literata.variable}`}>
+    <html lang="el" className="h-full">
       <body className="min-h-full antialiased max-md:overscroll-y-none">
         <script
           dangerouslySetInnerHTML={{

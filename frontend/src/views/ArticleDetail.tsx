@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { Link, useParams } from "react-router-dom";
 import ArticleDetailTemplate from "@/components/ArticleDetailTemplate";
+import ArticleFontScope from "@/components/ArticleFontScope";
 import LoadingState from "@/components/LoadingState";
 import { useArticleBySlug } from "@/hooks/useStrapi";
 import { usePageSeo } from "@/hooks/usePageSeo";
@@ -52,5 +53,9 @@ export default function ArticleDetail() {
     );
   }
 
-  return <ArticleDetailTemplate article={article} contentHtml={contentHtml} />;
+  return (
+    <ArticleFontScope>
+      <ArticleDetailTemplate article={article} contentHtml={contentHtml} />
+    </ArticleFontScope>
+  );
 }

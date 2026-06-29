@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 import { ExternalLink, MapPin } from "lucide-react";
 import Footer from "@/components/Footer";
 import LoadingState from "@/components/LoadingState";
+import CinemaVenueProgramIntro from "@/components/CinemaVenueProgramIntro";
 import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import TheaterVenueProgramLayout from "@/components/TheaterVenueProgramLayout";
 import {
@@ -12,7 +13,7 @@ import {
   useVenuesForProgram,
 } from "@/hooks/useStrapi";
 import { usePageSeo } from "@/hooks/usePageSeo";
-import { truncateDescription } from "@/lib/siteMetadata";
+import { theaterVenueProgramSeo } from "@/lib/theaterVenueProgramSeo";
 import { theaterVenueProgramPath } from "@/lib/theaterVenuePath";
 import {
   findVenueByProgramSlug,
@@ -77,15 +78,31 @@ const TheaterVenueProgram = () => {
 
   const canonicalPath = venue?.slug ? theaterVenueProgramPath(venue.slug) : theaterVenueProgramPath(venueSlug);
 
+  const listSeo = useMemo(() => {
+    if (!venue) {
+      return {
+        title: "Πρόγραμμα θεάτρου",
+        description: "Πρόγραμμα θεατρικού χώρου.",
+        h1: "Πρόγραμμα θεάτρου",
+      };
+    }
+    const s = theaterVenueProgramSeo(venue);
+    return {
+      title: s.title,
+      description: s.description,
+      h1: s.h1,
+      subtitle: s.subtitle,
+      intro: s.intro,
+      ogTitle: s.ogTitle,
+      ogDescription: s.ogDescription,
+    };
+  }, [venue]);
+
   usePageSeo({
-    title: venue ? `Πρόγραμμα — ${venue.name}` : "Πρόγραμμα θεάτρου",
-    description: venue
-      ? truncateDescription(
-          venue.address?.trim()
-            ? `Παραστάσεις και εμφανίσεις στο ${venue.name} (${venue.address.trim()}).`
-            : `Παραστάσεις και εμφανίσεις στο ${venue.name}.`,
-        )
-      : "Πρόγραμμα θεατρικού χώρου.",
+    title: listSeo.title,
+    description: listSeo.description,
+    ogTitle: listSeo.ogTitle,
+    ogDescription: listSeo.ogDescription,
     path: canonicalPath,
     canonicalPath,
   });
@@ -103,9 +120,10 @@ const TheaterVenueProgram = () => {
                 ← Θέατρο
               </Link>
             </div>
-            <h1 className={PAGE_LIST_TITLE_CLASS}>
-              {venue?.name ?? "Πρόγραμμα χώρου"}
-            </h1>
+            <h1 className={PAGE_LIST_TITLE_CLASS}>{listSeo.h1}</h1>
+            {venue && "subtitle" in listSeo && listSeo.subtitle ? (
+              <p className="mt-2 text-sm text-white/70 md:text-base">{listSeo.subtitle}</p>
+            ) : null}
             {venue ? (
               <div className="mt-3 space-y-1.5 text-sm text-white/75 md:mt-4">
                 {venue.address?.trim() ? (
@@ -140,6 +158,10 @@ const TheaterVenueProgram = () => {
               <p className="text-sm text-white/60 md:text-base">Επερχόμενες παραστάσεις ανά χώρο</p>
             )}
       </PageListHeader>
+
+      {venue && "intro" in listSeo && listSeo.intro ? (
+        <CinemaVenueProgramIntro venueName={venue.name} intro={listSeo.intro} />
+      ) : null}
 
       <div className="container">
         {venueSlug && !venue && !venueLookupPending ? (

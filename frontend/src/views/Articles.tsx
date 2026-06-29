@@ -10,6 +10,7 @@ import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 
 import ArticleTags from "@/components/ArticleTags";
+import ArticleFontScope from "@/components/ArticleFontScope";
 import { resolveArticleRelatedListLabel } from "@/lib/articleRelated";
 import { articleTypeLabels, formatArticleDate } from "@/lib/articleLabels";
 import { ARTICLE_PAGE_CLASS } from "@/lib/articleTypography";
@@ -43,6 +44,7 @@ export default function Articles() {
   }, [articles, filter]);
 
   return (
+    <ArticleFontScope>
     <div className={PAGE_LIST_SHELL_CLASS}>
       <PageListHeader>
         <h1 className={PAGE_LIST_TITLE_CLASS}>Άρθρα</h1>
@@ -138,5 +140,6 @@ export default function Articles() {
 
       <Footer />
     </div>
+    </ArticleFontScope>
   );
 }

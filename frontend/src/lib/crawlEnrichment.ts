@@ -3,6 +3,7 @@ import { parseMoviesFilterPath } from "@/lib/moviesFilterPaths";
 import { cinemaVenueProgramSeo } from "@/lib/cinemaVenueProgramSeo";
 import { moviesAreaSeo, moviesGenreSeo, moviesSectionSeo } from "@/lib/moviesFilterSeo";
 import { movieDetailSeo } from "@/lib/movieDetailSeo";
+import { theaterVenueProgramSeo } from "@/lib/theaterVenueProgramSeo";
 import type { StrapiMovie } from "@/lib/api";
 import { truncateDescription } from "@/lib/siteMetadata";
 
@@ -128,12 +129,28 @@ export function crawlVenueByProgramPath(path: string): CrawlVenue | null {
   }
 }
 
+export function crawlVenueByTheaterProgramPath(path: string): CrawlVenue | null {
+  const slug = path.match(/^\/theater\/venue\/([^/]+)$/)?.[1];
+  if (!slug) return null;
+  try {
+    const decoded = decodeURIComponent(slug);
+    return crawlEnrichment.venues.find((v) => v.slug === decoded) ?? null;
+  } catch {
+    return crawlEnrichment.venues.find((v) => v.slug === slug) ?? null;
+  }
+}
+
 export function crawlSeoCopyForPath(path: string): PageSeoCopy | null {
   const normalized = path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const filterPath = parseMoviesFilterPath(normalized);
   if (filterPath.section) {
     const s = moviesSectionSeo(filterPath.section);
-    return { title: s.title, description: s.description };
+    return {
+      title: s.title,
+      description: s.description,
+      ogTitle: s.ogTitle,
+      ogDescription: s.ogDescription,
+    };
   }
   if (filterPath.genreSlug) {
     const g = crawlEnrichment.genres.find((x) => x.slug === filterPath.genreSlug);
@@ -148,6 +165,17 @@ export function crawlSeoCopyForPath(path: string): PageSeoCopy | null {
   const venue = crawlVenueByProgramPath(path);
   if (venue) {
     const s = cinemaVenueProgramSeo(venue);
+    return {
+      title: s.title,
+      description: s.description,
+      ogTitle: s.ogTitle,
+      ogDescription: s.ogDescription,
+    };
+  }
+
+  const theaterVenue = crawlVenueByTheaterProgramPath(path);
+  if (theaterVenue) {
+    const s = theaterVenueProgramSeo(theaterVenue);
     return {
       title: s.title,
       description: s.description,

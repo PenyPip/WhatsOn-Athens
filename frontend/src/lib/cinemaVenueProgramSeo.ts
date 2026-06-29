@@ -1,3 +1,5 @@
+import { format } from "date-fns";
+import { el } from "date-fns/locale";
 import { truncateDescription } from "@/lib/siteMetadata";
 
 export type CinemaVenueSeoInput = {
@@ -9,19 +11,24 @@ function nameLooksLikeCinema(name: string): boolean {
   return /\b(cine|σινε|cinema|κινηματογράφος)\b/i.test(name);
 }
 
+function programMonthLabel(): string {
+  return format(new Date(), "LLLL yyyy", { locale: el });
+}
+
 /** Title / description / H1 για `/movies/venue/:slug` — στοχεύει αναζητήσεις «[σινεμά] πρόγραμμα». */
 export function cinemaVenueProgramSeo(venue: CinemaVenueSeoInput) {
   const name = venue.name.trim();
   const addr = venue.address?.trim();
   const looksLikeCinema = nameLooksLikeCinema(name);
+  const monthYear = programMonthLabel();
 
   const title = looksLikeCinema
-    ? `${name} πρόγραμμα — ταινίες & ώρες προβολών`
-    : `${name} σινεμά — πρόγραμμα ταινιών & ώρες`;
+    ? `${name} — πρόγραμμα ταινιών ${monthYear} · τι παίζει σήμερα`
+    : `${name} σινεμά — πρόγραμμα ${monthYear} · τι παίζει σήμερα`;
 
   const h1 = `${name} — πρόγραμμα ταινιών`;
 
-  const subtitle = "Ενημερωμένο πρόγραμμα σινεμά · τι παίζεται & ώρες προβολών";
+  const subtitle = `Ενημερωμένο πρόγραμμα ${monthYear} · τι παίζεται & ώρες προβολών`;
 
   const description = truncateDescription(
     addr

@@ -101,6 +101,7 @@ services:
       - "443:443"
     volumes:
       - ./nginx/00-proxy-cache.conf:/etc/nginx/conf.d/00-proxy-cache.conf:ro
+      - ./nginx/legacy-movies-redirects.conf:/etc/nginx/conf.d/legacy-movies-redirects.conf:ro
       - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
       - nginx_api_cache:/var/cache/nginx
       - strapi_uploads:/app/public/uploads:ro

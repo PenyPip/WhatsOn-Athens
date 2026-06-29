@@ -14,6 +14,7 @@ import { cinemaVenueProgramSeo } from "@/lib/cinemaVenueProgramSeo";
 import { moviesAreaSeo, moviesGenreSeo, moviesSectionSeo } from "@/lib/moviesFilterSeo";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import CinemaVenueProgramIntro from "@/components/CinemaVenueProgramIntro";
+import MoviesSectionIntro from "@/components/MoviesSectionIntro";
 import EventCard from "@/components/EventCard";
 import MoviesGridSkeleton from "@/components/MoviesGridSkeleton";
 import Footer from "@/components/Footer";
@@ -801,7 +802,15 @@ const Movies = () => {
     }
     if (pathFilters.section) {
       const s = moviesSectionSeo(pathFilters.section);
-      return { title: s.title, description: s.description, h1: s.h1 };
+      return {
+        title: s.title,
+        description: s.description,
+        h1: s.h1,
+        subtitle: s.subtitle,
+        intro: s.intro,
+        ogTitle: s.ogTitle,
+        ogDescription: s.ogDescription,
+      };
     }
     if (pathFilters.genreSlug) {
       const g = movieGenresList?.find((x) => x.slug.toLowerCase() === pathFilters.genreSlug);
@@ -820,6 +829,8 @@ const Movies = () => {
   }, [venueFilter, pathFilters.section, pathFilters.genreSlug, pathFilters.area, movieGenresList]);
 
   const venueIntro = venueFilter && "intro" in listSeo ? listSeo.intro : undefined;
+  const sectionIntro =
+    pathFilters.section && "intro" in listSeo && listSeo.intro ? listSeo.intro : undefined;
 
   usePageSeo({
     title: listSeo.title,
@@ -863,6 +874,8 @@ const Movies = () => {
             </h1>
             {venueFilter ? (
               <p className={PAGE_LIST_SUBTITLE_CLASS}>{listSeo.subtitle}</p>
+            ) : pathFilters.section && "subtitle" in listSeo && listSeo.subtitle ? (
+              <p className={PAGE_LIST_SUBTITLE_CLASS}>{listSeo.subtitle}</p>
             ) : !pathFilters.section && !pathFilters.genreSlug ? (
               <p className={PAGE_LIST_SUBTITLE_CLASS}>
                 Τώρα στα σινεμά στην {AREA_LABELS[areaUiValue]}
@@ -904,6 +917,10 @@ const Movies = () => {
 
       {venueFilter && venueIntro ? (
         <CinemaVenueProgramIntro venueName={venueFilter.name} intro={venueIntro} />
+      ) : null}
+
+      {sectionIntro && pathFilters.section ? (
+        <MoviesSectionIntro sectionLabel={listSeo.h1} intro={sectionIntro} />
       ) : null}
 
       <div className="container">

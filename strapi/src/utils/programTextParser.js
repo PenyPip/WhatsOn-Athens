@@ -184,6 +184,29 @@ function isQuotedSubtitleLine(line) {
   return QUOTED_LINE_RE.test(s);
 }
 
+/** Περίληψη πλοκής (όχι τίτλος) — συχνά σε catalog paste με κενές γραμμές ανάμεσα. */
+function isSynopsisLine(line) {
+  const s = String(line || '').trim();
+  if (!s || isScheduleLine(s) || isQuotedSubtitleLine(s)) return false;
+  if (s.length >= 100) return true;
+  if (/,\s*\d{4}[.·]/.test(s)) return true;
+  const n = normalizeGreek(s);
+  if (
+    s.length >= 50 &&
+    /\b(ειναι|ηταν|ζει|γινεται|αλλαζει|θαβει|γνωριζει|μπαινει|βγαινει|ζουν|παιζει)\b/.test(n)
+  ) {
+    return true;
+  }
+  if ((s.match(/[.!?]/g) || []).length >= 2 && s.length >= 60) return true;
+  return false;
+}
+
+function isLikelyMovieTitleLine(line) {
+  const s = stripLineDecorators(line);
+  if (!s || isScheduleLine(s) || isQuotedSubtitleLine(s) || isSynopsisLine(s)) return false;
+  return looksLikeTitle(s);
+}
+
 function isScheduleLine(line) {
   const s = String(line || '').trim();
   if (!s) return false;
@@ -200,34 +223,75 @@ function cleanMovieTitle(raw) {
 }
 
 function parseMovieBlockFromChunk(chunk) {
+  const blocks = parseMovieBlocksFromChunk(chunk);
+  return blocks[0] ?? null;
+}
+
+/** Ένα ή περισσότερα blocks ανά παράγραφο (τίτλος + σύνοψη + ημερομηνίες + ώρες). */
+function parseMovieBlocksFromChunk(chunk) {
   const lines = String(chunk || '')
     .split('\n')
     .map((line) => line.trim())
     .filter(Boolean);
-  if (!lines.length) return null;
+  if (!lines.length) return [];
 
-  let title = null;
-  const scheduleLines = [];
+  const movies = [];
+  let current = null;
+
+  const flush = () => {
+    if (!current?.title) return;
+    movies.push({
+      title: current.title,
+      scheduleText: current.scheduleLines.join('\n').trim(),
+    });
+    current = null;
+  };
 
   for (const line of lines) {
-    if (isQuotedSubtitleLine(line)) continue;
-    if (!title && !isScheduleLine(line)) {
-      title = cleanMovieTitle(line);
+    if (isQuotedSubtitleLine(line) || isSynopsisLine(line)) continue;
+
+    if (isLikelyMovieTitleLine(line)) {
+      const title = cleanMovieTitle(line);
+      const key = normalizeGreek(title);
+      if (current?.title && normalizeGreek(current.title) === key) continue;
+      flush();
+      current = { title, scheduleLines: [] };
       continue;
     }
-    scheduleLines.push(line);
+
+    if (isScheduleLine(line)) {
+      if (!current) current = { title: null, scheduleLines: [] };
+      current.scheduleLines.push(line);
+    }
   }
 
-  if (!title) {
-    const candidate = lines.find((line) => !isQuotedSubtitleLine(line) && !isScheduleLine(line));
-    if (candidate) title = cleanMovieTitle(candidate);
-  }
+  flush();
+  return movies.filter((m) => m.title);
+}
 
-  if (!title) return null;
-  return {
-    title,
-    scheduleText: scheduleLines.join('\n').trim(),
-  };
+/** Ενώνει παράγραφους-ορφανά (σύνοψη, ημερομηνίες) με την προηγούμενη ταινία. */
+function mergeParagraphChunks(chunks) {
+  const merged = [];
+  for (const chunk of chunks) {
+    const lines = chunk.split('\n').map((l) => l.trim()).filter(Boolean);
+    const first = lines[0];
+    if (!merged.length) {
+      merged.push(chunk);
+      continue;
+    }
+    if (
+      !first ||
+      isScheduleLine(first) ||
+      isSynopsisLine(first) ||
+      isQuotedSubtitleLine(first) ||
+      (!isLikelyMovieTitleLine(first) && !looksLikeTitle(stripLineDecorators(first)))
+    ) {
+      merged[merged.length - 1] = `${merged[merged.length - 1]}\n\n${chunk}`;
+      continue;
+    }
+    merged.push(chunk);
+  }
+  return merged;
 }
 
 const LEADING_DECOR_RE = /^[\s🎬🎥📽️▪️•\-–—*»«"']+/u;
@@ -456,6 +520,7 @@ function firstDateShowtimeMatch(line) {
 
 function looksLikeTitle(text) {
   const s = String(text || '').trim();
+  if (isSynopsisLine(s)) return false;
   if (s.length < 2 || s.length > 160) return false;
   if (DAY_DDMM_HEADER_RE.test(s)) return false;
   if (TIME_ONLY_LINE_RE.test(s)) return false;
@@ -779,11 +844,13 @@ function splitMovieBlocksFreeForm(text) {
       continue;
     }
 
-    if (looksLikeTitle(stripLineDecorators(line))) {
+    if (looksLikeTitle(stripLineDecorators(line)) && !isSynopsisLine(line)) {
       pushCurrent();
       current = { title: stripLineDecorators(line), scheduleParts: [] };
     } else if (current) {
-      current.scheduleParts.push(line);
+      if (!isSynopsisLine(line) && !isQuotedSubtitleLine(line)) {
+        current.scheduleParts.push(line);
+      }
     }
   }
 
@@ -797,29 +864,48 @@ function splitMovieBlocksFreeForm(text) {
 
 function splitMovieBlocksByParagraph(text) {
   const normalized = String(text || '').replace(/\r\n/g, '\n').trim();
-  const chunks = normalized.split(/\n\s*\n+/).map((c) => c.trim()).filter(Boolean);
-  if (!chunks.length) return null;
+  const rawChunks = normalized.split(/\n\s*\n+/).map((c) => c.trim()).filter(Boolean);
+  if (!rawChunks.length) return null;
 
   let header = '';
   let startIdx = 0;
-  const firstLines = chunks[0].split('\n').map((line) => line.trim()).filter(Boolean);
+  const firstLines = rawChunks[0].split('\n').map((line) => line.trim()).filter(Boolean);
   if (
-    chunks.length > 1 &&
+    rawChunks.length > 1 &&
     firstLines.length === 1 &&
     isLikelyHeaderLine(firstLines[0]) &&
     !lineHasShowtime(firstLines[0])
   ) {
-    header = chunks[0];
+    header = rawChunks[0];
     startIdx = 1;
   }
 
+  const chunks = mergeParagraphChunks(rawChunks.slice(startIdx));
   const movies = [];
-  for (let i = startIdx; i < chunks.length; i += 1) {
-    const block = parseMovieBlockFromChunk(chunks[i]);
-    if (block?.title) movies.push(block);
+  for (let i = 0; i < chunks.length; i += 1) {
+    const blocks = parseMovieBlocksFromChunk(chunks[i]);
+    for (const block of blocks) {
+      if (block?.title) movies.push(block);
+    }
   }
 
-  return movies.length ? { header, movies } : null;
+  return movies.length ? { header, movies: dedupeMovieBlocks(movies) } : null;
+}
+
+/** Συγχώνευση διπλών τίτλων (π.χ. επανάληψη από copy-paste catalog). */
+function dedupeMovieBlocks(movies) {
+  const map = new Map();
+  for (const m of movies) {
+    const key = normalizeGreek(m.title);
+    if (!map.has(key)) {
+      map.set(key, { title: m.title, scheduleText: m.scheduleText || '' });
+      continue;
+    }
+    const prev = map.get(key);
+    const scheduleText = [prev.scheduleText, m.scheduleText].filter(Boolean).join('\n');
+    map.set(key, { title: prev.title, scheduleText });
+  }
+  return [...map.values()];
 }
 
 function splitMovieBlocks(text) {
