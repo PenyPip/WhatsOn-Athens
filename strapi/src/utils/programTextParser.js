@@ -100,6 +100,59 @@ const QUOTED_LINE_RE = /^[«"'].+[»"']$/u;
 
 const TIME_ONLY_LINE_RE = /^(\d{1,2}):(\d{2})$/;
 
+/** 12ωρο More.com paste: «8:50pm», «11pm». */
+const TIME_12H_LINE_RE = /^(\d{1,2})(?::(\d{2}))?\s*(am|pm)$/i;
+
+const ENGLISH_MONTHS = {
+  jan: 1,
+  feb: 2,
+  mar: 3,
+  apr: 4,
+  may: 5,
+  jun: 6,
+  jul: 7,
+  aug: 8,
+  sep: 9,
+  oct: 10,
+  nov: 11,
+  dec: 12,
+};
+
+/** «Jul, Thu» ή «Jul, Fri» (μετά από γραμμή «2»). */
+const ENGLISH_MONTH_DOW_HEADER_RE =
+  /^([A-Za-z]{3})\s*,?\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\.?\s*$/i;
+
+/** «2 Jul, Thu» σε μία γραμμή. */
+const ENGLISH_DAY_MONTH_DOW_RE =
+  /^(\d{1,2})\s+([A-Za-z]{3})\s*,?\s*(Mon|Tue|Wed|Thu|Fri|Sat|Sun)\.?\s*$/i;
+
+function englishMonthToNumber(raw) {
+  const key = String(raw || '')
+    .trim()
+    .slice(0, 3)
+    .toLowerCase();
+  return ENGLISH_MONTHS[key] ?? null;
+}
+
+function parseTime12hLine(line) {
+  const m = String(line || '')
+    .trim()
+    .match(TIME_12H_LINE_RE);
+  if (!m) return null;
+  let hour = Number(m[1]);
+  const minute = m[2] != null ? Number(m[2]) : 0;
+  const ampm = String(m[3]).toLowerCase();
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || minute > 59) return null;
+  if (hour === 12) hour = ampm === 'am' ? 0 : 12;
+  else if (ampm === 'pm') hour += 12;
+  if (hour > 23) return null;
+  return { hour, minute };
+}
+
+function isTime12hLine(line) {
+  return TIME_12H_LINE_RE.test(String(line || '').trim());
+}
+
 const DAY_DDMM_HEADER_RE = new RegExp(
   `^(?:${DAY_NAMES})\\s+(\\d{1,2})/(\\d{1,2})(?:/(\\d{2,4}))?\\s*$`,
   'iu',
@@ -524,6 +577,9 @@ function looksLikeTitle(text) {
   if (s.length < 2 || s.length > 160) return false;
   if (DAY_DDMM_HEADER_RE.test(s)) return false;
   if (TIME_ONLY_LINE_RE.test(s)) return false;
+  if (isTime12hLine(s)) return false;
+  if (ENGLISH_MONTH_DOW_HEADER_RE.test(s)) return false;
+  if (ENGLISH_DAY_MONTH_DOW_RE.test(s)) return false;
   if (lineHasShowtime(s)) return false;
   const n = normalizeGreek(s);
   if (/^προγραμμα|^κιν|^ωρες|^προβολ/.test(n)) return false;
@@ -1208,7 +1264,127 @@ function parseTableGridCinemaProgram(text, { refYear = new Date().getFullYear(),
     warnings.push('Δεν αναγνωρίστηκαν ταινίες στη μορφή πίνακα (τίτλος / ημερομηνίες / ώρες).');
   }
 
-  return { header: '', dateRange, movies, warnings: [...new Set(warnings)] };
+  return { header: '', dateRange, movies, warnings };
+}
+
+function looksLikeMoreDayStackProgram(text) {
+  if (looksLikeCatalogProgram(text) || looksLikeDayCentricProgram(text)) return false;
+
+  const lines = String(text || '')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  let time12Count = 0;
+  let enDateHeaders = 0;
+
+  for (let i = 0; i < lines.length; i += 1) {
+    if (isTime12hLine(lines[i])) time12Count += 1;
+    if (ENGLISH_MONTH_DOW_HEADER_RE.test(lines[i])) enDateHeaders += 1;
+    if (ENGLISH_DAY_MONTH_DOW_RE.test(lines[i])) enDateHeaders += 1;
+    if (/^\d{1,2}$/.test(lines[i]) && ENGLISH_MONTH_DOW_HEADER_RE.test(lines[i + 1] || '')) {
+      enDateHeaders += 1;
+    }
+  }
+
+  return time12Count >= 4 && enDateHeaders >= 2;
+}
+
+/**
+ * Μορφή More.com / αγγλικό paste: «2» → «Jul, Thu» → «8:50pm» → τίτλος → «11pm» → τίτλος (ανά ημέρα).
+ */
+function parseMoreDayStackCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+  const lines = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const movieMap = new Map();
+  let pendingDayNum = null;
+  let currentDate = null;
+  let pendingTime = null;
+
+  const assignDate = (day, monthToken) => {
+    const month = englishMonthToNumber(monthToken);
+    if (!day || !month) return false;
+    currentDate = localDate(refYear, month, day);
+    pendingTime = null;
+    return true;
+  };
+
+  for (const line of lines) {
+    const combined = line.match(ENGLISH_DAY_MONTH_DOW_RE);
+    if (combined) {
+      assignDate(Number(combined[1]), combined[2]);
+      pendingDayNum = null;
+      continue;
+    }
+
+    if (/^\d{1,2}$/.test(line)) {
+      pendingDayNum = Number(line);
+      continue;
+    }
+
+    const monthHeader = line.match(ENGLISH_MONTH_DOW_HEADER_RE);
+    if (monthHeader && pendingDayNum) {
+      assignDate(pendingDayNum, monthHeader[1]);
+      pendingDayNum = null;
+      continue;
+    }
+
+    const time = parseTime12hLine(line);
+    if (time && currentDate) {
+      pendingTime = time;
+      continue;
+    }
+
+    if (!pendingTime || !currentDate) continue;
+
+    const parsed = parseMovieLineTitle(line) || { title: cleanMovieTitle(line), note: null };
+    if (!parsed?.title) continue;
+
+    const datetime = buildAthensDatetimeFromLocalDate(
+      currentDate,
+      pendingTime.hour,
+      pendingTime.minute,
+    );
+    const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+    if (!movieMap.has(parsed.title)) {
+      movieMap.set(parsed.title, { title: parsed.title, scheduleText: '', showtimes: [] });
+    }
+    movieMap.get(parsed.title).showtimes.push({
+      dayLabel,
+      timeLabel,
+      datetime,
+      note: parsed.note,
+    });
+    pendingTime = null;
+  }
+
+  const movies = [...movieMap.values()].map((m) => ({
+    title: m.title,
+    scheduleText: m.scheduleText,
+    showtimes: dedupeShowtimes(m.showtimes),
+  }));
+
+  const allTimes = movies.flatMap((m) => m.showtimes.map((s) => s.datetime.getTime()));
+  let dateRange;
+  if (allTimes.length) {
+    const start = new Date(Math.min(...allTimes));
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(Math.max(...allTimes));
+    end.setHours(23, 59, 59, 999);
+    dateRange = { start, end, inferred: false };
+  } else {
+    dateRange = inferDateRangeFromCinemaWeek(now);
+  }
+
+  const warnings = movies.length
+    ? []
+    : ['Δεν αναγνωρίστηκαν προβολές στη μορφή ημέρα / Jul, Thu / 8:50pm / τίτλος.'];
+
+  return { header: '', dateRange, movies, warnings };
 }
 
 function isProbolesLine(line) {
@@ -1461,6 +1637,10 @@ function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now 
 
   if (looksLikeDayCentricProgram(normalized)) {
     return parseDayCentricCinemaProgram(normalized, { refYear, now });
+  }
+
+  if (looksLikeMoreDayStackProgram(normalized)) {
+    return parseMoreDayStackCinemaProgram(normalized, { refYear, now });
   }
 
   if (looksLikeTableGridProgram(normalized)) {

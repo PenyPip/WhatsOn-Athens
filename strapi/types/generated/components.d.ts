@@ -51,6 +51,20 @@ export interface CinemaMoreEventGroup extends Schema.Component {
   };
 }
 
+export interface CinemaMoreEventId extends Schema.Component {
+  collectionName: 'components_cinema_more_event_ids';
+  info: {
+    description: '\u0391\u03C0\u03BF\u03B8\u03B7\u03BA\u03B5\u03C5\u03BC\u03AD\u03BD\u03BF More eventId \u2192 \u03C4\u03B1\u03B9\u03BD\u03AF\u03B1/\u03C0\u03B1\u03C1\u03AC\u03C3\u03C4\u03B1\u03C3\u03B7 (\u03B1\u03C0\u03CC scrape). \u0395\u03C0\u03B9\u03C4\u03B1\u03C7\u03CD\u03BD\u03B5\u03B9 \u03B5\u03C0\u03CC\u03BC\u03B5\u03BD\u03B1 sync \u03C7\u03C9\u03C1\u03AF\u03C2 scrape.';
+    displayName: 'More eventId cache';
+  };
+  attributes: {
+    event_id: Attribute.String & Attribute.Required;
+    linked_at: Attribute.DateTime;
+    more_venue_id: Attribute.String;
+    play_title: Attribute.String;
+  };
+}
+
 export interface CinemaRejectedMoreCode extends Schema.Component {
   collectionName: 'components_cinema_rejected_more_codes';
   info: {
@@ -158,6 +172,7 @@ declare module '@strapi/types' {
       'cinema.day-price': CinemaDayPrice;
       'cinema.more-code-link': CinemaMoreCodeLink;
       'cinema.more-event-group': CinemaMoreEventGroup;
+      'cinema.more-event-id': CinemaMoreEventId;
       'cinema.rejected-more-code': CinemaRejectedMoreCode;
       'home.layout-section': HomeLayoutSection;
       'navigation.nav-item': NavigationNavItem;

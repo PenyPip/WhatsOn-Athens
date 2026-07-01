@@ -725,6 +725,8 @@ export interface ApiMovieMovie extends Schema.CollectionType {
     more_code_links: Attribute.Component<'cinema.more-code-link', true> &
       Attribute.Private;
     more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
+    more_event_ids: Attribute.Component<'cinema.more-event-id', true> &
+      Attribute.Private;
     most_talked_about: Attribute.Boolean & Attribute.DefaultTo<false>;
     movie_genres: Attribute.Relation<
       'api::movie.movie',
@@ -1060,6 +1062,8 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     more_code_links: Attribute.Component<'cinema.more-code-link', true> &
       Attribute.Private;
     more_event_groups: Attribute.Component<'cinema.more-event-group', true>;
+    more_event_ids: Attribute.Component<'cinema.more-event-id', true> &
+      Attribute.Private;
     more_link: Attribute.String;
     on_tour: Attribute.Boolean & Attribute.DefaultTo<false>;
     poster: Attribute.Media<'images'>;

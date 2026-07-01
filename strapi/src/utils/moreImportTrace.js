@@ -39,6 +39,8 @@ function contentMatchLines(resolution, contentKind) {
         : resolution.matchScore;
     lines.push(`Ταύτιση ${label}: scrape play-title «${resolution.playTitle}» (score ${score})`);
     if (resolution.scrapeUrl) lines.push(`Scrape URL: ${resolution.scrapeUrl}`);
+  } else if (resolution.viaPersisted) {
+    lines.push(`Ταύτιση ${label}: cache eventId → «${resolution[titleKey]}» (#${resolution[idKey]})`);
   } else if (resolution[titleKey]) {
     lines.push(`Ταύτιση ${label}: eventId index → «${resolution[titleKey]}» (#${resolution[idKey]})`);
   }

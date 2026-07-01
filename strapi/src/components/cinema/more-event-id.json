@@ -1,0 +1,26 @@
+{
+  "collectionName": "components_cinema_more_event_ids",
+  "info": {
+    "displayName": "More eventId cache",
+    "description": "Αποθηκευμένο More eventId → ταινία/παράσταση (από scrape). Επιταχύνει επόμενα sync χωρίς scrape."
+  },
+  "attributes": {
+    "event_id": {
+      "type": "string",
+      "required": true,
+      "description": "More.com eventId (μία προβολή/παράσταση)."
+    },
+    "more_venue_id": {
+      "type": "string",
+      "description": "More venueId όταν είναι γνωστό (audit / cross-check)."
+    },
+    "play_title": {
+      "type": "string",
+      "description": "Τίτλος από scrape More (audit)."
+    },
+    "linked_at": {
+      "type": "datetime",
+      "description": "Πότε αποθηκεύτηκε η ταύτιση."
+    }
+  }
+}

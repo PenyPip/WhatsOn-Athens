@@ -22,6 +22,13 @@ const {
 } = require('./moreVenueProgramScrape');
 const { findBestCmsMatchByPlayTitle, mapCmsRowForPlayTitleMatch } = require('./morePlayTitleMatch');
 const {
+  createEventIdPersistQueue,
+  loadPersistedCinemaEventIdsIntoIndex,
+  loadPersistedTheaterEventIdsIntoIndex,
+  queueScrapeMappingForPersist,
+  flushEventIdPersistQueue,
+} = require('./moreEventIdPersist');
+const {
   createVenueSyncStatsTracker,
   applyCinemaVenueUpdatedStatuses,
   migrateVenueUpdatedBooleanToEnum,
@@ -1537,6 +1544,7 @@ async function runBundleVenueScrapeRetry({
   report,
   onProgress,
   progressNoun,
+  persistQueue,
   onEachUnmapped,
   onEachRetry,
 }) {
@@ -1574,7 +1582,7 @@ async function runBundleVenueScrapeRetry({
   }
 
   venueStats.scrapeEventCount = scrape.eventCount || 0;
-  indexMappingsFromScrape(scrape, supplementalIndex, titlePool, report);
+  indexMappingsFromScrape(scrape, supplementalIndex, titlePool, report, persistQueue);
   mergeSupplementalIntoEventIdIndex(supplementalIndex, eventIdIndex);
 
   for (const item of pending) {
@@ -1691,6 +1699,7 @@ async function resolveCinemaMovieFromEventId({
   eventsCache,
   report,
   allowBundleScrape = false,
+  persistQueue,
 }) {
   const key = String(eventId ?? '').trim();
   const primary = eventIdIndex.get(key);
@@ -1761,11 +1770,18 @@ async function resolveCinemaMovieFromEventId({
     matchScore: match.score,
   };
   supplementalIndex.set(key, mapped);
+  queueScrapeMappingForPersist(persistQueue, 'movie', match.cmsId, key, mapped, null);
   report.resolvedViaVenueScrape = (report.resolvedViaVenueScrape || 0) + 1;
   return mapped;
 }
 
-function indexCinemaMappingsFromVenueScrape(scrape, supplementalIndex, moviesForTitle, report) {
+function indexCinemaMappingsFromVenueScrape(
+  scrape,
+  supplementalIndex,
+  moviesForTitle,
+  report,
+  persistQueue,
+) {
   if (!scrape?.ok || !scrape.byEventId?.size || !moviesForTitle?.length) return 0;
 
   const pool = moviesForTitle;
@@ -1787,13 +1803,15 @@ function indexCinemaMappingsFromVenueScrape(scrape, supplementalIndex, moviesFor
       continue;
     }
 
-    supplementalIndex.set(key, {
+    const mapped = {
       movieId: match.cmsId,
       movieTitle: match.cmsTitle,
       viaScrape: true,
       playTitle: row.playTitle,
       matchScore: match.score,
-    });
+    };
+    supplementalIndex.set(key, mapped);
+    queueScrapeMappingForPersist(persistQueue, 'movie', match.cmsId, key, mapped, null);
     added += 1;
   }
 
@@ -1803,7 +1821,13 @@ function indexCinemaMappingsFromVenueScrape(scrape, supplementalIndex, moviesFor
   return added;
 }
 
-function indexTheaterMappingsFromVenueScrape(scrape, supplementalIndex, showsForTitle, report) {
+function indexTheaterMappingsFromVenueScrape(
+  scrape,
+  supplementalIndex,
+  showsForTitle,
+  report,
+  persistQueue,
+) {
   if (!scrape?.ok || !scrape.byEventId?.size || !showsForTitle?.length) return 0;
 
   const pool = showsForTitle;
@@ -1816,13 +1840,15 @@ function indexTheaterMappingsFromVenueScrape(scrape, supplementalIndex, showsFor
     const match = findBestCmsMatchByPlayTitle(row.playTitle, pool);
     if (!match) continue;
 
-    supplementalIndex.set(key, {
+    const mapped = {
       theaterShowId: match.cmsId,
       showTitle: match.cmsTitle,
       viaScrape: true,
       playTitle: row.playTitle,
       matchScore: match.score,
-    });
+    };
+    supplementalIndex.set(key, mapped);
+    queueScrapeMappingForPersist(persistQueue, 'theater_show', match.cmsId, key, mapped, null);
     added += 1;
   }
 
@@ -1865,6 +1891,17 @@ async function processOneCinemaBundleEvent(
   });
   if (!mapped) {
     return { kind: 'unmapped', inWeek };
+  }
+
+  if (mapped.viaScrape) {
+    queueScrapeMappingForPersist(
+      resolveCtx.persistQueue,
+      'movie',
+      mapped.movieId,
+      eventId,
+      mapped,
+      event,
+    );
   }
 
   if (venue.venue_id) {
@@ -1917,6 +1954,7 @@ async function syncCinemaVenueBundleEvents(
     showtimeExistenceIndex,
     now,
     onProgress,
+    persistQueue,
   },
 ) {
   const resolveCtx = {
@@ -1928,6 +1966,7 @@ async function syncCinemaVenueBundleEvents(
     movieCodeLookup,
     eventsCache,
     report,
+    persistQueue,
   };
 
   const pending = [];
@@ -1977,6 +2016,7 @@ async function syncCinemaVenueBundleEvents(
     report,
     onProgress,
     progressNoun: 'Σινεμά',
+    persistQueue,
     onEachUnmapped: ({ inWeek }) =>
       recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venue.id, inWeek),
     onEachRetry: async ({ event, code, inWeek }) => {
@@ -2027,6 +2067,17 @@ async function processOneTheaterBundleEvent(
   });
   if (!mapped) return { kind: 'unmapped' };
 
+  if (mapped.viaScrape) {
+    queueScrapeMappingForPersist(
+      resolveCtx.persistQueue,
+      'theater_show',
+      mapped.theaterShowId,
+      eventId,
+      mapped,
+      event,
+    );
+  }
+
   if (venue.venue_id) {
     const moreVenueId = String(event.venueId ?? '').trim();
     const expected = String(venue.venue_id).trim();
@@ -2065,6 +2116,7 @@ async function syncTheaterVenueBundleEvents(
     performanceExistenceIndex,
     now,
     onProgress,
+    persistQueue,
   },
 ) {
   const resolveCtx = {
@@ -2074,6 +2126,7 @@ async function syncTheaterVenueBundleEvents(
     venue,
     showsForTitle,
     report,
+    persistQueue,
   };
 
   const pending = [];
@@ -2122,6 +2175,7 @@ async function syncTheaterVenueBundleEvents(
     report,
     onProgress,
     progressNoun: 'Χώρος',
+    persistQueue,
     onEachUnmapped: () => recordTheaterBundleUnmapped(report, venueStats),
     onEachRetry: async ({ event, code }) => {
       const outcome = await processOneTheaterBundleEvent(strapi, {
@@ -2151,6 +2205,7 @@ async function resolveTheaterShowFromEventId({
   showsForTitle,
   report,
   allowBundleScrape = false,
+  persistQueue,
 }) {
   const key = String(eventId ?? '').trim();
   const primary = eventIdIndex.get(key);
@@ -2179,6 +2234,7 @@ async function resolveTheaterShowFromEventId({
     matchScore: match.score,
   };
   supplementalIndex.set(key, mapped);
+  queueScrapeMappingForPersist(persistQueue, 'theater_show', match.cmsId, key, mapped, null);
   report.resolvedViaVenueScrape = (report.resolvedViaVenueScrape || 0) + 1;
   return mapped;
 }
@@ -2277,6 +2333,7 @@ async function syncMovieShowtimesFromMore(strapi, {
   totalVenuesCount = null,
   showtimeExistenceIndex = null,
   movieCodeEntries = [],
+  eventIdPersistQueue = null,
 }) {
   const report = {
     ...emptySyncCounters(),
@@ -2493,6 +2550,7 @@ async function syncMovieShowtimesFromMore(strapi, {
         showtimeExistenceIndex,
         now,
         onProgress,
+        persistQueue: eventIdPersistQueue,
       });
     } catch (e) {
       const msg = e?.message || String(e);
@@ -2543,6 +2601,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
   totalShowsCount = null,
   totalVenuesCount = null,
   performanceExistenceIndex = null,
+  eventIdPersistQueue = null,
 }) {
   const report = {
     ...emptySyncCounters(),
@@ -2740,6 +2799,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
         performanceExistenceIndex,
         now,
         onProgress,
+        persistQueue: eventIdPersistQueue,
       });
     } catch (e) {
       const msg = e?.message || String(e);
@@ -2823,6 +2883,11 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   let moviesWithSecondaryCodes = 0;
   let movieCodeCount = 0;
   let totalMoviesScanned = 0;
+  const eventIdPersistQueue = createEventIdPersistQueue();
+
+  if (runCinema) {
+    await loadPersistedCinemaEventIdsIntoIndex(strapi, cinemaEventIdIndex, progress);
+  }
 
   if (runCinema) {
     progress(
@@ -2860,6 +2925,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
       onProgress: progress,
       totalMoviesCount: movies.length || 1,
       showtimeExistenceIndex,
+      eventIdPersistQueue,
     });
     cinemaEventIdIndex = movieReport.eventIdIndex || cinemaEventIdIndex;
     eventsCache.clear();
@@ -2904,6 +2970,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
           eventIdIndex: cinemaEventIdIndex,
           totalMoviesCount: totalWithCodes,
           showtimeExistenceIndex,
+          eventIdPersistQueue,
         });
         cinemaEventIdIndex = partial.eventIdIndex || cinemaEventIdIndex;
         movieReport = mergeMovieSyncReports(movieReport, partial);
@@ -2967,6 +3034,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
         movieCodeEntries: moviesWithCodes,
         totalVenuesCount: cinemaVenuesWithBundle.length,
         showtimeExistenceIndex,
+        eventIdPersistQueue,
       });
       movieReport = mergeMovieSyncReports(movieReport, bundlePart);
     } else {
@@ -3025,6 +3093,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
 
   let theaterReport = null;
   let theaterEventIdIndex = new Map();
+  if (runTheater) {
+    await loadPersistedTheaterEventIdsIntoIndex(strapi, theaterEventIdIndex, progress);
+  }
   let theaterCodeCount = 0;
   let totalTheaterScanned = 0;
 
@@ -3060,6 +3131,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
       onProgress: progress,
       totalShowsCount: theaterShows.length || 1,
       performanceExistenceIndex,
+      eventIdPersistQueue,
     });
     theaterEventIdIndex = theaterReport.eventIdIndex || theaterEventIdIndex;
     eventsCache.clear();
@@ -3108,6 +3180,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
           eventIdIndex: theaterEventIdIndex,
           totalShowsCount: totalWithCodes,
           performanceExistenceIndex,
+          eventIdPersistQueue,
         });
         theaterEventIdIndex = partial.eventIdIndex || theaterEventIdIndex;
         theaterReport = mergeTheaterSyncReports(theaterReport, partial);
@@ -3153,6 +3226,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
         eventIdIndex: theaterEventIdIndex,
         totalVenuesCount: theaterVenuesWithBundle.length,
         performanceExistenceIndex,
+        eventIdPersistQueue,
       });
       theaterReport = mergeTheaterSyncReports(theaterReport, bundlePart);
     } else {
@@ -3178,6 +3252,10 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     };
   }
   theaterReport.theaterShowsScanned = totalTheaterScanned;
+
+  const persistedEventIds = await flushEventIdPersistQueue(strapi, eventIdPersistQueue, {
+    onProgress: progress,
+  });
 
   progress(
     `Χώροι: ${allVenueRows.length} CMS · ${globalVenueLookup.byMoreId.size} με More venue_id` +
@@ -3255,6 +3333,8 @@ async function syncShowtimesFromMore(strapi, options = {}) {
       movieReport.skippedUnknownEventId + theaterReport.skippedUnknownEventId,
     resolvedViaVenueScrape:
       (movieReport.resolvedViaVenueScrape || 0) + (theaterReport.resolvedViaVenueScrape || 0),
+    persistedEventIdCache: persistedEventIds.entries,
+    persistedEventIdEntriesUpdated: persistedEventIds.persisted,
     skippedInvalidDate: movieReport.skippedInvalidDate + theaterReport.skippedInvalidDate,
     errors: [...movieReport.errors, ...theaterReport.errors],
     byMovie: movieReport.byMovie,

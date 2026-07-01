@@ -100,6 +100,13 @@
       "component": "cinema.more-event-group",
       "description": "Επιπλέον More κωδικοί για το ίδιο θέατρο."
     },
+    "more_event_ids": {
+      "type": "component",
+      "repeatable": true,
+      "component": "cinema.more-event-id",
+      "private": true,
+      "description": "Cache More eventId → αυτή η παράσταση (από scrape). Χρησιμοποιείται από sync."
+    },
     "more_code_links": {
       "type": "component",
       "repeatable": true,
