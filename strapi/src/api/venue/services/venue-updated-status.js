@@ -111,6 +111,17 @@ function createVenueSyncStatsTracker() {
   };
 }
 
+/** Σφάλματα/παραλείψεις που απαιτούν χειροκίνητο έλεγχο — ποτέ complete. */
+function venueHasManualSyncIssues(stats) {
+  return (
+    stats.autoCreated ||
+    (stats.skippedUnknownEventId || 0) > 0 ||
+    (stats.skippedVenueMismatch || 0) > 0 ||
+    (stats.skippedNoVenue || 0) > 0 ||
+    (stats.errors || 0) > 0
+  );
+}
+
 /**
  * Κατάσταση μετά More sync.
  * - complete: όλες οι προβολές επόμενης εβδομάδας (Πέμπτη→) πέρασαν — μόνο Δευτέρα–Παρασκευή
@@ -120,28 +131,22 @@ function createVenueSyncStatsTracker() {
  * @returns {VenueUpdatedStatus | null}
  */
 function computeVenueUpdatedStatus(stats, now = new Date()) {
+  if (venueHasManualSyncIssues(stats)) {
+    return VENUE_UPDATED_STATUS.NEEDS_MANUAL;
+  }
+
   const weekExpected = stats.weekExpected || 0;
   const weekSynced = stats.weekSynced || 0;
   const weekFailed = stats.weekFailed || 0;
 
   if (weekExpected > 0) {
-    const allWeekSynced = !stats.autoCreated && weekFailed === 0 && weekSynced >= weekExpected;
+    const allWeekSynced = weekFailed === 0 && weekSynced >= weekExpected;
     if (allWeekSynced) {
       if (isVenueCompleteEligible(now)) {
         return VENUE_UPDATED_STATUS.COMPLETE;
       }
       return null;
     }
-    return VENUE_UPDATED_STATUS.NEEDS_MANUAL;
-  }
-
-  if (
-    stats.autoCreated ||
-    stats.skippedUnknownEventId > 0 ||
-    stats.skippedVenueMismatch > 0 ||
-    stats.skippedNoVenue > 0 ||
-    stats.errors > 0
-  ) {
     return VENUE_UPDATED_STATUS.NEEDS_MANUAL;
   }
 
@@ -210,7 +215,9 @@ async function applyCinemaVenueUpdatedStatuses(
     if (autoCreated.has(venueId)) stats.autoCreated = true;
 
     const current = currentById.get(venueId);
-    if (current === VENUE_UPDATED_STATUS.COMPLETE) {
+    const next = computeVenueUpdatedStatus(stats, now);
+
+    if (current === VENUE_UPDATED_STATUS.COMPLETE && next !== VENUE_UPDATED_STATUS.NEEDS_MANUAL) {
       summary.preserved_complete += 1;
       summary.complete += 1;
       summary.venues.push({
@@ -229,7 +236,30 @@ async function applyCinemaVenueUpdatedStatuses(
       continue;
     }
 
-    const next = computeVenueUpdatedStatus(stats, now);
+    if (current === VENUE_UPDATED_STATUS.COMPLETE && next === VENUE_UPDATED_STATUS.NEEDS_MANUAL) {
+      await strapi.entityService.update('api::venue.venue', venueId, {
+        data: { updated: VENUE_UPDATED_STATUS.NEEDS_MANUAL },
+      });
+      summary.needs_manual += 1;
+      summary.updated += 1;
+      summary.venues.push({
+        venueId,
+        status: VENUE_UPDATED_STATUS.NEEDS_MANUAL,
+        statusLabel: VENUE_UPDATED_LABELS.needs_manual,
+        preserved: false,
+        downgradedFromComplete: true,
+        reason: 'unknown_event_or_sync_issue',
+        created: stats.created,
+        alreadyExists: stats.alreadyExists,
+        skippedUnknownEventId: stats.skippedUnknownEventId,
+        skippedVenueMismatch: stats.skippedVenueMismatch,
+        weekExpected: stats.weekExpected,
+        weekSynced: stats.weekSynced,
+        weekFailed: stats.weekFailed,
+        autoCreated: stats.autoCreated,
+      });
+      continue;
+    }
     if (next === null) {
       const weekReady =
         (stats.weekExpected || 0) > 0 &&

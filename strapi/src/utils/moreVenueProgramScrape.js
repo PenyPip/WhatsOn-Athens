@@ -9,6 +9,11 @@ const FETCH_TIMEOUT_MS = Number(process.env.MORE_VENUE_SCRAPE_TIMEOUT_MS || 22_0
 const SCRAPE_ENABLED = process.env.MORE_VENUE_PROGRAM_SCRAPE === 'true';
 /** Scrape κατά sync — αργό (HTML fetch). Default off· ενεργό μόνο με MORE_VENUE_SCRAPE_ON_SYNC=true. */
 const SCRAPE_ON_SYNC = process.env.MORE_VENUE_SCRAPE_ON_SYNC === 'true';
+/**
+ * Scrape σελίδας χώρου για άγνωστα eventId στο venue bundle sync (π.χ. FUZE μόνο στο bundle).
+ * Default on — απενεργοποίηση: MORE_VENUE_BUNDLE_SCRAPE=false
+ */
+const BUNDLE_SYNC_SCRAPE_ENABLED = process.env.MORE_VENUE_BUNDLE_SCRAPE !== 'false';
 const SCRAPE_DELAY_MS = Number(process.env.MORE_VENUE_SCRAPE_DELAY_MS || 180);
 
 function sleep(ms) {
@@ -181,15 +186,28 @@ function mapScrapePayload(payload) {
   };
 }
 
+async function scrapeMoreVenueProgramPage(url, cookie = '') {
+  if (SCRAPE_DELAY_MS > 0) await sleep(SCRAPE_DELAY_MS);
+  const page = await fetchText(url, cookie);
+  const payload = parseBookingPanelPayload(page.text);
+  if (!payload) {
+    return { ok: false, error: 'no_booking_panel', moreLink: url };
+  }
+  const mapped = mapScrapePayload(payload);
+  return { ...mapped, moreLink: url };
+}
+
 /**
  * Επιφανειακό scrape σελίδας προγράμματος σινεμά/θεάτρου (more_link).
  * bookingPanel.init → events + plays (play-title).
  *
  * @param {string} moreLink
+ * @param {{ force?: boolean }} [options] — force: bundle sync (χωρίς MORE_VENUE_PROGRAM_SCRAPE)
  * @returns {Promise<object>}
  */
-async function scrapeMoreVenueProgram(moreLink) {
-  if (!SCRAPE_ENABLED) {
+async function scrapeMoreVenueProgram(moreLink, options = {}) {
+  const force = options.force === true;
+  if (!force && !SCRAPE_ENABLED) {
     return { ok: false, error: 'scrape_disabled', moreLink: normalizeMoreUrl(moreLink) };
   }
 
@@ -198,15 +216,7 @@ async function scrapeMoreVenueProgram(moreLink) {
 
   try {
     const warmup = await fetchText(MORE_CINEMA_WARMUP);
-    const cookie = warmup.cookie;
-    if (SCRAPE_DELAY_MS > 0) await sleep(SCRAPE_DELAY_MS);
-    const page = await fetchText(url, cookie);
-    const payload = parseBookingPanelPayload(page.text);
-    if (!payload) {
-      return { ok: false, error: 'no_booking_panel', moreLink: url };
-    }
-    const mapped = mapScrapePayload(payload);
-    return { ...mapped, moreLink: url };
+    return await scrapeMoreVenueProgramPage(url, warmup.cookie);
   } catch (e) {
     return {
       ok: false,
@@ -351,14 +361,16 @@ async function probeVenueProgramScrape(urls, options = {}) {
   };
 }
 
-function createVenueScrapeCache() {
+function createVenueScrapeCache(options = {}) {
+  const forBundleSync = options.forBundleSync === true;
+  const forceScrape = forBundleSync && BUNDLE_SYNC_SCRAPE_ENABLED;
   const cache = new Map();
   return {
     async get(moreLink) {
       const url = normalizeMoreUrl(moreLink);
       if (!url) return { ok: false, error: 'empty_url' };
       if (cache.has(url)) return cache.get(url);
-      const result = await scrapeMoreVenueProgram(url);
+      const result = await scrapeMoreVenueProgram(url, { force: forceScrape });
       cache.set(url, result);
       return result;
     },
@@ -385,10 +397,20 @@ function findCmsVenueForBundleCode(eventGroupCode, cmsVenues) {
   return null;
 }
 
+function resolveVenueMoreProgramLink(venue) {
+  const direct = String(venue?.more_link ?? venue?.moreLink ?? '').trim();
+  if (direct) return direct;
+  const slug = String(venue?.slug ?? '').trim();
+  if (slug) return `/gr-el/tickets/cinema/${slug}/`;
+  return '';
+}
+
 module.exports = {
   SCRAPE_ENABLED,
   SCRAPE_ON_SYNC,
+  BUNDLE_SYNC_SCRAPE_ENABLED,
   scrapeMoreVenueProgram,
+  resolveVenueMoreProgramLink,
   probeVenueProgramScrape,
   createVenueScrapeCache,
   findCmsVenueForBundleCode,
