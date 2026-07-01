@@ -20,16 +20,37 @@ function stripParenthetical(title) {
     .trim();
 }
 
+function parentheticalParts(title) {
+  const parts = [];
+  const s = String(title || '');
+  for (const m of s.matchAll(/\(([^)]+)\)/g)) {
+    const inner = m[1]?.trim();
+    if (inner) parts.push(inner);
+  }
+  return parts;
+}
+
+function playTitleVariants(playTitle) {
+  const s = String(playTitle || '').trim();
+  const variants = new Set([s, stripParenthetical(s), ...parentheticalParts(s)].filter(Boolean));
+  return [...variants];
+}
+
+function cmsTitleVariants(cmsTitle) {
+  const s = String(cmsTitle || '').trim();
+  const variants = new Set([s, stripParenthetical(s), ...parentheticalParts(s)].filter(Boolean));
+  return [...variants];
+}
+
 /**
  * Σύγκριση τίτλου CMS ↔ play-title από More venue page.
  * @returns {number} 0–1
  */
 function scorePlayTitleMatch(cmsTitle, playTitle) {
-  const candidates = [cmsTitle].filter(Boolean);
-  const playVariants = [playTitle, stripParenthetical(playTitle)].filter(Boolean);
+  const playVariants = playTitleVariants(playTitle);
   let best = 0;
 
-  for (const cms of candidates) {
+  for (const cms of cmsTitleVariants(cmsTitle)) {
     const nc = compactText(cms);
     const nw = normalizeText(cms);
     if (!nc) continue;

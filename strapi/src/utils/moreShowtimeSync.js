@@ -18,6 +18,7 @@ const {
   BUNDLE_SYNC_SCRAPE_ENABLED,
   resolveVenueMoreProgramLink,
   resolveVenueMoreProgramLinkForScrape,
+  loadVenueScrapeWithFallback,
   lookupScrapedEventRow,
 } = require('./moreVenueProgramScrape');
 const { findBestCmsMatchByPlayTitle } = require('./morePlayTitleMatch');
@@ -1654,7 +1655,7 @@ async function resolveCinemaMovieFromEventId({
   if (!link) return null;
 
   const scrape = await scrapeCache.get(link);
-  const row = lookupScrapedEventRow(scrape?.byEventId, eventId);
+  const row = lookupScrapedEventRow(scrape?.byEventId, key);
   if (!row?.playTitle) {
     if (scrape && !scrape.ok && report) {
       report.scrapeFailures = (report.scrapeFailures || 0) + 1;
@@ -1682,7 +1683,7 @@ async function resolveCinemaMovieFromEventId({
       if (report.scrapeTitleMisses.length < 20) {
         report.scrapeTitleMisses.push({
           venueId: venue?.id,
-          eventId,
+          eventId: key,
           playTitle: row.playTitle,
         });
       }
@@ -1697,9 +1698,76 @@ async function resolveCinemaMovieFromEventId({
     playTitle: row.playTitle,
     matchScore: match.score,
   };
-  supplementalIndex.set(eventId, mapped);
+  supplementalIndex.set(key, mapped);
   report.resolvedViaVenueScrape = (report.resolvedViaVenueScrape || 0) + 1;
   return mapped;
+}
+
+function indexCinemaMappingsFromVenueScrape(scrape, supplementalIndex, moviesForTitle, report) {
+  if (!scrape?.ok || !scrape.byEventId?.size || !moviesForTitle?.length) return 0;
+
+  const pool = moviesForTitle.map((m) => ({ ...m, contentType: 'movie' }));
+  let added = 0;
+
+  for (const [eventId, row] of scrape.byEventId) {
+    const key = String(eventId ?? '').trim();
+    if (!key || supplementalIndex.has(key) || !row?.playTitle) continue;
+
+    const match = findBestCmsMatchByPlayTitle(row.playTitle, pool);
+    if (!match) {
+      if (report) {
+        report.scrapeTitleUnmatched = (report.scrapeTitleUnmatched || 0) + 1;
+        if (!report.scrapeTitleMisses) report.scrapeTitleMisses = [];
+        if (report.scrapeTitleMisses.length < 20) {
+          report.scrapeTitleMisses.push({ eventId: key, playTitle: row.playTitle });
+        }
+      }
+      continue;
+    }
+
+    supplementalIndex.set(key, {
+      movieId: match.cmsId,
+      movieTitle: match.cmsTitle,
+      viaScrape: true,
+      playTitle: row.playTitle,
+      matchScore: match.score,
+    });
+    added += 1;
+  }
+
+  if (added > 0 && report) {
+    report.resolvedViaVenueScrape = (report.resolvedViaVenueScrape || 0) + added;
+  }
+  return added;
+}
+
+function indexTheaterMappingsFromVenueScrape(scrape, supplementalIndex, showsForTitle, report) {
+  if (!scrape?.ok || !scrape.byEventId?.size || !showsForTitle?.length) return 0;
+
+  const pool = showsForTitle.map((s) => ({ ...s, contentType: 'theater_show' }));
+  let added = 0;
+
+  for (const [eventId, row] of scrape.byEventId) {
+    const key = String(eventId ?? '').trim();
+    if (!key || supplementalIndex.has(key) || !row?.playTitle) continue;
+
+    const match = findBestCmsMatchByPlayTitle(row.playTitle, pool);
+    if (!match) continue;
+
+    supplementalIndex.set(key, {
+      theaterShowId: match.cmsId,
+      showTitle: match.cmsTitle,
+      viaScrape: true,
+      playTitle: row.playTitle,
+      matchScore: match.score,
+    });
+    added += 1;
+  }
+
+  if (added > 0 && report) {
+    report.resolvedViaVenueScrape = (report.resolvedViaVenueScrape || 0) + added;
+  }
+  return added;
 }
 
 function recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venueId, inWeek) {
@@ -1857,14 +1925,26 @@ async function syncCinemaVenueBundleEvents(
       `Σινεμά «${venue.name}»: scrape για ${pending.length} μη συγχρονισμένες προβολές…`,
     );
   }
-  await scrapeCache.get(link);
+
+  const { url, result: scrape, tried } = await loadVenueScrapeWithFallback(venue, scrapeCache);
+  venueStats.scrapeLink = url;
+  venueStats.scrapeTried = tried;
+  if (!scrape?.ok) {
+    venueStats.scrapeError = scrape?.error || 'scrape_failed';
+    for (const { inWeek } of pending) {
+      recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venue.id, inWeek);
+    }
+    return;
+  }
+  venueStats.scrapeEventCount = scrape.eventCount || 0;
+  indexCinemaMappingsFromVenueScrape(scrape, supplementalIndex, moviesForTitle, report);
 
   for (const { event, code, inWeek } of pending) {
     const outcome = await processOneCinemaBundleEvent(strapi, {
       event,
       code,
       venue,
-      allowBundleScrape: true,
+      allowBundleScrape: false,
       resolveCtx,
       showtimeExistenceIndex,
       now,
@@ -2006,14 +2086,24 @@ async function syncTheaterVenueBundleEvents(
       `Χώρος «${venue.name}»: scrape για ${pending.length} μη συγχρονισμένες παραστάσεις…`,
     );
   }
-  await scrapeCache.get(link);
+
+  const { url, result: scrape, tried } = await loadVenueScrapeWithFallback(venue, scrapeCache);
+  venueStats.scrapeLink = url;
+  venueStats.scrapeTried = tried;
+  if (!scrape?.ok) {
+    venueStats.scrapeError = scrape?.error || 'scrape_failed';
+    for (const _ of pending) recordTheaterBundleUnmapped(report, venueStats);
+    return;
+  }
+  venueStats.scrapeEventCount = scrape.eventCount || 0;
+  indexTheaterMappingsFromVenueScrape(scrape, supplementalIndex, showsForTitle, report);
 
   for (const { event, code } of pending) {
     const outcome = await processOneTheaterBundleEvent(strapi, {
       event,
       code,
       venue,
-      allowBundleScrape: true,
+      allowBundleScrape: false,
       resolveCtx,
       performanceExistenceIndex,
       now,
@@ -2036,10 +2126,11 @@ async function resolveTheaterShowFromEventId({
   report,
   allowBundleScrape = false,
 }) {
-  const primary = eventIdIndex.get(eventId);
+  const key = String(eventId ?? '').trim();
+  const primary = eventIdIndex.get(key);
   if (primary) return primary;
 
-  const cached = supplementalIndex.get(eventId);
+  const cached = supplementalIndex.get(key);
   if (cached) return cached;
 
   const scrapeAllowed =
@@ -2051,7 +2142,7 @@ async function resolveTheaterShowFromEventId({
   if (!link) return null;
 
   const scrape = await scrapeCache.get(link);
-  const row = lookupScrapedEventRow(scrape?.byEventId, eventId);
+  const row = lookupScrapedEventRow(scrape?.byEventId, key);
   if (!row?.playTitle) return null;
 
   const match = findBestCmsMatchByPlayTitle(
@@ -2067,7 +2158,7 @@ async function resolveTheaterShowFromEventId({
     playTitle: row.playTitle,
     matchScore: match.score,
   };
-  supplementalIndex.set(eventId, mapped);
+  supplementalIndex.set(key, mapped);
   report.resolvedViaVenueScrape = (report.resolvedViaVenueScrape || 0) + 1;
   return mapped;
 }
