@@ -18,6 +18,10 @@ FROM node:18-bookworm-slim
 WORKDIR /app
 ENV NPM_CONFIG_OMIT_OPTIONAL=false
 
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends curl ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+
 COPY package.json package-lock.json .npmrc ./
 COPY scripts/install-swc-native.sh scripts/install-swc-native.sh
 RUN npm ci && sh scripts/install-swc-native.sh

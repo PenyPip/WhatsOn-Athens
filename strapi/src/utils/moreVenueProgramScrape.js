@@ -35,6 +35,15 @@ function normalizeMoreUrl(raw) {
   return `https://www.more.com/${s.replace(/^\//, '')}`;
 }
 
+function isMoreComProgramUrl(raw) {
+  try {
+    const u = new URL(normalizeMoreUrl(raw));
+    return /(^|\.)more\.com$/i.test(u.hostname);
+  } catch {
+    return false;
+  }
+}
+
 function cookiesFromResponse(res) {
   if (typeof res.headers.getSetCookie === 'function') {
     return res.headers
@@ -592,7 +601,8 @@ async function loadMoreCinemaListingHtml() {
 
 /**
  * Όλα τα πιθανά URLs προγράμματος χώρου — ισχύει για κάθε σινεμά/θέατρο με bundle code.
- * Σειρά: more_link CMS → κατάλογος more.com (ανά bundle) → slug.
+ * Σειρά: more.com more_link (CMS) → κατάλογος more.com (ανά bundle) → slug CMS.
+ * Εξωτερικά more_link (ιστοσελίδα χώρου) αγνοούνται — δεν έχουν booking panel.
  */
 async function collectVenueMoreProgramLinkCandidates(venue) {
   const candidates = [];
@@ -604,7 +614,10 @@ async function collectVenueMoreProgramLinkCandidates(venue) {
   const kind = venueListingKind(venue);
   const cfg = LISTING_KIND[kind] || LISTING_KIND.cinema;
 
-  add(venue?.more_link ?? venue?.moreLink);
+  const directLink = venue?.more_link ?? venue?.moreLink;
+  if (directLink && isMoreComProgramUrl(directLink)) {
+    add(directLink);
+  }
 
   for (const code of collectVenueBundleCodesForListing(venue)) {
     try {
@@ -631,7 +644,7 @@ async function loadVenueScrapeWithFallback(venue, scrapeCache) {
   const candidates = await collectVenueMoreProgramLinkCandidates(venue);
   const tried = [];
   if (!candidates.length) {
-    return { url: null, result: { ok: false, error: 'no_candidates' }, tried };
+    return { url: null, result: { ok: false, error: 'no_candidates' }, tried, candidates };
   }
 
   for (const url of candidates) {
@@ -642,11 +655,11 @@ async function loadVenueScrapeWithFallback(venue, scrapeCache) {
       error: result?.error || null,
       eventCount: result?.eventCount || 0,
     });
-    if (result?.ok) return { url, result, tried };
+    if (result?.ok) return { url, result, tried, candidates };
   }
 
   const last = await scrapeCache.get(candidates[0]);
-  return { url: candidates[0], result: last, tried };
+  return { url: candidates[0], result: last, tried, candidates };
 }
 
 module.exports = {

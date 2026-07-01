@@ -17,11 +17,10 @@ const {
   SCRAPE_ON_SYNC,
   BUNDLE_SYNC_SCRAPE_ENABLED,
   resolveVenueMoreProgramLink,
-  resolveVenueMoreProgramLinkForScrape,
   loadVenueScrapeWithFallback,
   lookupScrapedEventRow,
 } = require('./moreVenueProgramScrape');
-const { findBestCmsMatchByPlayTitle } = require('./morePlayTitleMatch');
+const { findBestCmsMatchByPlayTitle, mapCmsRowForPlayTitleMatch } = require('./morePlayTitleMatch');
 const {
   createVenueSyncStatsTracker,
   applyCinemaVenueUpdatedStatuses,
@@ -1502,16 +1501,85 @@ function emptySyncCounters() {
   };
 }
 
-async function loadCmsEntriesForPlayTitleMatch(strapi, uid, fields) {
+async function loadCmsEntriesForPlayTitleMatch(strapi, uid, fields, contentType) {
   const scrapeTitlePool =
     BUNDLE_SYNC_SCRAPE_ENABLED || (SCRAPE_ENABLED && SCRAPE_ON_SYNC);
   if (!scrapeTitlePool) return [];
-  return findAllEntities(strapi, uid, {
+  const rows = await findAllEntities(strapi, uid, {
     fields,
     publicationState: 'preview',
     pageSize: 100,
     maxRecords: 600,
   });
+  return rows.map((row) => mapCmsRowForPlayTitleMatch(row, contentType));
+}
+
+function mergeSupplementalIntoEventIdIndex(supplementalIndex, eventIdIndex) {
+  if (!supplementalIndex || !eventIdIndex) return;
+  for (const [eventId, mapped] of supplementalIndex) {
+    if (!eventIdIndex.has(eventId)) eventIdIndex.set(eventId, mapped);
+  }
+}
+
+/**
+ * Φάση 2 bundle χώρου (σινεμά/θέατρο): scrape more.com + retry pending eventIds.
+ * Ίδια ροή για κάθε venue με venue bundle όταν τα eventIds δεν υπάρχουν στο per-title index.
+ */
+async function runBundleVenueScrapeRetry({
+  venue,
+  pending,
+  venueStats,
+  scrapeCache,
+  supplementalIndex,
+  eventIdIndex,
+  titlePool,
+  indexMappingsFromScrape,
+  report,
+  onProgress,
+  progressNoun,
+  onEachUnmapped,
+  onEachRetry,
+}) {
+  if (!pending.length) return;
+
+  if (!BUNDLE_SYNC_SCRAPE_ENABLED || !titlePool?.length) {
+    for (const item of pending) onEachUnmapped(item);
+    return;
+  }
+
+  venueStats.scrapeDeferredCount = pending.length;
+  const { url, result: scrape, tried, candidates } = await loadVenueScrapeWithFallback(
+    venue,
+    scrapeCache,
+  );
+  venueStats.scrapeLink = url;
+  venueStats.scrapeTried = tried;
+
+  if (!candidates.length) {
+    venueStats.scrapeError = 'no_scrape_candidates';
+    for (const item of pending) onEachUnmapped(item);
+    return;
+  }
+
+  if (onProgress) {
+    onProgress(
+      `${progressNoun} «${venue.name}»: scrape για ${pending.length} μη συγχρονισμένες εγγραφές…`,
+    );
+  }
+
+  if (!scrape?.ok) {
+    venueStats.scrapeError = scrape?.error || 'scrape_failed';
+    for (const item of pending) onEachUnmapped(item);
+    return;
+  }
+
+  venueStats.scrapeEventCount = scrape.eventCount || 0;
+  indexMappingsFromScrape(scrape, supplementalIndex, titlePool, report);
+  mergeSupplementalIntoEventIdIndex(supplementalIndex, eventIdIndex);
+
+  for (const item of pending) {
+    await onEachRetry(item);
+  }
 }
 
 function trimReportDetailArrays(report) {
@@ -1651,10 +1719,7 @@ async function resolveCinemaMovieFromEventId({
     (SCRAPE_ENABLED && SCRAPE_ON_SYNC);
   if (!scrapeAllowed || !moviesForTitle?.length) return null;
 
-  const link = await resolveVenueMoreProgramLinkForScrape(venue);
-  if (!link) return null;
-
-  const scrape = await scrapeCache.get(link);
+  const { url: link, result: scrape } = await loadVenueScrapeWithFallback(venue, scrapeCache);
   const row = lookupScrapedEventRow(scrape?.byEventId, key);
   if (!row?.playTitle) {
     if (scrape && !scrape.ok && report) {
@@ -1672,10 +1737,7 @@ async function resolveCinemaMovieFromEventId({
     return null;
   }
 
-  const match = findBestCmsMatchByPlayTitle(
-    row.playTitle,
-    moviesForTitle.map((m) => ({ ...m, contentType: 'movie' })),
-  );
+  const match = findBestCmsMatchByPlayTitle(row.playTitle, moviesForTitle);
   if (!match) {
     if (report) {
       report.scrapeTitleUnmatched = (report.scrapeTitleUnmatched || 0) + 1;
@@ -1706,7 +1768,7 @@ async function resolveCinemaMovieFromEventId({
 function indexCinemaMappingsFromVenueScrape(scrape, supplementalIndex, moviesForTitle, report) {
   if (!scrape?.ok || !scrape.byEventId?.size || !moviesForTitle?.length) return 0;
 
-  const pool = moviesForTitle.map((m) => ({ ...m, contentType: 'movie' }));
+  const pool = moviesForTitle;
   let added = 0;
 
   for (const [eventId, row] of scrape.byEventId) {
@@ -1744,7 +1806,7 @@ function indexCinemaMappingsFromVenueScrape(scrape, supplementalIndex, moviesFor
 function indexTheaterMappingsFromVenueScrape(scrape, supplementalIndex, showsForTitle, report) {
   if (!scrape?.ok || !scrape.byEventId?.size || !showsForTitle?.length) return 0;
 
-  const pool = showsForTitle.map((s) => ({ ...s, contentType: 'theater_show' }));
+  const pool = showsForTitle;
   let added = 0;
 
   for (const [eventId, row] of scrape.byEventId) {
@@ -1903,59 +1965,38 @@ async function syncCinemaVenueBundleEvents(
 
   if (!pending.length) return;
 
-  if (!BUNDLE_SYNC_SCRAPE_ENABLED || !moviesForTitle?.length) {
-    for (const { inWeek } of pending) {
-      recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venue.id, inWeek);
-    }
-    return;
-  }
-
-  const link = await resolveVenueMoreProgramLinkForScrape(venue);
-  if (!link) {
-    venueStats.scrapeError = 'no_more_link';
-    for (const { inWeek } of pending) {
-      recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venue.id, inWeek);
-    }
-    return;
-  }
-
-  venueStats.scrapeDeferredCount = pending.length;
-  if (onProgress) {
-    onProgress(
-      `Σινεμά «${venue.name}»: scrape για ${pending.length} μη συγχρονισμένες προβολές…`,
-    );
-  }
-
-  const { url, result: scrape, tried } = await loadVenueScrapeWithFallback(venue, scrapeCache);
-  venueStats.scrapeLink = url;
-  venueStats.scrapeTried = tried;
-  if (!scrape?.ok) {
-    venueStats.scrapeError = scrape?.error || 'scrape_failed';
-    for (const { inWeek } of pending) {
-      recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venue.id, inWeek);
-    }
-    return;
-  }
-  venueStats.scrapeEventCount = scrape.eventCount || 0;
-  indexCinemaMappingsFromVenueScrape(scrape, supplementalIndex, moviesForTitle, report);
-
-  for (const { event, code, inWeek } of pending) {
-    const outcome = await processOneCinemaBundleEvent(strapi, {
-      event,
-      code,
-      venue,
-      allowBundleScrape: false,
-      resolveCtx,
-      showtimeExistenceIndex,
-      now,
-      venueStats,
-      report,
-      venueSyncTracker,
-    });
-    if (outcome.kind === 'unmapped') {
-      recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venue.id, inWeek);
-    }
-  }
+  await runBundleVenueScrapeRetry({
+    venue,
+    pending,
+    venueStats,
+    scrapeCache,
+    supplementalIndex,
+    eventIdIndex,
+    titlePool: moviesForTitle,
+    indexMappingsFromScrape: indexCinemaMappingsFromVenueScrape,
+    report,
+    onProgress,
+    progressNoun: 'Σινεμά',
+    onEachUnmapped: ({ inWeek }) =>
+      recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venue.id, inWeek),
+    onEachRetry: async ({ event, code, inWeek }) => {
+      const outcome = await processOneCinemaBundleEvent(strapi, {
+        event,
+        code,
+        venue,
+        allowBundleScrape: false,
+        resolveCtx,
+        showtimeExistenceIndex,
+        now,
+        venueStats,
+        report,
+        venueSyncTracker,
+      });
+      if (outcome.kind === 'unmapped') {
+        recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venue.id, inWeek);
+      }
+    },
+  });
 }
 
 function recordTheaterBundleUnmapped(report, venueStats, eventId) {
@@ -2069,51 +2110,36 @@ async function syncTheaterVenueBundleEvents(
 
   if (!pending.length) return;
 
-  if (!BUNDLE_SYNC_SCRAPE_ENABLED || !showsForTitle?.length) {
-    for (const _ of pending) recordTheaterBundleUnmapped(report, venueStats);
-    return;
-  }
-
-  const link = await resolveVenueMoreProgramLinkForScrape(venue);
-  if (!link) {
-    for (const _ of pending) recordTheaterBundleUnmapped(report, venueStats);
-    return;
-  }
-
-  venueStats.scrapeDeferredCount = pending.length;
-  if (onProgress) {
-    onProgress(
-      `Χώρος «${venue.name}»: scrape για ${pending.length} μη συγχρονισμένες παραστάσεις…`,
-    );
-  }
-
-  const { url, result: scrape, tried } = await loadVenueScrapeWithFallback(venue, scrapeCache);
-  venueStats.scrapeLink = url;
-  venueStats.scrapeTried = tried;
-  if (!scrape?.ok) {
-    venueStats.scrapeError = scrape?.error || 'scrape_failed';
-    for (const _ of pending) recordTheaterBundleUnmapped(report, venueStats);
-    return;
-  }
-  venueStats.scrapeEventCount = scrape.eventCount || 0;
-  indexTheaterMappingsFromVenueScrape(scrape, supplementalIndex, showsForTitle, report);
-
-  for (const { event, code } of pending) {
-    const outcome = await processOneTheaterBundleEvent(strapi, {
-      event,
-      code,
-      venue,
-      allowBundleScrape: false,
-      resolveCtx,
-      performanceExistenceIndex,
-      now,
-      venueStats,
-      report,
-    });
-    if (outcome.kind === 'unmapped') {
-      recordTheaterBundleUnmapped(report, venueStats);
-    }
-  }
+  await runBundleVenueScrapeRetry({
+    venue,
+    pending,
+    venueStats,
+    scrapeCache,
+    supplementalIndex,
+    eventIdIndex,
+    titlePool: showsForTitle,
+    indexMappingsFromScrape: indexTheaterMappingsFromVenueScrape,
+    report,
+    onProgress,
+    progressNoun: 'Χώρος',
+    onEachUnmapped: () => recordTheaterBundleUnmapped(report, venueStats),
+    onEachRetry: async ({ event, code }) => {
+      const outcome = await processOneTheaterBundleEvent(strapi, {
+        event,
+        code,
+        venue,
+        allowBundleScrape: false,
+        resolveCtx,
+        performanceExistenceIndex,
+        now,
+        venueStats,
+        report,
+      });
+      if (outcome.kind === 'unmapped') {
+        recordTheaterBundleUnmapped(report, venueStats);
+      }
+    },
+  });
 }
 
 async function resolveTheaterShowFromEventId({
@@ -2138,17 +2164,11 @@ async function resolveTheaterShowFromEventId({
     (SCRAPE_ENABLED && SCRAPE_ON_SYNC);
   if (!scrapeAllowed || !showsForTitle?.length) return null;
 
-  const link = await resolveVenueMoreProgramLinkForScrape(venue);
-  if (!link) return null;
-
-  const scrape = await scrapeCache.get(link);
+  const { url: link, result: scrape } = await loadVenueScrapeWithFallback(venue, scrapeCache);
   const row = lookupScrapedEventRow(scrape?.byEventId, key);
   if (!row?.playTitle) return null;
 
-  const match = findBestCmsMatchByPlayTitle(
-    row.playTitle,
-    showsForTitle.map((s) => ({ ...s, contentType: 'theater_show' })),
-  );
+  const match = findBestCmsMatchByPlayTitle(row.playTitle, showsForTitle);
   if (!match) return null;
 
   const mapped = {
@@ -2288,7 +2308,7 @@ async function syncMovieShowtimesFromMore(strapi, {
         'title',
         'slug',
         'original_title',
-      ])
+      ], 'movie')
     : [];
 
   if (!movies.length && !venuesWithBundle.length) {
@@ -2556,7 +2576,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
         'id',
         'title',
         'slug',
-      ])
+      ], 'theater_show')
     : [];
 
   const eventIdIndex = sharedEventIdIndex || new Map();

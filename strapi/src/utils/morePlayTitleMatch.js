@@ -89,9 +89,10 @@ function findBestCmsMatchByPlayTitle(playTitle, cmsItems, options = {}) {
 
   for (const item of cmsItems || []) {
     const title = item.title || item.name || '';
+    const originalTitle = item.originalTitle ?? item.original_title ?? '';
     const scores = [
       scorePlayTitleMatch(title, playTitle),
-      item.originalTitle ? scorePlayTitleMatch(item.originalTitle, playTitle) : 0,
+      originalTitle ? scorePlayTitleMatch(originalTitle, playTitle) : 0,
       item.slug ? scorePlayTitleMatch(item.slug.replace(/-/g, ' '), playTitle) : 0,
     ];
     const score = Math.max(...scores);
@@ -109,10 +110,22 @@ function findBestCmsMatchByPlayTitle(playTitle, cmsItems, options = {}) {
   return best;
 }
 
+/** Κανονικοποίηση εγγραφής CMS (Strapi snake_case) για title matching από scrape. */
+function mapCmsRowForPlayTitleMatch(row, contentType = 'movie') {
+  return {
+    id: row?.id,
+    title: row?.title ?? row?.name ?? '',
+    slug: row?.slug ?? '',
+    originalTitle: row?.originalTitle ?? row?.original_title ?? '',
+    contentType,
+  };
+}
+
 module.exports = {
   MIN_PLAY_TITLE_MATCH,
   normalizeText,
   compactText,
   scorePlayTitleMatch,
   findBestCmsMatchByPlayTitle,
+  mapCmsRowForPlayTitleMatch,
 };
