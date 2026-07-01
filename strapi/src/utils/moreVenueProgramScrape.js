@@ -1,9 +1,14 @@
 'use strict';
 
+const { execFile } = require('child_process');
+const { promisify } = require('util');
+const execFileAsync = promisify(execFile);
+
 const { fetchMore, formatMoreNetworkError } = require('./moreHttp');
 
 const MORE_CINEMA_WARMUP = 'https://www.more.com/gr-el/tickets/cinema/';
-const USER_AGENT = 'Mozilla/5.0 (compatible; whatson-more-venue-scrape/1.0)';
+const USER_AGENT =
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 const FETCH_TIMEOUT_MS = Number(process.env.MORE_VENUE_SCRAPE_TIMEOUT_MS || 22_000);
 /** HTML scrape more.com — default off (από server/VPS συχνά timeout· JSON getevents δουλεύει). */
 const SCRAPE_ENABLED = process.env.MORE_VENUE_PROGRAM_SCRAPE === 'true';
@@ -186,9 +191,52 @@ function mapScrapePayload(payload) {
   };
 }
 
-async function scrapeMoreVenueProgramPage(url, cookie = '') {
-  if (SCRAPE_DELAY_MS > 0) await sleep(SCRAPE_DELAY_MS);
-  const page = await fetchText(url, cookie);
+async function fetchTextViaCurl(url, cookie = '', timeoutMs = FETCH_TIMEOUT_MS) {
+  const args = [
+    '-sS',
+    '--http1.1',
+    '--max-time',
+    String(Math.max(8, Math.ceil(timeoutMs / 1000))),
+    '-H',
+    `User-Agent: ${USER_AGENT}`,
+    '-H',
+    'Accept: text/html,application/xhtml+xml',
+  ];
+  if (cookie) args.push('-H', `Cookie: ${cookie}`);
+  args.push(url);
+  const { stdout } = await execFileAsync('curl', args, {
+    maxBuffer: 14 * 1024 * 1024,
+    encoding: 'utf8',
+  });
+  if (!stdout || stdout.length < 400) {
+    throw new Error('curl_empty_response');
+  }
+  return { text: stdout, cookie };
+}
+
+async function fetchVenueProgramHtml(url, cookie = '', timeoutMs = FETCH_TIMEOUT_MS, { curlFallback = false } = {}) {
+  if (curlFallback) {
+    try {
+      return await fetchTextViaCurl(url, cookie, timeoutMs);
+    } catch {
+      /* δοκίμασε fetch */
+    }
+  }
+  try {
+    return await fetchText(url, cookie, timeoutMs);
+  } catch (primaryErr) {
+    if (!curlFallback) throw primaryErr;
+    return await fetchTextViaCurl(url, cookie, timeoutMs);
+  }
+}
+
+async function scrapeMoreVenueProgramPage(
+  url,
+  cookie = '',
+  { skipDelay = false, curlFallback = false } = {},
+) {
+  if (!skipDelay && SCRAPE_DELAY_MS > 0) await sleep(SCRAPE_DELAY_MS);
+  const page = await fetchVenueProgramHtml(url, cookie, FETCH_TIMEOUT_MS, { curlFallback });
   const payload = parseBookingPanelPayload(page.text);
   if (!payload) {
     return { ok: false, error: 'no_booking_panel', moreLink: url };
@@ -215,7 +263,19 @@ async function scrapeMoreVenueProgram(moreLink, options = {}) {
   if (!url) return { ok: false, error: 'empty_url' };
 
   try {
-    const warmup = await fetchText(MORE_CINEMA_WARMUP);
+    if (force) {
+      const direct = await scrapeMoreVenueProgramPage(url, '', {
+        skipDelay: true,
+        curlFallback: true,
+      });
+      if (direct.ok) return direct;
+      return {
+        ok: false,
+        error: direct.error || 'bundle_scrape_failed',
+        moreLink: url,
+      };
+    }
+    const warmup = await fetchVenueProgramHtml(MORE_CINEMA_WARMUP, '', FETCH_TIMEOUT_MS);
     return await scrapeMoreVenueProgramPage(url, warmup.cookie);
   } catch (e) {
     return {
@@ -397,6 +457,17 @@ function findCmsVenueForBundleCode(eventGroupCode, cmsVenues) {
   return null;
 }
 
+function lookupScrapedEventRow(byEventId, eventId) {
+  if (!byEventId) return null;
+  const key = String(eventId ?? '').trim();
+  if (!key) return null;
+  const direct = byEventId.get(key);
+  if (direct) return direct;
+  const num = Number(key);
+  if (Number.isFinite(num)) return byEventId.get(String(num)) ?? null;
+  return null;
+}
+
 function resolveVenueMoreProgramLink(venue) {
   const direct = String(venue?.more_link ?? venue?.moreLink ?? '').trim();
   if (direct) return direct;
@@ -411,6 +482,7 @@ module.exports = {
   BUNDLE_SYNC_SCRAPE_ENABLED,
   scrapeMoreVenueProgram,
   resolveVenueMoreProgramLink,
+  lookupScrapedEventRow,
   probeVenueProgramScrape,
   createVenueScrapeCache,
   findCmsVenueForBundleCode,

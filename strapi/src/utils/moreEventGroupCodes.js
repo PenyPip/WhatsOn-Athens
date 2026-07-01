@@ -198,6 +198,27 @@ function moreVenueIdLookupKeys(raw) {
   return [...keys];
 }
 
+function collectVenueSupplementalMovieCodes(venue, existingBundleCodes = []) {
+  const seen = new Set(existingBundleCodes);
+  const codes = [];
+  const add = (raw) => {
+    const code = String(raw || '').trim();
+    if (!code || !/^evg_/i.test(code) || seen.has(code) || isVenueBundleCode(code)) return;
+    seen.add(code);
+    codes.push(code);
+  };
+  for (const g of venue?.more_event_groups ?? venue?.moreEventGroups ?? []) {
+    add(g?.code ?? g?.attributes?.code);
+  }
+  return codes;
+}
+
+/** Bundle χώρου + πρόσθετοι κωδικοί ταινιών (more_event_groups) για sync προβολών. */
+function collectVenueAllSyncCodes(venue) {
+  const bundle = collectVenueBundleCodes(venue);
+  return [...bundle, ...collectVenueSupplementalMovieCodes(venue, bundle)];
+}
+
 module.exports = {
   normalizeMoreVenueId,
   moreVenueIdLookupKeys,
@@ -209,6 +230,8 @@ module.exports = {
   collectEventGroupCodes,
   resolveEventGroupCodesFromEntry,
   collectVenueBundleCodes,
+  collectVenueSupplementalMovieCodes,
+  collectVenueAllSyncCodes,
   collectTheaterVenueBundleCodes,
   collectVenueEventGroupCodes,
   resolveVenueEventGroupCodesFromEntry,
