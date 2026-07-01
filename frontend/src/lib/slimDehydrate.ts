@@ -208,6 +208,28 @@ function slimHomepageBootstrap(qc: QueryClient): void {
   });
 }
 
+/** Bootstrap αρχικής: κράτα σύνοψη μόνο για την πρώτη πολυσυζητημένη (LCP hero). */
+export function trimMovieSynopsesForHomeBootstrap(qc: QueryClient): void {
+  const movies = qc.getQueryData<StrapiMovie[]>(["movies"]);
+  if (!movies?.length) return;
+  let keptSynopsis = false;
+  qc.setQueryData(
+    ["movies"],
+    movies.map((m) => {
+      if (!m.mostTalkedAbout) {
+        const { synopsis: _s, director: _d, ...rest } = m;
+        return rest as StrapiMovie;
+      }
+      if (!keptSynopsis) {
+        keptSynopsis = true;
+        return m;
+      }
+      const { synopsis: _s, director: _d, ...rest } = m;
+      return rest as StrapiMovie;
+    }),
+  );
+}
+
 /** Λιγότερες εγγραφές showtimes στο bootstrap αρχικής (ταχύτερο JSON.parse). */
 export function trimHomeShowtimesDehydrate(qc: QueryClient): void {
   const showtimes =
@@ -318,7 +340,10 @@ export function finalizeBootstrapCache(
   slimListQueryCache(qc);
   if (options?.slimHomepage) slimHomepageBootstrap(qc);
   if (options?.trimHomeShowtimes) trimHomeShowtimesDehydrate(qc);
-  if (options?.trimHomeMovies) trimMoviesForHomeBootstrap(qc);
+  if (options?.trimHomeMovies) {
+    trimMoviesForHomeBootstrap(qc);
+    trimMovieSynopsesForHomeBootstrap(qc);
+  }
   if (options?.trimVenuesForShowtimes) trimVenuesForShowtimes(qc);
   if (options?.movieSlug) {
     trimShowtimesForMovieSlug(qc, options.movieSlug);

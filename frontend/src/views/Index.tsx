@@ -5,6 +5,7 @@ import HomeSeoIntro from "@/components/HomeSeoIntro";
 import MarkLcpDone from "@/components/MarkLcpDone";
 import { layoutShowsHero } from "@/config/home";
 import { SITE_INSTAGRAM_URL } from "@/config/siteLinks";
+import { useClientMounted } from "@/hooks/useClientMounted";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -15,19 +16,17 @@ import type { ResolvedHomepageLayout } from "@/config/home";
 const HomeBody = lazy(() => import(/* webpackChunkName: "home-body" */ "@/views/HomeBody"));
 
 function HomeBodyMountGate({
-  hasHero,
   ready,
   layout,
 }: {
-  hasHero: boolean;
   ready: boolean;
   layout: ResolvedHomepageLayout;
 }) {
   if (!ready) {
-    return hasHero ? <HomePageBodyShell /> : null;
+    return <HomePageBodyShell layout={layout} />;
   }
   return (
-    <Suspense fallback={hasHero ? <HomePageBodyShell /> : null}>
+    <Suspense fallback={<HomePageBodyShell layout={layout} />}>
       <HomeBody layout={layout} />
     </Suspense>
   );
@@ -39,17 +38,22 @@ const Index = () => {
   const layout = useHomeLayout();
   const hasHero = layoutShowsHero(layout);
   const homeBodyReady = layout.sections.length > 0;
+  const clientMounted = useClientMounted();
   const isMobile = useIsMobile();
   const deferLcp = useDeferUntilLcpDone();
-  /** Mobile: μην φορτώνεις το βαρύ HomeBody chunk πριν το static LCP handoff — μικρότερο TBT. */
-  const mountHomeBody = homeBodyReady && (!isMobile || deferLcp);
+  /**
+   * Χωρίς SSR HomeBody — αποφεύγει React streaming swap (CLS ~1).
+   * Mobile: μετά static LCP handoff. Desktop: αμέσως μετά hydrate.
+   */
+  const mountHomeBody =
+    homeBodyReady && clientMounted && (!isMobile || deferLcp);
 
   return (
     <div className="min-h-screen md:pb-0">
       {!hasHero ? <MarkLcpDone /> : <HomeStaticLcpHandoff />}
 
       {homeBodyReady ? (
-        <HomeBodyMountGate hasHero={hasHero} ready={mountHomeBody} layout={layout} />
+        <HomeBodyMountGate ready={mountHomeBody} layout={layout} />
       ) : null}
       <div>
         <HomeSeoIntro />

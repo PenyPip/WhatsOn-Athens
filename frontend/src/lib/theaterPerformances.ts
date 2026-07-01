@@ -34,6 +34,26 @@ export type TheaterPerformanceVenueGroup = {
   venue?: StrapiVenue;
 };
 
+function earliestPerformanceMs(slots: StrapiTheaterPerformance[]): number {
+  let min = Number.POSITIVE_INFINITY;
+  for (const p of slots) {
+    const t = new Date(p.datetime).getTime();
+    if (!Number.isNaN(t)) min = Math.min(min, t);
+  }
+  return min;
+}
+
+/** Ταξινόμηση χώρων: πρώτα αυτός με την πλησιέστερη επερχόμενη ημερομηνία παράστασης. */
+function compareVenueGroupsByPerformanceDate(
+  a: TheaterPerformanceVenueGroup,
+  b: TheaterPerformanceVenueGroup,
+): number {
+  const ta = earliestPerformanceMs(a.slots);
+  const tb = earliestPerformanceMs(b.slots);
+  if (ta !== tb) return ta - tb;
+  return a.venueName.localeCompare(b.venueName, "el");
+}
+
 export function groupTheaterPerformancesByVenue(
   list: StrapiTheaterPerformance[],
   venues: StrapiVenue[] = [],
@@ -53,7 +73,7 @@ export function groupTheaterPerformancesByVenue(
       const venueName = linked?.name?.trim() || sorted[0].venue?.trim() || "Χώρος";
       return { key, venueName, slots: sorted, venue: linked };
     })
-    .sort((a, b) => a.venueName.localeCompare(b.venueName, "el"));
+    .sort(compareVenueGroupsByPerformanceDate);
 }
 
 const WEEKDAY_SHORT = ["Κυρ", "Δευ", "Τρί", "Τετ", "Πέμ", "Παρ", "Σάβ"];

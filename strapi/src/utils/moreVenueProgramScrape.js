@@ -214,7 +214,19 @@ async function fetchTextViaCurl(url, cookie = '', timeoutMs = FETCH_TIMEOUT_MS) 
   return { text: stdout, cookie };
 }
 
-async function fetchVenueProgramHtml(url, cookie = '', timeoutMs = FETCH_TIMEOUT_MS, { curlFallback = false } = {}) {
+async function fetchVenueProgramHtml(
+  url,
+  cookie = '',
+  timeoutMs = FETCH_TIMEOUT_MS,
+  { curlFallback = false, fetchFirst = false } = {},
+) {
+  if (fetchFirst && curlFallback) {
+    try {
+      return await fetchText(url, cookie, timeoutMs);
+    } catch {
+      return await fetchTextViaCurl(url, cookie, timeoutMs);
+    }
+  }
   if (curlFallback) {
     try {
       return await fetchTextViaCurl(url, cookie, timeoutMs);
@@ -233,10 +245,13 @@ async function fetchVenueProgramHtml(url, cookie = '', timeoutMs = FETCH_TIMEOUT
 async function scrapeMoreVenueProgramPage(
   url,
   cookie = '',
-  { skipDelay = false, curlFallback = false } = {},
+  { skipDelay = false, curlFallback = false, fetchFirst = false } = {},
 ) {
   if (!skipDelay && SCRAPE_DELAY_MS > 0) await sleep(SCRAPE_DELAY_MS);
-  const page = await fetchVenueProgramHtml(url, cookie, FETCH_TIMEOUT_MS, { curlFallback });
+  const page = await fetchVenueProgramHtml(url, cookie, FETCH_TIMEOUT_MS, {
+    curlFallback,
+    fetchFirst,
+  });
   const payload = parseBookingPanelPayload(page.text);
   if (!payload) {
     return { ok: false, error: 'no_booking_panel', moreLink: url };
@@ -267,6 +282,7 @@ async function scrapeMoreVenueProgram(moreLink, options = {}) {
       const direct = await scrapeMoreVenueProgramPage(url, '', {
         skipDelay: true,
         curlFallback: true,
+        fetchFirst: true,
       });
       if (direct.ok) return direct;
       return {

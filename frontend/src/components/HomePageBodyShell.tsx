@@ -1,12 +1,24 @@
+import type { ResolvedHomepageLayout } from "@/config/home";
+import { layoutShowsHero } from "@/config/home";
+import HomeSectionsPlaceholder from "@/components/HomeSectionsPlaceholder";
 import { HomeHeroLayoutReserve } from "@/components/MostTalkedAboutHero";
 
-/** Ελαφρύ placeholder όσο το lazy HomeBody δεν έχει mount (mobile LCP path). */
-export default function HomePageBodyShell() {
+/** Ελαφρύ placeholder — ίδιο ύψος με HomeBody ώστε χωρίς CLS στο handoff / lazy mount. */
+export default function HomePageBodyShell({ layout }: { layout?: ResolvedHomepageLayout }) {
+  const sections = (layout?.sections ?? []).filter((id) => id !== "hero");
+  const hasHero = layout ? layoutShowsHero(layout) : true;
+
   return (
     <>
-      <HomeHeroLayoutReserve />
-      <div className="section-black border-y border-white/[0.07] py-3 min-h-[3.25rem]" aria-hidden />
-      <div className="min-h-[20rem] md:min-h-[22rem]" aria-hidden />
+      {hasHero ? <HomeHeroLayoutReserve /> : null}
+      {sections.length ? (
+        <HomeSectionsPlaceholder sections={sections} />
+      ) : (
+        <>
+          <div className="section-black border-y border-white/[0.07] py-3 min-h-[3.25rem]" aria-hidden />
+          <div className="min-h-[20rem] md:min-h-[22rem]" aria-hidden />
+        </>
+      )}
     </>
   );
 }

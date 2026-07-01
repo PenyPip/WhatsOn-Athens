@@ -4,8 +4,10 @@ const { fetchMoreEventsByGroupCode } = require('./moreApi');
 const {
   collectEventGroupCodes,
   collectVenueBundleCodes,
+  collectVenueSupplementalMovieCodes,
   collectVenueAllSyncCodes,
   collectTheaterVenueBundleCodes,
+  isVenueBundleCode,
   normalizeMoreVenueId,
   moreVenueIdLookupKeys,
 } = require('./moreEventGroupCodes');
@@ -1521,6 +1523,81 @@ function trimReportDetailArrays(report) {
   return report;
 }
 
+function eventMatchesVenue(event, expectedVenueId) {
+  const expected = String(expectedVenueId ?? '').trim();
+  if (!expected) return true;
+  const moreVenueId = String(event?.venueId ?? '').trim();
+  return !moreVenueId || moreVenueId === expected;
+}
+
+/**
+ * Άγνωστο bundle eventId → ταύτιση μέσω κωδικών ταινιών CMS (getevents, χωρίς scrape).
+ * Π.χ. Πάρτυ Γενεθλίων @ Άρτεμις αν η ταινία έχει evg_thebirthdayparty_1055_38.
+ */
+async function resolveEventIdViaMovieCodes({
+  eventId,
+  venue,
+  movieCodeEntries,
+  eventsCache,
+  supplementalIndex,
+  report,
+  extraCodes = [],
+}) {
+  const key = String(eventId ?? '').trim();
+  if (!key || !eventsCache || !movieCodeEntries?.length) return null;
+
+  const expectedVenue = venue?.venue_id;
+  const pairs = [];
+  const seenCodes = new Set();
+
+  const addPair = (code, movieId, movieTitle) => {
+    const c = String(code || '').trim();
+    if (!c || isVenueBundleCode(c) || seenCodes.has(c)) return;
+    seenCodes.add(c);
+    pairs.push({ code: c, movieId, movieTitle });
+  };
+
+  for (const code of extraCodes) {
+    for (const entry of movieCodeEntries) {
+      if ((entry.codes || []).includes(code)) {
+        addPair(code, entry.id, entry.title);
+      }
+    }
+  }
+
+  for (const entry of movieCodeEntries) {
+    for (const code of entry.codes || []) {
+      addPair(code, entry.id, entry.title);
+    }
+  }
+
+  for (const { code, movieId, movieTitle } of pairs) {
+    let events = [];
+    try {
+      events = await eventsCache.get(code);
+    } catch {
+      events = [];
+    }
+    const hit = events.find(
+      (e) => String(e.eventId ?? '').trim() === key && eventMatchesVenue(e, expectedVenue),
+    );
+    if (!hit) continue;
+
+    const mapped = {
+      movieId,
+      movieTitle,
+      viaMovieCode: code,
+    };
+    supplementalIndex.set(key, mapped);
+    if (report) {
+      report.resolvedViaMovieCode = (report.resolvedViaMovieCode || 0) + 1;
+    }
+    return mapped;
+  }
+
+  return null;
+}
+
 async function resolveCinemaMovieFromEventId({
   eventId,
   eventIdIndex,
@@ -1528,14 +1605,32 @@ async function resolveCinemaMovieFromEventId({
   scrapeCache,
   venue,
   moviesForTitle,
+  movieCodeEntries,
+  eventsCache,
   report,
   allowBundleScrape = false,
 }) {
-  const primary = eventIdIndex.get(eventId);
+  const key = String(eventId ?? '').trim();
+  const primary = eventIdIndex.get(key);
   if (primary) return primary;
 
-  const cached = supplementalIndex.get(eventId);
+  const cached = supplementalIndex.get(key);
   if (cached) return cached;
+
+  const venueMovieCodes = collectVenueSupplementalMovieCodes(
+    venue,
+    venue?.bundleCodes || collectVenueBundleCodes(venue),
+  );
+  const viaCode = await resolveEventIdViaMovieCodes({
+    eventId: key,
+    venue,
+    movieCodeEntries,
+    eventsCache,
+    supplementalIndex,
+    report,
+    extraCodes: venueMovieCodes,
+  });
+  if (viaCode) return viaCode;
 
   const link = resolveVenueMoreProgramLink(venue);
   const scrapeAllowed =
@@ -1645,6 +1740,7 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
   tracker,
   eventsCache,
   eventIdIndex,
+  movieCodeEntries = [],
   showtimeExistenceIndex,
   now,
   report = null,
@@ -1695,6 +1791,8 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
           scrapeCache,
           venue,
           moviesForTitle,
+          movieCodeEntries,
+          eventsCache,
           report: report || { resolvedViaVenueScrape: 0 },
           allowBundleScrape: true,
         });
@@ -1749,6 +1847,7 @@ async function syncMovieShowtimesFromMore(strapi, {
   totalMoviesCount = null,
   totalVenuesCount = null,
   showtimeExistenceIndex = null,
+  movieCodeEntries = [],
 }) {
   const report = {
     ...emptySyncCounters(),
@@ -1981,6 +2080,8 @@ async function syncMovieShowtimesFromMore(strapi, {
             scrapeCache,
             venue,
             moviesForTitle,
+            movieCodeEntries,
+            eventsCache,
             report,
             allowBundleScrape: true,
           });
@@ -2498,6 +2599,13 @@ async function syncShowtimesFromMore(strapi, options = {}) {
         collectCodesFromVenueBundles(cinemaVenuesWithBundle),
         progress,
       );
+      if (moviesWithCodes.length) {
+        const movieCodes = [];
+        for (const entry of moviesWithCodes) {
+          movieCodes.push(...(entry.codes || []));
+        }
+        await prefetchEventCodes(cinemaEventsCache, movieCodes, progress);
+      }
       if (totalWithCodes > 0) {
         await expandCinemaEventIdIndexFromMovieCodes(
           cinemaEventIdIndex,
@@ -2518,6 +2626,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
         sharedVenueSyncTracker: cinemaVenueSyncTracker,
         deferVenueUpdatedApply: true,
         eventIdIndex: cinemaEventIdIndex,
+        movieCodeEntries: moviesWithCodes,
         totalVenuesCount: cinemaVenuesWithBundle.length,
         showtimeExistenceIndex,
       });
@@ -2533,6 +2642,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
           tracker: cinemaVenueSyncTracker,
           eventsCache: cinemaEventsCache,
           eventIdIndex: cinemaEventIdIndex,
+          movieCodeEntries: moviesWithCodes,
           showtimeExistenceIndex,
           now,
           report: movieReport,
