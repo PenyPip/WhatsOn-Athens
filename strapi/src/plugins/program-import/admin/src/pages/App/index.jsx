@@ -36,6 +36,107 @@ const EXAMPLE_TEXT = `Πρόγραμμα κιν/φου ΔΙΑΝΑ Πέμπτη 2
 
 const MAX_IMAGES_DEFAULT = 4;
 
+function detectSummerInText(text) {
+  const hay = String(text || '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase();
+  if (!hay.trim()) return false;
+  return /θεριν[οόςη]|therino|\bsummer\b/i.test(hay);
+}
+
+function CinemaVenueSearchSelect({ cinemas, value, onChange, disabled, loading }) {
+  const [filter, setFilter] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const selected = useMemo(
+    () => cinemas.find((c) => String(c.id) === String(value)),
+    [cinemas, value],
+  );
+
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLocaleLowerCase('el');
+    return cinemas
+      .filter((c) => {
+        if (!q) return true;
+        return String(c.name || '')
+          .toLocaleLowerCase('el')
+          .includes(q);
+      })
+      .slice(0, 80);
+  }, [cinemas, filter]);
+
+  const pickVenue = (id) => {
+    onChange(String(id));
+    setOpen(false);
+    setFilter('');
+  };
+
+  return (
+    <Flex direction="column" alignItems="stretch" gap={2} className="program-import-venue-picker">
+      {selected ? (
+        <Flex gap={2} alignItems="center" wrap="wrap">
+          <Typography variant="pi" textColor="primary600">
+            {selected.name}
+            {selected.summerOutdoor ? ' · Θερινό' : ''}
+          </Typography>
+          <Button size="S" variant="tertiary" disabled={disabled} onClick={() => onChange('')}>
+            Αλλαγή
+          </Button>
+        </Flex>
+      ) : (
+        <Typography variant="pi" textColor="neutral500">
+          Αναζήτησε και επίλεξε σινεμά
+        </Typography>
+      )}
+      <input
+        id="venue-select"
+        type="search"
+        className="program-import-venue-search-input"
+        placeholder={loading ? 'Φόρτωση…' : 'Αναζήτηση σινεμά…'}
+        value={filter}
+        disabled={disabled || loading}
+        autoComplete="off"
+        onChange={(e) => {
+          setFilter(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+      />
+      {open && !loading ? (
+        filtered.length > 0 ? (
+          <div className="program-import-venue-picker-list" role="listbox">
+            {filtered.map((v) => {
+              const isSelected = String(value) === String(v.id);
+              return (
+                <button
+                  key={v.id}
+                  type="button"
+                  className={[
+                    'program-import-venue-picker-option',
+                    isSelected ? 'program-import-venue-picker-option--selected' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  disabled={disabled}
+                  onClick={() => pickVenue(v.id)}
+                >
+                  {v.name}
+                  {v.summerOutdoor ? ' (θερινό)' : ''}
+                </button>
+              );
+            })}
+          </div>
+        ) : (
+          <Typography variant="pi" textColor="neutral500">
+            Δεν βρέθηκε σινεμά
+          </Typography>
+        )
+      ) : null}
+    </Flex>
+  );
+}
+
 function parseSourceLabel(source) {
   if (source === 'ai_vision') return 'AI (εικόνα)';
   if (source === 'ai_ocr') return 'AI (OCR εικόνας)';
@@ -72,6 +173,8 @@ export default function App() {
   const [cinemas, setCinemas] = useState([]);
   const [aiStatus, setAiStatus] = useState(null);
   const [venueId, setVenueId] = useState('');
+  const [markSummer, setMarkSummer] = useState(false);
+  const [summerTouched, setSummerTouched] = useState(false);
   const [inputMode, setInputMode] = useState('text');
   const [text, setText] = useState('');
   const [images, setImages] = useState([]);
@@ -84,6 +187,33 @@ export default function App() {
   const [creating, setCreating] = useState(false);
 
   const maxImages = aiStatus?.maxImages || MAX_IMAGES_DEFAULT;
+
+  const selectedVenue = useMemo(
+    () => cinemas.find((c) => String(c.id) === String(venueId)),
+    [cinemas, venueId],
+  );
+
+  const textSuggestsSummer = useMemo(() => detectSummerInText(text), [text]);
+
+  const summerLocked = selectedVenue?.summerOutdoor === true;
+
+  useEffect(() => {
+    if (!venueId) return;
+    setSummerTouched(false);
+    setMarkSummer(selectedVenue?.summerOutdoor === true);
+  }, [venueId, selectedVenue?.summerOutdoor]);
+
+  useEffect(() => {
+    if (summerTouched || summerLocked) return;
+    if (textSuggestsSummer) setMarkSummer(true);
+  }, [textSuggestsSummer, summerTouched, summerLocked]);
+
+  useEffect(() => {
+    if (!preview?.summerScreening || summerTouched || summerLocked) return;
+    if (preview.summerScreening.hasPerShowtimeFlags || preview.summerScreening.detectedInText) {
+      setMarkSummer(true);
+    }
+  }, [preview, summerTouched, summerLocked]);
 
   useEffect(() => {
     let cancelled = false;
@@ -173,9 +303,10 @@ export default function App() {
         canApprove,
         approved: canApprove ? approved : false,
         status: !movieId ? 'unmatched' : row.exists ? 'exists' : manualId ? 'manual' : 'new',
+        summer_screening: row.summer_screening === true || markSummer === true,
       };
     });
-  }, [approvedById, cmsMovieById, manualMovieByTitle, movieIdForTitle, preview]);
+  }, [approvedById, cmsMovieById, manualMovieByTitle, markSummer, movieIdForTitle, preview]);
 
   const approvedCount = useMemo(
     () => enrichedProposals.filter((p) => p.approved).length,
@@ -208,6 +339,7 @@ export default function App() {
       } else {
         payload.text = textValue;
       }
+      payload.summerScreening = markSummer === true;
       const res = await post('/api/program-import/preview', payload);
       const data = res?.data;
       if (!data?.ok) throw new Error(data?.error || 'Αποτυχία ανάλυσης');
@@ -220,7 +352,7 @@ export default function App() {
       setSkippedMovieTitles({});
       return data;
     },
-    [post],
+    [markSummer, post],
   );
 
   const handleParse = useCallback(async () => {
@@ -421,20 +553,45 @@ export default function App() {
               <Typography variant="pi" fontWeight="bold" as="label" htmlFor="venue-select">
                 Κινηματογράφος
               </Typography>
-              <SingleSelect
-                id="venue-select"
-                placeholder={loadingCinemas ? 'Φόρτωση…' : 'Επίλεξε σινεμά'}
+              <CinemaVenueSearchSelect
+                cinemas={cinemas}
                 value={venueId}
                 onChange={setVenueId}
                 disabled={loadingCinemas}
-              >
-                {cinemas.map((v) => (
-                  <SingleSelectOption key={v.id} value={String(v.id)}>
-                    {v.name}
-                  </SingleSelectOption>
-                ))}
-              </SingleSelect>
+                loading={loadingCinemas}
+              />
             </GridItem>
+            {venueId ? (
+              <GridItem col={12}>
+                {summerLocked ? (
+                  <Alert variant="default" title="Θερινό σινεμά" closeLabel="Κλείσιμο">
+                    Ο χώρος «{selectedVenue?.name}» σημειώνεται στο CMS ως θερινό — όλες οι προβολές
+                    θα εισαχθούν ως θερινές.
+                  </Alert>
+                ) : (
+                  <Flex direction="column" gap={1}>
+                    <Flex gap={2} alignItems="center">
+                      <Checkbox
+                        aria-label="Θερινές προβολές"
+                        checked={markSummer}
+                        onChange={(e) => {
+                          setSummerTouched(true);
+                          setMarkSummer(e.target.checked);
+                        }}
+                      />
+                      <Typography variant="pi" fontWeight="semiBold">
+                        Θερινές προβολές
+                      </Typography>
+                    </Flex>
+                    <Typography variant="pi" textColor="neutral600">
+                      {textSuggestsSummer
+                        ? 'Ανιχνεύθηκε «θερινό» στο κείμενο — επιβεβαιώστε αν όλες οι προβολές είναι θερινές.'
+                        : 'Ενεργοποιήστε αν πρόκειται για θερινό / open-air πρόγραμμα.'}
+                    </Typography>
+                  </Flex>
+                )}
+              </GridItem>
+            ) : null}
             <GridItem col={12}>
               <div className="program-import-mode-tabs">
                 <Button
@@ -548,6 +705,7 @@ export default function App() {
                   {preview.imageCount > 0 ? (
                     <Badge>{preview.imageCount} εικόν{preview.imageCount === 1 ? 'α' : 'ες'}</Badge>
                   ) : null}
+                  {preview.summerScreening?.applied ? <Badge>Θερινές</Badge> : null}
                   <Badge>{approvedCount} επιλεγμένες</Badge>
                 </Flex>
               </Flex>

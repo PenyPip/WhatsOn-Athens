@@ -24,6 +24,7 @@ module.exports = {
       images: body.images,
       venueId: body.venueId,
       refYear: body.refYear != null ? Number(body.refYear) : undefined,
+      summerScreening: body.summerScreening === true,
     });
     if (!result.ok) {
       ctx.status = 400;

@@ -56,7 +56,50 @@ async function findAllCinemas(strapi) {
     if (list.length < pageSize) break;
     page += 1;
   }
-  return rows;
+  return rows.map((row) => ({
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    summerOutdoor: row.summer_outdoor === true,
+  }));
+}
+
+function detectProgramSummerOutdoor(text) {
+  const hay = String(text || '')
+    .normalize('NFD')
+    .replace(/\p{M}/gu, '')
+    .toLowerCase();
+  if (!hay.trim()) return false;
+  return /θεριν[οόςη]|therino|\bsummer\b/i.test(hay);
+}
+
+function resolveSummerScreeningForShowtime(st, { summerScreeningDefault }) {
+  if (st.summer_screening === true) return true;
+  return summerScreeningDefault === true;
+}
+
+function buildSummerScreeningMeta({ venue, text, summerScreening, parsedMovies }) {
+  const venueOutdoor = venue.summer_outdoor === true;
+  const detectedInText = detectProgramSummerOutdoor(text);
+  const hasPerShowtimeFlags = (parsedMovies || []).some((movie) =>
+    (movie.showtimes || []).some((st) => st.summer_screening === true),
+  );
+  const userChoice = summerScreening === true;
+  let source = 'none';
+  if (userChoice) source = 'user';
+  else if (venueOutdoor) source = 'venue';
+  else if (detectedInText || hasPerShowtimeFlags) source = 'text';
+
+  const applied = userChoice || venueOutdoor || detectedInText || hasPerShowtimeFlags;
+
+  return {
+    applied,
+    source,
+    userChoice,
+    venueOutdoor,
+    detectedInText,
+    hasPerShowtimeFlags,
+  };
 }
 
 async function loadVenue(strapi, venueId) {
@@ -117,9 +160,14 @@ function getProgramImportStatus() {
   };
 }
 
-async function buildPreviewFromParsed(strapi, { venue, parsed, inputKind = 'text' }) {
+async function buildPreviewFromParsed(
+  strapi,
+  { venue, parsed, inputKind = 'text', programText = '', summerScreening = false } = {},
+) {
   const cmsMovies = await findAllMovies(strapi);
   const now = new Date();
+  const summerScreeningDefault =
+    summerScreening === true || venue.summer_outdoor === true;
 
   const movies = [];
   const proposals = [];
@@ -159,7 +207,7 @@ async function buildPreviewFromParsed(strapi, { venue, parsed, inputKind = 'text
         timeLabel,
         dayLabel: st.dayLabel,
         note: st.note,
-        summer_screening: st.summer_screening === true,
+        summer_screening: resolveSummerScreeningForShowtime(st, { summerScreeningDefault }),
         exists,
         approved: !exists && Boolean(match?.cmsId),
         status: exists ? 'exists' : match?.cmsId ? 'new' : 'unmatched',
@@ -170,7 +218,7 @@ async function buildPreviewFromParsed(strapi, { venue, parsed, inputKind = 'text
         timeLabel: st.timeLabel,
         datetime: st.datetime.toISOString(),
         note: st.note,
-        summer_screening: st.summer_screening === true,
+        summer_screening: resolveSummerScreeningForShowtime(st, { summerScreeningDefault }),
         exists,
       });
       proposals.push(row);
@@ -189,9 +237,22 @@ async function buildPreviewFromParsed(strapi, { venue, parsed, inputKind = 'text
   const unmatchedMovies = movies.length - matchedMovies;
   const approvableCount = proposals.filter((p) => p.approved).length;
 
+  const summerMeta = buildSummerScreeningMeta({
+    venue,
+    text: programText,
+    summerScreening: summerScreening === true,
+    parsedMovies: parsed.movies,
+  });
+
   return {
     ok: true,
-    venue: { id: venue.id, name: venue.name, slug: venue.slug },
+    venue: {
+      id: venue.id,
+      name: venue.name,
+      slug: venue.slug,
+      summerOutdoor: venue.summer_outdoor === true,
+    },
+    summerScreening: summerMeta,
     inputKind,
     header: parsed.header,
     parseSource: parsed.parseSource || 'regex',
@@ -224,7 +285,10 @@ async function buildPreviewFromParsed(strapi, { venue, parsed, inputKind = 'text
   };
 }
 
-async function previewProgramTextImport(strapi, { text, images, venueId, refYear } = {}) {
+async function previewProgramTextImport(
+  strapi,
+  { text, images, venueId, refYear, summerScreening } = {},
+) {
   const venue = await loadVenue(strapi, venueId);
   if (!venue) {
     return { ok: false, error: 'Άκυρος ή ελλιπής κινηματογράφος (venueId).' };
@@ -269,7 +333,13 @@ async function previewProgramTextImport(strapi, { text, images, venueId, refYear
     };
   }
 
-  return buildPreviewFromParsed(strapi, { venue, parsed, inputKind });
+  return buildPreviewFromParsed(strapi, {
+    venue,
+    parsed,
+    inputKind,
+    programText: trimmed || parsed.ocrPreview || '',
+    summerScreening: summerScreening === true,
+  });
 }
 
 async function createProgramTextShowtimes(strapi, { venueId, items, now = new Date() } = {}) {
@@ -370,6 +440,7 @@ async function createProgramTextShowtimes(strapi, { venueId, items, now = new Da
 
 module.exports = {
   findAllCinemas,
+  detectProgramSummerOutdoor,
   getProgramImportStatus,
   previewProgramTextImport,
   createProgramTextShowtimes,

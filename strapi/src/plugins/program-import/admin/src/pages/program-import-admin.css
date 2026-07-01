@@ -70,3 +70,69 @@
   gap: 8px;
   margin-bottom: 8px;
 }
+
+.program-import-venue-picker {
+  width: 100%;
+  max-width: 28rem;
+}
+
+.program-import-venue-picker-list {
+  width: 100%;
+  max-height: 14rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #dcdce4;
+  border-radius: 0.25rem;
+  background: #ffffff;
+  -webkit-overflow-scrolling: touch;
+}
+
+.program-import-venue-picker-option {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 0.45rem 0.6rem;
+  border: none;
+  border-bottom: 1px solid #f0f0f5;
+  background: transparent;
+  color: #32324d;
+  cursor: pointer;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+}
+
+.program-import-venue-picker-option:last-child {
+  border-bottom: none;
+}
+
+.program-import-venue-picker-option:hover:not(:disabled) {
+  background: #f6f6f9;
+}
+
+.program-import-venue-picker-option--selected {
+  background: #f0f0ff;
+  font-weight: 600;
+}
+
+.program-import-venue-picker-option:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.program-import-venue-search-input {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0.35rem 0.55rem;
+  border: 1px solid #dcdce4;
+  border-radius: 0.25rem;
+  background: #ffffff;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  color: #32324d;
+}
+
+.program-import-venue-search-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
