@@ -5,6 +5,7 @@ const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 
 const { fetchMore, formatMoreNetworkError } = require('./moreHttp');
+const { collectVenueBundleCodes } = require('./moreEventGroupCodes');
 
 const MORE_CINEMA_WARMUP = 'https://www.more.com/gr-el/tickets/cinema/';
 const USER_AGENT =
@@ -15,8 +16,7 @@ const SCRAPE_ENABLED = process.env.MORE_VENUE_PROGRAM_SCRAPE === 'true';
 /** Scrape κατά sync — αργό (HTML fetch). Default off· ενεργό μόνο με MORE_VENUE_SCRAPE_ON_SYNC=true. */
 const SCRAPE_ON_SYNC = process.env.MORE_VENUE_SCRAPE_ON_SYNC === 'true';
 /**
- * Scrape σελίδας χώρου για άγνωστα eventId στο venue bundle sync (π.χ. FUZE μόνο στο bundle).
- * Καλείται on-demand μόνο όταν index + κωδικοί ταινιών δεν ταυτίζουν eventId — όχι σε κάθε χώρο.
+ * Scrape σελίδας χώρου μόνο όταν μείνουν μελλοντικές προβολές χωρίς ταύτιση (δύο φάσεις ανά venue).
  * Default on — απενεργοποίηση: MORE_VENUE_BUNDLE_SCRAPE=false
  */
 const BUNDLE_SYNC_SCRAPE_ENABLED = process.env.MORE_VENUE_BUNDLE_SCRAPE !== 'false';
@@ -493,12 +493,82 @@ function resolveVenueMoreProgramLink(venue) {
   return '';
 }
 
+let cinemaListingHtmlCache = null;
+let cinemaListingHtmlFetchedAt = 0;
+const CINEMA_LISTING_CACHE_MS = Number(process.env.MORE_CINEMA_LISTING_CACHE_MS || 6 * 60 * 60 * 1000);
+
+async function loadMoreCinemaListingHtml() {
+  const now = Date.now();
+  if (cinemaListingHtmlCache && now - cinemaListingHtmlFetchedAt < CINEMA_LISTING_CACHE_MS) {
+    return cinemaListingHtmlCache;
+  }
+  const page = await fetchVenueProgramHtml(MORE_CINEMA_WARMUP, '', FETCH_TIMEOUT_MS, {
+    curlFallback: true,
+    fetchFirst: true,
+  });
+  cinemaListingHtmlCache = page.text || '';
+  cinemaListingHtmlFetchedAt = now;
+  return cinemaListingHtmlCache;
+}
+
+/** Σελίδα καταλόγου more.com: href προγράμματος χώρου από bundle eventGroupCode. */
+async function lookupCinemaMoreLinkFromListing(eventGroupCode) {
+  const code = String(eventGroupCode || '').trim();
+  if (!code) return '';
+
+  const html = await loadMoreCinemaListingHtml();
+  if (!html) return '';
+
+  const esc = code.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const articleRe = new RegExp(
+    `<article[\\s\\S]{0,12000}?data-code=["']${esc}["'][\\s\\S]{0,12000}?<\\/article>`,
+    'i',
+  );
+  const article = html.match(articleRe)?.[0];
+  const hay = article || html;
+  const hrefRe = new RegExp(
+    `data-code=["']${esc}["'][\\s\\S]{0,4000}?href=["'](\\/gr-el\\/tickets\\/cinema\\/[^"'?#]+\\/?)["']`,
+    'i',
+  );
+  const hrefMatch = hay.match(hrefRe) || html.match(hrefRe);
+  if (!hrefMatch?.[1]) return '';
+  return normalizeMoreUrl(hrefMatch[1]);
+}
+
+/**
+ * Σειρά προτεραιότητας για scrape: σωστό link από κατάλογο (bundle code) πριν από stale more_link/slug.
+ */
+async function resolveVenueMoreProgramLinkForScrape(venue) {
+  const candidates = [];
+  const add = (raw) => {
+    const url = normalizeMoreUrl(raw);
+    if (url && !candidates.includes(url)) candidates.push(url);
+  };
+
+  for (const code of collectVenueBundleCodes(venue)) {
+    try {
+      const fromListing = await lookupCinemaMoreLinkFromListing(code);
+      if (fromListing) add(fromListing);
+    } catch {
+      /* optional */
+    }
+  }
+
+  add(venue?.more_link ?? venue?.moreLink);
+  const slug = String(venue?.slug ?? '').trim();
+  if (slug) add(`/gr-el/tickets/cinema/${slug}/`);
+
+  return candidates[0] || '';
+}
+
 module.exports = {
   SCRAPE_ENABLED,
   SCRAPE_ON_SYNC,
   BUNDLE_SYNC_SCRAPE_ENABLED,
   scrapeMoreVenueProgram,
   resolveVenueMoreProgramLink,
+  resolveVenueMoreProgramLinkForScrape,
+  lookupCinemaMoreLinkFromListing,
   lookupScrapedEventRow,
   probeVenueProgramScrape,
   createVenueScrapeCache,
