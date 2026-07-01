@@ -42,7 +42,7 @@
     },
     "venue_id": {
       "type": "string",
-      "description": "More.com venueId (π.χ. 3345 για Αίγλη). Χρησιμοποιείται από χειροκίνητο sync προβολών (More lookup → Τρέξε sync)."
+      "description": "More.com venueId (π.χ. 3345 για Αίγλη). Για πολυαίθουσα: «3394,3395» ή κενό αν sync γίνεται μόνο από venue bundle (evg_*). Με bundle sync όλες οι αίθουσες του κινηματογράφου εισάγονται στον ίδιο CMS χώρο."
     },
     "event_group_code": {
       "type": "string",

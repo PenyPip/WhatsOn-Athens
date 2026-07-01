@@ -185,6 +185,44 @@ function normalizeMoreVenueId(raw) {
   return String(raw ?? '').trim();
 }
 
+/**
+ * Λίστα More venueId από CMS (κενό = όλα). Υποστηρίζει «3394,3395» για πολυαίθουσα.
+ * @returns {string[] | null} null = χωρίς φίλτρο
+ */
+function parseMoreVenueIdAllowList(raw) {
+  const s = normalizeMoreVenueId(raw);
+  if (!s) return null;
+  const parts = s.split(/[\s,;|]+/).map((x) => x.trim()).filter(Boolean);
+  return parts.length ? parts : null;
+}
+
+function moreVenueIdMatchesAllowList(moreVenueId, allowList) {
+  if (allowList === null) return true;
+  if (!allowList.length) return true;
+  const id = String(moreVenueId ?? '').trim();
+  if (!id) return true;
+  return allowList.some((expected) => {
+    if (expected === id) return true;
+    const a = Number(expected);
+    const b = Number(id);
+    return Number.isFinite(a) && Number.isFinite(b) && a === b;
+  });
+}
+
+/**
+ * More event.venueId ↔ CMS venue. Σε bundle sync (evg_* χώρου) δεν φιλτράρουμε ανά αίθουσα.
+ */
+function eventMatchesVenueForCmsVenue(event, venue, { bundleSync = false } = {}) {
+  if (bundleSync) {
+    const hasBundle =
+      collectVenueBundleCodes(venue).length > 0 ||
+      collectTheaterVenueBundleCodes(venue).length > 0;
+    if (hasBundle) return true;
+  }
+  const allowList = parseMoreVenueIdAllowList(venue?.venue_id ?? venue?.venueId);
+  return moreVenueIdMatchesAllowList(event?.venueId, allowList);
+}
+
 /** Παραλλαγές κλειδιού (π.χ. "3975" / 3975) για αναζήτηση venue_id στο CMS. */
 function moreVenueIdLookupKeys(raw) {
   const id = normalizeMoreVenueId(raw);
@@ -222,6 +260,9 @@ function collectVenueAllSyncCodes(venue) {
 module.exports = {
   normalizeMoreVenueId,
   moreVenueIdLookupKeys,
+  parseMoreVenueIdAllowList,
+  moreVenueIdMatchesAllowList,
+  eventMatchesVenueForCmsVenue,
   isVenueBundleCode,
   classifyCinemaCatalogKind,
   looksLikeMovieCatalogTitle,

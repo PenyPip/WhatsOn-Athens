@@ -10,6 +10,7 @@ const {
   isVenueBundleCode,
   normalizeMoreVenueId,
   moreVenueIdLookupKeys,
+  eventMatchesVenueForCmsVenue,
 } = require('./moreEventGroupCodes');
 const {
   createVenueScrapeCache,
@@ -1606,11 +1607,8 @@ function trimReportDetailArrays(report) {
   return report;
 }
 
-function eventMatchesVenue(event, expectedVenueId) {
-  const expected = String(expectedVenueId ?? '').trim();
-  if (!expected) return true;
-  const moreVenueId = String(event?.venueId ?? '').trim();
-  return !moreVenueId || moreVenueId === expected;
+function eventMatchesVenue(event, venue, options = {}) {
+  return eventMatchesVenueForCmsVenue(event, venue, options);
 }
 
 function buildMovieCodeLookup(movieCodeEntries) {
@@ -1641,7 +1639,8 @@ async function resolveEventIdViaMovieCodes({
   const key = String(eventId ?? '').trim();
   if (!key || !eventsCache) return null;
 
-  const expectedVenue = venue?.venue_id;
+  const expectedVenue = venue;
+  const bundleSync = collectVenueBundleCodes(venue).length > 0;
   const codesToTry = [];
   const seen = new Set();
   const queue = (raw) => {
@@ -1669,7 +1668,9 @@ async function resolveEventIdViaMovieCodes({
       events = [];
     }
     const hit = events.find(
-      (e) => String(e.eventId ?? '').trim() === key && eventMatchesVenue(e, expectedVenue),
+      (e) =>
+        String(e.eventId ?? '').trim() === key &&
+        eventMatchesVenue(e, expectedVenue, { bundleSync }),
     );
     if (!hit) continue;
 
@@ -1904,16 +1905,16 @@ async function processOneCinemaBundleEvent(
     );
   }
 
-  if (venue.venue_id) {
-    const moreVenueId = String(event.venueId ?? '').trim();
-    const expected = String(venue.venue_id).trim();
-    if (expected && moreVenueId && moreVenueId !== expected) {
-      venueStats.skipped += 1;
-      venueStats.skippedVenueMismatch += 1;
-      venueSyncTracker.record(venue.id, { skippedVenueMismatch: 1 });
-      if (inWeek) venueSyncTracker.recordWeekEvent(venue.id, 'failed');
-      return { kind: 'skipped' };
-    }
+  if (
+    !eventMatchesVenueForCmsVenue(event, venue, {
+      bundleSync: collectVenueBundleCodes(venue).length > 0,
+    })
+  ) {
+    venueStats.skipped += 1;
+    venueStats.skippedVenueMismatch += 1;
+    venueSyncTracker.record(venue.id, { skippedVenueMismatch: 1 });
+    if (inWeek) venueSyncTracker.recordWeekEvent(venue.id, 'failed');
+    return { kind: 'skipped' };
   }
 
   const result = await upsertShowtimeFromEvent(strapi, report, {
@@ -2078,13 +2079,13 @@ async function processOneTheaterBundleEvent(
     );
   }
 
-  if (venue.venue_id) {
-    const moreVenueId = String(event.venueId ?? '').trim();
-    const expected = String(venue.venue_id).trim();
-    if (expected && moreVenueId && moreVenueId !== expected) {
-      venueStats.skipped += 1;
-      return { kind: 'skipped' };
-    }
+  if (
+    !eventMatchesVenueForCmsVenue(event, venue, {
+      bundleSync: collectTheaterVenueBundleCodes(venue).length > 0,
+    })
+  ) {
+    venueStats.skipped += 1;
+    return { kind: 'skipped' };
   }
 
   const result = await upsertPerformanceFromEvent(strapi, report, {
@@ -2287,14 +2288,14 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
           continue;
         }
 
-        if (venue.venue_id) {
-          const moreVenueId = String(event.venueId ?? '').trim();
-          const expected = String(venue.venue_id).trim();
-          if (expected && moreVenueId && moreVenueId !== expected) {
-            tracker.recordWeekEvent(venue.id, 'failed');
-            tracker.record(venue.id, { skippedVenueMismatch: 1 });
-            continue;
-          }
+        if (
+          !eventMatchesVenueForCmsVenue(event, venue, {
+            bundleSync: collectVenueBundleCodes(venue).length > 0,
+          })
+        ) {
+          tracker.recordWeekEvent(venue.id, 'failed');
+          tracker.record(venue.id, { skippedVenueMismatch: 1 });
+          continue;
         }
 
         const datetime = parseMoreEventDatetime(event.eventDate);
