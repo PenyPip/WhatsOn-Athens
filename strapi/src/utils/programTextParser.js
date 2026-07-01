@@ -1016,6 +1016,201 @@ function parseDayCentricCinemaProgram(text, { refYear = new Date().getFullYear()
   return { header: '', dateRange, movies, warnings };
 }
 
+const TABLE_GRID_DOW_LETTER_RE = /^[ΤΠΣΚΔ]$/iu;
+const TABLE_GRID_DAY_MONTH_RE = /(\d{1,2})\s+([Α-Ωα-ωάέήίόύώ.]{2,12})/giu;
+
+function isTableGridNoiseLine(line) {
+  const n = normalizeGreek(line);
+  return n === 'προπωλησεις' || n === 'προπωληση';
+}
+
+function isTableGridTimesOnlyLine(line) {
+  const tokens = String(line || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!tokens.length) return false;
+  return tokens.every((token) => TIME_ONLY_LINE_RE.test(token));
+}
+
+function countTableGridDayMonths(line) {
+  const hay = String(line || '');
+  let count = 0;
+  TABLE_GRID_DAY_MONTH_RE.lastIndex = 0;
+  let m;
+  while ((m = TABLE_GRID_DAY_MONTH_RE.exec(hay)) !== null) {
+    if (monthNameToNumber(m[2])) count++;
+  }
+  return count;
+}
+
+function isTableGridScheduleLine(line) {
+  return countTableGridDayMonths(line) >= 2 || isTableGridTimesOnlyLine(line);
+}
+
+function isTableGridDayMonthLine(line) {
+  const m = String(line || '')
+    .trim()
+    .match(/^(\d{1,2})\s+([Α-Ωα-ωάέήίόύώ.]+)$/iu);
+  if (!m) return false;
+  return Boolean(monthNameToNumber(m[2]));
+}
+
+function isTableGridTitleLine(line) {
+  const s = String(line || '').trim();
+  if (!s || isTableGridNoiseLine(s)) return false;
+  if (isTableGridScheduleLine(s)) return false;
+  if (TABLE_GRID_DOW_LETTER_RE.test(s)) return false;
+  if (/^\d{1,2}$/.test(s)) return false;
+  if (TIME_ONLY_LINE_RE.test(s)) return false;
+  if (isTableGridTimesOnlyLine(s)) return false;
+  if (isTableGridDayMonthLine(s)) return false;
+  if (monthNameToNumber(s)) return false;
+
+  const pipeIdx = s.indexOf('|');
+  const left = pipeIdx >= 0 ? s.slice(0, pipeIdx).trim() : s;
+  const stripped = stripLineDecorators(left);
+  if (looksLikeTitle(stripped)) return true;
+  if (/[a-zA-ZΑ-Ωα-ωάέήίόύώ]{3,}/u.test(stripped) && !/\d{1,2}:\d{2}/.test(stripped)) return true;
+  return false;
+}
+
+function cleanTableGridTitle(line) {
+  let s = stripLineDecorators(String(line || '').trim());
+  const pipeIdx = s.indexOf('|');
+  if (pipeIdx >= 0) s = s.slice(0, pipeIdx).trim();
+  return s.replace(/\s+/g, ' ').trim();
+}
+
+function splitTableGridBlocks(text) {
+  const lines = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const blocks = [];
+  let title = null;
+  let bodyLines = [];
+
+  const flush = () => {
+    if (!title) return;
+    blocks.push({ title, bodyLines: [...bodyLines] });
+    title = null;
+    bodyLines = [];
+  };
+
+  for (const line of lines) {
+    if (isTableGridNoiseLine(line)) continue;
+
+    if (isTableGridTitleLine(line)) {
+      const nextTitle = cleanTableGridTitle(line);
+      if (title && normalizeGreek(nextTitle) === normalizeGreek(title)) continue;
+      flush();
+      title = nextTitle;
+      continue;
+    }
+
+    if (title) bodyLines.push(line);
+  }
+
+  flush();
+  return blocks;
+}
+
+function extractTableGridDatesAndTimes(bodyLines) {
+  const joined = bodyLines.join(' ');
+  const dates = [];
+  TABLE_GRID_DAY_MONTH_RE.lastIndex = 0;
+  let m;
+  while ((m = TABLE_GRID_DAY_MONTH_RE.exec(joined)) !== null) {
+    const month = monthNameToNumber(m[2]);
+    if (!month) continue;
+    dates.push({ day: Number(m[1]), month });
+  }
+
+  const times = [];
+  const timeRe = /\b(\d{1,2}):(\d{2})\b/g;
+  while ((m = timeRe.exec(joined)) !== null) {
+    const hour = Number(m[1]);
+    const minute = Number(m[2]);
+    if (hour <= 23 && minute <= 59) times.push({ hour, minute });
+  }
+
+  return { dates, times };
+}
+
+function looksLikeTableGridProgram(text) {
+  if (looksLikeCatalogProgram(text) || looksLikeDayCentricProgram(text)) return false;
+
+  const normalized = String(text || '').replace(/\r\n/g, '\n');
+  let monthDayCount = 0;
+  TABLE_GRID_DAY_MONTH_RE.lastIndex = 0;
+  let m;
+  while ((m = TABLE_GRID_DAY_MONTH_RE.exec(normalized)) !== null) {
+    if (monthNameToNumber(m[2])) monthDayCount++;
+  }
+  if (monthDayCount < 4) return false;
+
+  const blocks = splitTableGridBlocks(normalized);
+  return blocks.some((block) => {
+    const { dates, times } = extractTableGridDatesAndTimes(block.bodyLines);
+    return dates.length >= 3 && times.length >= 3;
+  });
+}
+
+/** Μορφή πίνακα (π.χ. Arian): τίτλος → στήλες «01 ΙΟΥΛ» → ώρες «22:40». */
+function parseTableGridCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+  const blocks = splitTableGridBlocks(text);
+  const movies = [];
+  const warnings = [];
+
+  for (const block of blocks) {
+    const { dates, times } = extractTableGridDatesAndTimes(block.bodyLines);
+    if (!dates.length || !times.length) {
+      warnings.push(`«${block.title}»: δεν αναγνωρίστηκαν ημερομηνίες ή ώρες στον πίνακα.`);
+      movies.push({ title: block.title, scheduleText: block.bodyLines.join('\n'), showtimes: [] });
+      continue;
+    }
+
+    const showtimes = [];
+    const fallbackTime = times[0];
+    for (let i = 0; i < dates.length; i++) {
+      const { day, month } = dates[i];
+      const time = times[i] || fallbackTime;
+      if (!time) continue;
+      const dayDate = localDate(refYear, month, day);
+      const datetime = buildAthensDatetimeFromLocalDate(dayDate, time.hour, time.minute);
+      const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+      showtimes.push({ dayLabel, timeLabel, datetime, note: null });
+    }
+
+    movies.push({
+      title: block.title,
+      scheduleText: block.bodyLines.join('\n'),
+      showtimes: dedupeShowtimes(showtimes),
+    });
+  }
+
+  const allTimes = movies.flatMap((movie) => movie.showtimes.map((st) => st.datetime.getTime()));
+  let dateRange;
+  if (allTimes.length) {
+    const start = new Date(Math.min(...allTimes));
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(Math.max(...allTimes));
+    end.setHours(23, 59, 59, 999);
+    dateRange = { start, end, inferred: false };
+  } else {
+    dateRange = inferDateRangeFromCinemaWeek(now);
+  }
+
+  if (!movies.length) {
+    warnings.push('Δεν αναγνωρίστηκαν ταινίες στη μορφή πίνακα (τίτλος / ημερομηνίες / ώρες).');
+  }
+
+  return { header: '', dateRange, movies, warnings: [...new Set(warnings)] };
+}
+
 function isProbolesLine(line) {
   return /^προβολες\s*$/i.test(normalizeGreek(line));
 }
@@ -1266,6 +1461,10 @@ function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now 
 
   if (looksLikeDayCentricProgram(normalized)) {
     return parseDayCentricCinemaProgram(normalized, { refYear, now });
+  }
+
+  if (looksLikeTableGridProgram(normalized)) {
+    return parseTableGridCinemaProgram(normalized, { refYear, now });
   }
 
   const { header, movies } = splitMovieBlocks(normalized);
