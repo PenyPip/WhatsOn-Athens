@@ -11,6 +11,10 @@ const {
   normalizeMoreVenueId,
   moreVenueIdLookupKeys,
   eventMatchesVenueForCmsVenue,
+  parseMoreVenueIdAllowList,
+  moreVenueIdMatchesAllowList,
+  deriveParentVenueNameFromMoreEventName,
+  isMoreAuditoriumVenueName,
 } = require('./moreEventGroupCodes');
 const {
   createVenueScrapeCache,
@@ -320,19 +324,35 @@ function normalizeVenueName(name) {
     .replace(/\s+/g, ' ');
 }
 
+function registerVenueMoreIdsInLookup(lookup, venue) {
+  const allowList = parseMoreVenueIdAllowList(venue?.venue_id);
+  if (allowList?.length) {
+    for (const id of allowList) {
+      lookup.byMoreId.set(id, venue);
+      const asNum = Number(id);
+      if (Number.isFinite(asNum)) lookup.byMoreId.set(String(asNum), venue);
+    }
+    return;
+  }
+  const moreId = normalizeMoreVenueId(venue?.venue_id);
+  if (moreId) {
+    lookup.byMoreId.set(moreId, venue);
+    const asNum = Number(moreId);
+    if (Number.isFinite(asNum)) lookup.byMoreId.set(String(asNum), venue);
+  }
+}
+
 function buildVenueLookup(venues) {
   const byMoreId = new Map();
   const byName = new Map();
 
   for (const venue of venues) {
-    const moreId = normalizeMoreVenueId(venue.venue_id);
-    if (moreId) {
-      byMoreId.set(moreId, venue);
-      const asNum = Number(moreId);
-      if (Number.isFinite(asNum)) byMoreId.set(String(asNum), venue);
-    }
+    registerVenueMoreIdsInLookup({ byMoreId }, venue);
     const nameKey = normalizeVenueName(venue.name);
     if (nameKey && !byName.has(nameKey)) byName.set(nameKey, venue);
+    const parentName = deriveParentVenueNameFromMoreEventName(venue.name);
+    const parentKey = normalizeVenueName(parentName);
+    if (parentKey && !byName.has(parentKey)) byName.set(parentKey, venue);
   }
 
   return { byMoreId, byName };
@@ -346,20 +366,24 @@ function resolveVenueFromMoreEvent(lookup, event) {
   }
   const nameKey = normalizeVenueName(event?.venueName);
   if (nameKey) {
-    return lookup.byName.get(nameKey) ?? null;
+    const byName = lookup.byName.get(nameKey);
+    if (byName) return byName;
+  }
+  const parentName = deriveParentVenueNameFromMoreEventName(event?.venueName);
+  const parentKey = normalizeVenueName(parentName);
+  if (parentKey) {
+    return lookup.byName.get(parentKey) ?? null;
   }
   return null;
 }
 
 function registerVenueInLookup(lookup, venue) {
-  const moreId = normalizeMoreVenueId(venue?.venue_id);
-  if (moreId) {
-    lookup.byMoreId.set(moreId, venue);
-    const asNum = Number(moreId);
-    if (Number.isFinite(asNum)) lookup.byMoreId.set(String(asNum), venue);
-  }
+  registerVenueMoreIdsInLookup(lookup, venue);
   const nameKey = normalizeVenueName(venue?.name);
   if (nameKey) lookup.byName.set(nameKey, venue);
+  const parentName = deriveParentVenueNameFromMoreEventName(venue?.name);
+  const parentKey = normalizeVenueName(parentName);
+  if (parentKey) lookup.byName.set(parentKey, venue);
 }
 
 function buildVenueDataFromMoreEvent(event, config) {
@@ -421,14 +445,63 @@ async function findVenueByName(strapi, name) {
 async function findVenueByMoreId(strapi, moreVenueId) {
   const keys = moreVenueIdLookupKeys(moreVenueId);
   if (!keys.length) return null;
-  // Global έλεγχος venue_id (ανεξαρτήτως type): το More venueId είναι μοναδικό ανά φυσικό χώρο.
   const rows = await strapi.entityService.findMany('api::venue.venue', {
     filters: { $or: keys.map((key) => ({ venue_id: key })) },
-    fields: ['id', 'name', 'slug', 'venue_id', 'summer_outdoor', 'type'],
+    fields: ['id', 'name', 'slug', 'venue_id', 'summer_outdoor', 'type', 'event_group_code'],
     publicationState: 'preview',
     limit: 1,
   });
-  return Array.isArray(rows) && rows.length ? rows[0] : null;
+  if (Array.isArray(rows) && rows.length) return rows[0];
+
+  const id = normalizeMoreVenueId(moreVenueId);
+  if (!id) return null;
+  let page = 1;
+  while (page <= 20) {
+    const batch = await strapi.entityService.findMany('api::venue.venue', {
+      filters: { venue_id: { $notNull: true } },
+      fields: ['id', 'name', 'slug', 'venue_id', 'summer_outdoor', 'type', 'event_group_code'],
+      publicationState: 'preview',
+      pagination: { page, pageSize: 100 },
+    });
+    const list = Array.isArray(batch) ? batch : [];
+    if (!list.length) break;
+    for (const row of list) {
+      const allowList = parseMoreVenueIdAllowList(row.venue_id);
+      if (allowList && moreVenueIdMatchesAllowList(id, allowList)) return row;
+    }
+    if (list.length < 100) break;
+    page += 1;
+  }
+  return null;
+}
+
+/** Κύριος χώρος CMS για More όνομα αίθουσας (Cineplex 2, Αίθουσα 1 κ.λπ.). */
+async function findVenueByParentMoreName(strapi, moreVenueName, venueType = 'cinema') {
+  const parent = deriveParentVenueNameFromMoreEventName(moreVenueName);
+  if (!parent) return null;
+
+  const byExact = await findVenueByName(strapi, parent);
+  if (byExact && !isMoreAuditoriumVenueName(byExact.name)) return byExact;
+
+  const parentNorm = normalizeVenueName(parent);
+  const rows = await strapi.entityService.findMany('api::venue.venue', {
+    filters: {
+      type: venueType,
+      $or: [{ name: { $eqi: parent } }, { name: { $startsWith: parent } }],
+    },
+    fields: ['id', 'name', 'slug', 'venue_id', 'summer_outdoor', 'type', 'event_group_code'],
+    publicationState: 'preview',
+    limit: 20,
+  });
+
+  let bundleFallback = null;
+  for (const row of rows || []) {
+    if (row.event_group_code && !bundleFallback) bundleFallback = row;
+    if (isMoreAuditoriumVenueName(row.name)) continue;
+    const rowParent = deriveParentVenueNameFromMoreEventName(row.name) || row.name;
+    if (normalizeVenueName(rowParent) === parentNorm) return row;
+  }
+  return bundleFallback;
 }
 
 /** Ελαφρύ load χώρων (lookup + presence) — χωρίς populate components. */
@@ -479,18 +552,25 @@ function venuesWithBundleFromRows(rows, collectBundleFn, { onlyWithBundles = tru
 
 function registerVenueInPresenceIndex(index, venue) {
   if (!index || !venue) return;
-  for (const key of moreVenueIdLookupKeys(venue?.venue_id)) index.byMoreId.add(key);
+  const allowList = parseMoreVenueIdAllowList(venue?.venue_id);
+  if (allowList?.length) {
+    for (const id of allowList) {
+      for (const key of moreVenueIdLookupKeys(id)) index.byMoreId.add(key);
+    }
+  } else {
+    for (const key of moreVenueIdLookupKeys(venue?.venue_id)) index.byMoreId.add(key);
+  }
   const nameKey = normalizeVenueName(venue?.name);
   if (nameKey) index.byName.add(nameKey);
+  const parentKey = normalizeVenueName(deriveParentVenueNameFromMoreEventName(venue?.name));
+  if (parentKey) index.byName.add(parentKey);
 }
 
 function buildVenuePresenceIndexFromRows(rows) {
   const byMoreId = new Set();
   const byName = new Set();
   for (const row of rows) {
-    for (const key of moreVenueIdLookupKeys(row?.venue_id)) byMoreId.add(key);
-    const nameKey = normalizeVenueName(row?.name);
-    if (nameKey) byName.add(nameKey);
+    registerVenueInPresenceIndex({ byMoreId, byName }, row);
   }
   return { byMoreId, byName };
 }
@@ -507,6 +587,8 @@ function isVenueMissingFromPresenceIndex(event, index) {
   if (venueName) {
     const nameKey = normalizeVenueName(venueName);
     if (nameKey && index.byName.has(nameKey)) return false;
+    const parentKey = normalizeVenueName(deriveParentVenueNameFromMoreEventName(venueName));
+    if (parentKey && index.byName.has(parentKey)) return false;
   }
   return true;
 }
@@ -649,6 +731,14 @@ async function ensureVenueFromMoreEvent(
         failedVenueKeys.delete(pendingKey);
         return byName;
       }
+      if (config.venueType === 'cinema' && isMoreAuditoriumVenueName(retryName)) {
+        const parentVenue = await findVenueByParentMoreName(strapi, retryName, 'cinema');
+        if (parentVenue) {
+          registerVenueInLookup(lookup, parentVenue);
+          failedVenueKeys.delete(pendingKey);
+          return parentVenue;
+        }
+      }
     }
     return null;
   }
@@ -671,7 +761,11 @@ async function ensureVenueFromMoreEvent(
     if (venueName) {
       const byName = await findVenueByName(strapi, venueName);
       if (byName) {
-        if (moreVenueId && !normalizeMoreVenueId(byName.venue_id)) {
+        if (
+          moreVenueId &&
+          !normalizeMoreVenueId(byName.venue_id) &&
+          !isMoreAuditoriumVenueName(venueName)
+        ) {
           try {
             await strapi.entityService.update('api::venue.venue', byName.id, {
               data: { venue_id: moreVenueId },
@@ -686,6 +780,19 @@ async function ensureVenueFromMoreEvent(
         registerVenueInLookup(lookup, byName);
         return byName;
       }
+    }
+
+    if (config.venueType === 'cinema' && isMoreAuditoriumVenueName(venueName)) {
+      const parentVenue = await findVenueByParentMoreName(strapi, venueName, 'cinema');
+      if (parentVenue) {
+        registerVenueInLookup(lookup, parentVenue);
+        return parentVenue;
+      }
+      failedVenueKeys.add(pendingKey);
+      strapi.log.info(
+        `[${config.logTag}] skip auto-create auditorium venue «${venueName}» (moreVenueId=${moreVenueId || '—'}) — δεν βρέθηκε κύριος χώρος CMS`,
+      );
+      return null;
     }
 
     const created = await createVenueFromMore(strapi, event, report, config, errorDedup);
@@ -1125,11 +1232,12 @@ async function countMoreSyncCreatedSince(strapi, sinceMs) {
 }
 
 /** Κλειδί ανά λεπτό ±1 για ταίριασμα με το ±60s window των queries. */
-function showtimeMinuteKey(venueId, datetime) {
+function showtimeMinuteKey(movieId, venueId, datetime) {
   const d = datetime instanceof Date ? datetime : new Date(datetime);
   const t = d.getTime();
   if (Number.isNaN(t)) return null;
-  return `${venueId}|${Math.floor(t / 60000)}`;
+  const mid = movieId != null ? String(movieId) : '?';
+  return `${mid}|${venueId}|${Math.floor(t / 60000)}`;
 }
 
 function performanceMinuteKey(theaterShowId, venueId, datetime) {
@@ -1139,19 +1247,20 @@ function performanceMinuteKey(theaterShowId, venueId, datetime) {
   return `${theaterShowId}|${venueId}|${Math.floor(t / 60000)}`;
 }
 
-function showtimeExistsInIndex(index, venueId, datetime) {
+function showtimeExistsInIndex(index, movieId, venueId, datetime) {
   if (!index?.size) return false;
   const d = datetime instanceof Date ? datetime : new Date(datetime);
   const baseMinute = Math.floor(d.getTime() / 60000);
+  const mid = movieId != null ? String(movieId) : '?';
   for (const delta of [-1, 0, 1]) {
-    if (index.has(`${venueId}|${baseMinute + delta}`)) return true;
+    if (index.has(`${mid}|${venueId}|${baseMinute + delta}`)) return true;
   }
   return false;
 }
 
-function addShowtimeToExistenceIndex(index, venueId, datetime) {
+function addShowtimeToExistenceIndex(index, movieId, venueId, datetime) {
   if (!index) return;
-  const key = showtimeMinuteKey(venueId, datetime);
+  const key = showtimeMinuteKey(movieId, venueId, datetime);
   if (key) index.add(key);
 }
 
@@ -1172,25 +1281,26 @@ function setPerformanceInExistenceIndex(index, theaterShowId, venueId, datetime,
   if (key) index.set(key, entry);
 }
 
-async function loadShowtimeExistenceIndex(strapi, movieIds, now) {
+async function loadShowtimeExistenceIndex(strapi, _movieIds, now) {
   const index = new Set();
-  const ids = [...new Set((movieIds || []).filter((id) => id != null))];
-  if (!ids.length) return index;
 
   const rows = await findAllEntities(strapi, 'api::showtime.showtime', {
     filters: {
-      movie: { id: { $in: ids } },
       datetime: { $gte: now.toISOString() },
     },
     fields: ['datetime'],
-    populate: { venue: { fields: ['id'] } },
+    populate: {
+      venue: { fields: ['id'] },
+      movie: { fields: ['id'] },
+    },
     pageSize: 250,
     maxRecords: 80_000,
   });
 
   for (const row of rows) {
     const venueId = row.venue?.id ?? row.venue;
-    const key = showtimeMinuteKey(venueId, row.datetime);
+    const movieId = row.movie?.id ?? row.movie;
+    const key = showtimeMinuteKey(movieId, venueId, row.datetime);
     if (key) index.add(key);
   }
   return index;
@@ -1253,9 +1363,10 @@ async function prefetchEventCodes(eventsCache, codes, onProgress) {
 }
 
 async function showtimeExistsAt(strapi, { movieId, venueId, datetime }, existenceIndex) {
-  if (existenceIndex) {
-    return showtimeExistsInIndex(existenceIndex, venueId, datetime);
+  if (existenceIndex && showtimeExistsInIndex(existenceIndex, movieId, venueId, datetime)) {
+    return true;
   }
+
   const t = datetime.getTime();
   const rows = await strapi.entityService.findMany('api::showtime.showtime', {
     filters: {
@@ -1268,7 +1379,11 @@ async function showtimeExistsAt(strapi, { movieId, venueId, datetime }, existenc
     },
     limit: 1,
   });
-  return Array.isArray(rows) && rows.length > 0;
+  const exists = Array.isArray(rows) && rows.length > 0;
+  if (exists) {
+    addShowtimeToExistenceIndex(existenceIndex, movieId, venueId, datetime);
+  }
+  return exists;
 }
 
 function parseMoreSoldOut(event) {
@@ -1402,7 +1517,7 @@ async function upsertShowtimeFromEvent(strapi, report, {
     },
   });
 
-  addShowtimeToExistenceIndex(showtimeExistenceIndex, venue.id, datetime);
+  addShowtimeToExistenceIndex(showtimeExistenceIndex, movieId, venue.id, datetime);
 
   report.created += 1;
   if (statsTarget) statsTarget.created += 1;

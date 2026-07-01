@@ -209,6 +209,46 @@ function moreVenueIdMatchesAllowList(moreVenueId, allowList) {
   });
 }
 
+/** More venueName τύπου «Cineplex 2», «Αίθουσα 1» — όχι ξεχωριστός CMS χώρος. */
+function isMoreAuditoriumHallLabel(label) {
+  const t = normalizeCatalogText(label);
+  if (!t) return false;
+  if (/^(αιθουσα|aithousa|hall|screen|auditorium)\s*\d+$/.test(t)) return true;
+  if (/^cineplex\s*\d+$/.test(t)) return true;
+  if (/\bcineplex\s*\d+$/.test(t)) return true;
+  return false;
+}
+
+/**
+ * Όνομα κύριου χώρου από More venueName («… - Αίθουσα 2», «… Cineplex - … Cineplex 3»).
+ * @returns {string} parent name ή '' αν δεν φαίνεται αίθουσα
+ */
+function deriveParentVenueNameFromMoreEventName(raw) {
+  const name = String(raw || '').trim();
+  if (!name) return '';
+
+  const parts = name.split(/\s[-–]\s+/);
+  if (parts.length >= 2) {
+    const tail = parts[parts.length - 1].trim();
+    if (isMoreAuditoriumHallLabel(tail)) {
+      return parts.slice(0, -1).join(' - ').trim();
+    }
+    const tailNorm = normalizeCatalogText(tail.replace(/\s*\d+\s*$/, ''));
+    const headNorm = normalizeCatalogText(parts[0]);
+    if (tailNorm && headNorm && tailNorm === headNorm) {
+      return parts[0].trim();
+    }
+  }
+  return '';
+}
+
+function isMoreAuditoriumVenueName(name) {
+  const full = String(name || '').trim();
+  if (!full) return false;
+  const parent = deriveParentVenueNameFromMoreEventName(full);
+  return Boolean(parent && parent !== full);
+}
+
 /**
  * More event.venueId ↔ CMS venue. Σε bundle sync (evg_* χώρου) δεν φιλτράρουμε ανά αίθουσα.
  */
@@ -263,6 +303,9 @@ module.exports = {
   parseMoreVenueIdAllowList,
   moreVenueIdMatchesAllowList,
   eventMatchesVenueForCmsVenue,
+  isMoreAuditoriumHallLabel,
+  isMoreAuditoriumVenueName,
+  deriveParentVenueNameFromMoreEventName,
   isVenueBundleCode,
   classifyCinemaCatalogKind,
   looksLikeMovieCatalogTitle,
