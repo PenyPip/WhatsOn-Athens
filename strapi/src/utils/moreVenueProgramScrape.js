@@ -16,6 +16,7 @@ const SCRAPE_ENABLED = process.env.MORE_VENUE_PROGRAM_SCRAPE === 'true';
 const SCRAPE_ON_SYNC = process.env.MORE_VENUE_SCRAPE_ON_SYNC === 'true';
 /**
  * Scrape σελίδας χώρου για άγνωστα eventId στο venue bundle sync (π.χ. FUZE μόνο στο bundle).
+ * Καλείται on-demand μόνο όταν index + κωδικοί ταινιών δεν ταυτίζουν eventId — όχι σε κάθε χώρο.
  * Default on — απενεργοποίηση: MORE_VENUE_BUNDLE_SCRAPE=false
  */
 const BUNDLE_SYNC_SCRAPE_ENABLED = process.env.MORE_VENUE_BUNDLE_SCRAPE !== 'false';

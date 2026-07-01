@@ -1687,6 +1687,14 @@ async function resolveCinemaMovieFromEventId({
   return mapped;
 }
 
+/** Index + κωδικοί ταινιών πρώτα· scrape σελίδας χώρου μόνο αν μείνει άγνωστο το eventId. */
+async function resolveCinemaMovieFromEventIdLazy(params) {
+  const mapped = await resolveCinemaMovieFromEventId({ ...params, allowBundleScrape: false });
+  if (mapped) return mapped;
+  if (!BUNDLE_SYNC_SCRAPE_ENABLED) return null;
+  return resolveCinemaMovieFromEventId({ ...params, allowBundleScrape: true });
+}
+
 async function resolveTheaterShowFromEventId({
   eventId,
   eventIdIndex,
@@ -1729,6 +1737,13 @@ async function resolveTheaterShowFromEventId({
   supplementalIndex.set(eventId, mapped);
   report.resolvedViaVenueScrape = (report.resolvedViaVenueScrape || 0) + 1;
   return mapped;
+}
+
+async function resolveTheaterShowFromEventIdLazy(params) {
+  const mapped = await resolveTheaterShowFromEventId({ ...params, allowBundleScrape: false });
+  if (mapped) return mapped;
+  if (!BUNDLE_SYNC_SCRAPE_ENABLED) return null;
+  return resolveTheaterShowFromEventId({ ...params, allowBundleScrape: true });
 }
 
 /**
@@ -1784,7 +1799,7 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
 
         hadWeekEvents = true;
         const eventId = String(event.eventId ?? '').trim();
-        const mapped = await resolveCinemaMovieFromEventId({
+        const mapped = await resolveCinemaMovieFromEventIdLazy({
           eventId,
           eventIdIndex,
           supplementalIndex: supplementalEventIndex,
@@ -1794,7 +1809,6 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
           movieCodeEntries,
           eventsCache,
           report: report || { resolvedViaVenueScrape: 0 },
-          allowBundleScrape: true,
         });
         if (!mapped) {
           tracker.recordWeekEvent(venue.id, 'failed');
@@ -2048,24 +2062,6 @@ async function syncMovieShowtimesFromMore(strapi, {
 
     venueSyncTracker.touch(venue.id);
 
-    if (BUNDLE_SYNC_SCRAPE_ENABLED) {
-      const venueLink = resolveVenueMoreProgramLink(venue);
-      if (venueLink) {
-        const scrapeResult = await scrapeCache.get(venueLink);
-        if (!scrapeResult?.ok) {
-          venueStats.scrapeError = scrapeResult?.error || 'scrape_failed';
-          strapi.log.warn(
-            `[more-showtime-sync] venue scrape failed «${venue.name}» (${venueLink}): ${venueStats.scrapeError}`,
-          );
-        } else {
-          venueStats.scrapeEventCount = scrapeResult.eventCount || 0;
-        }
-      } else {
-        venueStats.scrapeError = 'no_more_link';
-        strapi.log.warn(`[more-showtime-sync] venue «${venue.name}» — χωρίς more_link/slug για scrape`);
-      }
-    }
-
     for (const code of venue.bundleCodes) {
       try {
         const events = await eventsCache.get(code);
@@ -2073,7 +2069,7 @@ async function syncMovieShowtimesFromMore(strapi, {
         for (const event of events) {
           const eventId = String(event.eventId ?? '').trim();
           const inWeek = moreEventInTargetCinemaWeekForVenueStatus(event, now);
-          const mapped = await resolveCinemaMovieFromEventId({
+          const mapped = await resolveCinemaMovieFromEventIdLazy({
             eventId,
             eventIdIndex,
             supplementalIndex: supplementalEventIndex,
@@ -2083,7 +2079,6 @@ async function syncMovieShowtimesFromMore(strapi, {
             movieCodeEntries,
             eventsCache,
             report,
-            allowBundleScrape: true,
           });
           if (!mapped) {
             report.skippedUnknownEventId += 1;
@@ -2363,7 +2358,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
 
         for (const event of events) {
           const eventId = String(event.eventId ?? '').trim();
-          const mapped = await resolveTheaterShowFromEventId({
+          const mapped = await resolveTheaterShowFromEventIdLazy({
             eventId,
             eventIdIndex,
             supplementalIndex: supplementalEventIndex,
@@ -2371,7 +2366,6 @@ async function syncTheaterPerformancesFromMore(strapi, {
             venue,
             showsForTitle,
             report,
-            allowBundleScrape: true,
           });
           if (!mapped) {
             report.skippedUnknownEventId += 1;
