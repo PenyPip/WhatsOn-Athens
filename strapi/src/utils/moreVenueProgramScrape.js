@@ -20,7 +20,7 @@ const SCRAPE_ON_SYNC = process.env.MORE_VENUE_SCRAPE_ON_SYNC === 'true';
  * Default on — απενεργοποίηση: MORE_VENUE_BUNDLE_SCRAPE=false
  */
 const BUNDLE_SYNC_SCRAPE_ENABLED = process.env.MORE_VENUE_BUNDLE_SCRAPE !== 'false';
-const SCRAPE_DELAY_MS = Number(process.env.MORE_VENUE_SCRAPE_DELAY_MS || 180);
+const SCRAPE_DELAY_MS = Number(process.env.MORE_VENUE_SCRAPE_DELAY_MS || 50);
 
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));

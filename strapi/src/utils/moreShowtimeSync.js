@@ -29,8 +29,8 @@ const {
 const { isDatetimeInTargetCinemaWeekForVenueStatus } = require('./cinemaWeek');
 const { buildMoreImportTrace } = require('./moreImportTrace');
 
-const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 150);
-const EVENTS_CACHE_MAX = Number(process.env.MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX || 32);
+const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 40);
+const EVENTS_CACHE_MAX = Number(process.env.MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX || 512);
 const MOVIE_BATCH_SIZE = Number(process.env.MORE_SHOWTIME_SYNC_MOVIE_BATCH || 8);
 const THEATER_BATCH_SIZE = Number(process.env.MORE_SHOWTIME_SYNC_THEATER_BATCH || 8);
 /** Παράλληλο prefetch κωδικών More πριν το loop — false μόνο σε πολύ περιορισμένη RAM. */
@@ -157,7 +157,7 @@ function createEventsCache(fetchDelayMs, fetchProgress) {
     }
   }
 
-  async function fetchAndStore(key) {
+  async function fetchAndStore(key, { skipTrim = false } = {}) {
     let events = [];
     try {
       events = await fetchMoreEventsByGroupCode(key);
@@ -167,7 +167,7 @@ function createEventsCache(fetchDelayMs, fetchProgress) {
       events = [];
     }
     cache.set(key, events);
-    trimCache();
+    if (!skipTrim) trimCache();
     return events;
   }
 
@@ -191,7 +191,7 @@ function createEventsCache(fetchDelayMs, fetchProgress) {
     /** Παράλληλο prefetch μοναδικών κωδικών — πολύ πιο γρήγορο από σειριακό sync. */
     async prefetchAll(codes, options = {}) {
       const concurrency = Number(
-        options.concurrency ?? process.env.MORE_SHOWTIME_SYNC_CONCURRENCY ?? 2,
+        options.concurrency ?? process.env.MORE_SHOWTIME_SYNC_CONCURRENCY ?? 4,
       );
       const delayMs = Number(options.delayMs ?? fetchDelayMs);
       const unique = [
@@ -209,7 +209,7 @@ function createEventsCache(fetchDelayMs, fetchProgress) {
           cursor += 1;
           const key = unique[idx];
           if (!key || cache.has(key)) continue;
-          await fetchAndStore(key);
+          await fetchAndStore(key, { skipTrim: true });
           fetched += 1;
           if (typeof options.onProgress === 'function' && fetched - lastProgressAt >= 8) {
             lastProgressAt = fetched;
@@ -222,6 +222,7 @@ function createEventsCache(fetchDelayMs, fetchProgress) {
 
       const workers = Math.min(Math.max(1, concurrency), unique.length);
       await Promise.all(Array.from({ length: workers }, () => worker()));
+      trimCache();
       return { total: unique.length, fetched };
     },
   };
@@ -1530,48 +1531,43 @@ function eventMatchesVenue(event, expectedVenueId) {
   return !moreVenueId || moreVenueId === expected;
 }
 
+function buildMovieCodeLookup(movieCodeEntries) {
+  const map = new Map();
+  for (const entry of movieCodeEntries || []) {
+    for (const code of entry.codes || []) {
+      const c = String(code || '').trim();
+      if (!c || isVenueBundleCode(c) || map.has(c)) continue;
+      map.set(c, { movieId: entry.id, movieTitle: entry.title });
+    }
+  }
+  return map;
+}
+
 /**
- * Άγνωστο bundle eventId → ταύτιση μέσω κωδικών ταινιών CMS (getevents, χωρίς scrape).
- * Π.χ. Πάρτυ Γενεθλίων @ Άρτεμις αν η ταινία έχει evg_thebirthdayparty_1055_38.
+ * Άγνωστο bundle eventId → ταύτιση μέσω πρόσθετων κωδικών χώρου (όχι πλήρης σάρωση catalog).
+ * Το κύριο ευρετήριο eventId χτίζεται πριν από expandCinemaEventIdIndexFromMovieCodes.
  */
 async function resolveEventIdViaMovieCodes({
   eventId,
   venue,
-  movieCodeEntries,
+  movieCodeLookup,
   eventsCache,
   supplementalIndex,
   report,
   extraCodes = [],
 }) {
   const key = String(eventId ?? '').trim();
-  if (!key || !eventsCache || !movieCodeEntries?.length) return null;
+  if (!key || !eventsCache || !extraCodes?.length) return null;
 
   const expectedVenue = venue?.venue_id;
-  const pairs = [];
-  const seenCodes = new Set();
 
-  const addPair = (code, movieId, movieTitle) => {
-    const c = String(code || '').trim();
-    if (!c || isVenueBundleCode(c) || seenCodes.has(c)) return;
-    seenCodes.add(c);
-    pairs.push({ code: c, movieId, movieTitle });
-  };
+  for (const rawCode of extraCodes) {
+    const code = String(rawCode || '').trim();
+    if (!code || isVenueBundleCode(code)) continue;
 
-  for (const code of extraCodes) {
-    for (const entry of movieCodeEntries) {
-      if ((entry.codes || []).includes(code)) {
-        addPair(code, entry.id, entry.title);
-      }
-    }
-  }
+    const entry = movieCodeLookup?.get(code);
+    if (!entry) continue;
 
-  for (const entry of movieCodeEntries) {
-    for (const code of entry.codes || []) {
-      addPair(code, entry.id, entry.title);
-    }
-  }
-
-  for (const { code, movieId, movieTitle } of pairs) {
     let events = [];
     try {
       events = await eventsCache.get(code);
@@ -1584,8 +1580,8 @@ async function resolveEventIdViaMovieCodes({
     if (!hit) continue;
 
     const mapped = {
-      movieId,
-      movieTitle,
+      movieId: entry.movieId,
+      movieTitle: entry.movieTitle,
       viaMovieCode: code,
     };
     supplementalIndex.set(key, mapped);
@@ -1605,7 +1601,7 @@ async function resolveCinemaMovieFromEventId({
   scrapeCache,
   venue,
   moviesForTitle,
-  movieCodeEntries,
+  movieCodeLookup,
   eventsCache,
   report,
   allowBundleScrape = false,
@@ -1624,7 +1620,7 @@ async function resolveCinemaMovieFromEventId({
   const viaCode = await resolveEventIdViaMovieCodes({
     eventId: key,
     venue,
-    movieCodeEntries,
+    movieCodeLookup,
     eventsCache,
     supplementalIndex,
     report,
@@ -1755,23 +1751,11 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
   tracker,
   eventsCache,
   eventIdIndex,
-  movieCodeEntries = [],
   showtimeExistenceIndex,
   now,
-  report = null,
 }) {
   if (!venuesWithBundle?.length || !tracker || !eventsCache) return { filled: 0 };
 
-  const scrapeCache = createVenueScrapeCache({ forBundleSync: true });
-  const supplementalEventIndex = new Map();
-  const moviesForTitle = BUNDLE_SYNC_SCRAPE_ENABLED
-    ? await loadCmsEntriesForPlayTitleMatch(strapi, 'api::movie.movie', [
-        'id',
-        'title',
-        'slug',
-        'original_title',
-      ])
-    : [];
   const statsByVenueId = new Map(tracker.entries());
   let filled = 0;
 
@@ -1799,17 +1783,7 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
 
         hadWeekEvents = true;
         const eventId = String(event.eventId ?? '').trim();
-        const mapped = await resolveCinemaMovieFromEventIdLazy({
-          eventId,
-          eventIdIndex,
-          supplementalIndex: supplementalEventIndex,
-          scrapeCache,
-          venue,
-          moviesForTitle,
-          movieCodeEntries,
-          eventsCache,
-          report: report || { resolvedViaVenueScrape: 0 },
-        });
+        const mapped = eventIdIndex.get(eventId);
         if (!mapped) {
           tracker.recordWeekEvent(venue.id, 'failed');
           tracker.record(venue.id, { skippedUnknownEventId: 1 });
@@ -1883,6 +1857,7 @@ async function syncMovieShowtimesFromMore(strapi, {
   const venueSyncTracker = sharedVenueSyncTracker || createVenueSyncStatsTracker();
   const scrapeCache = createVenueScrapeCache({ forBundleSync: true });
   const supplementalEventIndex = new Map();
+  const movieCodeLookup = movieCodeEntries.length ? buildMovieCodeLookup(movieCodeEntries) : null;
   const needsTitleMatchPool =
     venuesWithBundle.length > 0 &&
     (BUNDLE_SYNC_SCRAPE_ENABLED || (SCRAPE_ENABLED && SCRAPE_ON_SYNC));
@@ -2076,7 +2051,7 @@ async function syncMovieShowtimesFromMore(strapi, {
             scrapeCache,
             venue,
             moviesForTitle,
-            movieCodeEntries,
+            movieCodeLookup,
             eventsCache,
             report,
           });
@@ -2636,10 +2611,8 @@ async function syncShowtimesFromMore(strapi, options = {}) {
           tracker: cinemaVenueSyncTracker,
           eventsCache: cinemaEventsCache,
           eventIdIndex: cinemaEventIdIndex,
-          movieCodeEntries: moviesWithCodes,
           showtimeExistenceIndex,
           now,
-          report: movieReport,
         });
         if (fillReport.filled > 0) {
           progress(
