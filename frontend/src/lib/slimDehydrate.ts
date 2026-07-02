@@ -208,22 +208,17 @@ function slimHomepageBootstrap(qc: QueryClient): void {
   });
 }
 
-/** Bootstrap αρχικής: κράτα σύνοψη μόνο για την πρώτη πολυσυζητημένη (LCP hero). */
+/**
+ * Bootstrap αρχικής: κράτα σύνοψη/σκηνοθεσία για ΟΛΕΣ τις πολυσυζητημένες.
+ * Το hero είναι carousel — χρειάζεται σύνοψη σε κάθε πολυσυζητημένη ταινία, όχι μόνο στην πρώτη (LCP).
+ */
 export function trimMovieSynopsesForHomeBootstrap(qc: QueryClient): void {
   const movies = qc.getQueryData<StrapiMovie[]>(["movies"]);
   if (!movies?.length) return;
-  let keptSynopsis = false;
   qc.setQueryData(
     ["movies"],
     movies.map((m) => {
-      if (!m.mostTalkedAbout) {
-        const { synopsis: _s, director: _d, ...rest } = m;
-        return rest as StrapiMovie;
-      }
-      if (!keptSynopsis) {
-        keptSynopsis = true;
-        return m;
-      }
+      if (m.mostTalkedAbout) return m;
       const { synopsis: _s, director: _d, ...rest } = m;
       return rest as StrapiMovie;
     }),
