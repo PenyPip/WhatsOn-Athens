@@ -45,6 +45,12 @@ function detectSummerInText(text) {
   return /θεριν[οόςη]|therino|\bsummer\b/i.test(hay);
 }
 
+function detectPerLineSummerInText(text) {
+  return String(text || '')
+    .split(/\r?\n/)
+    .some((line) => /αίθουσα|αιθουσα|screen|hall/i.test(line) && /θεριν[οόςη]|therino|\bsummer\b/i.test(line));
+}
+
 function CinemaVenueSearchSelect({ cinemas, value, onChange, disabled, loading }) {
   const [filter, setFilter] = useState('');
   const [open, setOpen] = useState(false);
@@ -194,29 +200,31 @@ export default function App() {
   );
 
   const textSuggestsSummer = useMemo(() => detectSummerInText(text), [text]);
+  const textHasPerLineSummer = useMemo(() => detectPerLineSummerInText(text), [text]);
+  const previewHasPerLineSummer = preview?.summerScreening?.hasPerShowtimeFlags === true;
 
-  const summerLocked = selectedVenue?.summerOutdoor === true;
+  const summerLocked =
+    selectedVenue?.summerOutdoor === true && !textHasPerLineSummer && !previewHasPerLineSummer;
 
   useEffect(() => {
     if (!venueId) return;
     setSummerTouched(false);
-    setMarkSummer(selectedVenue?.summerOutdoor === true);
-  }, [venueId, selectedVenue?.summerOutdoor]);
+    setMarkSummer(selectedVenue?.summerOutdoor === true && !textHasPerLineSummer);
+  }, [venueId, selectedVenue?.summerOutdoor, textHasPerLineSummer]);
 
   useEffect(() => {
-    if (!preview?.summerScreening || summerTouched || summerLocked) return;
+    if (!preview?.summerScreening || summerTouched) return;
     // Per-line «Θερινός»: ο parser σημειώνει μόνο τις σωστές αίθουσες — μην επιβάλλεις «όλες θερινές».
     if (preview.summerScreening.hasPerShowtimeFlags) {
       setMarkSummer(false);
       return;
     }
+    if (summerLocked) return;
     // Το κείμενο αναφέρει «θερινό» χωρίς ένδειξη ανά αίθουσα → πιθανό ολικό θερινό πρόγραμμα.
     if (preview.summerScreening.detectedInText) {
       setMarkSummer(true);
     }
   }, [preview, summerTouched, summerLocked]);
-
-  const previewHasPerLineSummer = preview?.summerScreening?.hasPerShowtimeFlags === true;
 
   useEffect(() => {
     let cancelled = false;

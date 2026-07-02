@@ -87,10 +87,10 @@ function buildSummerScreeningMeta({ venue, text, summerScreening, parsedMovies }
   const userChoice = summerScreening === true;
   let source = 'none';
   if (userChoice) source = 'user';
-  else if (venueOutdoor) source = 'venue';
+  else if (venueOutdoor && !hasPerShowtimeFlags) source = 'venue';
   else if (detectedInText || hasPerShowtimeFlags) source = 'text';
 
-  const applied = userChoice || venueOutdoor || detectedInText || hasPerShowtimeFlags;
+  const applied = userChoice || (venueOutdoor && !hasPerShowtimeFlags) || detectedInText || hasPerShowtimeFlags;
 
   return {
     applied,
@@ -166,8 +166,14 @@ async function buildPreviewFromParsed(
 ) {
   const cmsMovies = await findAllMovies(strapi);
   const now = new Date();
+  const summerMeta = buildSummerScreeningMeta({
+    venue,
+    text: programText,
+    summerScreening: summerScreening === true,
+    parsedMovies: parsed.movies,
+  });
   const summerScreeningDefault =
-    summerScreening === true || venue.summer_outdoor === true;
+    summerMeta.userChoice === true || (summerMeta.venueOutdoor === true && !summerMeta.hasPerShowtimeFlags);
 
   const movies = [];
   const proposals = [];
@@ -236,13 +242,6 @@ async function buildPreviewFromParsed(
   const matchedMovies = movies.filter((m) => m.movieMatch).length;
   const unmatchedMovies = movies.length - matchedMovies;
   const approvableCount = proposals.filter((p) => p.approved).length;
-
-  const summerMeta = buildSummerScreeningMeta({
-    venue,
-    text: programText,
-    summerScreening: summerScreening === true,
-    parsedMovies: parsed.movies,
-  });
 
   return {
     ok: true,
