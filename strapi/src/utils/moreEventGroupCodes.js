@@ -84,7 +84,15 @@ function collectVenueBundleCodes(venue) {
     codes.push(code);
   };
 
-  add(venue?.event_group_code ?? venue?.eventGroupCode);
+  // Το ρητό event_group_code του χώρου είναι εξ ορισμού venue bundle (το όρισε admin):
+  // εμπιστευόμαστε κάθε evg_* χωρίς την ευρετική isVenueBundleCode, ώστε νέοι κωδικοί
+  // (π.χ. evg_olumpionpolukhoroskastoria_…) να μη χρειάζονται προσθήκη prefix.
+  const primary = String(venue?.event_group_code ?? venue?.eventGroupCode ?? '').trim();
+  if (primary && /^evg_/i.test(primary) && !seen.has(primary)) {
+    seen.add(primary);
+    codes.push(primary);
+  }
+
   add(extractEvgCodeFromText(venue?.more_link ?? venue?.moreLink));
 
   const groups = venue?.more_event_groups ?? venue?.moreEventGroups ?? [];
