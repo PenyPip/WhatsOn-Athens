@@ -4,7 +4,6 @@ import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
 import { Clock, Globe, ArrowLeft, MapPin, Play } from "lucide-react";
 import SharePageButton from "@/components/SharePageButton";
-import MovieWatchlistButton from "@/components/MovieWatchlistButton";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Button } from "@/components/ui/button";
 import {
@@ -90,6 +89,13 @@ import {
   resolveCinemaGroupFromShowtimes,
   venueProgramHref,
 } from "@/lib/venueResolve";
+import MovieDetailShowtimeFilters from "@/components/MovieDetailShowtimeFilters";
+import {
+  filterMovieDetailShowtimes,
+  movieDetailShowtimeFilterOptions,
+  type MovieDetailDayFilter,
+} from "@/lib/movieDetailShowtimeFilters";
+import type { AthensDistrictKey, VenueAreaKey } from "@/lib/venueArea";
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
 function ShowtimeCompactRow({
@@ -309,10 +315,37 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     [venues],
   );
 
+  const [movieDayFilter, setMovieDayFilter] = useState<MovieDetailDayFilter>("all");
+  const [movieAreaFilter, setMovieAreaFilter] = useState<VenueAreaKey | null>(null);
+  const [movieDistrictFilter, setMovieDistrictFilter] = useState<AthensDistrictKey | null>(null);
+
+  const movieShowtimeFilterOptions = useMemo(
+    () => movieDetailShowtimeFilterOptions(eventShowtimes, venues ?? []),
+    [eventShowtimes, venues],
+  );
+
+  const filteredEventShowtimes = useMemo(
+    () =>
+      filterMovieDetailShowtimes(eventShowtimes, venues ?? [], {
+        dayFilter: movieDayFilter,
+        areaFilter: movieAreaFilter,
+        districtFilter: movieDistrictFilter,
+      }),
+    [eventShowtimes, venues, movieDayFilter, movieAreaFilter, movieDistrictFilter],
+  );
+
   const showtimesByVenue = useMemo(
     () => groupShowtimesByVenue(eventShowtimes),
     [eventShowtimes, groupShowtimesByVenue],
   );
+
+  const filteredShowtimesByVenue = useMemo(
+    () => groupShowtimesByVenue(filteredEventShowtimes),
+    [filteredEventShowtimes, groupShowtimesByVenue],
+  );
+
+  const movieShowtimesFilteredEmpty =
+    eventShowtimes.length > 0 && filteredEventShowtimes.length === 0;
 
   const focusedShowtime = useMemo((): StrapiShowtime | null => {
     if (type !== "movie" || !eventShowtimes.length) return null;
@@ -714,8 +747,24 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         </p>
       ) : null}
       {hasMovieShowtimes ? (
+        <MovieDetailShowtimeFilters
+          dayFilter={movieDayFilter}
+          onDayFilterChange={setMovieDayFilter}
+          areaFilter={movieAreaFilter}
+          onAreaFilterChange={setMovieAreaFilter}
+          districtFilter={movieDistrictFilter}
+          onDistrictFilterChange={setMovieDistrictFilter}
+          options={movieShowtimeFilterOptions}
+        />
+      ) : null}
+      {movieShowtimesFilteredEmpty ? (
+        <p className="text-sm text-muted-foreground">
+          Δεν βρέθηκαν προβολές με αυτά τα φίλτρα. Δοκίμασε άλλη ημέρα ή περιοχή.
+        </p>
+      ) : null}
+      {hasMovieShowtimes && !movieShowtimesFilteredEmpty ? (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
-          {showtimesByVenue.map(({ key, venueName, slots, venue }) => {
+          {filteredShowtimesByVenue.map(({ key, venueName, slots, venue }) => {
             if (!slots.length) return null;
             return (
               <div
@@ -956,18 +1005,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </a>
               ) : null}
               {isMovie && slug ? (
-                <>
-                  <MovieWatchlistButton
-                    slug={slug}
-                    title={headline.primary}
-                    className="inline-flex items-center gap-1.5 rounded border border-white/35 bg-white/10 px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-white/20 md:px-6 md:py-3"
-                  />
-                  <SharePageButton
-                    variant="hero"
-                    path={movieSharePath}
-                    title={headline.primary}
-                  />
-                </>
+                <SharePageButton
+                  variant="hero"
+                  path={movieSharePath}
+                  title={headline.primary}
+                />
               ) : null}
             </div>
             </div>
