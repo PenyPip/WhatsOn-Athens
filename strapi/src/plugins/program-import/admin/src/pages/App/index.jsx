@@ -204,16 +204,19 @@ export default function App() {
   }, [venueId, selectedVenue?.summerOutdoor]);
 
   useEffect(() => {
-    if (summerTouched || summerLocked) return;
-    if (textSuggestsSummer) setMarkSummer(true);
-  }, [textSuggestsSummer, summerTouched, summerLocked]);
-
-  useEffect(() => {
     if (!preview?.summerScreening || summerTouched || summerLocked) return;
-    if (preview.summerScreening.hasPerShowtimeFlags || preview.summerScreening.detectedInText) {
+    // Per-line «Θερινός»: ο parser σημειώνει μόνο τις σωστές αίθουσες — μην επιβάλλεις «όλες θερινές».
+    if (preview.summerScreening.hasPerShowtimeFlags) {
+      setMarkSummer(false);
+      return;
+    }
+    // Το κείμενο αναφέρει «θερινό» χωρίς ένδειξη ανά αίθουσα → πιθανό ολικό θερινό πρόγραμμα.
+    if (preview.summerScreening.detectedInText) {
       setMarkSummer(true);
     }
   }, [preview, summerTouched, summerLocked]);
+
+  const previewHasPerLineSummer = preview?.summerScreening?.hasPerShowtimeFlags === true;
 
   useEffect(() => {
     let cancelled = false;
@@ -572,7 +575,7 @@ export default function App() {
                   <Flex direction="column" gap={1}>
                     <Flex gap={2} alignItems="center">
                       <Checkbox
-                        aria-label="Θερινές προβολές"
+                        aria-label="Όλες οι προβολές θερινές"
                         checked={markSummer}
                         onChange={(e) => {
                           setSummerTouched(true);
@@ -580,13 +583,15 @@ export default function App() {
                         }}
                       />
                       <Typography variant="pi" fontWeight="semiBold">
-                        Θερινές προβολές
+                        Όλες οι προβολές θερινές
                       </Typography>
                     </Flex>
                     <Typography variant="pi" textColor="neutral600">
-                      {textSuggestsSummer
-                        ? 'Ανιχνεύθηκε «θερινό» στο κείμενο — επιβεβαιώστε αν όλες οι προβολές είναι θερινές.'
-                        : 'Ενεργοποιήστε αν πρόκειται για θερινό / open-air πρόγραμμα.'}
+                      {previewHasPerLineSummer
+                        ? 'Το κείμενο σημειώνει θερινό ανά αίθουσα (π.χ. «Αίθουσα 3 Θερινός») — μόνο αυτές οι προβολές μπαίνουν θερινές. Ενεργοποίησέ το μόνο αν θέλεις ΟΛΕΣ θερινές.'
+                        : textSuggestsSummer
+                          ? 'Ανιχνεύθηκε «θερινό» στο κείμενο — ενεργοποίησέ το μόνο αν ΟΛΕΣ οι προβολές είναι θερινές.'
+                          : 'Ενεργοποίησέ το αν ΟΛΟ το πρόγραμμα είναι θερινό / open-air.'}
                     </Typography>
                   </Flex>
                 )}
