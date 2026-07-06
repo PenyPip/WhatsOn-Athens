@@ -3490,7 +3490,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
           : '') +
         (report.venueUpdatedStatuses.no_new_to_manual
           ? ` · no_new→manual: ${report.venueUpdatedStatuses.no_new_to_manual}`
-          : '') +
+          : '')
       : '') +
     (report.createdTheaterVenues
       ? ` · νέοι χώροι θεάτρου: ${report.createdTheaterVenues}`
