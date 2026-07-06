@@ -4,7 +4,7 @@ import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_SUBTITLE_CLASS, PAGE_L
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import TheaterDateFilters from "@/components/TheaterDateFilters";
-import { useTheaterShows, useTheaterPerformances } from "@/hooks/useStrapi";
+import { useTheaterShows, useTheaterPerformances, useVenuesForProgram } from "@/hooks/useStrapi";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
@@ -15,6 +15,10 @@ import {
   type TheaterQuickDateFilter,
 } from "@/lib/theaterDateFilters";
 import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
+import {
+  theaterShowMatchesRegionFilter,
+  type TheaterRegionFilter,
+} from "@/lib/theaterRegionFilters";
 import {
   performanceOverlapsDateRange,
   theaterPerformanceSummary,
@@ -52,8 +56,9 @@ const TheaterPage = () => {
 
   const { data: theaterShows, isLoading: showsLoading } = useTheaterShows();
   const { data: theaterPerformances, isLoading: performancesLoading } = useTheaterPerformances();
+  const { data: venues } = useVenuesForProgram();
   const isLoading = showsLoading || performancesLoading;
-  const [onlyTour, setOnlyTour] = useState(false);
+  const [regionFilter, setRegionFilter] = useState<TheaterRegionFilter>("all");
   const [draftFrom, setDraftFrom] = useState("");
   const [draftTo, setDraftTo] = useState("");
   const [appliedFrom, setAppliedFrom] = useState("");
@@ -79,12 +84,18 @@ const TheaterPage = () => {
   }, [theaterShows, performancesByShowSlug]);
 
   const filteredShows = useMemo(() => {
+    const venueList = venues ?? [];
+    const cityFilterReady = venues !== undefined;
     return upcomingShows.filter((show) => {
-      if (onlyTour && !show.onTour) return false;
       const perfs = performancesByShowSlug.get(show.slug) ?? [];
+      if (regionFilter === "tour") {
+        if (!theaterShowMatchesRegionFilter(show, perfs, venueList, regionFilter)) return false;
+      } else if (regionFilter !== "all" && cityFilterReady) {
+        if (!theaterShowMatchesRegionFilter(show, perfs, venueList, regionFilter)) return false;
+      }
       return dateFilterMatch(show, appliedFrom, appliedTo, perfs);
     });
-  }, [upcomingShows, onlyTour, appliedFrom, appliedTo, performancesByShowSlug]);
+  }, [upcomingShows, regionFilter, appliedFrom, appliedTo, performancesByShowSlug, venues]);
 
   const activeQuickFilter = useMemo(
     () => detectTheaterQuickDateFilter(appliedFrom, appliedTo),
@@ -108,7 +119,7 @@ const TheaterPage = () => {
   }, []);
 
   const hasShows = upcomingShows.length > 0;
-  const hasActiveDateFilter = Boolean(appliedFrom || appliedTo);
+  const hasActiveFilters = regionFilter !== "all" || Boolean(appliedFrom || appliedTo);
 
   return (
     <div className={PAGE_LIST_SHELL_CLASS}>
@@ -130,6 +141,8 @@ const TheaterPage = () => {
           <>
             <TheaterDateFilters
               className="mb-6"
+              regionFilter={regionFilter}
+              onRegionFilterChange={setRegionFilter}
               draftFrom={draftFrom}
               draftTo={draftTo}
               onDraftFromChange={setDraftFrom}
@@ -137,13 +150,11 @@ const TheaterPage = () => {
               onApply={applyDraftDates}
               onQuickFilter={applyQuickFilter}
               activeQuickFilter={activeQuickFilter}
-              onlyTour={onlyTour}
-              onOnlyTourChange={setOnlyTour}
             />
             {filteredShows.length === 0 ? (
               <p className="mb-6 text-sm text-muted-foreground">
-                {hasActiveDateFilter
-                  ? "Δεν βρέθηκαν παραστάσεις για αυτές τις ημερομηνίες. Δοκίμασε άλλο διάστημα ή πάτα «Όλες»."
+                {hasActiveFilters
+                  ? "Δεν βρέθηκαν παραστάσεις με αυτά τα φίλτρα. Δοκίμασε άλλη περιοχή ή ημερομηνία."
                   : "Δεν βρέθηκαν παραστάσεις με αυτά τα φίλτρα."}
               </p>
             ) : null}

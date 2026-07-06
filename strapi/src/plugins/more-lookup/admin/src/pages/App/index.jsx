@@ -873,6 +873,128 @@ function groupSyncErrors(errors) {
   return [...groups.values()].sort((a, b) => b.count - a.count);
 }
 
+function groupVenueStatusByTransition(venues) {
+  const groups = new Map();
+  for (const row of venues || []) {
+    const key = row.transition || 'unchanged';
+    const list = groups.get(key) || [];
+    list.push(row);
+    groups.set(key, list);
+  }
+  return groups;
+}
+
+const VENUE_STATUS_GROUP_ORDER = [
+  'became_complete',
+  'pending_complete_monday',
+  'no_new_to_manual',
+  'became_manual',
+  'complete_to_manual',
+  'still_complete',
+  'still_manual',
+  'still_no_new',
+  'unchanged',
+];
+
+const VENUE_STATUS_GROUP_META = {
+  became_complete: { title: 'Έγιναν πλήρει', tone: 'success' },
+  pending_complete_monday: {
+    title: 'Έτοιμοι για complete (από Δευτέρα)',
+    tone: 'warning',
+  },
+  no_new_to_manual: { title: 'no_new → χειροκίνητα', tone: 'warning' },
+  became_manual: { title: 'Έγιναν χειροκίνητα', tone: 'warning' },
+  complete_to_manual: { title: 'Υποβάθμιση complete → χειροκίνητα', tone: 'danger' },
+  still_complete: { title: 'Ήδη πλήρει (δεν άλλαξαν)', tone: 'neutral' },
+  still_manual: { title: 'Παρέμειναν χειροκίνητα', tone: 'neutral' },
+  still_no_new: { title: 'Παρέμειναν no_new', tone: 'neutral' },
+  unchanged: { title: 'Άλλες αλλαγές', tone: 'neutral' },
+};
+
+function VenueStatusRow({ row }) {
+  const prev =
+    row.previousStatusLabel && row.previousStatus !== row.status
+      ? `${row.previousStatusLabel} → `
+      : '';
+  return (
+    <Box
+      padding={3}
+      background="neutral0"
+      hasRadius
+      style={{ border: '1px solid #eaeaef' }}
+    >
+      <Flex justifyContent="space-between" alignItems="flex-start" gap={3} wrap="wrap">
+        <Flex direction="column" alignItems="flex-start" gap={1} style={{ minWidth: 0 }}>
+          <Typography fontWeight="semiBold" textColor="neutral800">
+            {row.venueName}
+            <Typography as="span" variant="pi" textColor="neutral500">
+              {' '}
+              (#{row.venueId})
+            </Typography>
+          </Typography>
+          <Typography variant="pi" textColor="neutral600">
+            {prev}
+            {row.statusLabel}
+            {row.transitionLabel ? ` · ${row.transitionLabel}` : ''}
+          </Typography>
+        </Flex>
+        <Typography variant="pi" textColor="neutral500" style={{ maxWidth: '28rem', textAlign: 'right' }}>
+          {row.reasonDetail || '—'}
+        </Typography>
+      </Flex>
+    </Box>
+  );
+}
+
+function VenueStatusTransitionsPanel({ venueStatus }) {
+  const [expanded, setExpanded] = React.useState({});
+  const venues = Array.isArray(venueStatus?.venues) ? venueStatus.venues : [];
+  const groups = React.useMemo(() => groupVenueStatusByTransition(venues), [venues]);
+  if (!venues.length) return null;
+
+  const orderedKeys = [
+    ...VENUE_STATUS_GROUP_ORDER.filter((k) => groups.has(k)),
+    ...[...groups.keys()].filter((k) => !VENUE_STATUS_GROUP_ORDER.includes(k)),
+  ];
+
+  return (
+    <Flex direction="column" gap={4} paddingTop={2}>
+      {orderedKeys.map((key) => {
+        const meta = VENUE_STATUS_GROUP_META[key] || {
+          title: key,
+          tone: 'neutral',
+        };
+        const rows = groups.get(key) || [];
+        const isOpen = expanded[key] === true;
+        const preview = rows.slice(0, isOpen ? rows.length : 4);
+        return (
+          <Box key={key}>
+            <Flex justifyContent="space-between" alignItems="center" gap={2} paddingBottom={2}>
+              <Typography variant="pi" fontWeight="semiBold" textColor="neutral700">
+                {meta.title} ({rows.length})
+              </Typography>
+              {rows.length > 4 ? (
+                <Button
+                  size="S"
+                  variant="tertiary"
+                  onClick={() => setExpanded((prev) => ({ ...prev, [key]: !isOpen }))}
+                >
+                  {isOpen ? 'Λιγότερα' : `Όλα (${rows.length})`}
+                </Button>
+              ) : null}
+            </Flex>
+            <Flex direction="column" gap={2}>
+              {preview.map((row) => (
+                <VenueStatusRow key={`${key}-${row.venueId}`} row={row} />
+              ))}
+            </Flex>
+          </Box>
+        );
+      })}
+    </Flex>
+  );
+}
+
 function SyncReportPanel({ report }) {
   const [showAllMissingIds, setShowAllMissingIds] = React.useState(false);
   const [showErrors, setShowErrors] = React.useState(false);
@@ -902,8 +1024,8 @@ function SyncReportPanel({ report }) {
     report.durationMs != null ? `${(Number(report.durationMs) / 1000).toFixed(1)}s` : null;
 
   const venueStatus = report.venueUpdatedStatuses;
-  const hasVenueStatus =
-    Number(venueStatus?.updated ?? 0) > 0 || Number(venueStatus?.preserved_complete ?? 0) > 0;
+  const venueStatusRows = Array.isArray(venueStatus?.venues) ? venueStatus.venues : [];
+  const hasVenueStatus = venueStatusRows.length > 0 || Number(venueStatus?.updated ?? 0) > 0;
 
   return (
     <Box padding={5} background="primary100" hasRadius style={cardStyle}>
@@ -1043,22 +1165,45 @@ function SyncReportPanel({ report }) {
       {hasVenueStatus ? (
         <Box paddingBottom={missingIds.length || errorCount ? 4 : 0}>
           <SyncReportSection title="Κατάσταση σινεμά (updated)">
-            <Flex gap={3} wrap="wrap" paddingTop={1}>
-              <StatBadge label="Πλήρη" value={venueStatus.complete ?? 0} tone="success" />
-              <StatBadge label="Χειροκίνητα" value={venueStatus.needs_manual ?? 0} tone="warning" />
+            <Flex gap={3} wrap="wrap" paddingTop={1} paddingBottom={3}>
+              <StatBadge
+                label="Έγιναν πλήρει"
+                value={venueStatus.became_complete ?? 0}
+                tone={(venueStatus.became_complete ?? 0) > 0 ? 'success' : 'neutral'}
+              />
+              <StatBadge
+                label="no_new → χειροκίνητα"
+                value={venueStatus.no_new_to_manual ?? 0}
+                tone={(venueStatus.no_new_to_manual ?? 0) > 0 ? 'warning' : 'neutral'}
+              />
+              <StatBadge label="Πλήρει (σύνολο)" value={venueStatus.complete ?? 0} tone="success" />
+              <StatBadge
+                label="Χειροκίνητα"
+                value={venueStatus.needs_manual ?? 0}
+                tone={(venueStatus.needs_manual ?? 0) > 0 ? 'warning' : 'neutral'}
+              />
               {(venueStatus.preserved_complete ?? 0) > 0 ? (
                 <StatBadge
-                  label="Ήδη complete (δεν άλλαξαν)"
+                  label="Ήδη complete"
                   value={venueStatus.preserved_complete}
                 />
               ) : null}
               {(venueStatus.pending_complete_until_monday ?? 0) > 0 ? (
                 <StatBadge
-                  label="Έτοιμα · complete από Δευτέρα"
+                  label="Έτοιμοι · Δευτέρα+"
                   value={venueStatus.pending_complete_until_monday}
+                  tone="warning"
+                />
+              ) : null}
+              {(venueStatus.complete_to_manual ?? 0) > 0 ? (
+                <StatBadge
+                  label="complete → manual"
+                  value={venueStatus.complete_to_manual}
+                  tone="danger"
                 />
               ) : null}
             </Flex>
+            <VenueStatusTransitionsPanel venueStatus={venueStatus} />
           </SyncReportSection>
         </Box>
       ) : null}

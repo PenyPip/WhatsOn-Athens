@@ -193,6 +193,11 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
           queryFn: () => api.getTheaterPerformancesForHome(),
           ...queryDefaults,
         }),
+        qc.prefetchQuery({
+          queryKey: VENUES_PROGRAM_QUERY_KEY,
+          queryFn: api.getVenuesForProgram,
+          ...queryDefaults,
+        }),
       ]);
     } else if (theaterSlug) {
       await prefetchTheaterDetail(qc, theaterSlug);

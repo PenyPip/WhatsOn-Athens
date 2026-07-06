@@ -3485,6 +3485,12 @@ async function syncShowtimesFromMore(strapi, options = {}) {
           ? ` (${report.venueUpdatedStatuses.preserved_complete} ήδη complete)`
           : '') +
         ` · ${report.venueUpdatedStatuses.needs_manual} χειροκίνητα` +
+        (report.venueUpdatedStatuses.became_complete
+          ? ` · έγιναν πλήρει: ${report.venueUpdatedStatuses.became_complete}`
+          : '') +
+        (report.venueUpdatedStatuses.no_new_to_manual
+          ? ` · no_new→manual: ${report.venueUpdatedStatuses.no_new_to_manual}`
+          : '') +
         (report.venueUpdatedStatuses.pending_complete_until_monday
           ? ` · ${report.venueUpdatedStatuses.pending_complete_until_monday} έτοιμα (Δευτέρα+)`
           : '')
