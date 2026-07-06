@@ -2,8 +2,6 @@
 
 /** @typedef {'no_new' | 'complete' | 'needs_manual'} VenueUpdatedStatus */
 
-const { isVenueCompleteEligible } = require('../../../utils/cinemaWeek');
-
 const VENUE_UPDATED_STATUS = {
   NO_NEW: 'no_new',
   COMPLETE: 'complete',
@@ -22,7 +20,6 @@ const VENUE_TRANSITION_LABELS = {
   became_manual: 'Έγινε χειροκίνητα',
   complete_to_manual: 'complete → χειροκίνητα',
   still_complete: 'Ήδη πλήρης',
-  pending_complete_monday: 'Έτοιμος · complete από Δευτέρα',
   still_no_new: 'Παρέμεινε no_new',
   still_manual: 'Παρέμεινε χειροκίνητα',
   unchanged: '—',
@@ -37,10 +34,7 @@ function computeVenueStatusTransition(previous, next, preserved, opts = {}) {
     return 'became_manual';
   }
   if (preserved && next === VENUE_UPDATED_STATUS.COMPLETE) return 'still_complete';
-  if (preserved && next === VENUE_UPDATED_STATUS.NO_NEW) {
-    if (reason === 'week_synced_before_monday') return 'pending_complete_monday';
-    return 'still_no_new';
-  }
+  if (preserved && next === VENUE_UPDATED_STATUS.NO_NEW) return 'still_no_new';
   if (preserved && next === VENUE_UPDATED_STATUS.NEEDS_MANUAL) return 'still_manual';
   return 'unchanged';
 }
@@ -61,9 +55,7 @@ function explainVenueSyncStatusReason(stats, { reason, next } = {}) {
   const weekSynced = stats.weekSynced || 0;
   const weekFailed = stats.weekFailed || 0;
 
-  if (reason === 'week_synced_before_monday') {
-    parts.push(`όλες synced (${weekSynced}/${weekExpected}) — complete μόνο Δευτέρα–Παρασκευή`);
-  } else if (reason === 'no_upcoming_week_events') {
+  if (reason === 'no_upcoming_week_events') {
     if (weekExpected === 0) parts.push('καμία προβολή εβδομάδας στο More');
     else parts.push(`προβολές εβδομάδας: ${weekSynced}/${weekExpected}`);
   } else if (weekExpected > 0) {
@@ -226,9 +218,9 @@ function venueHasManualSyncIssues(stats) {
 
 /**
  * Κατάσταση μετά More sync.
- * - complete: όλες οι προβολές επόμενης εβδομάδας (Πέμπτη→) πέρασαν — μόνο Δευτέρα–Παρασκευή
+ * - complete: όλες οι προβολές της ερχόμενης εβδομάδας (Πέμπτη→Τετάρτη) πέρασαν
  * - needs_manual: κάποιες όχι (άγνωστη ταινία, mismatch, μερικό sync)
- * - null: καμία προβολή εβδομάδας στο More — κράτα no_new (ή synced πριν Δευτέρα)
+ * - null: καμία προβολή εβδομάδας στο More — κράτα no_new
  *
  * @returns {VenueUpdatedStatus | null}
  */
@@ -243,12 +235,7 @@ function computeVenueUpdatedStatus(stats, now = new Date()) {
 
   if (weekExpected > 0) {
     const allWeekSynced = weekFailed === 0 && weekSynced >= weekExpected;
-    if (allWeekSynced) {
-      if (isVenueCompleteEligible(now)) {
-        return VENUE_UPDATED_STATUS.COMPLETE;
-      }
-      return null;
-    }
+    if (allWeekSynced) return VENUE_UPDATED_STATUS.COMPLETE;
     return VENUE_UPDATED_STATUS.NEEDS_MANUAL;
   }
 
@@ -294,7 +281,6 @@ async function applyCinemaVenueUpdatedStatuses(
     needs_manual: 0,
     preserved_complete: 0,
     unchanged_no_new: 0,
-    pending_complete_until_monday: 0,
     became_complete: 0,
     became_manual: 0,
     no_new_to_manual: 0,
@@ -371,17 +357,7 @@ async function applyCinemaVenueUpdatedStatuses(
       continue;
     }
     if (next === null) {
-      const weekReady =
-        (stats.weekExpected || 0) > 0 &&
-        !stats.autoCreated &&
-        (stats.weekFailed || 0) === 0 &&
-        (stats.weekSynced || 0) >= (stats.weekExpected || 0);
-      const reason = weekReady && !isVenueCompleteEligible(now)
-        ? 'week_synced_before_monday'
-        : 'no_upcoming_week_events';
-      if (weekReady && !isVenueCompleteEligible(now)) {
-        summary.pending_complete_until_monday += 1;
-      }
+      const reason = 'no_upcoming_week_events';
       summary.unchanged_no_new += 1;
       summary.no_new += 1;
       pushVenue(

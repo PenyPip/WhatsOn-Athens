@@ -38,26 +38,9 @@ function getUpcomingCinemaWeekBounds(now = new Date()) {
   return { start, end };
 }
 
-/**
- * Εβδομάδα-στόχος για venue.updated (σινεμά).
- * - Δευ–Τετ: η επόμενη εβδομάδα που ξεκινά Πέμπτη (προετοιμασία προγράμματος).
- * - Πέμ–Κυρ: η τρέχουσα εβδομάδα κινηματογράφου (πρόγραμμα που μόλις άνοιξε).
- */
+/** Εβδομάδα-στόχος για venue.updated (σινεμά): πάντα η ερχόμενη Πέμπτη→Τετάρτη. */
 function getTargetCinemaWeekBoundsForVenueStatus(now = new Date()) {
-  const athensNow = athensLocalDate(now);
-  const currentStart = startOfCinemaWeek(athensNow);
-  const dow = athensNow.getDay();
-  let start;
-  if (dow >= 1 && dow <= 3) {
-    start = new Date(currentStart);
-    start.setDate(start.getDate() + 7);
-  } else {
-    start = new Date(currentStart);
-  }
-  const end = new Date(start);
-  end.setDate(end.getDate() + 6);
-  end.setHours(23, 59, 59, 999);
-  return { start, end };
+  return getUpcomingCinemaWeekBounds(now);
 }
 
 function isDatetimeInRange(dt, rangeStart, rangeEnd, now = new Date()) {
@@ -132,13 +115,10 @@ function isDatetimeInUpcomingCinemaWeek(dt, now = new Date()) {
   return t >= start.getTime() && t <= end.getTime();
 }
 
-/**
- * complete μόνο Δευτέρα–Παρασκευή (Europe/Athens).
- * Μετά το Σάββατο 06:00 reset, Σάββατο/Κυριακή δεν παίρνουν complete — περιμένουν Δευτέρα.
- */
+/** Legacy helper: complete eligibility is πλέον πάντα true. */
 function isVenueCompleteEligible(now = new Date()) {
-  const dow = athensLocalDate(now).getDay();
-  return dow >= 1 && dow <= 5;
+  void now;
+  return true;
 }
 
 module.exports = {

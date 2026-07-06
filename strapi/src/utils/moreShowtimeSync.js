@@ -141,7 +141,7 @@ function parseMoreEventDatetime(raw) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-/** Προβολές εβδομάδας-στόχου για venue.updated (Δευ–Τετ: επόμενη Πέμπτη, Πέμ–Κυρ: τρέχουσα). */
+/** Προβολές εβδομάδας-στόχου για venue.updated: πάντα η ερχόμενη Πέμπτη→Τετάρτη. */
 function moreEventInTargetCinemaWeekForVenueStatus(event, now) {
   return isDatetimeInTargetCinemaWeekForVenueStatus(parseMoreEventDatetime(event?.eventDate), now);
 }
@@ -3491,9 +3491,6 @@ async function syncShowtimesFromMore(strapi, options = {}) {
         (report.venueUpdatedStatuses.no_new_to_manual
           ? ` · no_new→manual: ${report.venueUpdatedStatuses.no_new_to_manual}`
           : '') +
-        (report.venueUpdatedStatuses.pending_complete_until_monday
-          ? ` · ${report.venueUpdatedStatuses.pending_complete_until_monday} έτοιμα (Δευτέρα+)`
-          : '')
       : '') +
     (report.createdTheaterVenues
       ? ` · νέοι χώροι θεάτρου: ${report.createdTheaterVenues}`

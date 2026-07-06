@@ -886,7 +886,6 @@ function groupVenueStatusByTransition(venues) {
 
 const VENUE_STATUS_GROUP_ORDER = [
   'became_complete',
-  'pending_complete_monday',
   'no_new_to_manual',
   'became_manual',
   'complete_to_manual',
@@ -898,10 +897,6 @@ const VENUE_STATUS_GROUP_ORDER = [
 
 const VENUE_STATUS_GROUP_META = {
   became_complete: { title: 'Έγιναν πλήρει', tone: 'success' },
-  pending_complete_monday: {
-    title: 'Έτοιμοι για complete (από Δευτέρα)',
-    tone: 'warning',
-  },
   no_new_to_manual: { title: 'no_new → χειροκίνητα', tone: 'warning' },
   became_manual: { title: 'Έγιναν χειροκίνητα', tone: 'warning' },
   complete_to_manual: { title: 'Υποβάθμιση complete → χειροκίνητα', tone: 'danger' },
@@ -1208,13 +1203,6 @@ function SyncReportPanel({ report }) {
                 <StatBadge
                   label="Ήδη complete"
                   value={venueStatus.preserved_complete}
-                />
-              ) : null}
-              {(venueStatus.pending_complete_until_monday ?? 0) > 0 ? (
-                <StatBadge
-                  label="Έτοιμοι · Δευτέρα+"
-                  value={venueStatus.pending_complete_until_monday}
-                  tone="warning"
                 />
               ) : null}
               {(venueStatus.complete_to_manual ?? 0) > 0 ? (
