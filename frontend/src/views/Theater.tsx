@@ -16,40 +16,13 @@ import {
 } from "@/lib/theaterDateFilters";
 import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
 import {
-  theaterShowMatchesRegionFilter,
+  theaterShowMatchesListFilters,
   type TheaterRegionFilter,
 } from "@/lib/theaterRegionFilters";
 import {
-  performanceOverlapsDateRange,
   theaterPerformanceSummary,
   theaterShowHasUpcomingPerformances,
 } from "@/lib/theaterPerformances";
-
-function ymdToMs(ymd: string): number {
-  const [y, m, d] = ymd.split("-").map((x) => Number(x));
-  if (!Number.isFinite(y) || !Number.isFinite(m) || !Number.isFinite(d)) return NaN;
-  return new Date(y, m - 1, d).getTime();
-}
-
-function dateFilterMatch(
-  show: { runStart?: string; runEnd?: string; slug: string },
-  fromYmd: string,
-  toYmd: string,
-  performancesForShow: { datetime: string; scheduleKind?: "exact" | "week_block"; weekEnd?: string }[],
-): boolean {
-  if (!fromYmd && !toYmd) return true;
-  if (performancesForShow.some((p) => performanceOverlapsDateRange(p, fromYmd, toYmd))) return true;
-  const fromMs = fromYmd ? ymdToMs(fromYmd) : null;
-  const toMs = toYmd ? ymdToMs(toYmd) : null;
-  if ((fromMs != null && !Number.isFinite(fromMs)) || (toMs != null && !Number.isFinite(toMs))) return true;
-  const showStart = show.runStart ? ymdToMs(show.runStart) : null;
-  const showEnd = show.runEnd ? ymdToMs(show.runEnd) : null;
-  const overlapStart = showStart ?? Number.NEGATIVE_INFINITY;
-  const overlapEnd = showEnd ?? Number.POSITIVE_INFINITY;
-  const filterStart = fromMs ?? Number.NEGATIVE_INFINITY;
-  const filterEnd = toMs ?? Number.POSITIVE_INFINITY;
-  return overlapStart <= filterEnd && overlapEnd >= filterStart;
-}
 
 const TheaterPage = () => {
   usePageSeo(staticPageSeo.theater);
@@ -88,12 +61,12 @@ const TheaterPage = () => {
     const cityFilterReady = venues !== undefined;
     return upcomingShows.filter((show) => {
       const perfs = performancesByShowSlug.get(show.slug) ?? [];
-      if (regionFilter === "tour") {
-        if (!theaterShowMatchesRegionFilter(show, perfs, venueList, regionFilter)) return false;
-      } else if (regionFilter !== "all" && cityFilterReady) {
-        if (!theaterShowMatchesRegionFilter(show, perfs, venueList, regionFilter)) return false;
-      }
-      return dateFilterMatch(show, appliedFrom, appliedTo, perfs);
+      return theaterShowMatchesListFilters(show, perfs, venueList, {
+        region: regionFilter,
+        fromYmd: appliedFrom,
+        toYmd: appliedTo,
+        cityFilterReady,
+      });
     });
   }, [upcomingShows, regionFilter, appliedFrom, appliedTo, performancesByShowSlug, venues]);
 

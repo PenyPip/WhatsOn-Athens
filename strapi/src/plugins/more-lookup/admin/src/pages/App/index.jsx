@@ -911,41 +911,6 @@ const VENUE_STATUS_GROUP_META = {
   unchanged: { title: 'Άλλες αλλαγές', tone: 'neutral' },
 };
 
-function VenueStatusRow({ row }) {
-  const prev =
-    row.previousStatusLabel && row.previousStatus !== row.status
-      ? `${row.previousStatusLabel} → `
-      : '';
-  return (
-    <Box
-      padding={3}
-      background="neutral0"
-      hasRadius
-      style={{ border: '1px solid #eaeaef' }}
-    >
-      <Flex justifyContent="space-between" alignItems="flex-start" gap={3} wrap="wrap">
-        <Flex direction="column" alignItems="flex-start" gap={1} style={{ minWidth: 0 }}>
-          <Typography fontWeight="semiBold" textColor="neutral800">
-            {row.venueName}
-            <Typography as="span" variant="pi" textColor="neutral500">
-              {' '}
-              (#{row.venueId})
-            </Typography>
-          </Typography>
-          <Typography variant="pi" textColor="neutral600">
-            {prev}
-            {row.statusLabel}
-            {row.transitionLabel ? ` · ${row.transitionLabel}` : ''}
-          </Typography>
-        </Flex>
-        <Typography variant="pi" textColor="neutral500" style={{ maxWidth: '28rem', textAlign: 'right' }}>
-          {row.reasonDetail || '—'}
-        </Typography>
-      </Flex>
-    </Box>
-  );
-}
-
 function VenueStatusTransitionsPanel({ venueStatus }) {
   const [expanded, setExpanded] = React.useState({});
   const venues = Array.isArray(venueStatus?.venues) ? venueStatus.venues : [];
@@ -983,11 +948,68 @@ function VenueStatusTransitionsPanel({ venueStatus }) {
                 </Button>
               ) : null}
             </Flex>
-            <Flex direction="column" gap={2}>
-              {preview.map((row) => (
-                <VenueStatusRow key={`${key}-${row.venueId}`} row={row} />
-              ))}
-            </Flex>
+            <Box background="neutral0" hasRadius style={{ border: '1px solid #eaeaef', overflowX: 'auto' }}>
+              <Table colCount={4} rowCount={preview.length}>
+                <Thead>
+                  <Tr>
+                    <Th>
+                      <Typography variant="sigma">Κινηματογράφος</Typography>
+                    </Th>
+                    <Th>
+                      <Typography variant="sigma">Κατάσταση</Typography>
+                    </Th>
+                    <Th>
+                      <Typography variant="sigma">Μετάβαση</Typography>
+                    </Th>
+                    <Th>
+                      <Typography variant="sigma">Γιατί όχι complete / τι έγινε</Typography>
+                    </Th>
+                  </Tr>
+                </Thead>
+                <Tbody>
+                  {preview.map((row) => {
+                    const prev =
+                      row.previousStatusLabel && row.previousStatus !== row.status
+                        ? `${row.previousStatusLabel} → `
+                        : '';
+                    return (
+                      <Tr key={`${key}-${row.venueId}`}>
+                        <Td>
+                          <Typography fontWeight="semiBold" textColor="neutral800">
+                            {row.venueName}
+                          </Typography>
+                          <Typography variant="pi" textColor="neutral500">
+                            #{row.venueId}
+                          </Typography>
+                        </Td>
+                        <Td>
+                          <Typography variant="pi" textColor="neutral600">
+                            {prev}
+                            {row.statusLabel}
+                          </Typography>
+                        </Td>
+                        <Td>
+                          {row.transitionLabel ? (
+                            <Badge background={`${meta.tone}100`} textColor={`${meta.tone}600`}>
+                              {row.transitionLabel}
+                            </Badge>
+                          ) : (
+                            <Typography variant="pi" textColor="neutral500">
+                              —
+                            </Typography>
+                          )}
+                        </Td>
+                        <Td>
+                          <Typography variant="pi" textColor="neutral600">
+                            {row.reasonDetail || '—'}
+                          </Typography>
+                        </Td>
+                      </Tr>
+                    );
+                  })}
+                </Tbody>
+              </Table>
+            </Box>
           </Box>
         );
       })}
