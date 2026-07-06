@@ -42,25 +42,30 @@ function computeVenueStatusTransition(previous, next, preserved, opts = {}) {
 function explainVenueSyncStatusReason(stats, { reason, next } = {}) {
   const parts = [];
   if (stats.autoCreated) parts.push('αυτόματη δημιουργία χώρου από sync');
-  if ((stats.skippedUnknownEventId || 0) > 0) {
-    parts.push(`${stats.skippedUnknownEventId} άγνωστα eventId`);
-  }
-  if ((stats.skippedVenueMismatch || 0) > 0) {
-    parts.push(`${stats.skippedVenueMismatch} mismatch venue`);
-  }
   if ((stats.skippedNoVenue || 0) > 0) parts.push('χωρίς venue στο CMS');
   if ((stats.errors || 0) > 0) parts.push(`${stats.errors} σφάλμα(τα) sync`);
 
   const weekExpected = stats.weekExpected || 0;
   const weekSynced = stats.weekSynced || 0;
   const weekFailed = stats.weekFailed || 0;
+  const weekUnknown = stats.weekSkippedUnknownEventId || 0;
+  const weekMismatch = stats.weekSkippedVenueMismatch || 0;
 
   if (reason === 'no_upcoming_week_events') {
     if (weekExpected === 0) parts.push('καμία προβολή εβδομάδας στο More');
     else parts.push(`προβολές εβδομάδας: ${weekSynced}/${weekExpected}`);
   } else if (weekExpected > 0) {
     if (weekFailed > 0) {
-      parts.push(`προβολές εβδομάδας ${weekSynced}/${weekExpected}, ${weekFailed} αποτυχίες`);
+      const detail =
+        weekUnknown > 0
+          ? `${weekUnknown} άγνωστα eventId`
+          : weekMismatch > 0
+            ? `${weekMismatch} mismatch venue`
+            : null;
+      parts.push(
+        `προβολές εβδομάδας ${weekSynced}/${weekExpected}, ${weekFailed} αποτυχίες` +
+          (detail ? ` (${detail})` : ''),
+      );
     } else if (weekSynced < weekExpected) {
       parts.push(`μερικό sync: ${weekSynced}/${weekExpected}`);
     } else if (next === VENUE_UPDATED_STATUS.COMPLETE) {
@@ -103,6 +108,8 @@ function buildVenueStatusEntry({
     alreadyExists: stats.alreadyExists,
     skippedUnknownEventId: stats.skippedUnknownEventId,
     skippedVenueMismatch: stats.skippedVenueMismatch,
+    weekSkippedUnknownEventId: stats.weekSkippedUnknownEventId,
+    weekSkippedVenueMismatch: stats.weekSkippedVenueMismatch,
     weekExpected: stats.weekExpected,
     weekSynced: stats.weekSynced,
     weekFailed: stats.weekFailed,
@@ -137,6 +144,8 @@ function createVenueSyncStatsTracker() {
         weekExpected: 0,
         weekSynced: 0,
         weekFailed: 0,
+        weekSkippedUnknownEventId: 0,
+        weekSkippedVenueMismatch: 0,
       });
     }
     return byVenueId.get(id);
@@ -197,6 +206,8 @@ function createVenueSyncStatsTracker() {
           weekExpected: s.weekExpected || 0,
           weekSynced: s.weekSynced || 0,
           weekFailed: s.weekFailed || 0,
+          weekSkippedUnknownEventId: s.weekSkippedUnknownEventId || 0,
+          weekSkippedVenueMismatch: s.weekSkippedVenueMismatch || 0,
         });
         if (s.autoCreated) this.markAutoCreated(venueId);
       }
@@ -205,12 +216,10 @@ function createVenueSyncStatsTracker() {
   };
 }
 
-/** Σφάλματα/παραλείψεις που απαιτούν χειροκίνητο έλεγχο — ποτέ complete. */
+/** Σφάλματα sync που απαιτούν χειροκίνητο έλεγχο — ανεξάρτητα από εβδομάδα-στόχο. */
 function venueHasManualSyncIssues(stats) {
   return (
     stats.autoCreated ||
-    (stats.skippedUnknownEventId || 0) > 0 ||
-    (stats.skippedVenueMismatch || 0) > 0 ||
     (stats.skippedNoVenue || 0) > 0 ||
     (stats.errors || 0) > 0
   );

@@ -1386,6 +1386,49 @@ async function showtimeExistsAt(strapi, { movieId, venueId, datetime }, existenc
   return exists;
 }
 
+function showtimeExistsAtVenueInIndex(index, venueId, datetime) {
+  if (!index?.size) return false;
+  const d = datetime instanceof Date ? datetime : new Date(datetime);
+  const baseMinute = Math.floor(d.getTime() / 60000);
+  const venue = String(venueId);
+  for (const delta of [-1, 0, 1]) {
+    const minute = baseMinute + delta;
+    for (const key of index) {
+      const parts = String(key).split('|');
+      if (parts.length !== 3) continue;
+      if (parts[1] === venue && Number(parts[2]) === minute) return true;
+    }
+  }
+  return false;
+}
+
+/** Υπάρχει προβολή στο CMS για χώρο+ώρα, χωρίς να χρειάζεται eventId mapping. */
+async function showtimeExistsAtVenue(strapi, { venueId, datetime }, existenceIndex) {
+  if (existenceIndex && showtimeExistsAtVenueInIndex(existenceIndex, venueId, datetime)) {
+    return true;
+  }
+  const t = datetime.getTime();
+  if (Number.isNaN(t)) return false;
+  const rows = await strapi.entityService.findMany('api::showtime.showtime', {
+    filters: {
+      venue: { id: venueId },
+      datetime: {
+        $gte: new Date(t - 60_000).toISOString(),
+        $lte: new Date(t + 60_000).toISOString(),
+      },
+    },
+    fields: ['datetime'],
+    populate: { movie: { fields: ['id'] } },
+    limit: 1,
+  });
+  if (!Array.isArray(rows) || !rows.length) return false;
+  const movieId = rows[0].movie?.id ?? rows[0].movie;
+  if (movieId != null) {
+    addShowtimeToExistenceIndex(existenceIndex, movieId, venueId, datetime);
+  }
+  return true;
+}
+
 function parseMoreSoldOut(event) {
   const raw = event?.soldOut ?? event?.sold_out;
   return raw === true || raw === 'true' || raw === 1;
@@ -1667,7 +1710,7 @@ async function runBundleVenueScrapeRetry({
   if (!pending.length) return;
 
   if (!BUNDLE_SYNC_SCRAPE_ENABLED || !titlePool?.length) {
-    for (const item of pending) onEachUnmapped(item);
+    for (const item of pending) await onEachUnmapped(item);
     return;
   }
 
@@ -1681,7 +1724,7 @@ async function runBundleVenueScrapeRetry({
 
   if (!candidates.length) {
     venueStats.scrapeError = 'no_scrape_candidates';
-    for (const item of pending) onEachUnmapped(item);
+    for (const item of pending) await onEachUnmapped(item);
     return;
   }
 
@@ -1693,7 +1736,7 @@ async function runBundleVenueScrapeRetry({
 
   if (!scrape?.ok) {
     venueStats.scrapeError = scrape?.error || 'scrape_failed';
-    for (const item of pending) onEachUnmapped(item);
+    for (const item of pending) await onEachUnmapped(item);
     return;
   }
 
@@ -1974,12 +2017,36 @@ function indexTheaterMappingsFromVenueScrape(
   return added;
 }
 
-function recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venueId, inWeek) {
+async function recordCinemaBundleUnmapped(
+  strapi,
+  report,
+  venueStats,
+  venueSyncTracker,
+  venue,
+  event,
+  inWeek,
+  showtimeExistenceIndex,
+) {
   report.skippedUnknownEventId += 1;
   venueStats.skippedUnknownEventId += 1;
   venueStats.skipped += 1;
-  venueSyncTracker.record(venueId, { skippedUnknownEventId: 1 });
-  if (inWeek) venueSyncTracker.recordWeekEvent(venueId, 'failed');
+  if (!inWeek) return;
+
+  const datetime = parseMoreEventDatetime(event?.eventDate);
+  if (datetime) {
+    const exists = await showtimeExistsAtVenue(
+      strapi,
+      { venueId: venue.id, datetime },
+      showtimeExistenceIndex,
+    );
+    if (exists) {
+      venueSyncTracker.recordWeekEvent(venue.id, 'synced');
+      return;
+    }
+  }
+
+  venueSyncTracker.record(venue.id, { weekSkippedUnknownEventId: 1 });
+  venueSyncTracker.recordWeekEvent(venue.id, 'failed');
 }
 
 async function processOneCinemaBundleEvent(
@@ -2028,7 +2095,10 @@ async function processOneCinemaBundleEvent(
     venueStats.skipped += 1;
     venueStats.skippedVenueMismatch += 1;
     venueSyncTracker.record(venue.id, { skippedVenueMismatch: 1 });
-    if (inWeek) venueSyncTracker.recordWeekEvent(venue.id, 'failed');
+    if (inWeek) {
+      venueSyncTracker.record(venue.id, { weekSkippedVenueMismatch: 1 });
+      venueSyncTracker.recordWeekEvent(venue.id, 'failed');
+    }
     return { kind: 'skipped' };
   }
 
@@ -2111,7 +2181,16 @@ async function syncCinemaVenueBundleEvents(
 
       const datetime = parseMoreEventDatetime(event.eventDate);
       if (!datetime || datetime < now) {
-        recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venue.id, outcome.inWeek);
+        await recordCinemaBundleUnmapped(
+          strapi,
+          report,
+          venueStats,
+          venueSyncTracker,
+          venue,
+          event,
+          outcome.inWeek,
+          showtimeExistenceIndex,
+        );
         continue;
       }
       pending.push({ event, code, inWeek: outcome.inWeek });
@@ -2133,8 +2212,17 @@ async function syncCinemaVenueBundleEvents(
     onProgress,
     progressNoun: 'Σινεμά',
     persistQueue,
-    onEachUnmapped: ({ inWeek }) =>
-      recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venue.id, inWeek),
+    onEachUnmapped: async ({ event, inWeek }) =>
+      recordCinemaBundleUnmapped(
+        strapi,
+        report,
+        venueStats,
+        venueSyncTracker,
+        venue,
+        event,
+        inWeek,
+        showtimeExistenceIndex,
+      ),
     onEachRetry: async ({ event, code, inWeek }) => {
       const outcome = await processOneCinemaBundleEvent(strapi, {
         event,
@@ -2149,7 +2237,16 @@ async function syncCinemaVenueBundleEvents(
         venueSyncTracker,
       });
       if (outcome.kind === 'unmapped') {
-        recordCinemaBundleUnmapped(report, venueStats, venueSyncTracker, venue.id, inWeek);
+        await recordCinemaBundleUnmapped(
+          strapi,
+          report,
+          venueStats,
+          venueSyncTracker,
+          venue,
+          event,
+          inWeek,
+          showtimeExistenceIndex,
+        );
       }
     },
   });
@@ -2397,9 +2494,17 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
         hadWeekEvents = true;
         const eventId = String(event.eventId ?? '').trim();
         const mapped = eventIdIndex.get(eventId);
+        const datetime = parseMoreEventDatetime(event.eventDate);
+        if (!datetime || datetime < now) continue;
+
         if (!mapped) {
-          tracker.recordWeekEvent(venue.id, 'failed');
-          tracker.record(venue.id, { skippedUnknownEventId: 1 });
+          const exists = await showtimeExistsAtVenue(
+            strapi,
+            { venueId: venue.id, datetime },
+            showtimeExistenceIndex,
+          );
+          tracker.recordWeekEvent(venue.id, exists ? 'synced' : 'failed');
+          if (!exists) tracker.record(venue.id, { weekSkippedUnknownEventId: 1 });
           continue;
         }
 
@@ -2409,12 +2514,9 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
           })
         ) {
           tracker.recordWeekEvent(venue.id, 'failed');
-          tracker.record(venue.id, { skippedVenueMismatch: 1 });
+          tracker.record(venue.id, { weekSkippedVenueMismatch: 1 });
           continue;
         }
-
-        const datetime = parseMoreEventDatetime(event.eventDate);
-        if (!datetime || datetime < now) continue;
 
         const exists = await showtimeExistsAt(
           strapi,
