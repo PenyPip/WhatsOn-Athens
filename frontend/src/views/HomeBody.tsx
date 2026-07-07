@@ -44,6 +44,7 @@ import {
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
+import HomePersonalizedSections from "@/components/HomePersonalizedSections";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
@@ -472,14 +473,19 @@ export default function HomeBody({ layout }: HomeBodyProps) {
       {sections.map((id) => {
         switch (id) {
           case "hero":
-            return sectionEl(
-              "hero",
-              <MostTalkedAboutHero
-                movies={mostTalkedAboutList}
-                showtimes={stList}
-                loading={awaitingMovies || (isMobile && !deferSecondary)}
-                now={siteNow}
-              />,
+            return (
+              <Fragment key="hero-block">
+                {sectionEl(
+                  "hero",
+                  <MostTalkedAboutHero
+                    movies={mostTalkedAboutList}
+                    showtimes={stList}
+                    loading={awaitingMovies || (isMobile && !deferSecondary)}
+                    now={siteNow}
+                  />,
+                )}
+                <HomePersonalizedSections movies={movieList} showtimes={stList} />
+              </Fragment>
             );
           case "strip":
             return sectionEl(

@@ -2,7 +2,11 @@
 
 const { parseProgramText, parseProgramFromImages, isAiEnabled, isOcrAvailable } = require('./programTextParse');
 const { aiConfig, MAX_VISION_IMAGES } = require('./programTextAiParser');
-const { formatWeekLabel } = require('./cinemaWeek');
+const { formatWeekLabel, isDatetimeInTargetCinemaWeekForVenueStatus } = require('./cinemaWeek');
+const {
+  applyVenueUpdatedStatusFromProgramImport,
+  VENUE_UPDATED_LABELS,
+} = require('../api/venue/services/venue-updated-status');
 const {
   findBestCmsMatchByPlayTitle,
   scorePlayTitleMatch,
@@ -341,7 +345,10 @@ async function previewProgramTextImport(
   });
 }
 
-async function createProgramTextShowtimes(strapi, { venueId, items, now = new Date() } = {}) {
+async function createProgramTextShowtimes(
+  strapi,
+  { venueId, items, importMeta = {}, now = new Date() } = {},
+) {
   const venue = await loadVenue(strapi, venueId);
   if (!venue) {
     return { ok: false, error: 'Άκυρος κινηματογράφος (venueId).' };
@@ -363,14 +370,32 @@ async function createProgramTextShowtimes(strapi, { venueId, items, now = new Da
     skippedNotApproved: 0,
     errors: 0,
     details: [],
+    weekExpected: 0,
+    weekSynced: 0,
+    weekFailed: 0,
+    weekSkippedNotApproved: 0,
+    weekSkippedNoMovie: 0,
+  };
+
+  const trackWeekFailure = () => {
+    summary.weekFailed += 1;
   };
 
   for (const item of list) {
     const movieId = Number(item.movieId);
     const parsedTitle = String(item.parsedTitle || '').trim();
     const showtimes = Array.isArray(item.showtimes) ? item.showtimes : [];
+    const hasMovie = Number.isFinite(movieId);
 
-    if (!Number.isFinite(movieId)) {
+    if (!hasMovie) {
+      for (const st of showtimes) {
+        const datetime = new Date(st.datetime);
+        if (Number.isNaN(datetime.getTime()) || datetime < now) continue;
+        if (!isDatetimeInTargetCinemaWeekForVenueStatus(datetime, now)) continue;
+        summary.weekExpected += 1;
+        summary.weekSkippedNoMovie += 1;
+        trackWeekFailure();
+      }
       summary.skippedNoMovie += showtimes.filter((st) => st.create !== false && st.approved !== false).length;
       summary.details.push({
         parsedTitle,
@@ -383,6 +408,16 @@ async function createProgramTextShowtimes(strapi, { venueId, items, now = new Da
     for (const st of showtimes) {
       if (st.create === false || st.skip === true || st.approved === false) {
         summary.skippedNotApproved += 1;
+        const datetime = new Date(st.datetime);
+        if (
+          !Number.isNaN(datetime.getTime()) &&
+          datetime >= now &&
+          isDatetimeInTargetCinemaWeekForVenueStatus(datetime, now)
+        ) {
+          summary.weekExpected += 1;
+          summary.weekSkippedNotApproved += 1;
+          trackWeekFailure();
+        }
         continue;
       }
 
@@ -396,6 +431,9 @@ async function createProgramTextShowtimes(strapi, { venueId, items, now = new Da
         continue;
       }
 
+      const inTargetWeek = isDatetimeInTargetCinemaWeekForVenueStatus(datetime, now);
+      if (inTargetWeek) summary.weekExpected += 1;
+
       try {
         const exists = await showtimeExistsAt(strapi, {
           movieId,
@@ -404,6 +442,7 @@ async function createProgramTextShowtimes(strapi, { venueId, items, now = new Da
         });
         if (exists) {
           summary.skippedExists += 1;
+          if (inTargetWeek) summary.weekSynced += 1;
           continue;
         }
 
@@ -427,14 +466,41 @@ async function createProgramTextShowtimes(strapi, { venueId, items, now = new Da
           },
         });
         summary.created += 1;
+        if (inTargetWeek) summary.weekSynced += 1;
       } catch (e) {
         summary.errors += 1;
+        if (inTargetWeek) trackWeekFailure();
         strapi.log.warn(`[program-import] create showtime failed: ${e?.message || e}`);
       }
     }
   }
 
-  return { ok: true, venue: { id: venue.id, name: venue.name }, summary };
+  const meta = {
+    unmatchedMovies: Number(importMeta.unmatchedMovies || 0),
+  };
+
+  const venueUpdated = await applyVenueUpdatedStatusFromProgramImport(
+    strapi,
+    venue.id,
+    {
+      created: summary.created,
+      alreadyExists: summary.skippedExists,
+      errors: summary.errors,
+      weekExpected: summary.weekExpected,
+      weekSynced: summary.weekSynced,
+      weekFailed: summary.weekFailed,
+      unmatchedMovies: meta.unmatchedMovies,
+    },
+    { importMeta: meta, now },
+  );
+
+  return {
+    ok: true,
+    venue: { id: venue.id, name: venue.name },
+    summary,
+    venueUpdated,
+    venueUpdatedLabel: venueUpdated?.status ? VENUE_UPDATED_LABELS[venueUpdated.status] : null,
+  };
 }
 
 module.exports = {

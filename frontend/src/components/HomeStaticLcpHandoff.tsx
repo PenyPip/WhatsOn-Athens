@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { useHomeLcpLayoutDone, useHomeLcpOverlayDone } from "@/hooks/useHomeLcpDone";
+import { useHomeLcpOverlayDone } from "@/hooks/useHomeLcpDone";
 
 /**
  * Mobile: κρύβει το static LCP overlay πριν mount το lazy HomeBody.
@@ -7,7 +7,6 @@ import { useHomeLcpLayoutDone, useHomeLcpOverlayDone } from "@/hooks/useHomeLcpD
  */
 export default function HomeStaticLcpHandoff() {
   const markOverlayDone = useHomeLcpOverlayDone();
-  const markLayoutDone = useHomeLcpLayoutDone();
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -23,8 +22,8 @@ export default function HomeStaticLcpHandoff() {
         if (cancelled) return;
         const finish = () => {
           if (!cancelled) {
+            /** Μόνο overlay — το slot (#home-hero-slot) μένει μέχρι live hero + poster (MostTalkedAboutHero). */
             markOverlayDone();
-            markLayoutDone();
           }
         };
         if (typeof requestIdleCallback !== "undefined") {
@@ -41,7 +40,7 @@ export default function HomeStaticLcpHandoff() {
         cancelIdleCallback(idleId);
       }
     };
-  }, [markOverlayDone, markLayoutDone]);
+  }, [markOverlayDone]);
 
   return null;
 }

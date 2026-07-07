@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { QueryClient, QueryClientProvider, HydrationBoundary, type DehydratedState } from "@tanstack/react-query";
+import { AuthProvider } from "@/contexts/AuthContext";
 type SpaProvidersProps = {
   children: React.ReactNode;
   dehydratedState?: DehydratedState;
@@ -25,7 +26,9 @@ export default function SpaProviders({ children, dehydratedState }: SpaProviders
 
   return (
     <QueryClientProvider client={queryClient}>
-      <HydrationBoundary state={dehydratedState}>{children}</HydrationBoundary>
+      <HydrationBoundary state={dehydratedState}>
+        <AuthProvider>{children}</AuthProvider>
+      </HydrationBoundary>
     </QueryClientProvider>
   );
 }

@@ -10,6 +10,11 @@ import { homeLcpDisplay } from "@/lib/homeHeroLcp";
 import { layoutShowsHero, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
 import { slimHomeBootstrapState } from "@/lib/rqBootstrap";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
+import HomeCrawlableBody from "@/components/server/HomeCrawlableBody";
+import MoviesCrawlableList from "@/components/server/MoviesCrawlableList";
+import { buildHomeCrawlFromDehydrated } from "@/lib/homeCrawlFromDehydrated";
+import { buildMoviesListCrawlFromDehydrated } from "@/lib/moviesListCrawlFromDehydrated";
+import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
 import spaPaths from "@/generated/spa-static-paths.json";
 
 type SpaPathParams = { slug?: string[] };
@@ -45,8 +50,16 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function SpaCatchAllPage({ params }: PageProps) {
   const { slug } = await params;
   const path = pathFromSlugParam(slug);
-  let dehydratedState = await prefetchRouteData(path);
+  const dehydratedStateRaw = await prefetchRouteData(path);
+  let dehydratedState = dehydratedStateRaw;
   let homepageData: MappedHomepage | undefined;
+
+  const homeCrawl = path === "/" ? buildHomeCrawlFromDehydrated(dehydratedStateRaw) : null;
+  const moviesCrawl =
+    path === "/movies" || isMoviesFilterListPath(path)
+      ? buildMoviesListCrawlFromDehydrated(path, dehydratedStateRaw)
+      : null;
+
   if (path === "/") {
     const homepageEntry = dehydratedState.queries.find((q) => q.queryKey[0] === "homepage");
     homepageData =
@@ -76,7 +89,9 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
       {showStaticLcp && lcp ? (
         <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} synopsis={lcp.synopsis} />
       ) : null}
-      <ServerJsonLd path={path} />
+      {homeCrawl ? <HomeCrawlableBody data={homeCrawl} /> : null}
+      {moviesCrawl ? <MoviesCrawlableList {...moviesCrawl} /> : null}
+      <ServerJsonLd path={path} homeCrawl={homeCrawl} moviesCrawl={moviesCrawl} />
       <RqBootstrapScript state={dehydratedState} />
       <SpaRoot
         ssrPath={path}

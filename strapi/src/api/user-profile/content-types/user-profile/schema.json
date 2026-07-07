@@ -1,0 +1,33 @@
+{
+  "kind": "collectionType",
+  "collectionName": "user_profiles",
+  "info": {
+    "singularName": "user-profile",
+    "pluralName": "user-profiles",
+    "displayName": "User Profile"
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "plugin::users-permissions.user"
+    },
+    "display_name": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "favorite_movies": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::movie.movie"
+    },
+    "favorite_venues": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::venue.venue"
+    }
+  }
+}

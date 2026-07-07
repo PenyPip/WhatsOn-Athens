@@ -37,6 +37,7 @@ module.exports = {
     const result = await createProgramTextShowtimes(strapi, {
       venueId: body.venueId,
       items: body.items,
+      importMeta: body.importMeta,
     });
     if (!result.ok) {
       ctx.status = 400;

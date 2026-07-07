@@ -1163,6 +1163,27 @@ function mapTheaterPerformance(raw: unknown): StrapiTheaterPerformance[] {
 
 function mapUserReview(raw: unknown): StrapiUserReview {
   const r = unwrapStrapiEntry(raw);
+  const movieRel = r.movie as { id?: number } | number | null | undefined;
+  const theaterRel = r.theater_show as { id?: number } | number | null | undefined;
+  const restaurantRel = r.restaurant as { id?: number } | number | null | undefined;
+  const movieId =
+    typeof movieRel === "number"
+      ? movieRel
+      : typeof movieRel === "object" && movieRel?.id != null
+        ? Number(movieRel.id)
+        : null;
+  const theaterShowId =
+    typeof theaterRel === "number"
+      ? theaterRel
+      : typeof theaterRel === "object" && theaterRel?.id != null
+        ? Number(theaterRel.id)
+        : null;
+  const restaurantId =
+    typeof restaurantRel === "number"
+      ? restaurantRel
+      : typeof restaurantRel === "object" && restaurantRel?.id != null
+        ? Number(restaurantRel.id)
+        : null;
   return {
     id: r.id,
     documentId: r.documentId,
@@ -1171,6 +1192,9 @@ function mapUserReview(raw: unknown): StrapiUserReview {
     body: r.body,
     contentType: r.content_type,
     contentTitle: r.content_title || "",
+    movieId,
+    theaterShowId,
+    restaurantId,
     createdAt: r.createdAt,
   };
 }
@@ -1477,6 +1501,9 @@ export interface StrapiUserReview {
   body: string;
   contentType: string;
   contentTitle: string;
+  movieId?: number | null;
+  theaterShowId?: number | null;
+  restaurantId?: number | null;
   createdAt: string;
 }
 
@@ -1937,5 +1964,9 @@ export const api = {
   },
 
   getUserReviews: () =>
-    fetchAPI<any[]>("/user-reviews").then((d) => (Array.isArray(d) ? d : []).map((x) => mapUserReview(x))),
+    fetchAPI<any[]>("/user-reviews", {
+      "populate[movie]": "id",
+      "populate[theater_show]": "id",
+      "populate[restaurant]": "id",
+    }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapUserReview(x))),
 };

@@ -51,6 +51,11 @@ import {
 } from "@/lib/showtimeSchedule";
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
+import FavoriteButton from "@/components/FavoriteButton";
+import PopularBadge from "@/components/PopularBadge";
+import WriteReviewForm from "@/components/WriteReviewForm";
+import { useAuth } from "@/contexts/AuthContext";
+import { useMoviePopularity } from "@/hooks/usePopularity";
 import { cn } from "@/lib/utils";
 import MovieDetailIntro from "@/components/MovieDetailIntro";
 import { usePageSeo } from "@/hooks/usePageSeo";
@@ -231,6 +236,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows(isTheaterRoute);
   const { data: editorialReviews } = useEditorialReviews();
   const { data: userReviews } = useUserReviews();
+  const { isAuthenticated } = useAuth();
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(isMovieRoute);
   const { data: theaterPerformances, isLoading: performancesLoading } = useTheaterPerformances(isTheaterRoute);
   const { data: genreCatalog } = useMovieGenreCatalog(isMovieRoute && loadRelatedMovies);
@@ -251,6 +257,15 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { data: articlesForMovie } = useArticlesForMovie(slug ?? "", isMovieRoute && !!slug);
   const { data: articlesForTheater } = useArticlesForTheater(slug ?? "", isTheaterRoute && !!slug);
   const relatedArticles = isMovieRoute ? (articlesForMovie ?? []) : (articlesForTheater ?? []);
+
+  const movieIdForPopularity = useMemo(() => {
+    if (type !== "movie" || !slug) return undefined;
+    const fromList = moviesEnriched?.find((m) => m.slug === slug)?.id;
+    if (fromList) return fromList;
+    return movieBySlug?.id;
+  }, [type, slug, moviesEnriched, movieBySlug]);
+
+  const { data: moviePopularity } = useMoviePopularity(movieIdForPopularity);
 
   const event =
     type === "movie"
@@ -611,7 +626,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     isMovie && movie ? reviewContentMatchesMovie(r.contentTitle, movie) : r.contentTitle === event.title,
   );
   const eventUserReviews = (userReviews ?? []).filter((r) =>
-    isMovie && movie ? reviewContentMatchesMovie(r.contentTitle, movie) : r.contentTitle === event.title,
+    isMovie && movie
+      ? r.movieId === movie.id || reviewContentMatchesMovie(r.contentTitle, movie)
+      : r.contentTitle === event.title,
   );
 
   const headline = isMovie && movie ? movieTitleLines(movie) : { primary: event.title, secondary: undefined as string | undefined };
@@ -894,15 +911,17 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               </figure>
             ) : null}
 
-            {movie && (imdbRating != null || movie.ageRating?.trim()) ? (
-              <div className="flex items-center gap-3 mb-3">
+            {movie && (imdbRating != null || movie.ageRating?.trim() || moviePopularity?.isPopular) ? (
+              <div className="flex flex-wrap items-center gap-3 mb-3">
                 {imdbRating != null ? <ImdbRatingBadge rating={imdbRating} variant="hero" /> : null}
+                {moviePopularity?.isPopular ? <PopularBadge /> : null}
                 {movie.ageRating?.trim() ? (
                   <span className="text-sm text-white/60">{movie.ageRating}</span>
                 ) : null}
               </div>
             ) : null}
 
+            <div className="flex items-start justify-between gap-3">
             <h1
               className={cn(
                 "font-display font-bold text-white",
@@ -922,6 +941,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             >
               {isMovie && movieSeo ? movieSeo.h1 : headline.primary}
             </h1>
+            {isMovie && movie?.id ? (
+              <FavoriteButton kind="movie" entityId={movie.id} className="shrink-0 border-white/20 bg-black/30 text-white hover:text-rose-300" />
+            ) : null}
+            </div>
             {isMovie && movieSeo ? (
               <p className="font-display text-lg md:text-xl font-medium text-white/80 mb-2">{movieSeo.subtitle}</p>
             ) : null}
@@ -1159,10 +1182,20 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         {SHOW_WRITE_REVIEW_CTA ? (
           <div className="card-elevated p-6 text-center max-w-md mx-auto border-2 border-[#13143E]">
             <h3 className="font-display font-semibold text-lg mb-2">Γράψε Κριτική</h3>
-            <p className="text-base text-muted-foreground mb-3">Σύνδεση για να γράψεις κριτική</p>
-            <Button variant="outline" size="sm" className="border-foreground text-foreground hover:bg-foreground hover:text-background" asChild>
-              <Link to="/profile">Σύνδεση</Link>
-            </Button>
+            {isAuthenticated ? (
+              <WriteReviewForm
+                contentType={isMovie ? "movie" : "theater"}
+                movieId={isMovie && movie ? movie.id : undefined}
+                theaterShowId={!isMovie && theaterShow ? theaterShow.id : undefined}
+              />
+            ) : (
+              <>
+                <p className="text-base text-muted-foreground mb-3">Σύνδεση για να γράψεις κριτική</p>
+                <Button variant="outline" size="sm" className="border-foreground text-foreground hover:bg-foreground hover:text-background" asChild>
+                  <Link to="/profile">Σύνδεση</Link>
+                </Button>
+              </>
+            )}
           </div>
         ) : null}
 

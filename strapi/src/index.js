@@ -34,6 +34,28 @@ const PUBLIC_COLLECTION_READ_ACTIONS = [
   'api::event.event.findOne',
   'api::user-review.user-review.find',
   'api::user-review.user-review.findOne',
+  'api::user-profile.user-profile.moviePopularity',
+  'api::user-profile.user-profile.venuePopularity',
+];
+
+const PUBLIC_AUTH_ACTIONS = [
+  'plugin::users-permissions.auth.callback',
+  'plugin::users-permissions.auth.connect',
+  'plugin::users-permissions.auth.register',
+  'plugin::users-permissions.auth.emailConfirmation',
+  'plugin::users-permissions.auth.forgotPassword',
+  'plugin::users-permissions.auth.resetPassword',
+];
+
+const AUTHENTICATED_USER_ACTIONS = [
+  'plugin::users-permissions.user.me',
+  'api::user-profile.user-profile.me',
+  'api::user-profile.user-profile.updateMe',
+  'api::user-profile.user-profile.toggleFavoriteMovie',
+  'api::user-profile.user-profile.toggleFavoriteVenue',
+  'api::user-review.user-review.listMine',
+  'api::user-review.user-review.createMine',
+  'api::user-review.user-review.deleteMine',
 ];
 
 const PUBLIC_SINGLE_TYPE_ACTIONS = [
@@ -49,22 +71,21 @@ const DEFAULT_NAV_ITEMS = [
   { label: 'Χώροι', path: '/venues', icon: 'venues', show_on_desktop: true, show_on_mobile_tab: true },
 ];
 
-async function enablePublicPermission(strapi, action, publicRoleId) {
+async function enableRolePermission(strapi, action, roleId, label) {
   let perms = await strapi.db.query('plugin::users-permissions.permission').findMany({
-    where: { role: publicRoleId, action },
+    where: { role: roleId, action },
     limit: 1,
   });
   let permission = perms[0];
-  /** Νέοι τύποι CMS (π.χ. Είδος ταινίας): η εγγραφή permission πρέπει να δημιουργείται ή δεν εμφανίζεται στο REST populate. */
   if (!permission) {
     try {
       permission = await strapi.db.query('plugin::users-permissions.permission').create({
-        data: { action, enabled: true, role: publicRoleId },
+        data: { action, enabled: true, role: roleId },
       });
-      strapi.log.info(`[whatson] Δημιουργήθηκε + Public: ${action}`);
+      strapi.log.info(`[whatson] Δημιουργήθηκε + ${label}: ${action}`);
     } catch (e) {
       strapi.log.warn(
-        `[whatson] Δεν ήταν δυνατή η δημιουργία permission για Public: "${action}". Admin → Users & Permissions → Public → όρισε χειροκίνητα. ${e}`,
+        `[whatson] Δεν ήταν δυνατή η δημιουργία permission για ${label}: "${action}". ${e}`,
       );
       return false;
     }
@@ -75,9 +96,13 @@ async function enablePublicPermission(strapi, action, publicRoleId) {
       where: { id: permission.id },
       data: { enabled: true },
     });
-    strapi.log.info(`[whatson] Ενεργοποιήθηκε Public: ${action}`);
+    strapi.log.info(`[whatson] Ενεργοποιήθηκε ${label}: ${action}`);
   }
   return true;
+}
+
+async function enablePublicPermission(strapi, action, publicRoleId) {
+  return enableRolePermission(strapi, action, publicRoleId, 'Public');
 }
 
 function serveCKEditorConfig(ctx) {
@@ -132,8 +157,26 @@ module.exports = {
       for (const action of PUBLIC_COLLECTION_READ_ACTIONS) {
         await enablePublicPermission(strapi, action, publicRole.id);
       }
+
+      for (const action of PUBLIC_AUTH_ACTIONS) {
+        await enablePublicPermission(strapi, action, publicRole.id);
+      }
     } catch (e) {
       strapi.log.warn('[whatson bootstrap public API permissions]', e);
+    }
+
+    try {
+      const authenticatedRole = await strapi.db
+        .query('plugin::users-permissions.role')
+        .findOne({ where: { type: 'authenticated' } });
+
+      if (authenticatedRole) {
+        for (const action of AUTHENTICATED_USER_ACTIONS) {
+          await enableRolePermission(strapi, action, authenticatedRole.id, 'Authenticated');
+        }
+      }
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap authenticated API permissions]', e);
     }
 
     try {

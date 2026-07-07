@@ -2,6 +2,7 @@ import { QueryClient, dehydrate, type DehydratedState } from "@tanstack/react-qu
 import { api } from "@/lib/api";
 import {
   homeNeedsShowtimes,
+  homeNeedsVenues,
   homeNeedsFullMovieCatalog,
   resolveHomepageLayout,
   type MappedHomepage,
@@ -69,6 +70,15 @@ async function prefetchHomeBundle(qc: QueryClient) {
       }),
     );
   }
+  if (homeNeedsVenues(layout.sections)) {
+    tasks.push(
+      qc.prefetchQuery({
+        queryKey: VENUES_PROGRAM_QUERY_KEY,
+        queryFn: api.getVenuesForProgram,
+        ...queryDefaults,
+      }),
+    );
+  }
   await Promise.all(tasks);
   finalizeBootstrapCache(qc, {
     trimHomeShowtimes: true,
@@ -77,7 +87,7 @@ async function prefetchHomeBundle(qc: QueryClient) {
   });
 }
 
-/** Λίστα /movies — χωρίς πλήρες catalog στο HTML (client fetch για ταινίες). */
+/** Λίστα /movies — showtimes + ταινίες στο bootstrap (crawlable JSON + γρηγορότερο client). */
 async function prefetchMoviesList(qc: QueryClient) {
   await Promise.all([
     qc.prefetchQuery({
@@ -86,6 +96,7 @@ async function prefetchMoviesList(qc: QueryClient) {
       ...queryDefaults,
     }),
     qc.prefetchQuery({ queryKey: VENUES_PROGRAM_QUERY_KEY, queryFn: api.getVenuesForProgram, ...queryDefaults }),
+    qc.prefetchQuery({ queryKey: ["movies"], queryFn: api.getMoviesForHome, ...queryDefaults }),
   ]);
   finalizeBootstrapCache(qc, { trimVenuesForShowtimes: true });
 }

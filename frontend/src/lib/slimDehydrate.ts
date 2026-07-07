@@ -164,8 +164,8 @@ export function slimListQueryCache(qc: QueryClient): void {
   slimMoviesShowtimes(qc);
 }
 
-/** Bootstrap αρχικής: μόνο κοντινές προβολές (μικρότερο JSON.parse). */
-const HOME_SHOWTIME_HORIZON_MS = 2 * 24 * 60 * 60 * 1000;
+/** Bootstrap αρχικής: προβολές επόμενων 14 ημερών (αρκετό για SEO bootstrap + client). */
+const HOME_SHOWTIME_HORIZON_MS = 14 * 24 * 60 * 60 * 1000;
 
 /** Μικρότερο `#__RQ_STATE__` — λιγότερο JSON.parse στην αρχική (TBT). */
 export function minifyDehydratedState(state: DehydratedState): DehydratedState {
@@ -225,7 +225,7 @@ export function trimMovieSynopsesForHomeBootstrap(qc: QueryClient): void {
   );
 }
 
-/** Λιγότερες εγγραφές showtimes στο bootstrap αρχικής (ταχύτερο JSON.parse). */
+/** Λιγότερες εγγραφές showtimes στο bootstrap αρχικής. */
 export function trimHomeShowtimesDehydrate(qc: QueryClient): void {
   const showtimes =
     qc.getQueryData<StrapiShowtime[]>(SHOWTIMES_CALENDAR_QUERY_KEY) ??

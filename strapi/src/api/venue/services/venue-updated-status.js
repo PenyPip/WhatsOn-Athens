@@ -73,6 +73,17 @@ function explainVenueSyncStatusReason(stats, { reason, next } = {}) {
     }
   }
 
+  if (reason === 'program_import_partial') {
+    if (weekExpected > 0) {
+      parts.push(`εισαγωγή κειμένου: ${weekSynced}/${weekExpected} προβολές εβδομάδας`);
+    }
+    if ((stats.unmatchedMovies || 0) > 0) {
+      parts.push(`${stats.unmatchedMovies} ταινίες χωρίς ταύτιση CMS`);
+    }
+  } else if (reason === 'program_import_complete' && weekExpected > 0) {
+    parts.push(`πλήρης εισαγωγή κειμένου (${weekSynced}/${weekExpected})`);
+  }
+
   if ((stats.created || 0) > 0) parts.push(`+${stats.created} νέες προβολές`);
   return parts.join(' · ') || '—';
 }
@@ -418,6 +429,115 @@ async function applyCinemaVenueUpdatedStatuses(
   return summary;
 }
 
+/**
+ * Ενημέρωση venue.updated μετά εισαγωγή προγράμματος (ελεύθερο κείμενο).
+ * Βασίζεται στην εβδομάδα-στόχο (ερχόμενη Πέμπτη→Τετάρτη).
+ */
+async function applyVenueUpdatedStatusFromProgramImport(
+  strapi,
+  venueId,
+  stats,
+  { importMeta = {}, now = new Date() } = {},
+) {
+  const id = Number(venueId);
+  if (!Number.isFinite(id)) return null;
+
+  const venue = await strapi.entityService.findOne('api::venue.venue', id, {
+    fields: ['id', 'name', 'type', 'updated'],
+    publicationState: 'preview',
+  });
+  if (!venue || venue.type !== 'cinema') return null;
+
+  const mergedStats = {
+    ...stats,
+    unmatchedMovies: Number(importMeta.unmatchedMovies || 0),
+  };
+
+  let next = computeVenueUpdatedStatus(mergedStats, now);
+  if (mergedStats.unmatchedMovies > 0) {
+    next = VENUE_UPDATED_STATUS.NEEDS_MANUAL;
+  }
+
+  const current = isVenueUpdatedStatus(venue.updated) ? venue.updated : VENUE_UPDATED_STATUS.NO_NEW;
+  const weekExpected = mergedStats.weekExpected || 0;
+
+  if (!next) {
+    return {
+      venueId: id,
+      venueName: venue.name,
+      previousStatus: current,
+      status: current,
+      updated: false,
+      preserved: true,
+      reason: weekExpected > 0 ? 'program_import_outside_target_week' : 'no_target_week_showtimes',
+      reasonDetail: explainVenueSyncStatusReason(mergedStats, {
+        reason: 'no_upcoming_week_events',
+        next: current,
+      }),
+    };
+  }
+
+  if (current === VENUE_UPDATED_STATUS.COMPLETE && next !== VENUE_UPDATED_STATUS.NEEDS_MANUAL) {
+    return {
+      venueId: id,
+      venueName: venue.name,
+      previousStatus: current,
+      status: VENUE_UPDATED_STATUS.COMPLETE,
+      updated: false,
+      preserved: true,
+      transition: 'still_complete',
+      transitionLabel: VENUE_TRANSITION_LABELS.still_complete,
+      reason: 'program_import_complete',
+      reasonDetail: explainVenueSyncStatusReason(mergedStats, {
+        reason: 'program_import_complete',
+        next: VENUE_UPDATED_STATUS.COMPLETE,
+      }),
+    };
+  }
+
+  const reason =
+    next === VENUE_UPDATED_STATUS.COMPLETE ? 'program_import_complete' : 'program_import_partial';
+
+  if (next === current) {
+    return {
+      venueId: id,
+      venueName: venue.name,
+      previousStatus: current,
+      status: current,
+      updated: false,
+      preserved: true,
+      transition: current === VENUE_UPDATED_STATUS.COMPLETE ? 'still_complete' : 'still_manual',
+      transitionLabel:
+        VENUE_TRANSITION_LABELS[
+          current === VENUE_UPDATED_STATUS.COMPLETE ? 'still_complete' : 'still_manual'
+        ],
+      reason,
+      reasonDetail: explainVenueSyncStatusReason(mergedStats, { reason, next }),
+    };
+  }
+
+  await strapi.entityService.update('api::venue.venue', id, {
+    data: { updated: next },
+  });
+
+  const entry = buildVenueStatusEntry({
+    venueId: id,
+    venueName: venue.name,
+    previousStatus: current,
+    status: next,
+    preserved: false,
+    stats: mergedStats,
+    reason,
+    downgradedFromComplete:
+      current === VENUE_UPDATED_STATUS.COMPLETE && next === VENUE_UPDATED_STATUS.NEEDS_MANUAL,
+  });
+
+  return {
+    ...entry,
+    updated: true,
+  };
+}
+
 module.exports = {
   VENUE_UPDATED_STATUS,
   VENUE_UPDATED_LABELS,
@@ -427,4 +547,5 @@ module.exports = {
   computeVenueUpdatedStatus,
   migrateVenueUpdatedBooleanToEnum,
   applyCinemaVenueUpdatedStatuses,
+  applyVenueUpdatedStatusFromProgramImport,
 };

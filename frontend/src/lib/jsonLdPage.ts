@@ -8,6 +8,7 @@ import { moviesSectionSeo } from "@/lib/moviesFilterSeo";
 import { theaterVenueProgramSeo } from "@/lib/theaterVenueProgramSeo";
 import { absolutePageUrl, resolvePublicAssetUrl, siteSeo, truncateDescription } from "@/lib/siteMetadata";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+import type { HomeCrawlSnapshot, MoviesListCrawlSnapshot } from "@/lib/crawlTypes";
 
 type JsonLdNode = Record<string, unknown>;
 
@@ -354,11 +355,34 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
   return null;
 }
 
+function itemListFromRows(
+  rows: { title: string; href: string }[],
+  listId: string,
+  listName: string,
+): JsonLdNode | null {
+  if (!rows.length) return null;
+  return stripEmpty({
+    "@type": "ItemList",
+    "@id": listId,
+    name: listName,
+    numberOfItems: rows.length,
+    itemListElement: rows.map((m, i) => ({
+      "@type": "ListItem",
+      position: i + 1,
+      name: m.title,
+      url: absolutePageUrl(m.href),
+    })),
+  });
+}
+
 /**
  * Πλήρες JSON-LD graph για αρχικό HTML (crawlers χωρίς JS).
  * Organization, WebSite, WebPage, BreadcrumbList + entity ανά path.
  */
-export function buildPageJsonLd(path: string): JsonLdNode {
+export function buildPageJsonLd(
+  path: string,
+  crawl?: { homeCrawl?: HomeCrawlSnapshot | null; moviesCrawl?: MoviesListCrawlSnapshot | null },
+): JsonLdNode {
   const normalized = path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const { title, description } = seoCopyForPath(normalized);
   const pageUrl = absolutePageUrl(normalized);
@@ -403,6 +427,24 @@ export function buildPageJsonLd(path: string): JsonLdNode {
   if (entity) {
     if (Array.isArray(entity)) graph.push(...entity);
     else graph.push(entity);
+  }
+
+  if (normalized === "/" && crawl?.homeCrawl) {
+    const todayList = itemListFromRows(
+      crawl.homeCrawl.today,
+      `${pageUrl}#itemlist-today`,
+      "Ταινίες σήμερα στα σινεμά",
+    );
+    if (todayList) graph.push(todayList);
+  }
+
+  if (crawl?.moviesCrawl?.movies?.length) {
+    const moviesList = itemListFromRows(
+      crawl.moviesCrawl.movies,
+      `${pageUrl}#itemlist-movies`,
+      crawl.moviesCrawl.h1,
+    );
+    if (moviesList) graph.push(moviesList);
   }
 
   const parts = normalized.split("/").filter(Boolean);

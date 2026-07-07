@@ -7,6 +7,11 @@
     "displayName": "User Review"
   },
   "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user"
+    },
     "user_name": {
       "type": "string",
       "required": true

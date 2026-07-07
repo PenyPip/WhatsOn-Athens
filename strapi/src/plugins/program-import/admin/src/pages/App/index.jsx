@@ -495,17 +495,24 @@ export default function App() {
       const res = await post('/api/program-import/create', {
         venueId: preview.venue.id,
         items: [...byTitle.values()],
+        importMeta: {
+          unmatchedMovies: pendingUnmatchedTitles.length,
+        },
       });
       const data = res?.data;
       if (!data?.ok) throw new Error(data?.error || 'Αποτυχία δημιουργίας');
       const s = data.summary;
+      const vu = data.venueUpdated;
       const skippedParts = [
         s.skippedNotApproved ? `${s.skippedNotApproved} δεν εγκρίθηκαν` : null,
         s.skippedNoMovie ? `${s.skippedNoMovie} χωρίς ταινία CMS` : null,
       ].filter(Boolean);
+      const statusPart = vu?.statusLabel
+        ? ` · updated: ${vu.statusLabel}${vu.reasonDetail ? ` (${vu.reasonDetail})` : ''}`
+        : '';
       toggleNotification({
         type: 'success',
-        message: `Δημιουργήθηκαν ${s.created} προβολές${skippedParts.length ? ` · ${skippedParts.join(' · ')}` : ''}`,
+        message: `Δημιουργήθηκαν ${s.created} προβολές${skippedParts.length ? ` · ${skippedParts.join(' · ')}` : ''}${statusPart}`,
       });
       await runPreview({
         venueId: preview.venue.id,
@@ -525,6 +532,7 @@ export default function App() {
     inputMode,
     post,
     preview,
+    pendingUnmatchedTitles,
     runPreview,
     text,
     toggleNotification,

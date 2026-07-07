@@ -4,6 +4,8 @@ import { cn } from "@/lib/utils";
 import type { StrapiVenue } from "@/lib/api";
 import { programHrefForVenue, venueKindLabel, venueOutdoorBadgeLabel } from "@/lib/venueType";
 import VenueBookingLink from "@/components/VenueBookingLink";
+import FavoriteButton from "@/components/FavoriteButton";
+import { isCinemaVenue } from "@/lib/venueType";
 import { isValidExternalUrl, resolveGoogleMapsHref } from "@/lib/venueResolve";
 import {
   POSTER_BADGE_CORNER_TOP_LEFT,
@@ -122,7 +124,12 @@ const VenueCard = ({
           </>
         ) : null}
         <div className={cn(badgeRow && (compact ? "pt-7" : "pt-8"), compact ? "mb-2" : "mb-3")}>
-          <h3 className={headingClass}>{venue.name}</h3>
+          <div className="flex items-start justify-between gap-2">
+            <h3 className={headingClass}>{venue.name}</h3>
+            {isCinemaVenue(venue) && venue.id > 0 ? (
+              <FavoriteButton kind="venue" entityId={venue.id} size="sm" />
+            ) : null}
+          </div>
         </div>
 
         <div className={cn(metaBodyClass, "flex min-h-0 flex-1 flex-col")}>

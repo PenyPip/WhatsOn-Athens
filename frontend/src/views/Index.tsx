@@ -1,11 +1,10 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import HomePageBodyShell from "@/components/HomePageBodyShell";
 import HomeStaticLcpHandoff from "@/components/HomeStaticLcpHandoff";
 import HomeSeoIntro from "@/components/HomeSeoIntro";
 import MarkLcpDone from "@/components/MarkLcpDone";
 import { layoutShowsHero } from "@/config/home";
 import { SITE_INSTAGRAM_URL } from "@/config/siteLinks";
-import { useClientMounted } from "@/hooks/useClientMounted";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -38,15 +37,15 @@ const Index = () => {
   const layout = useHomeLayout();
   const hasHero = layoutShowsHero(layout);
   const homeBodyReady = layout.sections.length > 0;
-  const clientMounted = useClientMounted();
   const isMobile = useIsMobile();
   const deferLcp = useDeferUntilLcpDone();
-  /**
-   * Χωρίς SSR HomeBody — αποφεύγει React streaming swap (CLS ~1).
-   * Mobile: μετά static LCP handoff. Desktop: αμέσως μετά hydrate.
-   */
-  const mountHomeBody =
-    homeBodyReady && clientMounted && (!isMobile || deferLcp);
+
+  useEffect(() => {
+    if (isMobile) void import(/* webpackChunkName: "home-body" */ "@/views/HomeBody");
+  }, [isMobile]);
+
+  /** Mobile: μετά overlay handoff. Desktop: αμέσως — το live hero κρατά το slot μέχρι poster. */
+  const mountHomeBody = homeBodyReady && (!isMobile || deferLcp);
 
   return (
     <div className="min-h-screen md:pb-0">
