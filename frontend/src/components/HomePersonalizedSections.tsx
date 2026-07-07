@@ -109,85 +109,96 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
 
   return (
     <>
-      {yourProgramShowtimes.length > 0 ? (
-        <section className="relative section-black border-y border-white/[0.07] py-10 md:py-12">
-          <div className="container max-w-7xl">
-            <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-amber-200/85">
-              Για σένα
-            </span>
-            <h2 className="font-display text-2xl font-bold text-white md:text-3xl">Το πρόγραμμά σου</h2>
-            <p className="mt-1 font-body text-sm text-white/70">
-              Οι αγαπημένες σου ταινίες, στα αγαπημένα σου σινεμά
-            </p>
-            <ul className="mt-6 grid list-none gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {yourProgramShowtimes.map((st) => {
-                const slug = st.movieSlug?.trim();
-                const movieHref = slug
-                  ? buildMovieShowtimeShareUrl(slug, { showtimeId: st.id })
-                  : "/movies";
-                return (
-                  <li
-                    key={showtimeSlotKey(st)}
-                    className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3"
-                  >
-                    <Link to={movieHref} className="font-display text-base font-semibold text-white hover:underline">
-                      {st.movieTitle}
-                    </Link>
-                    <p className="mt-1 font-body text-sm text-amber-100/95">{formatNextShowtimeLabel(st, now)}</p>
-                    {st.venueSlug?.trim() ? (
-                      <Link
-                        to={moviesVenueProgramPath(st.venueSlug)}
-                        className="mt-2 inline-block text-xs font-medium uppercase tracking-wide text-white/60 hover:text-amber-100/90"
-                      >
-                        {st.venue}
-                      </Link>
-                    ) : (
-                      <p className="mt-2 text-xs text-white/60">{st.venue}</p>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          </div>
-        </section>
-      ) : null}
-
-      {favoriteMoviesDisplay.length > 0 ? (
+      {favoriteMoviesDisplay.length > 0 || yourProgramShowtimes.length > 0 ? (
         <section className="relative border-y border-[#13143E]/20 bg-[#F7F5FC] py-10 md:py-12">
-          <div className="container max-w-7xl">
-            <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-[#13143E]/55">
-              Για σένα
-            </span>
-            <h2 className="font-display text-2xl font-bold text-[#13143E] md:text-3xl">Οι ταινίες σου</h2>
-            <p className="mt-1 font-body text-sm text-[#13143E]/65">Αγαπημένες ταινίες — επόμενη προβολή</p>
-            <div className="mt-6 flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-              {favoriteMoviesDisplay.map(({ profile: pm, catalog, nextShowtime }) => {
-                const tl = movieTitleLines({
-                  title: catalog?.title ?? pm.title,
-                  originalTitle: catalog?.originalTitle ?? pm.originalTitle,
-                });
-                const subtitle = nextShowtime
-                  ? formatNextShowtimeLabel(nextShowtime, now)
-                  : "Δεν παίζει σύντομα";
-                return (
-                  <div key={pm.id} className="w-[9.5rem] shrink-0 sm:w-[10.5rem]">
-                    <EventCard
-                      slug={pm.slug}
-                      title={tl.primary}
-                      titleSecondary={tl.secondary}
-                      subtitle={subtitle}
-                      genre={genreLabel(pm, catalog)}
-                      duration={catalog?.duration ?? 0}
-                      imdbRating={catalog ? resolveImdbRating(catalog) : pm.imdbRating ?? undefined}
-                      posterUrl={catalog?.posterUrl ?? pm.posterUrl ?? undefined}
-                      posterSrcSet={catalog?.posterSrcSet}
-                      isDubbed={catalog?.isDubbed ?? pm.isDubbed}
-                      type="movie"
-                    />
-                  </div>
-                );
-              })}
-            </div>
+          <div className="container max-w-7xl space-y-10 md:space-y-12">
+            {favoriteMoviesDisplay.length > 0 ? (
+              <div>
+                <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-[#13143E]/55">
+                  Για σένα
+                </span>
+                <h2 className="font-display text-2xl font-bold text-[#13143E] md:text-3xl">Οι ταινίες σου</h2>
+                <p className="mt-1 font-body text-sm text-[#13143E]/65">Αγαπημένες ταινίες — επόμενη προβολή</p>
+                <div className="mt-6 flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
+                  {favoriteMoviesDisplay.map(({ profile: pm, catalog, nextShowtime }) => {
+                    const tl = movieTitleLines({
+                      title: catalog?.title ?? pm.title,
+                      originalTitle: catalog?.originalTitle ?? pm.originalTitle,
+                    });
+                    const subtitle = nextShowtime
+                      ? formatNextShowtimeLabel(nextShowtime, now)
+                      : "Δεν παίζει σύντομα";
+                    return (
+                      <div key={pm.id} className="w-[9.5rem] shrink-0 sm:w-[10.5rem]">
+                        <EventCard
+                          slug={pm.slug}
+                          title={tl.primary}
+                          titleSecondary={tl.secondary}
+                          subtitle={subtitle}
+                          genre={genreLabel(pm, catalog)}
+                          duration={catalog?.duration ?? 0}
+                          imdbRating={catalog ? resolveImdbRating(catalog) : pm.imdbRating ?? undefined}
+                          posterUrl={catalog?.posterUrl ?? pm.posterUrl ?? undefined}
+                          posterSrcSet={catalog?.posterSrcSet}
+                          isDubbed={catalog?.isDubbed ?? pm.isDubbed}
+                          type="movie"
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            ) : null}
+
+            {yourProgramShowtimes.length > 0 ? (
+              <div
+                className={
+                  favoriteMoviesDisplay.length > 0 ? "border-t border-[#13143E]/10 pt-10 md:pt-12" : undefined
+                }
+              >
+                {favoriteMoviesDisplay.length === 0 ? (
+                  <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-[#13143E]/55">
+                    Για σένα
+                  </span>
+                ) : null}
+                <h2 className="font-display text-2xl font-bold text-[#13143E] md:text-3xl">Το πρόγραμμά σου</h2>
+                <p className="mt-1 font-body text-sm text-[#13143E]/65">
+                  Οι αγαπημένες σου ταινίες, στα αγαπημένα σου σινεμά
+                </p>
+                <ul className="mt-6 grid list-none gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {yourProgramShowtimes.map((st) => {
+                    const slug = st.movieSlug?.trim();
+                    const movieHref = slug
+                      ? buildMovieShowtimeShareUrl(slug, { showtimeId: st.id })
+                      : "/movies";
+                    return (
+                      <li
+                        key={showtimeSlotKey(st)}
+                        className="rounded-xl border border-[#13143E]/12 bg-white px-4 py-3 shadow-sm"
+                      >
+                        <Link
+                          to={movieHref}
+                          className="font-display text-base font-semibold text-[#13143E] hover:text-[#872F8B]"
+                        >
+                          {st.movieTitle}
+                        </Link>
+                        <p className="mt-1 font-body text-sm text-[#13143E]/80">{formatNextShowtimeLabel(st, now)}</p>
+                        {st.venueSlug?.trim() ? (
+                          <Link
+                            to={moviesVenueProgramPath(st.venueSlug)}
+                            className="mt-2 inline-block text-xs font-medium uppercase tracking-wide text-[#13143E]/50 hover:text-[#872F8B]"
+                          >
+                            {st.venue}
+                          </Link>
+                        ) : (
+                          <p className="mt-2 text-xs text-[#13143E]/50">{st.venue}</p>
+                        )}
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            ) : null}
           </div>
         </section>
       ) : null}
