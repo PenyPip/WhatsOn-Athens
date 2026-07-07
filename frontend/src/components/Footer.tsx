@@ -1,10 +1,14 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { SITE_INSTAGRAM_URL } from "@/config/siteLinks";
-import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
+import { cn } from "@/lib/utils";
 
-const Footer = () => {
+type FooterProps = {
+  className?: string;
+};
+
+const Footer = ({ className }: FooterProps) => {
   return (
-    <footer className="section-black py-12 mt-16 border-t border-white/10">
+    <footer className={cn("section-black py-12 mt-16 border-t border-white/10", className)}>
       <div className="container">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
           <div>
@@ -32,11 +36,9 @@ const Footer = () => {
               <a href="/events" className="block text-white/60 hover:text-white transition-colors">
                 Events
               </a>
-              {SHOW_PROFILE_IN_NAV ? (
-                <a href="/profile" className="block text-white/60 hover:text-white transition-colors">
-                  Προφίλ
-                </a>
-              ) : null}
+              <a href="/profile" className="block text-white/60 hover:text-white transition-colors">
+                Προφίλ
+              </a>
             </div>
           </div>
           <div>

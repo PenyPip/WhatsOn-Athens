@@ -62,10 +62,3 @@ export function homeLcpDisplay(path: string, dehydratedState?: DehydratedState):
   const posterHref = lcpImageSrc(absolute);
   return { posterHref, title, synopsis, hasHeroSection };
 }
-
-/** Preload hero — μόνο όταν υπάρχει CMS hero (αλλιώς το static LCP block). */
-export function homeHeroPosterHref(path: string, dehydratedState?: DehydratedState): string | null {
-  const lcp = homeLcpDisplay(path, dehydratedState);
-  if (!lcp?.hasHeroSection) return null;
-  return lcp.posterHref;
-}

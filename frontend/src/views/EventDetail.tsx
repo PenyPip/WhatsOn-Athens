@@ -50,7 +50,6 @@ import {
   showtimeIsUpcoming as scheduleSlotIsUpcoming,
 } from "@/lib/showtimeSchedule";
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
-import { SHOW_WRITE_REVIEW_CTA } from "@/lib/siteVisibility";
 import FavoriteButton from "@/components/FavoriteButton";
 import PopularBadge from "@/components/PopularBadge";
 import WriteReviewForm from "@/components/WriteReviewForm";
@@ -1179,25 +1178,27 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           </section>
         )}
 
-        {SHOW_WRITE_REVIEW_CTA ? (
-          <div className="card-elevated p-6 text-center max-w-md mx-auto border-2 border-[#13143E]">
-            <h3 className="font-display font-semibold text-lg mb-2">Γράψε Κριτική</h3>
-            {isAuthenticated ? (
-              <WriteReviewForm
-                contentType={isMovie ? "movie" : "theater"}
-                movieId={isMovie && movie ? movie.id : undefined}
-                theaterShowId={!isMovie && theaterShow ? theaterShow.id : undefined}
-              />
-            ) : (
-              <>
-                <p className="text-base text-muted-foreground mb-3">Σύνδεση για να γράψεις κριτική</p>
-                <Button variant="outline" size="sm" className="border-foreground text-foreground hover:bg-foreground hover:text-background" asChild>
-                  <Link to="/profile">Σύνδεση</Link>
-                </Button>
-              </>
-            )}
-          </div>
-        ) : null}
+        <div className="card-elevated mx-auto max-w-md border border-[#13143E]/12 p-6 md:p-8">
+          <h3 className="font-display mb-6 text-center text-xl font-semibold text-[#13143E]">Γράψε Κριτική</h3>
+          {isAuthenticated ? (
+            <WriteReviewForm
+              contentType={isMovie ? "movie" : "theater"}
+              movieId={isMovie && movie ? movie.id : undefined}
+              theaterShowId={!isMovie && theaterShow ? theaterShow.id : undefined}
+            />
+          ) : (
+            <div className="text-center">
+              <p className="mb-4 text-base text-muted-foreground">Σύνδεση για να γράψεις κριτική</p>
+              <Button
+                size="lg"
+                className="h-11 bg-[#13143E] px-8 font-semibold text-white hover:bg-[#1C1D62]"
+                asChild
+              >
+                <Link to="/profile">Σύνδεση</Link>
+              </Button>
+            </div>
+          )}
+        </div>
 
         <section>
           <h2 className="font-display text-xl font-semibold mb-4">Μπορεί να σου αρέσει</h2>

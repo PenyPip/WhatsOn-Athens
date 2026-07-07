@@ -5,7 +5,6 @@ import { Menu, User, X } from "lucide-react";
 import type { NavLinkItem } from "@/config/navigation";
 import { navIconComponent } from "@/lib/navIcons";
 import { isNavLinkActive } from "@/lib/navigation";
-import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 import { cn } from "@/lib/utils";
 
 const NAV_GRADIENT =
@@ -115,23 +114,21 @@ export default function MobileNavDrawer({
               </li>
             );
           })}
-          {SHOW_PROFILE_IN_NAV ? (
-            <li className="mt-2 border-t border-white/10 pt-2">
-              <Link
-                to="/profile"
-                onClick={() => onOpenChange(false)}
-                className={cn(
-                  "font-body flex items-center gap-3 rounded-lg px-3 py-3.5 text-base transition-colors",
-                  pathname === "/profile"
-                    ? "bg-white/12 font-semibold text-white"
-                    : "text-white/78 hover:bg-white/8 hover:text-white",
-                )}
-              >
-                <User className="h-5 w-5 shrink-0 opacity-85" aria-hidden />
-                <span>Προφίλ</span>
-              </Link>
-            </li>
-          ) : null}
+          <li className="mt-2 border-t border-white/10 pt-2">
+            <Link
+              to="/profile"
+              onClick={() => onOpenChange(false)}
+              className={cn(
+                "font-body flex items-center gap-3 rounded-lg px-3 py-3.5 text-base transition-colors",
+                pathname === "/profile"
+                  ? "bg-white/12 font-semibold text-white"
+                  : "text-white/78 hover:bg-white/8 hover:text-white",
+              )}
+            >
+              <User className="h-5 w-5 shrink-0 opacity-85" aria-hidden />
+              <span>Προφίλ</span>
+            </Link>
+          </li>
         </ul>
       </nav>
     </div>,

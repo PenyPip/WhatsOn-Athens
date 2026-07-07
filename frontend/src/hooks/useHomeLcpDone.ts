@@ -13,13 +13,3 @@ export function useHomeLcpLayoutDone(): () => void {
     document.documentElement.classList.add("spa-lcp-layout-done");
   }, []);
 }
-
-/** @deprecated Χρησιμοποίησε useHomeLcpOverlayDone + useHomeLcpLayoutDone */
-export function useHomeLcpDone(): () => void {
-  const markOverlay = useHomeLcpOverlayDone();
-  const markLayout = useHomeLcpLayoutDone();
-  return useCallback(() => {
-    markOverlay();
-    markLayout();
-  }, [markOverlay, markLayout]);
-}

@@ -12,7 +12,6 @@ import { isNavLinkActive } from "@/lib/navigation";
 import { navIconComponent } from "@/lib/navIcons";
 import type { NavSearchHandle } from "@/components/GlobalSearch";
 import MobileNavDrawer, { MobileNavMenuButton } from "@/components/MobileNavDrawer";
-import { SHOW_PROFILE_IN_NAV } from "@/lib/siteVisibility";
 
 const NavSearch = lazy(() =>
   import("@/components/GlobalSearch").then((m) => ({ default: m.NavSearch })),
@@ -118,7 +117,7 @@ const Navbar = () => {
 
   const desktopLinks = nav.desktopLinks;
   const mobileTabLinks = nav.mobileTabLinks;
-  const mobileTabCount = mobileTabLinks.length + (SHOW_PROFILE_IN_NAV ? 1 : 0);
+  const mobileTabCount = mobileTabLinks.length + 1;
   const mobileBottomNav = (
     <nav className="mobile-bottom-nav md:hidden" aria-label="Κύρια πλοήγηση κινητού">
       <div
@@ -140,18 +139,16 @@ const Navbar = () => {
             </Link>
           );
         })}
-        {SHOW_PROFILE_IN_NAV ? (
-          <Link
-            to="/profile"
-            className="mobile-bottom-nav__tab transition-colors"
-            style={{
-              color: location.pathname === "/profile" ? "#B47EC8" : "rgba(240,237,248,0.5)",
-            }}
-          >
-            <User strokeWidth={location.pathname === "/profile" ? 2.25 : 2} aria-hidden />
-            <span>Προφίλ</span>
-          </Link>
-        ) : null}
+        <Link
+          to="/profile"
+          className="mobile-bottom-nav__tab transition-colors"
+          style={{
+            color: location.pathname === "/profile" ? "#B47EC8" : "rgba(240,237,248,0.5)",
+          }}
+        >
+          <User strokeWidth={location.pathname === "/profile" ? 2.25 : 2} aria-hidden />
+          <span>Προφίλ</span>
+        </Link>
       </div>
     </nav>
   );
@@ -210,15 +207,13 @@ const Navbar = () => {
               })}
             </div>
 
-            {SHOW_PROFILE_IN_NAV ? (
-              <Link
-                to="/profile"
-                aria-label="Προφίλ"
-                className="shrink-0 rounded-full p-2 transition-colors hover:bg-white/10"
-              >
-                <User className="h-5 w-5 text-white/60" aria-hidden />
-              </Link>
-            ) : null}
+            <Link
+              to="/profile"
+              aria-label="Προφίλ"
+              className="shrink-0 rounded-full p-2 transition-colors hover:bg-white/10"
+            >
+              <User className="h-5 w-5 text-white/60" aria-hidden />
+            </Link>
           </div>
         </div>
       </nav>

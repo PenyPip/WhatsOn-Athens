@@ -1,10 +1,146 @@
 {
-  "genres": [],
-  "venues": [],
-  "movies": [],
+  "genres": [
+    {
+      "slug": "aisthimatiki",
+      "label": "αισθηματική",
+      "href": "/movies/genre/aisthimatiki"
+    }
+  ],
+  "venues": [
+    {
+      "slug": "ethniko-theatro",
+      "name": "Εθνικό Θέατρο",
+      "venueType": "theater",
+      "address": "Αγίου Κωνσταντίνου 22-24, Αθήνα",
+      "googleMapsUrl": "https://maps.app.goo.gl/ethniko",
+      "programHref": "/theater/venue/ethniko-theatro",
+      "theaterHref": "/theater/venue/ethniko-theatro",
+      "venuesHref": "/venues"
+    },
+    {
+      "slug": "megaro-mousikis",
+      "name": "Μέγαρο Μουσικής Αθηνών",
+      "venueType": "theater",
+      "address": "Βασ. Σοφίας & Κοκκάλη, Αθήνα",
+      "googleMapsUrl": "https://maps.app.goo.gl/megaro",
+      "programHref": "/theater/venue/megaro-mousikis",
+      "theaterHref": "/theater/venue/megaro-mousikis",
+      "venuesHref": "/venues"
+    },
+    {
+      "slug": "olympion",
+      "name": "Ολύμπιον",
+      "venueType": "cinema",
+      "address": "Πλατεία Αριστοτέλους 10, Θεσσαλονίκη",
+      "googleMapsUrl": "https://maps.app.goo.gl/olympion",
+      "programHref": "/movies/venue/olympion",
+      "moviesHref": "/movies/venue/olympion",
+      "venuesHref": "/venues"
+    },
+    {
+      "slug": "theatro-pallas",
+      "name": "Θέατρο Παλλάς",
+      "venueType": "theater",
+      "address": "Βουκουρεστίου 5, Αθήνα",
+      "googleMapsUrl": "https://maps.app.goo.gl/pallas",
+      "programHref": "/theater/venue/theatro-pallas",
+      "theaterHref": "/theater/venue/theatro-pallas",
+      "venuesHref": "/venues"
+    },
+    {
+      "slug": "village-the-mall",
+      "name": "Village Cinemas @ The Mall",
+      "venueType": "cinema",
+      "address": "Ανδρέα Παπανδρέου 35, Μαρούσι",
+      "googleMapsUrl": "https://maps.app.goo.gl/village",
+      "programHref": "/movies/venue/village-the-mall",
+      "moviesHref": "/movies/venue/village-the-mall",
+      "venuesHref": "/venues"
+    },
+    {
+      "slug": "snfcc",
+      "name": "Ίδρυμα Σταύρος Νιάρχος",
+      "venueType": "theater",
+      "address": "Λεωφ. Συγγρού 364, Καλλιθέα",
+      "googleMapsUrl": "https://maps.app.goo.gl/snfcc",
+      "programHref": "/theater/venue/snfcc",
+      "theaterHref": "/theater/venue/snfcc",
+      "venuesHref": "/venues"
+    },
+    {
+      "slug": "venue",
+      "name": "Αλεξάνδρα",
+      "venueType": "cinema",
+      "programHref": "/movies/venue/venue",
+      "moviesHref": "/movies/venue/venue",
+      "venuesHref": "/venues"
+    }
+  ],
+  "movies": [
+    {
+      "path": "/movies/devil",
+      "slug": "devil",
+      "title": "devil",
+      "originalTitle": "devil",
+      "genreSlugs": [],
+      "posterUrl": "/uploads/poster_new_617007128d.webp"
+    }
+  ],
   "theaterShows": [],
-  "restaurants": [],
-  "reviews": [],
+  "restaurants": [
+    {
+      "path": "/dining/kouzina-42",
+      "slug": "kouzina-42",
+      "title": "Κουζίνα 42"
+    },
+    {
+      "path": "/dining/spondi",
+      "slug": "spondi",
+      "title": "Spondi"
+    },
+    {
+      "path": "/dining/ama-lachei",
+      "slug": "ama-lachei",
+      "title": "Αμά Λαχεί"
+    },
+    {
+      "path": "/dining/nolan-athens",
+      "slug": "nolan-athens",
+      "title": "Nolan"
+    },
+    {
+      "path": "/dining/ergon-agora",
+      "slug": "ergon-agora",
+      "title": "ΕΡΓΟΝ Αγορά"
+    },
+    {
+      "path": "/dining/funky-gourmet",
+      "slug": "funky-gourmet",
+      "title": "Funky Gourmet"
+    }
+  ],
+  "reviews": [
+    {
+      "path": "/reviews/mideia-national",
+      "slug": "mideia-national",
+      "title": "Μια Ηλεκτρική Βραδιά στο Εθνικό"
+    },
+    {
+      "path": "/reviews/dune-2-sci-fi",
+      "slug": "dune-2-sci-fi",
+      "title": "Το Sci-Fi Ξαναορίζεται"
+    },
+    {
+      "path": "/reviews/poor-things-masterwork",
+      "slug": "poor-things-masterwork",
+      "title": "Ένα Αριστούργημα Παραλογίας"
+    },
+    {
+      "path": "/reviews/nolan-review",
+      "slug": "nolan-review",
+      "title": "Nolan: Η Αθήνα Συναντά το Τόκιο"
+    }
+  ],
   "articles": [],
   "culturalEvents": []
 }

@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import { Star } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createMyReview } from "@/lib/userProfile";
 import { useAuth } from "@/contexts/AuthContext";
 import { useQueryClient } from "@tanstack/react-query";
+import { cn } from "@/lib/utils";
 
 type WriteReviewFormProps = {
   contentType: "movie" | "theater" | "restaurant";
@@ -57,30 +59,44 @@ export default function WriteReviewForm({
   };
 
   return (
-    <div className="space-y-4 text-left">
+    <form
+      className="space-y-5 text-left"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void submit();
+      }}
+    >
       <div>
-        <label className="mb-2 block text-sm font-medium">Βαθμολογία</label>
-        <div className="flex gap-2">
-          {[1, 2, 3, 4, 5].map((n) => (
-            <button
-              key={n}
-              type="button"
-              onClick={() => setRating(n)}
-              className={`h-9 w-9 rounded border text-sm font-semibold transition-colors ${
-                rating >= n
-                  ? "border-amber-400 bg-amber-500/20 text-amber-100"
-                  : "border-border text-muted-foreground hover:border-foreground/30"
-              }`}
-              aria-label={`${n} αστέρια`}
-            >
-              {n}
-            </button>
-          ))}
+        <p className="mb-2 text-sm font-semibold text-foreground">Βαθμολογία</p>
+        <div className="flex items-center gap-1" role="group" aria-label="Βαθμολογία από 1 έως 5">
+          {[1, 2, 3, 4, 5].map((n) => {
+            const active = n <= rating;
+            return (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setRating(n)}
+                className="rounded-md p-1.5 transition-colors hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#13143E]/40"
+                aria-label={`${n} από 5 αστέρια`}
+                aria-pressed={active}
+              >
+                <Star
+                  className={cn(
+                    "h-8 w-8 transition-colors",
+                    active ? "fill-amber-400 text-amber-500" : "fill-transparent text-muted-foreground/35",
+                  )}
+                  strokeWidth={active ? 1.5 : 2}
+                  aria-hidden
+                />
+              </button>
+            );
+          })}
+          <span className="ml-2 text-sm font-medium tabular-nums text-muted-foreground">{rating}/5</span>
         </div>
       </div>
 
       <div>
-        <label htmlFor="review-body" className="mb-2 block text-sm font-medium">
+        <label htmlFor="review-body" className="mb-2 block text-sm font-semibold text-foreground">
           Κριτική
         </label>
         <textarea
@@ -88,16 +104,22 @@ export default function WriteReviewForm({
           value={body}
           onChange={(e) => setBody(e.target.value)}
           rows={5}
-          className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm"
-          placeholder="Γράψε τη γνώμη σου..."
+          className="w-full resize-y rounded-lg border border-border bg-white px-3 py-2.5 text-sm leading-relaxed text-foreground shadow-sm placeholder:text-muted-foreground/60 focus:border-[#13143E]/35 focus:outline-none focus:ring-2 focus:ring-[#13143E]/15"
+          placeholder="Γράψε τη γνώμη σου για την ταινία ή την παράσταση..."
         />
+        <p className="mt-1.5 text-xs text-muted-foreground">Τουλάχιστον 20 χαρακτήρες.</p>
       </div>
 
-      {error ? <p className="text-sm text-red-500">{error}</p> : null}
+      {error ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
 
-      <Button type="button" onClick={submit} disabled={pending}>
+      <Button
+        type="submit"
+        disabled={pending}
+        size="lg"
+        className="h-12 w-full rounded-lg bg-[#13143E] text-base font-semibold text-white shadow-md hover:bg-[#1C1D62] disabled:opacity-60"
+      >
         {pending ? "Αποστολή..." : "Δημοσίευση κριτικής"}
       </Button>
-    </div>
+    </form>
   );
 }

@@ -1,13 +1,4 @@
 /** Κοινές διαστάσεις hero (server critical CSS + React) — αποφυγή CLS. */
-export const HOME_HERO_MIN_HEIGHT_PX = 500;
-/** Mobile: χαμηλότερο slot — αφίσα + τίτλος χωρίς υπερβολικό scroll. */
-export const HOME_HERO_COMPACT_MIN_HEIGHT_PX = 380;
-export const HOME_HERO_COMPACT_MIN_HEIGHT_MD_PX = 580;
-
-/**
- * Κρίσιμο CSS για `/` — στατικό string (χωρίς interpolation/concatenation).
- * Το SWC minify στο next build χαλάει αλυσίδες template literals → σπασμένο hero στο hard refresh.
- */
 export const HOME_HERO_CRITICAL_CSS =
   "body{position:relative}" +
   "#home-hero-slot{position:absolute;top:0;left:0;right:0;z-index:1;width:100%;min-height:380px;background:#13143e;overflow:hidden;contain:layout style paint}" +
@@ -29,19 +20,14 @@ export const HOME_HERO_CRITICAL_CSS =
   "#home-static-lcp img.home-static-lcp__poster{display:block;width:100%;height:100%;object-fit:contain;object-position:center;border-radius:.75rem}" +
   "html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}" +
   "html.spa-lcp-layout-done #home-hero-slot{display:none}" +
-  "html:not(.spa-lcp-done) [data-home-hero-live]{opacity:0;pointer-events:none}" +
-  "html.spa-lcp-done [data-home-hero-live]{opacity:1;pointer-events:auto}" +
-  ".home-main-overlap{padding-top:3.5rem}" +
-  "@media(min-width:768px){.home-main-overlap{padding-top:4rem}}";
-
-/** @deprecated Χρησιμοποίησε HOME_HERO_CRITICAL_CSS */
-export function homeHeroCriticalCss(): string {
-  return HOME_HERO_CRITICAL_CSS;
-}
+  "html:not(.spa-lcp-layout-done) [data-home-hero-live]{position:absolute;top:0;left:0;right:0;z-index:2;width:100%;opacity:0;pointer-events:none;min-height:380px;overflow:hidden}" +
+  "@media(min-width:768px){html:not(.spa-lcp-layout-done) [data-home-hero-live]{min-height:580px}}" +
+  "html.spa-lcp-layout-done [data-home-hero-live]{position:relative;opacity:1;pointer-events:auto}" +
+  ".home-main-overlap{padding-top:calc(380px + 3.5rem)}" +
+  "@media(min-width:768px){.home-main-overlap{padding-top:calc(580px + 4rem)}}" +
+  "html.spa-lcp-layout-done .home-main-overlap{padding-top:3.5rem}" +
+  "@media(min-width:768px){html.spa-lcp-layout-done .home-main-overlap{padding-top:4rem}}";
 
 /** Compact hero — ίδιο ύψος με #home-hero-slot στο mobile (χωρίς CLS στο handoff). */
 export const HOME_HERO_COMPACT_SECTION_CLASS =
   "relative overflow-hidden bg-[#13143E] max-md:h-[380px] max-md:min-h-[380px] max-md:max-h-[380px] md:-mt-28 md:pt-28 md:min-h-[580px]";
-
-/** @deprecated Χρησιμοποίησε HOME_HERO_COMPACT_SECTION_CLASS */
-export const HOME_HERO_SECTION_CLASS = HOME_HERO_COMPACT_SECTION_CLASS;

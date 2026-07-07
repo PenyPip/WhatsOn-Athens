@@ -58,13 +58,6 @@ export async function fetchMyProfile() {
   return authFetch<UserProfile>("/user-profiles/me");
 }
 
-export async function updateMyProfile(displayName: string) {
-  return authFetch<UserProfile>("/user-profiles/me", {
-    method: "PUT",
-    body: JSON.stringify({ displayName }),
-  });
-}
-
 export async function toggleFavoriteMovie(movieId: number) {
   return authFetch<{ active: boolean; profile: UserProfile }>(
     `/user-profiles/me/favorite-movies/${movieId}`,
@@ -81,10 +74,6 @@ export async function toggleFavoriteVenue(venueId: number) {
 
 export async function fetchMoviePopularity(movieId: number) {
   return authFetch<PopularityStats>(`/user-profiles/popularity/movie/${movieId}`);
-}
-
-export async function fetchVenuePopularity(venueId: number) {
-  return authFetch<PopularityStats>(`/user-profiles/popularity/venue/${venueId}`);
 }
 
 export async function fetchMyReviews() {

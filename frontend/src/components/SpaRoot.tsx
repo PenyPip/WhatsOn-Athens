@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo } from "react";
+import { useMemo } from "react";
 import SpaProviders from "@/components/SpaProviders";
 import App from "@/App";
 import { HomeStaticLcpContext } from "@/contexts/HomeStaticLcpContext";
@@ -33,10 +33,6 @@ export default function SpaRoot({
     }
     return bootstrapState;
   }, [bootstrapState]);
-
-  useEffect(() => {
-    document.documentElement.classList.add("spa-seo-interactive");
-  }, []);
 
   return (
     <div suppressHydrationWarning={suppressHydrationWarning}>

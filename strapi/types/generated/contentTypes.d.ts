@@ -1102,6 +1102,53 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
   };
 }
 
+export interface ApiUserProfileUserProfile extends Schema.CollectionType {
+  collectionName: 'user_profiles';
+  info: {
+    displayName: 'User Profile';
+    pluralName: 'user-profiles';
+    singularName: 'user-profile';
+  };
+  options: {
+    draftAndPublish: false;
+  };
+  attributes: {
+    createdAt: Attribute.DateTime;
+    createdBy: Attribute.Relation<
+      'api::user-profile.user-profile',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    display_name: Attribute.String &
+      Attribute.SetMinMaxLength<{
+        maxLength: 80;
+      }>;
+    favorite_movies: Attribute.Relation<
+      'api::user-profile.user-profile',
+      'manyToMany',
+      'api::movie.movie'
+    >;
+    favorite_venues: Attribute.Relation<
+      'api::user-profile.user-profile',
+      'manyToMany',
+      'api::venue.venue'
+    >;
+    updatedAt: Attribute.DateTime;
+    updatedBy: Attribute.Relation<
+      'api::user-profile.user-profile',
+      'oneToOne',
+      'admin::user'
+    > &
+      Attribute.Private;
+    user: Attribute.Relation<
+      'api::user-profile.user-profile',
+      'oneToOne',
+      'plugin::users-permissions.user'
+    >;
+  };
+}
+
 export interface ApiUserReviewUserReview extends Schema.CollectionType {
   collectionName: 'user_reviews';
   info: {
@@ -1143,6 +1190,11 @@ export interface ApiUserReviewUserReview extends Schema.CollectionType {
       'admin::user'
     > &
       Attribute.Private;
+    user: Attribute.Relation<
+      'api::user-review.user-review',
+      'manyToOne',
+      'plugin::users-permissions.user'
+    >;
     user_email: Attribute.Email;
     user_name: Attribute.String & Attribute.Required;
   };
@@ -1679,6 +1731,7 @@ declare module '@strapi/types' {
       'api::site-navigation.site-navigation': ApiSiteNavigationSiteNavigation;
       'api::theater-performance.theater-performance': ApiTheaterPerformanceTheaterPerformance;
       'api::theater-show.theater-show': ApiTheaterShowTheaterShow;
+      'api::user-profile.user-profile': ApiUserProfileUserProfile;
       'api::user-review.user-review': ApiUserReviewUserReview;
       'api::venue.venue': ApiVenueVenue;
       'plugin::content-releases.release': PluginContentReleasesRelease;

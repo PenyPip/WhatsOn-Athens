@@ -55,9 +55,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    const finish = () => {
+      if (!cancelled) setLoading(false);
+    };
+    if (!getAuthToken()) {
+      finish();
+      return;
+    }
+    const run = async () => {
       try {
-        if (!getAuthToken()) return;
         await refreshProfile();
       } catch {
         logoutClient();
@@ -66,9 +72,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setProfile(null);
         }
       } finally {
-        if (!cancelled) setLoading(false);
+        finish();
       }
-    })();
+    };
+    if (typeof requestIdleCallback !== "undefined") {
+      const idleId = requestIdleCallback(() => void run(), { timeout: 2500 });
+      return () => {
+        cancelled = true;
+        cancelIdleCallback(idleId);
+      };
+    }
+    void run();
     return () => {
       cancelled = true;
     };

@@ -227,7 +227,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
   const heroSwipe = useHeroSwipe(hasCarousel, activeIndex, goTo);
 
   if (movies.length === 0) {
-    if (hasStaticLcp) return <HomeHeroLayoutReserve />;
+    if (hasStaticLcp) return null;
     if (loading) return <MostTalkedAboutHeroShell />;
     return null;
   }
