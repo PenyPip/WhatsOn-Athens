@@ -18,22 +18,18 @@ const HomeBody = lazy(() => import(/* webpackChunkName: "home-body" */ "@/views/
 function HomeBodyMountGate({
   ready,
   layout,
-  lightFallback,
+  staticLcpOnPage,
 }: {
   ready: boolean;
   layout: ResolvedHomepageLayout;
-  lightFallback: boolean;
+  staticLcpOnPage: boolean;
 }) {
-  const fallback = lightFallback ? (
-    <div className="min-h-[8rem]" aria-hidden />
-  ) : (
-    <HomePageBodyShell layout={layout} />
-  );
+  const shell = <HomePageBodyShell layout={layout} staticLcpOnPage={staticLcpOnPage} />;
   if (!ready) {
-    return <HomePageBodyShell layout={layout} staticLcpOnPage={lightFallback} />;
+    return shell;
   }
   return (
-    <Suspense fallback={fallback}>
+    <Suspense fallback={shell}>
       <HomeBody layout={layout} />
     </Suspense>
   );
@@ -53,7 +49,6 @@ const Index = () => {
     if (isMobile) void import(/* webpackChunkName: "home-body" */ "@/views/HomeBody");
   }, [isMobile]);
 
-  /** Mobile: μετά overlay handoff. Desktop: αμέσως — το live hero κρατά το slot μέχρι poster. */
   const mountHomeBody = homeBodyReady && (!isMobile || deferLcp);
 
   return (
@@ -61,7 +56,7 @@ const Index = () => {
       {!hasHero ? <MarkLcpDone /> : <HomeStaticLcpHandoff />}
 
       {homeBodyReady ? (
-        <HomeBodyMountGate ready={mountHomeBody} layout={layout} lightFallback={staticLcpOnPage} />
+        <HomeBodyMountGate ready={mountHomeBody} layout={layout} staticLcpOnPage={staticLcpOnPage} />
       ) : null}
       <div>
         <HomeSeoIntro />

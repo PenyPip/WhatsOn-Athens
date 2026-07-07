@@ -69,9 +69,10 @@ function AppRoutes() {
 
 type AppShellProps = {
   homeMainOverlap?: boolean;
+  homeStaticLcp?: boolean;
 };
 
-function AppShell({ homeMainOverlap }: AppShellProps) {
+function AppShell({ homeMainOverlap, homeStaticLcp }: AppShellProps) {
   const { pathname } = useLocation();
   const overlapHome = homeMainOverlap ?? pathname === "/";
 
@@ -94,6 +95,7 @@ function AppShell({ homeMainOverlap }: AppShellProps) {
           overlapHome ? "home-main-overlap" : "max-md:pt-16 md:pt-28",
         )}
       >
+        {homeStaticLcp && overlapHome ? <div id="home-hero-ssr-spacer" aria-hidden /> : null}
         <DeferredCookieConsent />
         <AppRoutes />
       </main>
@@ -104,11 +106,12 @@ function AppShell({ homeMainOverlap }: AppShellProps) {
 type AppProps = {
   ssrPath?: string;
   homeMainOverlap?: boolean;
+  homeStaticLcp?: boolean;
 };
 
-const App = ({ ssrPath = "/", homeMainOverlap }: AppProps) => (
+const App = ({ ssrPath = "/", homeMainOverlap, homeStaticLcp }: AppProps) => (
   <UrlBackedMemoryRouter ssrPath={ssrPath}>
-    <AppShell homeMainOverlap={homeMainOverlap} />
+    <AppShell homeMainOverlap={homeMainOverlap} homeStaticLcp={homeStaticLcp} />
   </UrlBackedMemoryRouter>
 );
 

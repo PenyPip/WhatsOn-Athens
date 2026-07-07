@@ -38,7 +38,7 @@ export default function SpaRoot({
     <div suppressHydrationWarning={suppressHydrationWarning}>
       <HomeStaticLcpContext.Provider value={homeStaticLcp}>
         <SpaProviders dehydratedState={dehydratedState}>
-          <App ssrPath={ssrPath} homeMainOverlap={homeMainOverlap} />
+          <App ssrPath={ssrPath} homeMainOverlap={homeMainOverlap} homeStaticLcp={homeStaticLcp} />
         </SpaProviders>
       </HomeStaticLcpContext.Provider>
     </div>
