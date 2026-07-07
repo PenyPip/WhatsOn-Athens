@@ -10,6 +10,25 @@ import { movieTitleLines } from "@/lib/movieTitles";
 import { resolveImdbRating } from "@/lib/movieImdb";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 
+function showtimeSlotKey(st: StrapiShowtime): string {
+  const movie = st.movieId ?? st.movieSlug ?? st.movieTitle ?? "";
+  const hall = st.hallId ?? st.hallName ?? "";
+  return `${movie}|${st.datetime}|${hall}`;
+}
+
+/** Μία κάρτα ανά προβολή — το API μπορεί να επιστρέφει διπλότυπα rows. */
+function uniqueShowtimeSlots(list: StrapiShowtime[]): StrapiShowtime[] {
+  const seen = new Set<string>();
+  const out: StrapiShowtime[] = [];
+  for (const st of list) {
+    const key = showtimeSlotKey(st);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(st);
+  }
+  return out;
+}
+
 type HomePersonalizedSectionsProps = {
   movies: StrapiMovie[];
   showtimes: StrapiShowtime[];
@@ -38,10 +57,10 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
   const favoriteVenueShowtimes = useMemo(() => {
     if (!favoriteVenueIds.size) return [];
     const now = Date.now();
-    return showtimes
+    const filtered = showtimes
       .filter((st) => favoriteVenueIds.has(st.venueId) && new Date(st.datetime).getTime() >= now)
-      .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime())
-      .slice(0, 24);
+      .sort((a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime());
+    return uniqueShowtimeSlots(filtered).slice(0, 24);
   }, [showtimes, favoriteVenueIds]);
 
   const showtimesByVenue = useMemo(() => {
@@ -51,7 +70,11 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
       if (!map.has(key)) {
         map.set(key, { venueName: st.venue, venueSlug: st.venueSlug ?? "", slots: [] });
       }
-      map.get(key)!.slots.push(st);
+      const group = map.get(key)!;
+      const slotKey = showtimeSlotKey(st);
+      if (!group.slots.some((s) => showtimeSlotKey(s) === slotKey)) {
+        group.slots.push(st);
+      }
     }
     return [...map.values()];
   }, [favoriteVenueShowtimes]);
@@ -118,7 +141,7 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
                   </div>
                   <ul className="grid list-none gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {group.slots.slice(0, 6).map((st) => (
-                      <li key={st.id} className="rounded-lg border border-white/10 px-3 py-2 text-sm text-white/85">
+                      <li key={showtimeSlotKey(st)} className="rounded-lg border border-white/10 px-3 py-2 text-sm text-white/85">
                         <Link to={`/movies/${st.movieSlug}`} className="font-medium text-white hover:underline">
                           {st.movieTitle}
                         </Link>
