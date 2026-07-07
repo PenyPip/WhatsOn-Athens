@@ -9,6 +9,7 @@ import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { resolveImdbRating } from "@/lib/movieImdb";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
+import type { ProfileMovie } from "@/lib/userProfile";
 
 function showtimeSlotKey(st: StrapiShowtime): string {
   const movie = st.movieId ?? st.movieSlug ?? st.movieTitle ?? "";
@@ -29,8 +30,15 @@ function uniqueShowtimeSlots(list: StrapiShowtime[]): StrapiShowtime[] {
   return out;
 }
 
+function genreLabel(pm: ProfileMovie, catalog: StrapiMovie | null): string {
+  if (catalog?.genre?.trim()) return catalog.genre;
+  const labels = (pm.genres ?? []).map((g) => g.label).filter(Boolean);
+  return labels.join(" · ");
+}
+
 type HomePersonalizedSectionsProps = {
-  movies: StrapiMovie[];
+  /** Προαιρετικό — πλούσια αφίσα/srcset όταν η ταινία είναι και στο home catalog. */
+  movies?: StrapiMovie[];
   showtimes: StrapiShowtime[];
 };
 
@@ -38,21 +46,21 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
   const defer = useDeferUntilLcpDone();
   const { isAuthenticated, profile } = useAuth();
 
-  const favoriteMovieIds = useMemo(
-    () => new Set((profile?.favoriteMovies ?? []).map((m) => m.id)),
-    [profile?.favoriteMovies],
-  );
   const favoriteVenueIds = useMemo(
     () => new Set((profile?.favoriteVenues ?? []).map((v) => v.id)),
     [profile?.favoriteVenues],
   );
 
-  const favoriteMovies = useMemo(() => {
-    if (!favoriteMovieIds.size) return [];
-    const picked = movies.filter((m) => favoriteMovieIds.has(m.id));
-    const order = new Map([...favoriteMovieIds].map((id, i) => [id, i]));
-    return [...picked].sort((a, b) => (order.get(a.id) ?? 99) - (order.get(b.id) ?? 99));
-  }, [movies, favoriteMovieIds]);
+  /** Πάντα από profile — όχι το trimmed home `movieList` (λείπουν ταινίες χωρίς προβολή στην αρχική). */
+  const favoriteMoviesDisplay = useMemo(() => {
+    const fromProfile = profile?.favoriteMovies ?? [];
+    if (!fromProfile.length) return [];
+    const catalogById = new Map((movies ?? []).map((m) => [m.id, m]));
+    return fromProfile.map((pm) => ({
+      profile: pm,
+      catalog: catalogById.get(pm.id) ?? null,
+    }));
+  }, [profile?.favoriteMovies, movies]);
 
   const favoriteVenueShowtimes = useMemo(() => {
     if (!favoriteVenueIds.size) return [];
@@ -79,13 +87,14 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
     return [...map.values()];
   }, [favoriteVenueShowtimes]);
 
-  if (!defer || !isAuthenticated || (!favoriteMovies.length && !showtimesByVenue.length)) {
+  const profileFavoriteCount = profile?.favoriteMovies?.length ?? 0;
+  if (!defer || !isAuthenticated || (profileFavoriteCount === 0 && showtimesByVenue.length === 0)) {
     return null;
   }
 
   return (
     <>
-      {favoriteMovies.length > 0 ? (
+      {favoriteMoviesDisplay.length > 0 ? (
         <section className="relative border-y border-[#13143E]/20 bg-[#F7F5FC] py-10 md:py-12">
           <div className="container max-w-7xl">
             <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-[#13143E]/55">
@@ -94,21 +103,24 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
             <h2 className="font-display text-2xl font-bold text-[#13143E] md:text-3xl">Οι ταινίες σου</h2>
             <p className="mt-1 font-body text-sm text-[#13143E]/65">Αγαπημένες ταινίες που παρακολουθείς</p>
             <div className="mt-6 flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
-              {favoriteMovies.map((movie) => {
-                const tl = movieTitleLines(movie);
+              {favoriteMoviesDisplay.map(({ profile: pm, catalog }) => {
+                const tl = movieTitleLines({
+                  title: catalog?.title ?? pm.title,
+                  originalTitle: catalog?.originalTitle ?? pm.originalTitle,
+                });
                 return (
-                  <div key={movie.id} className="w-[9.5rem] shrink-0 sm:w-[10.5rem]">
+                  <div key={pm.id} className="w-[9.5rem] shrink-0 sm:w-[10.5rem]">
                     <EventCard
-                      slug={movie.slug}
+                      slug={pm.slug}
                       title={tl.primary}
                       titleSecondary={tl.secondary}
                       subtitle=""
-                      genre={movie.genre || ""}
-                      duration={movie.duration}
-                      imdbRating={resolveImdbRating(movie)}
-                      posterUrl={movie.posterUrl}
-                      posterSrcSet={movie.posterSrcSet}
-                      isDubbed={movie.isDubbed}
+                      genre={genreLabel(pm, catalog)}
+                      duration={catalog?.duration ?? 0}
+                      imdbRating={catalog ? resolveImdbRating(catalog) : pm.imdbRating ?? undefined}
+                      posterUrl={catalog?.posterUrl ?? pm.posterUrl ?? undefined}
+                      posterSrcSet={catalog?.posterSrcSet}
+                      isDubbed={catalog?.isDubbed ?? pm.isDubbed}
                       type="movie"
                     />
                   </div>
