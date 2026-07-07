@@ -110,9 +110,9 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
   return (
     <>
       {yourProgramShowtimes.length > 0 ? (
-        <section className="relative border-y border-amber-500/25 bg-gradient-to-b from-amber-950/20 to-[#13143E]/10 py-10 md:py-12">
+        <section className="relative section-black border-y border-white/[0.07] py-10 md:py-12">
           <div className="container max-w-7xl">
-            <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-amber-200/90">
+            <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-amber-200/85">
               Για σένα
             </span>
             <h2 className="font-display text-2xl font-bold text-white md:text-3xl">Το πρόγραμμά σου</h2>
@@ -128,21 +128,21 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
                 return (
                   <li
                     key={showtimeSlotKey(st)}
-                    className="rounded-xl border border-amber-200/15 bg-white/[0.05] px-4 py-3"
+                    className="rounded-xl border border-white/10 bg-white/[0.06] px-4 py-3"
                   >
                     <Link to={movieHref} className="font-display text-base font-semibold text-white hover:underline">
                       {st.movieTitle}
                     </Link>
-                    <p className="mt-1 font-body text-sm text-amber-100/90">{formatNextShowtimeLabel(st, now)}</p>
+                    <p className="mt-1 font-body text-sm text-amber-100/95">{formatNextShowtimeLabel(st, now)}</p>
                     {st.venueSlug?.trim() ? (
                       <Link
                         to={moviesVenueProgramPath(st.venueSlug)}
-                        className="mt-2 inline-block text-xs font-medium uppercase tracking-wide text-white/55 hover:text-white/80"
+                        className="mt-2 inline-block text-xs font-medium uppercase tracking-wide text-white/60 hover:text-amber-100/90"
                       >
                         {st.venue}
                       </Link>
                     ) : (
-                      <p className="mt-2 text-xs text-white/55">{st.venue}</p>
+                      <p className="mt-2 text-xs text-white/60">{st.venue}</p>
                     )}
                   </li>
                 );
