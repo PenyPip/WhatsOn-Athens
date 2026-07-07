@@ -72,6 +72,8 @@ import {
   movieStubFromShowtime,
 } from "@/lib/homeMovieFilters";
 import { compareMoviesByShowingVenueCount } from "@/lib/movieCinemaSort";
+import { sortVenueShowingsBlocks } from "@/lib/favoriteSort";
+import { useFavoriteIds } from "@/hooks/useFavoriteIds";
 import { resolveImdbRating } from "@/lib/movieImdb";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
@@ -414,6 +416,7 @@ function SummerOutdoorToggle({
 
 const Movies = () => {
   const navigate = useNavigate();
+  const favoriteIds = useFavoriteIds();
   const { pathname } = useLocation();
   const pathFilters = parseMoviesFilterPath(pathname);
   const { venueSlug: routeVenueSlug, genreSlug: routeGenreSlug } = useParams<{
@@ -665,24 +668,27 @@ const Movies = () => {
         const venueMap = byMovieVenues.get(movie.id);
         const showings =
           venueMap != null
-            ? [...venueMap.values()]
-                .map((b) => ({
-                  ...b,
-                  slots: [...b.slots]
-                    .filter((s) => !s.timesTba)
-                    .sort((x, y) => x.datetime.getTime() - y.datetime.getTime()),
-                }))
-                .filter((b) => b.slots.length > 0)
-                .sort((a, b) => {
+            ? sortVenueShowingsBlocks(
+                [...venueMap.values()]
+                  .map((b) => ({
+                    ...b,
+                    slots: [...b.slots]
+                      .filter((s) => !s.timesTba)
+                      .sort((x, y) => x.datetime.getTime() - y.datetime.getTime()),
+                  }))
+                  .filter((b) => b.slots.length > 0),
+                favoriteIds,
+                (a, b) => {
                   const ta = a.slots[0]?.datetime.getTime() ?? 0;
                   const tb = b.slots[0]?.datetime.getTime() ?? 0;
                   return ta - tb;
-                })
+                },
+              )
             : [];
         return { movie, showings };
       });
 
-      entries.sort(compareMoviesByShowingVenueCount);
+      entries.sort((a, b) => compareMoviesByShowingVenueCount(a, b, favoriteIds));
 
       return [
         {
@@ -743,23 +749,26 @@ const Movies = () => {
       const byMovie = sectionMovieShowings.get(key)!;
       const entries: MovieDayEntry[] = [...byMovie.entries()].map(([mid, venueMap]) => {
         const mv = movieMap.get(mid)!;
-        const showings = [...venueMap.values()]
-          .map((b) => ({
-            ...b,
-            slots: [...b.slots]
-              .filter((s) => !s.timesTba)
-              .sort((x, y) => x.datetime.getTime() - y.datetime.getTime()),
-          }))
-          .filter((b) => b.slots.length > 0);
-        showings.sort((a, b) => {
-          const ta = a.slots[0]?.datetime.getTime() ?? 0;
-          const tb = b.slots[0]?.datetime.getTime() ?? 0;
-          return ta - tb;
-        });
+        const showings = sortVenueShowingsBlocks(
+          [...venueMap.values()]
+            .map((b) => ({
+              ...b,
+              slots: [...b.slots]
+                .filter((s) => !s.timesTba)
+                .sort((x, y) => x.datetime.getTime() - y.datetime.getTime()),
+            }))
+            .filter((b) => b.slots.length > 0),
+          favoriteIds,
+          (a, b) => {
+            const ta = a.slots[0]?.datetime.getTime() ?? 0;
+            const tb = b.slots[0]?.datetime.getTime() ?? 0;
+            return ta - tb;
+          },
+        );
         return { movie: mv, showings };
       });
 
-      entries.sort(compareMoviesByShowingVenueCount);
+      entries.sort((a, b) => compareMoviesByShowingVenueCount(a, b, favoriteIds));
 
       return { label: meta.label, date: meta.date, entries };
     });
@@ -781,6 +790,7 @@ const Movies = () => {
     genreFilterSlug,
     moviesSection,
     needsCatalogMovies,
+    favoriteIds,
   ]);
 
   function clearVenueFilter() {
@@ -855,8 +865,8 @@ const Movies = () => {
     const movieIds = [
       ...new Set(groupedMovies.flatMap((section) => section.entries.map((entry) => entry.movie.id))),
     ];
-    return buildOtherVenuesByMovieId(movieIds, venueFilter.id, showtimes, venues);
-  }, [venueFilter, groupedMovies, showtimes, venues]);
+    return buildOtherVenuesByMovieId(movieIds, venueFilter.id, showtimes, venues, favoriteIds);
+  }, [venueFilter, groupedMovies, showtimes, venues, favoriteIds]);
 
   usePageSeo({
     title: listSeo.title,

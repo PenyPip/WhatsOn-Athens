@@ -44,6 +44,8 @@ import {
   mergeMovieWithShowtimeFields,
 } from "@/lib/homeMovieFilters";
 import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
+import { sortVenueShowingsBlocks } from "@/lib/favoriteSort";
+import { useFavoriteIds } from "@/hooks/useFavoriteIds";
 import {
   formatShowtimeWeekRangeLabel,
   showtimeIsWeekBlock,
@@ -236,6 +238,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { data: editorialReviews } = useEditorialReviews();
   const { data: userReviews } = useUserReviews();
   const { isAuthenticated } = useAuth();
+  const favoriteIds = useFavoriteIds();
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(isMovieRoute);
   const { data: theaterPerformances, isLoading: performancesLoading } = useTheaterPerformances(isTheaterRoute);
   const { data: genreCatalog } = useMovieGenreCatalog(isMovieRoute && loadRelatedMovies);
@@ -316,17 +319,19 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         if (!m.has(key)) m.set(key, []);
         m.get(key)!.push(st);
       }
-      return [...m.entries()]
-        .map(([key, slots]) => {
+      return sortVenueShowingsBlocks(
+        [...m.entries()].map(([key, slots]) => {
           const sorted = [...slots].sort(
             (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime(),
           );
           const { venueName, venue } = resolveCinemaGroupFromShowtimes(sorted, venues ?? []);
           return { key, venueName, slots: sorted, venue };
-        })
-        .sort((a, b) => a.venueName.localeCompare(b.venueName, "el"));
+        }),
+        favoriteIds,
+        (a, b) => a.venueName.localeCompare(b.venueName, "el"),
+      );
     },
-    [venues],
+    [venues, favoriteIds],
   );
 
   const [movieDayFilter, setMovieDayFilter] = useState<MovieDetailDayFilter>("all");
@@ -618,6 +623,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         showtimes ?? [],
         venues,
         (st) => showtimeIsUpcoming(st),
+        favoriteIds,
       ).slice(0, 4)
     : (theaterShows ?? []).filter((s) => s.slug !== slug).slice(0, 4);
 

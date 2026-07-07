@@ -50,7 +50,8 @@ import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { filterTouringShowsForHome } from "@/lib/theaterTours";
-import { siteSeo } from "@/lib/siteMetadata";
+import { useFavoriteIds } from "@/hooks/useFavoriteIds";
+import { sortMoviesPrioritizingFavorites } from "@/lib/favoriteSort";
 
 const MOVIE_ROW_MIN_H = "min-h-[20rem] md:min-h-[22rem]";
 const MOVIE_ROW_SPOTLIGHT_MIN_H = "min-h-[26rem] md:min-h-[28rem]";
@@ -360,6 +361,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const deferHomeExtra = isMobile ? deferSecondary : idleAfterLcp;
   /** Mobile: αναβολή catalog/API μέχρι το static LCP — λιγότερο TBT στο πρώτο paint. */
   const deferProgramData = !isMobile || deferSecondary;
+  const favoriteIds = useFavoriteIds();
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies(deferProgramData, {
     fullCatalog: needsFullMovieCatalog,
@@ -433,25 +435,37 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     [theaterShows],
   );
   const summerMoviesForHome = useMemo(
-    () => moviesWithSummerOutdoorShowtimeThisCinemaWeek(movieList, stList, venueList, siteNow),
-    [movieList, stList, venueList, siteNow],
+    () =>
+      sortMoviesPrioritizingFavorites(
+        moviesWithSummerOutdoorShowtimeThisCinemaWeek(movieList, stList, venueList, siteNow),
+        favoriteIds,
+      ),
+    [movieList, stList, venueList, siteNow, favoriteIds],
   );
   const weekMovies = useMemo(
-    () => moviesForUpcomingCinemaWeek(movieList, stList, siteNow),
-    [movieList, stList, siteNow],
+    () => sortMoviesPrioritizingFavorites(moviesForUpcomingCinemaWeek(movieList, stList, siteNow), favoriteIds),
+    [movieList, stList, siteNow, favoriteIds],
   );
   const upcomingWeekLabel = useMemo(() => formatUpcomingCinemaWeekRange(siteNow), [siteNow]);
   const todayMovies = useMemo(
-    () => moviesWithShowtimeToday(movieList, stList, siteNow),
-    [movieList, stList, siteNow],
+    () => sortMoviesPrioritizingFavorites(moviesWithShowtimeToday(movieList, stList, siteNow), favoriteIds),
+    [movieList, stList, siteNow, favoriteIds],
   );
   const newMoviesList = useMemo(
-    () => moviesReleasedInLastDays(movieList, 10, stList, venueList, siteNow),
-    [movieList, stList, venueList, siteNow],
+    () =>
+      sortMoviesPrioritizingFavorites(
+        moviesReleasedInLastDays(movieList, 10, stList, venueList, siteNow),
+        favoriteIds,
+      ),
+    [movieList, stList, venueList, siteNow, favoriteIds],
   );
   const comingSoonMovies = useMemo(
-    () => moviesComingAfterUpcomingCinemaWeek(movieList, stList, venueList, siteNow),
-    [movieList, stList, venueList, siteNow],
+    () =>
+      sortMoviesPrioritizingFavorites(
+        moviesComingAfterUpcomingCinemaWeek(movieList, stList, venueList, siteNow),
+        favoriteIds,
+      ),
+    [movieList, stList, venueList, siteNow, favoriteIds],
   );
   const mostTalkedAboutList = useMemo(() => mostTalkedAboutMovies(movieList), [movieList]);
 

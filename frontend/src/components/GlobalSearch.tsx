@@ -20,6 +20,8 @@ import type { StrapiMovie, StrapiTheaterShow, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre, showtimeIsUpcoming } from "@/lib/homeMovieFilters";
 import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
+import { sortMoviesPrioritizingFavorites } from "@/lib/favoriteSort";
+import { useFavoriteIds } from "@/hooks/useFavoriteIds";
 import { isPublicVenueListing, programHrefForVenue, venueKindLabel } from "@/lib/venueType";
 import { textMatchesSearch } from "@/lib/searchTokens";
 import { cn } from "@/lib/utils";
@@ -120,6 +122,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   if (panelOpen) hasOpenedRef.current = true;
 
   const searchActive = panelOpen || hasOpenedRef.current;
+  const favoriteIds = useFavoriteIds();
   const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies(searchActive);
   const { data: showtimes } = useShowtimes(searchActive);
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(searchActive);
@@ -226,11 +229,14 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
     const list = moviesEnriched ?? [];
     const trimmed = search.trim();
     let out = trimmed
-      ? list.filter((m) => movieMatches(m, trimmed))
-      : sortMoviesByCinemaCount(list, showtimes ?? [], venues, (st) => showtimeIsUpcoming(st));
+      ? sortMoviesPrioritizingFavorites(
+          list.filter((m) => movieMatches(m, trimmed)),
+          favoriteIds,
+        )
+      : sortMoviesByCinemaCount(list, showtimes ?? [], venues, (st) => showtimeIsUpcoming(st), favoriteIds);
     if (!trimmed) out = out.slice(0, CAP_EMPTY);
     return out.slice(0, 50);
-  }, [moviesEnriched, search, showtimes, venues]);
+  }, [moviesEnriched, search, showtimes, venues, favoriteIds]);
 
   const venueHits = useMemo(() => {
     const list = (venues ?? []).filter(isPublicVenueListing);

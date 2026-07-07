@@ -13,6 +13,8 @@ import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import { isValidExternalUrl } from "@/lib/venueResolve";
 import type { OtherVenueLink } from "@/lib/otherVenuesForMovie";
+import { sortMoviesPrioritizingFavorites } from "@/lib/favoriteSort";
+import { useFavoriteIds } from "@/hooks/useFavoriteIds";
 import { eachDayInclusiveInRange } from "@/lib/showtimeSchedule";
 import { cn } from "@/lib/utils";
 
@@ -484,6 +486,7 @@ export default function VenueProgramLayout({
   otherVenuesByMovieId?: Map<number, OtherVenueLink[]>;
 }) {
   const now = useMemo(() => new Date(), []);
+  const favoriteIds = useFavoriteIds();
   const [selectedMovieId, setSelectedMovieId] = useState<number | null>(null);
   const [showAllWeeks, setShowAllWeeks] = useState(true);
 
@@ -511,9 +514,12 @@ export default function VenueProgramLayout({
         for (const line of day.lines) movieIdsInProgram.add(line.movie.id);
       }
     }
-    const movies = [...new Map(allEntries.map((e) => [e.movie.id, e.movie])).values()]
-      .filter((m) => movieIdsInProgram.has(m.id))
-      .sort((a, b) => movieTitleLines(a).primary.localeCompare(movieTitleLines(b).primary, "el"));
+    const movies = sortMoviesPrioritizingFavorites(
+      [...new Map(allEntries.map((e) => [e.movie.id, e.movie])).values()]
+        .filter((m) => movieIdsInProgram.has(m.id))
+        .sort((a, b) => movieTitleLines(a).primary.localeCompare(movieTitleLines(b).primary, "el")),
+      favoriteIds,
+    );
 
     const filteredLines = programLines.filter((line) =>
       selectedMovieId != null ? line.movie.id === selectedMovieId : true,
@@ -524,7 +530,7 @@ export default function VenueProgramLayout({
       programWeeks: groupProgramByCinemaWeek(filteredLines, now),
       totalLines: filteredLines.length,
     };
-  }, [sections, now, selectedMovieId]);
+  }, [sections, now, selectedMovieId, favoriteIds]);
 
   useEffect(() => {
     if (selectedMovieId != null && !availableMovies.some((m) => m.id === selectedMovieId)) {

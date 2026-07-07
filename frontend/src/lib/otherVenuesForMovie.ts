@@ -1,4 +1,5 @@
 import type { StrapiShowtime, StrapiVenue } from "@/lib/api";
+import type { FavoriteIdSets } from "@/lib/favoriteSort";
 import { findVenueForShowtime } from "@/lib/venueResolve";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 
@@ -15,6 +16,7 @@ export function otherVenuesForMovie(
   currentVenueId: number,
   showtimes: StrapiShowtime[],
   venues: StrapiVenue[],
+  favorites?: FavoriteIdSets,
 ): OtherVenueLink[] {
   const seen = new Set<number>();
   const out: OtherVenueLink[] = [];
@@ -37,7 +39,14 @@ export function otherVenuesForMovie(
     });
   }
 
-  return out.sort((a, b) => a.name.localeCompare(b.name, "el"));
+  return out.sort((a, b) => {
+    if (favorites) {
+      const af = favorites.venueIds.has(a.venueId) || favorites.venueSlugs.has(a.slug.toLowerCase());
+      const bf = favorites.venueIds.has(b.venueId) || favorites.venueSlugs.has(b.slug.toLowerCase());
+      if (af !== bf) return af ? -1 : 1;
+    }
+    return a.name.localeCompare(b.name, "el");
+  });
 }
 
 export function buildOtherVenuesByMovieId(
@@ -45,10 +54,11 @@ export function buildOtherVenuesByMovieId(
   currentVenueId: number,
   showtimes: StrapiShowtime[],
   venues: StrapiVenue[],
+  favorites?: FavoriteIdSets,
 ): Map<number, OtherVenueLink[]> {
   const map = new Map<number, OtherVenueLink[]>();
   for (const id of movieIds) {
-    const links = otherVenuesForMovie(id, currentVenueId, showtimes, venues ?? []);
+    const links = otherVenuesForMovie(id, currentVenueId, showtimes, venues ?? [], favorites);
     if (links.length) map.set(id, links);
   }
   return map;
