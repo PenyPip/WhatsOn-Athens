@@ -8,12 +8,11 @@ import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { resolveImdbRating } from "@/lib/movieImdb";
-import { buildMovieShowtimeShareUrl } from "@/lib/movieShowtimeShare";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import {
   formatNextShowtimeLabel,
   nextShowtimeForMovie,
-  personalizedProgramShowtimes,
+  personalizedProgramByVenue,
   showtimeSlotKey,
   uniqueShowtimeSlots,
 } from "@/lib/personalizedShowtimes";
@@ -68,8 +67,8 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
     }));
   }, [profile?.favoriteMovies, movies, nextShowtimeByMovieId]);
 
-  const yourProgramShowtimes = useMemo(
-    () => personalizedProgramShowtimes(showtimes, favoriteMovieIds, favoriteVenueIds, { now, limit: 16 }),
+  const yourProgramByVenue = useMemo(
+    () => personalizedProgramByVenue(showtimes, favoriteMovieIds, favoriteVenueIds, { now }),
     [showtimes, favoriteMovieIds, favoriteVenueIds, now],
   );
 
@@ -102,14 +101,14 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
   if (
     !defer ||
     !isAuthenticated ||
-    (profileFavoriteCount === 0 && showtimesByVenue.length === 0 && yourProgramShowtimes.length === 0)
+    (profileFavoriteCount === 0 && showtimesByVenue.length === 0 && yourProgramByVenue.length === 0)
   ) {
     return null;
   }
 
   return (
     <>
-      {favoriteMoviesDisplay.length > 0 || yourProgramShowtimes.length > 0 ? (
+      {favoriteMoviesDisplay.length > 0 || yourProgramByVenue.length > 0 ? (
         <section className="relative border-y border-[#13143E]/20 bg-[#F7F5FC] py-10 md:py-12">
           <div className="container max-w-7xl space-y-10 md:space-y-12">
             {favoriteMoviesDisplay.length > 0 ? (
@@ -150,7 +149,7 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
               </div>
             ) : null}
 
-            {yourProgramShowtimes.length > 0 ? (
+            {yourProgramByVenue.length > 0 ? (
               <div
                 className={
                   favoriteMoviesDisplay.length > 0 ? "border-t border-[#13143E]/10 pt-10 md:pt-12" : undefined
@@ -163,39 +162,45 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
                 ) : null}
                 <h2 className="font-display text-2xl font-bold text-[#13143E] md:text-3xl">Το πρόγραμμά σου</h2>
                 <p className="mt-1 font-body text-sm text-[#13143E]/65">
-                  Οι αγαπημένες σου ταινίες, στα αγαπημένα σου σινεμά
+                  Ποιες αγαπημένες σου ταινίες παίζουν στα αγαπημένα σου σινεμά
                 </p>
                 <ul className="mt-6 grid list-none gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {yourProgramShowtimes.map((st) => {
-                    const slug = st.movieSlug?.trim();
-                    const movieHref = slug
-                      ? buildMovieShowtimeShareUrl(slug, { showtimeId: st.id })
-                      : "/movies";
-                    return (
-                      <li
-                        key={showtimeSlotKey(st)}
-                        className="rounded-xl border border-[#13143E]/12 bg-white px-4 py-3 shadow-sm"
-                      >
+                  {yourProgramByVenue.map((group) => (
+                    <li
+                      key={group.venueSlug || group.venueId}
+                      className="rounded-xl border border-[#13143E]/12 bg-white px-4 py-3.5 shadow-sm"
+                    >
+                      {group.venueSlug ? (
                         <Link
-                          to={movieHref}
+                          to={moviesVenueProgramPath(group.venueSlug)}
                           className="font-display text-base font-semibold text-[#13143E] hover:text-[#872F8B]"
                         >
-                          {st.movieTitle}
+                          {group.venueName}
                         </Link>
-                        <p className="mt-1 font-body text-sm text-[#13143E]/80">{formatNextShowtimeLabel(st, now)}</p>
-                        {st.venueSlug?.trim() ? (
-                          <Link
-                            to={moviesVenueProgramPath(st.venueSlug)}
-                            className="mt-2 inline-block text-xs font-medium uppercase tracking-wide text-[#13143E]/50 hover:text-[#872F8B]"
-                          >
-                            {st.venue}
-                          </Link>
-                        ) : (
-                          <p className="mt-2 text-xs text-[#13143E]/50">{st.venue}</p>
-                        )}
-                      </li>
-                    );
-                  })}
+                      ) : (
+                        <span className="font-display text-base font-semibold text-[#13143E]">
+                          {group.venueName}
+                        </span>
+                      )}
+                      <p className="mt-2 font-body text-sm leading-relaxed text-[#13143E]/75">
+                        {group.movies.map((m, i) => (
+                          <span key={m.slug || m.movieId}>
+                            {i > 0 ? <span className="text-[#13143E]/30">, </span> : null}
+                            {m.slug ? (
+                              <Link
+                                to={`/movies/${m.slug}`}
+                                className="text-[#13143E] transition-colors hover:text-[#872F8B]"
+                              >
+                                {m.title}
+                              </Link>
+                            ) : (
+                              <span className="text-[#13143E]">{m.title}</span>
+                            )}
+                          </span>
+                        ))}
+                      </p>
+                    </li>
+                  ))}
                 </ul>
               </div>
             ) : null}

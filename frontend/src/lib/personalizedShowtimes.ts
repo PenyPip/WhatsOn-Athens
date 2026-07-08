@@ -52,6 +52,66 @@ export function nextShowtimeForMovie(
   )[0];
 }
 
+export type PersonalizedVenueProgram = {
+  venueId: number;
+  venueName: string;
+  venueSlug: string;
+  movies: { movieId: number; title: string; slug: string }[];
+};
+
+/**
+ * Σύνοψη «τι παίζει»: ανά αγαπημένο σινεμά, οι αγαπημένες ταινίες που έχουν μελλοντική
+ * προβολή — χωρίς ώρες/ημερομηνίες. Το σινεμά με τις περισσότερες ταινίες πρώτο.
+ */
+export function personalizedProgramByVenue(
+  showtimes: StrapiShowtime[],
+  favoriteMovieIds: ReadonlySet<number>,
+  favoriteVenueIds: ReadonlySet<number>,
+  options?: { now?: Date },
+): PersonalizedVenueProgram[] {
+  if (!favoriteMovieIds.size || !favoriteVenueIds.size) return [];
+  const now = options?.now ?? new Date();
+  const byVenue = new Map<
+    number,
+    { venueId: number; venueName: string; venueSlug: string; movies: Map<string, { movieId: number; title: string; slug: string }> }
+  >();
+
+  for (const st of showtimes) {
+    if (st.movieId == null || !favoriteMovieIds.has(Number(st.movieId))) continue;
+    const venueId = st.venueId;
+    if (venueId == null || !favoriteVenueIds.has(venueId)) continue;
+    if (!showtimeIsUpcoming(st, now)) continue;
+
+    if (!byVenue.has(venueId)) {
+      byVenue.set(venueId, {
+        venueId,
+        venueName: st.venue,
+        venueSlug: st.venueSlug ?? "",
+        movies: new Map(),
+      });
+    }
+    const group = byVenue.get(venueId)!;
+    const movieKey = st.movieSlug?.trim() || String(st.movieId);
+    if (!group.movies.has(movieKey)) {
+      group.movies.set(movieKey, {
+        movieId: Number(st.movieId),
+        title: st.movieTitle ?? "",
+        slug: st.movieSlug?.trim() ?? "",
+      });
+    }
+  }
+
+  return [...byVenue.values()]
+    .map((g) => ({
+      venueId: g.venueId,
+      venueName: g.venueName,
+      venueSlug: g.venueSlug,
+      movies: [...g.movies.values()],
+    }))
+    .filter((g) => g.movies.length > 0)
+    .sort((a, b) => b.movies.length - a.movies.length || a.venueName.localeCompare(b.venueName, "el"));
+}
+
 /** Ταινίες × αγαπημένα σινεμά — χρονολογικά. */
 export function personalizedProgramShowtimes(
   showtimes: StrapiShowtime[],
