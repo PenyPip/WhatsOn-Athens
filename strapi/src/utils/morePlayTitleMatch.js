@@ -1,10 +1,44 @@
 'use strict';
 
+/**
+ * Λατινικά ομόγραφα → ελληνικά (πεζά, μετά το toLowerCase).
+ * Το More συχνά γράφει ελληνικούς τίτλους με λατινικά γράμματα που μοιάζουν ίδια
+ * (π.χ. «Τηλεφωνήσατε Aσφάλεια» με λατινικό A). Εφαρμόζεται και στις δύο πλευρές,
+ * οπότε η αντιστοίχιση παραμένει συνεπής για καθαρά λατινικούς τίτλους.
+ */
+const LATIN_TO_GREEK_HOMOGLYPH = {
+  a: 'α',
+  b: 'β',
+  e: 'ε',
+  z: 'ζ',
+  h: 'η',
+  i: 'ι',
+  k: 'κ',
+  m: 'μ',
+  n: 'ν',
+  o: 'ο',
+  p: 'ρ',
+  t: 'τ',
+  u: 'υ',
+  y: 'υ',
+  x: 'χ',
+};
+
+function foldHomoglyphs(text) {
+  let out = '';
+  for (const ch of text) {
+    out += LATIN_TO_GREEK_HOMOGLYPH[ch] ?? ch;
+  }
+  return out;
+}
+
 function normalizeText(raw) {
-  return String(raw ?? '')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .toLowerCase()
+  return foldHomoglyphs(
+    String(raw ?? '')
+      .normalize('NFD')
+      .replace(/\p{M}/gu, '')
+      .toLowerCase(),
+  )
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim();
 }
