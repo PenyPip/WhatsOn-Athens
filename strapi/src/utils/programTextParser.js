@@ -31,7 +31,7 @@ const GREEK_DOW_LABEL = {
 };
 
 const DAY_NAMES =
-  'Δευτέρα|Δευ\\.?|Δε\\.|Τρίτη|Τρι\\.?|Τρ\\.|Τετάρτη|Τετ\\.?|Τε\\.|Πέμπτη|Πέμ\\.?|Πεμ\\.?|Πέ\\.|Πε\\.|Παρασκευή|Παρ\\.?|Πα\\.|Σάββατο|Σαβ\\.?|Σα\\.|Κυριακή|Κυρ\\.?|Κυ\\.';
+  'Δευτέρα|Δευτ\\.?|Δευ\\.?|Δε\\.|Τρίτη|Τρίτ\\.?|Τρι\\.?|Τρ\\.|Τετάρτη|Τετ\\.?|Τε\\.|Πέμπτη|Πέμ\\.?|Πεμ\\.?|Πέ\\.|Πε\\.|Παρασκευή|Παρ\\.?|Πα\\.|Σάββατο|Σαβ\\.?|Σάβ\\.?|Σα\\.|Κυριακή|Κυρ\\.?|Κυ\\.';
 
 const SHOWTIME_RE = new RegExp(
   `(?:^|[\\s,;·|])(${DAY_NAMES})\\s+(\\d{1,2})[.:](\\d{2})\\b`,
@@ -1533,14 +1533,20 @@ function parseDayListFromString(raw) {
     .map((s) => s.trim())
     .filter(Boolean);
   for (const chunk of chunks) {
-    const range = chunk.match(new RegExp(`^(${DAY_NAMES})\\s*[-–]\\s*(${DAY_NAMES})\\.?\\s*$`, 'iu'));
+    const cleaned = chunk
+      .replace(/[.:]+\s*$/, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+    const range = cleaned.match(
+      new RegExp(`^(${DAY_NAMES})\\.?\\s*[-–]\\s*(${DAY_NAMES})\\.?\\s*$`, 'iu'),
+    );
     if (range) {
       const a = dayNameToDow(range[1]);
       const b = dayNameToDow(range[2]);
       if (a != null && b != null) dows.push(...dowsInInclusiveRange(a, b));
       continue;
     }
-    const d = dayNameToDow(chunk.replace(/\.+\s*$/, '').replace(/:.*$/, '').trim());
+    const d = dayNameToDow(cleaned.replace(/:.*$/, '').trim());
     if (d != null) dows.push(d);
   }
   return [...new Set(dows)];
