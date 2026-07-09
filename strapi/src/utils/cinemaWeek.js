@@ -24,6 +24,15 @@ function startOfCinemaWeek(d) {
   return x;
 }
 
+/** Τρέχουσα εβδομάδα κινηματογράφου (Πέμπτη 00:00 → Τετάρτη 23:59) που περιέχει τη σημερινή ημέρα. */
+function getCurrentCinemaWeekBounds(now = new Date()) {
+  const start = startOfCinemaWeek(athensLocalDate(now));
+  const end = new Date(start);
+  end.setDate(end.getDate() + 6);
+  end.setHours(23, 59, 59, 999);
+  return { start, end };
+}
+
 /** Άμεση επόμενη εβδομάδα κινηματογράφου (ίδια λογική με frontend). */
 function getUpcomingCinemaWeekBounds(now = new Date()) {
   const athensNow = athensLocalDate(now);
@@ -38,9 +47,24 @@ function getUpcomingCinemaWeekBounds(now = new Date()) {
   return { start, end };
 }
 
-/** Εβδομάδα-στόχος για venue.updated (σινεμά): πάντα η ερχόμενη Πέμπτη→Τετάρτη. */
+/**
+ * Πέμπτη–Κυριακή: εβδομάδα-στόχος = τρέχουσα κινηματογραφική εβδομάδα.
+ * Δευτέρα–Τετάρτη: εβδομάδα-στόχος = επόμενη (μετά το Σάββατο reset → no_new).
+ */
+function isVenueStatusCurrentWeekPhase(now = new Date()) {
+  const dow = athensLocalDate(now).getDay();
+  return dow === 0 || dow === 4 || dow === 5 || dow === 6;
+}
+
+/** Εβδομάδα-στόχος για venue.updated (σινεμά). */
 function getTargetCinemaWeekBoundsForVenueStatus(now = new Date()) {
-  return getUpcomingCinemaWeekBounds(now);
+  return isVenueStatusCurrentWeekPhase(now)
+    ? getCurrentCinemaWeekBounds(now)
+    : getUpcomingCinemaWeekBounds(now);
+}
+
+function getVenueStatusWeekPhaseLabel(now = new Date()) {
+  return isVenueStatusCurrentWeekPhase(now) ? 'τρέχουσα' : 'ερχόμενη';
 }
 
 function isDatetimeInRange(dt, rangeStart, rangeEnd, now = new Date()) {
@@ -123,8 +147,11 @@ function isVenueCompleteEligible(now = new Date()) {
 
 module.exports = {
   athensLocalDate,
+  getCurrentCinemaWeekBounds,
   getUpcomingCinemaWeekBounds,
   getTargetCinemaWeekBoundsForVenueStatus,
+  getVenueStatusWeekPhaseLabel,
+  isVenueStatusCurrentWeekPhase,
   showtimeOverlapsRange,
   formatWeekLabel,
   isDatetimeInUpcomingCinemaWeek,

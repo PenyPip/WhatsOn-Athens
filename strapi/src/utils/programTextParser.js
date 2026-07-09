@@ -87,6 +87,12 @@ const DOW_RANGE_STIS_RE = new RegExp(
   'giu',
 );
 
+/** «Πέμ έως Τετ: 22.35» — ίδια ώρα κάθε μέρα στο εύρος. */
+const DOW_RANGE_COLON_RE = new RegExp(
+  `(${DAY_NAMES})\\s+(?:έως|εως|ως|–|—|-)\\s+(${DAY_NAMES})\\s*:\\s*(\\d{1,2}[.:]\\d{2})`,
+  'giu',
+);
+
 const DOW_STIS_RE = new RegExp(
   `(?:^|[\\s,;·|])(${DAY_NAMES})\\s+στις\\s+((?:\\d{1,2}:\\d{2})(?:\\s*(?:&|,|και)\\s*\\d{1,2}:\\d{2})*)`,
   'giu',
@@ -532,6 +538,15 @@ function firstDowRangeStisMatch(line) {
   return { match: m, start: start >= 0 ? start : m.index };
 }
 
+function firstDowRangeColonMatch(line) {
+  const hay = String(line || '');
+  DOW_RANGE_COLON_RE.lastIndex = 0;
+  const m = DOW_RANGE_COLON_RE.exec(hay);
+  if (!m) return null;
+  const start = hay.indexOf(m[0], Math.max(0, m.index));
+  return { match: m, start: start >= 0 ? start : m.index };
+}
+
 function firstDowStisMatch(line) {
   const hay = String(line || '');
   DOW_STIS_RE.lastIndex = 0;
@@ -546,8 +561,57 @@ function lineHasShowtime(line) {
     firstShowtimeMatch(line) != null ||
     firstDateShowtimeMatch(line) != null ||
     firstDowRangeStisMatch(line) != null ||
+    firstDowRangeColonMatch(line) != null ||
     firstDowStisMatch(line) != null
   );
+}
+
+function isMostlyLatin(text) {
+  const s = String(text || '').trim();
+  if (!s) return false;
+  const latin = (s.match(/[a-zA-Z]/g) || []).length;
+  const greek = (s.match(/[Α-Ωα-ωάέήίόύώΆΈΉΊΌΎΏ]/gu) || []).length;
+  return latin >= 3 && latin > greek;
+}
+
+function isLikelyAlternateTitleLine(line, primaryTitle) {
+  const s = stripLineDecorators(line);
+  if (!s || !primaryTitle) return false;
+  if (normalizeGreek(cleanMovieTitle(s)) === normalizeGreek(cleanMovieTitle(primaryTitle))) return true;
+  if (isMostlyLatin(s)) return true;
+  return false;
+}
+
+function isLikelyDirectorLine(line, primaryTitle) {
+  const s = stripLineDecorators(line);
+  if (!s || !primaryTitle) return false;
+  if (isScheduleLine(s) || isQuotedSubtitleLine(s) || isSynopsisLine(s)) return false;
+  if (isMostlyLatin(s) && !/[()]/.test(s)) {
+    const words = s.split(/\s+/).filter(Boolean);
+    return words.length >= 2 && words.length <= 5;
+  }
+  const words = s.split(/\s+/).filter(Boolean);
+  if (words.length < 2 || words.length > 4) return false;
+  if (!/^[Α-Ωα-ωάέήίόύώΆΈΉΊΌΎΏ\s.-]+$/u.test(s)) return false;
+  if (/^(το|η|ο)\s/i.test(s)) return false;
+  return s.length <= 42 && words.every((w) => /^[Α-ΩΆΈΉΊΌΎΏ]/.test(w));
+}
+
+function pickPrimaryTitleFromLines(lines) {
+  const body = (lines || [])
+    .map((line) => String(line || '').trim())
+    .filter((line) => line && !isScheduleLine(line) && !isQuotedSubtitleLine(line) && !isSynopsisLine(line));
+  if (!body.length) return null;
+
+  for (const line of body) {
+    const title = cleanMovieTitle(line);
+    if (title && !isMostlyLatin(title) && looksLikeTitle(title)) return title;
+  }
+  for (const line of body) {
+    const title = cleanMovieTitle(line);
+    if (title && looksLikeTitle(title)) return title;
+  }
+  return cleanMovieTitle(body[0]);
 }
 
 function isLikelyHeaderLine(line) {
@@ -770,6 +834,36 @@ function parseDowRangeStisShowtimes(scheduleText, rangeStart, rangeEnd) {
   return showtimes;
 }
 
+function parseDowRangeColonShowtimes(scheduleText, rangeStart, rangeEnd) {
+  const showtimes = [];
+  const hay = String(scheduleText || '');
+  if (!hay.trim() || !rangeStart || !rangeEnd) return showtimes;
+
+  DOW_RANGE_COLON_RE.lastIndex = 0;
+  let m;
+  while ((m = DOW_RANGE_COLON_RE.exec(hay)) !== null) {
+    const startDow = dayNameToDow(m[1]);
+    const endDow = dayNameToDow(m[2]);
+    if (startDow == null || endDow == null) continue;
+
+    const timeMatch = String(m[3] || '').match(/(\d{1,2})[.:](\d{2})/);
+    if (!timeMatch) continue;
+    const hour = Number(timeMatch[1]);
+    const minute = Number(timeMatch[2]);
+    if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour > 23 || minute > 59) continue;
+
+    const dows = dowsInInclusiveRange(startDow, endDow);
+    const dates = datesForDowsInRange(dows, rangeStart, rangeEnd);
+    for (const dayDate of dates) {
+      const datetime = buildAthensDatetimeFromLocalDate(dayDate, hour, minute);
+      const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+      showtimes.push({ dayLabel, timeLabel, datetime, note: null });
+    }
+  }
+
+  return showtimes;
+}
+
 function parseShowtimesFromText(scheduleText, rangeStart, rangeEnd, refYear) {
   const showtimes = [];
   const hay = String(scheduleText || '');
@@ -805,6 +899,7 @@ function parseShowtimesFromText(scheduleText, rangeStart, rangeEnd, refYear) {
   return dedupeShowtimes([
     ...showtimes,
     ...parseDowRangeStisShowtimes(hay, rangeStart, rangeEnd),
+    ...parseDowRangeColonShowtimes(hay, rangeStart, rangeEnd),
     ...parseOreresProbolisSchedule(hay, refYear),
     ...parseDateShowtimesFromText(hay, refYear),
   ]);
@@ -1568,6 +1663,91 @@ function parseCatalogMoviesFromLines(lines) {
 
   return movies;
 }
+function looksLikeStackedTitleProgram(text) {
+  const hay = String(text || '');
+  if (looksLikeCatalogProgram(hay)) return false;
+  if (!DOW_RANGE_COLON_RE.test(hay)) return false;
+  const lines = hay
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const scheduleLines = lines.filter((line) => isScheduleLine(line));
+  const titleish = lines.filter(
+    (line) => !isScheduleLine(line) && looksLikeTitle(stripLineDecorators(line)),
+  );
+  return scheduleLines.length >= 1 && titleish.length >= 2;
+}
+
+function groupStackedTitleProgramBlocks(text) {
+  const chunks = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split(/\n\s*\n+/)
+    .map((chunk) => chunk.trim())
+    .filter(Boolean);
+
+  const groups = [];
+  for (const chunk of chunks) {
+    const lines = chunk.split('\n').map((line) => line.trim()).filter(Boolean);
+    if (!lines.length) continue;
+
+    const scheduleLines = lines.filter((line) => isScheduleLine(line));
+    const titleLines = lines.filter((line) => !isScheduleLine(line));
+
+    if (scheduleLines.length && !titleLines.length && groups.length) {
+      groups[groups.length - 1].scheduleLines.push(...scheduleLines);
+      continue;
+    }
+
+    groups.push({ titleLines, scheduleLines });
+  }
+
+  return groups;
+}
+
+function parseStackedTitleCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+  const warnings = [];
+  let dateRange = parseProgramDateRange(text, refYear);
+  if (!dateRange) {
+    dateRange = inferDateRangeFromCinemaWeek(now);
+    warnings.push(
+      'Δεν βρέθηκε ρητό εύρος ημερομηνιών — χρησιμοποιείται η εβδομάδα-στόχος κινηματογράφου.',
+    );
+  }
+
+  const movies = [];
+  for (const group of groupStackedTitleProgramBlocks(text)) {
+    const title = pickPrimaryTitleFromLines(group.titleLines);
+    if (!title) continue;
+
+    const scheduleText = group.scheduleLines.join('\n').trim();
+    const showtimes = parseShowtimesFromText(
+      scheduleText,
+      dateRange.start,
+      dateRange.end,
+      refYear,
+    );
+
+    if (!showtimes.length && scheduleText) {
+      warnings.push(`«${title}»: δεν αναγνωρίστηκαν ώρες (π.χ. «Πέμ έως Τετ: 22.35»).`);
+    }
+
+    movies.push({ title, scheduleText, showtimes });
+  }
+
+  const withShowtimes = movies.filter((m) => m.showtimes.length > 0);
+  if (movies.length && !withShowtimes.length) {
+    warnings.push('Βρέθηκαν ταινίες αλλά καμία προβολή — έλεγξε τις γραμμές «Πέμ έως Τετ: 22.35».');
+  }
+
+  return {
+    header: '',
+    dateRange,
+    movies,
+    warnings: [...new Set(warnings)],
+  };
+}
+
 function parseCatalogCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
   const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
 
@@ -1633,6 +1813,10 @@ function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now 
 
   if (looksLikeCatalogProgram(normalized)) {
     return parseCatalogCinemaProgram(normalized, { refYear, now });
+  }
+
+  if (looksLikeStackedTitleProgram(normalized)) {
+    return parseStackedTitleCinemaProgram(normalized, { refYear, now });
   }
 
   if (looksLikeDayCentricProgram(normalized)) {

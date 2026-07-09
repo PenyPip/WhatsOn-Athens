@@ -646,7 +646,7 @@ export default function App() {
                   name="program-text"
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder="Επικόλλησε ελεύθερο κείμενο — τίτλοι, μέρες (Πεμ/Πέμπτη), ώρες (17.20), ημερομηνίες (25/6 19:00)…"
+                  placeholder="Επικόλλησε ελεύθερο κείμενο — τίτλοι (ανά block), «Πέμ έως Τετ: 22.35», μέρες+ώρες (Πέμπτη 17.20), ημερομηνίες…"
                 />
               </GridItem>
             ) : (

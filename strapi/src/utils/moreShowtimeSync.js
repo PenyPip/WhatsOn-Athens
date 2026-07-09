@@ -2796,6 +2796,9 @@ async function syncMovieShowtimesFromMore(strapi, {
     await migrateVenueUpdatedBooleanToEnum(strapi);
     report.venueUpdatedStatuses = await applyCinemaVenueUpdatedStatuses(strapi, venueSyncTracker, {
       autoCreatedVenueIds: (report.createdCinemaVenuesList || []).map((v) => v.id),
+      ensureVenueIds: venuesWithBundle
+        .filter((venue) => venue.bundleCodes?.length)
+        .map((venue) => venue.id),
       now,
     });
   }
@@ -3281,6 +3284,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
         cinemaVenueSyncTracker,
         {
           autoCreatedVenueIds: (movieReport?.createdCinemaVenuesList || []).map((v) => v.id),
+          ensureVenueIds: cinemaVenuesWithBundle
+            .filter((venue) => venue.bundleCodes?.length)
+            .map((venue) => venue.id),
           now,
         },
       );

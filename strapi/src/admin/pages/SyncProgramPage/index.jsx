@@ -21,11 +21,14 @@ const SyncProgramPage = () => {
             </Typography>
             <Box paddingTop={2}>
               <Typography variant="pi" textColor="neutral600">
-                · <strong>no_new</strong> — δεν έχουν μπει ακόμα οι νέες προβολές της εβδομάδας
+                · <strong>no_new</strong> — δεν έχουν μπει ακόμα οι προβολές της εβδομάδας-στόχου
                 <br />
-                · <strong>complete</strong> — όλες οι προβολές της ερχόμενης εβδομάδας κινηματογράφου (Πέμπτη→Τετάρτη) πέρασαν από More sync
+                · <strong>complete</strong> — όλες οι προβολές της εβδομάδας-στόχου πέρασαν από More sync
                 <br />
                 · <strong>needs_manual</strong> — κάποιες προβολές δεν πέρασαν (λείπουν ταινίες, mismatch venue κ.λπ.)
+                <br />
+                Εβδομάδα-στόχος: <strong>Πέμπτη–Κυριακή</strong> = τρέχουσα κινηματογραφική εβδομάδα ·{' '}
+                <strong>Δευτέρα–Τετάρτη</strong> = επόμενη.
                 <br />
                 Κάθε <strong>Σάββατο 06:00</strong> όλα επανέρχονται σε <strong>no_new</strong>.
               </Typography>

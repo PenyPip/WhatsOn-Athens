@@ -75,7 +75,7 @@ function QueueSection({ title, subtitle, tone, count, listPath, children }) {
   );
 }
 
-function VenueQueueTable({ rows, emptyLabel, showAutoCreated = false }) {
+function VenueQueueTable({ rows, emptyLabel, showAutoCreated = false, showTargetWeekDiagnostics = false }) {
   if (!rows?.length) {
     return (
       <Typography variant="pi" textColor="neutral500">
@@ -84,7 +84,8 @@ function VenueQueueTable({ rows, emptyLabel, showAutoCreated = false }) {
     );
   }
 
-  const colCount = showAutoCreated ? 5 : 4;
+  const colCount =
+    3 + (showTargetWeekDiagnostics ? 1 : 0) + 1 + (showAutoCreated ? 1 : 0) + 1;
 
   return (
     <Box style={{ overflowX: 'auto' }}>
@@ -97,6 +98,11 @@ function VenueQueueTable({ rows, emptyLabel, showAutoCreated = false }) {
             <Th>
               <Typography variant="sigma">Κατάσταση</Typography>
             </Th>
+            {showTargetWeekDiagnostics ? (
+              <Th>
+                <Typography variant="sigma">Προβολές εβδομάδας-στόχου</Typography>
+              </Th>
+            ) : null}
             <Th>
               <Typography variant="sigma">Bundle / venueId</Typography>
             </Th>
@@ -125,6 +131,18 @@ function VenueQueueTable({ rows, emptyLabel, showAutoCreated = false }) {
                   {row.updatedLabel}
                 </Typography>
               </Td>
+              {showTargetWeekDiagnostics ? (
+                <Td>
+                  <Typography fontWeight="semiBold" textColor="neutral800">
+                    {row.showtimesInTargetWeek != null ? row.showtimesInTargetWeek : '—'}
+                  </Typography>
+                  {row.noNewHint ? (
+                    <Typography variant="pi" textColor="neutral500">
+                      {row.noNewHint}
+                    </Typography>
+                  ) : null}
+                </Td>
+              ) : null}
               <Td>
                 <Typography variant="pi" textColor="neutral600">
                   {row.hasBundle ? 'Έχει bundle' : 'Χωρίς bundle'}
@@ -217,10 +235,13 @@ const VenueUpdateQueuePage = () => {
                 Σύνολο σινεμά: {counts.cinemaTotal ?? 0} · Δημοσιευμένα: {counts.publishedTotal ?? 0} ·
                 Ενημερώθηκαν: {formatGeneratedAt(data.generatedAt)}
               </Typography>
+              <Typography variant="pi" textColor="neutral700" paddingTop={2} fontWeight="semiBold">
+                Εβδομάδα-στόχος ({data.targetWeekPhase || '—'}): {data.targetWeekLabel || '—'}
+              </Typography>
               <Typography variant="pi" textColor="neutral500" paddingTop={2}>
-                Το <strong>complete</strong> αλλάζει μόνο με sync (όταν περάσουν όλες οι προβολές) ή επανέρχεται σε{' '}
-                <strong>no_new</strong> κάθε Σάββατο 06:00. Τα <strong>needs_manual</strong> δεν εμφανίζονται στη
-                λίστα «χωρίς νέες».
+                <strong>Πέμπτη–Κυριακή:</strong> ελέγχουμε την <strong>τρέχουσα</strong> εβδομάδα κινηματογράφου
+                (Πέμ→Τετ). <strong>Δευτέρα–Τετάρτη:</strong> την <strong>ερχόμενη</strong>. Κάθε{' '}
+                <strong>Σάββατο 06:00</strong> όλα επανέρχονται σε <strong>no_new</strong>.
               </Typography>
             </Box>
 
@@ -237,6 +258,7 @@ const VenueUpdateQueuePage = () => {
               <VenueQueueTable
                 rows={data.noNew}
                 emptyLabel="Κανένα δημοσιευμένο σινεμά σε κατάσταση no_new."
+                showTargetWeekDiagnostics
               />
             </QueueSection>
 

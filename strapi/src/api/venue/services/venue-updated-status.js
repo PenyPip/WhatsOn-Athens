@@ -290,11 +290,14 @@ async function migrateVenueUpdatedBooleanToEnum(strapi) {
 async function applyCinemaVenueUpdatedStatuses(
   strapi,
   tracker,
-  { autoCreatedVenueIds = [], now = new Date() } = {},
+  { autoCreatedVenueIds = [], ensureVenueIds = [], now = new Date() } = {},
 ) {
   const autoCreated = new Set(
     (autoCreatedVenueIds || []).map((id) => Number(id)).filter(Number.isFinite),
   );
+  for (const venueId of ensureVenueIds || []) {
+    tracker.touch(venueId);
+  }
   const summary = {
     no_new: 0,
     complete: 0,

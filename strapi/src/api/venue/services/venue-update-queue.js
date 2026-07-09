@@ -1,6 +1,12 @@
 'use strict';
 
 const { VENUE_UPDATED_STATUS, VENUE_UPDATED_LABELS } = require('./venue-updated-status');
+const {
+  getTargetCinemaWeekBoundsForVenueStatus,
+  getVenueStatusWeekPhaseLabel,
+  showtimeOverlapsRange,
+  formatWeekLabel,
+} = require('../../../utils/cinemaWeek');
 
 const AUTO_CREATE_INFO_MARKERS = [
   'Αυτόματη δημιουργία από More cinema sync.',
@@ -19,7 +25,7 @@ function venueHasBundleCodes(row) {
   return groups.some((group) => String(group?.code || '').trim());
 }
 
-function mapVenueRow(row) {
+function mapVenueRow(row, extra = {}) {
   return {
     id: row.id,
     name: row.name,
@@ -30,7 +36,32 @@ function mapVenueRow(row) {
     autoCreatedFromSync: isAutoCreatedFromSync(row.info),
     hasBundle: venueHasBundleCodes(row),
     venueId: row.venue_id || null,
+    ...extra,
   };
+}
+
+function explainNoNewListing({ showtimesInTargetWeek, hasBundle }) {
+  if (showtimesInTargetWeek > 0) {
+    return 'Έχει προβολές στην εβδομάδα-στόχο αλλά updated=no_new — τρέξε More sync για να γίνει complete';
+  }
+  if (!hasBundle) {
+    return 'Χωρίς bundle codes — το sync δεν ενημερώνει αυτόματα το πεδίο updated';
+  }
+  return 'Δεν υπάρχουν ακόμα προβολές στην επόμενη κινηματογραφική εβδομάδα (Πέμ→Τετ)';
+}
+
+async function countShowtimesInTargetWeek(strapi, venueId, now = new Date()) {
+  const { start, end } = getTargetCinemaWeekBoundsForVenueStatus(now);
+  const rows = await strapi.entityService.findMany('api::showtime.showtime', {
+    filters: { venue: venueId },
+    fields: ['datetime', 'schedule_kind', 'week_end'],
+    pagination: { pageSize: 500 },
+  });
+  let count = 0;
+  for (const st of rows || []) {
+    if (showtimeOverlapsRange(st, start, end, now)) count += 1;
+  }
+  return count;
 }
 
 async function findAllCinemaVenues(strapi, filters = {}) {
@@ -62,6 +93,10 @@ async function findAllCinemaVenues(strapi, filters = {}) {
 }
 
 async function getUpdateQueues(strapi) {
+  const now = new Date();
+  const { start, end } = getTargetCinemaWeekBoundsForVenueStatus(now);
+  const targetWeekLabel = formatWeekLabel(start, end);
+
   const all = await findAllCinemaVenues(strapi);
   const published = all.filter((row) => row.publishedAt != null);
   const unpublished = all.filter((row) => row.publishedAt == null);
@@ -72,8 +107,24 @@ async function getUpdateQueues(strapi) {
   const unpublishedAutoCreated = unpublished.filter((row) => isAutoCreatedFromSync(row.info));
   const unpublishedOther = unpublished.filter((row) => !isAutoCreatedFromSync(row.info));
 
+  const noNewWithDiagnostics = [];
+  for (const row of noNew) {
+    const showtimesInTargetWeek = await countShowtimesInTargetWeek(strapi, row.id, now);
+    noNewWithDiagnostics.push(
+      mapVenueRow(row, {
+        showtimesInTargetWeek,
+        noNewHint: explainNoNewListing({
+          showtimesInTargetWeek,
+          hasBundle: venueHasBundleCodes(row),
+        }),
+      }),
+    );
+  }
+
   return {
-    generatedAt: new Date().toISOString(),
+    generatedAt: now.toISOString(),
+    targetWeekLabel,
+    targetWeekPhase: getVenueStatusWeekPhaseLabel(now),
     counts: {
       noNew: noNew.length,
       needsManual: needsManual.length,
@@ -84,8 +135,8 @@ async function getUpdateQueues(strapi) {
       publishedTotal: published.length,
       cinemaTotal: all.length,
     },
-    noNew: noNew.map(mapVenueRow),
-    needsManual: needsManual.map(mapVenueRow),
+    noNew: noNewWithDiagnostics,
+    needsManual: needsManual.map((row) => mapVenueRow(row)),
     complete: complete.map(mapVenueRow),
     unpublished: unpublished.map(mapVenueRow),
     unpublishedAutoCreated: unpublishedAutoCreated.map(mapVenueRow),
