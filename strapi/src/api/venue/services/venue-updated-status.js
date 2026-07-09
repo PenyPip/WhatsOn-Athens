@@ -378,14 +378,19 @@ async function applyCinemaVenueUpdatedStatuses(
     }
     if (next === null) {
       const reason = 'no_upcoming_week_events';
-      summary.unchanged_no_new += 1;
-      summary.no_new += 1;
+      const effectiveStatus = isVenueUpdatedStatus(current)
+        ? current
+        : VENUE_UPDATED_STATUS.NO_NEW;
+      if (effectiveStatus === VENUE_UPDATED_STATUS.NO_NEW) {
+        summary.unchanged_no_new += 1;
+      }
+      summary[effectiveStatus] = (summary[effectiveStatus] || 0) + 1;
       pushVenue(
         buildVenueStatusEntry({
           venueId,
           venueName: nameById.get(venueId),
           previousStatus: current,
-          status: VENUE_UPDATED_STATUS.NO_NEW,
+          status: effectiveStatus,
           preserved: true,
           stats,
           reason,

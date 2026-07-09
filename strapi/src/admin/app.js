@@ -5,6 +5,7 @@ const config = {
   translations: {
     en: {
       'venues.section.title': 'Χώροι',
+      'venues.update-queue.menu': 'Τι να ενημερώσω',
       'venues.cinema.menu': 'Σινεμά',
       'venues.theater.menu': 'Θέατρα',
       'venues.other.menu': 'Άλλοι χώροι',
@@ -48,6 +49,22 @@ const register = (app) => {
   });
 
   app.addMenuLink({
+    to: '/plugins/venues-update-queue',
+    section: 'whatson-venues',
+    icon: () => React.createElement('span', null, '📋'),
+    intlLabel: {
+      id: 'venues.update-queue.menu',
+      defaultMessage: 'Τι να ενημερώσω',
+    },
+    Component: async () => {
+      const component = await import('./pages/VenueUpdateQueuePage');
+      return component;
+    },
+    permissions: [],
+    position: 1,
+  });
+
+  app.addMenuLink({
     to: '/plugins/venues-cinema',
     section: 'whatson-venues',
     icon: () => React.createElement('span', null, '🎬'),
@@ -60,7 +77,7 @@ const register = (app) => {
       return createVenueListRedirect('cinema');
     },
     permissions: [],
-    position: 1,
+    position: 2,
   });
 
   app.addMenuLink({
@@ -76,7 +93,7 @@ const register = (app) => {
       return createVenueListRedirect('theater');
     },
     permissions: [],
-    position: 2,
+    position: 3,
   });
 
   app.addMenuLink({
@@ -92,7 +109,7 @@ const register = (app) => {
       return createVenueListRedirect('other');
     },
     permissions: [],
-    position: 3,
+    position: 4,
   });
 
   app.addMenuLink({
@@ -108,7 +125,7 @@ const register = (app) => {
       return createVenueListRedirect(null);
     },
     permissions: [],
-    position: 4,
+    position: 5,
   });
 
   app.addMenuLink({
