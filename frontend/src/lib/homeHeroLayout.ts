@@ -27,10 +27,13 @@ export const HOME_HERO_CRITICAL_CSS =
   "html:not(.spa-lcp-done) [data-home-hero-live]{pointer-events:none}" +
   "@media(min-width:768px){html:not(.spa-lcp-done) [data-home-hero-live]{opacity:0}}" +
   "@media(min-width:768px){html.spa-lcp-done [data-home-hero-live]{opacity:1;pointer-events:auto}}" +
-  "@media(max-width:767px){html.spa-lcp-layout-done [data-home-hero-live]{position:relative;opacity:1;pointer-events:auto;height:auto;max-height:none}}" +
+  "@media(max-width:767px){html.spa-lcp-layout-done [data-home-hero-live]{position:relative;opacity:1;pointer-events:auto;height:380px;min-height:380px;max-height:380px;overflow:hidden}}" +
   "html.spa-lcp-layout-done #home-hero-ssr-spacer{display:none;height:0;min-height:0;max-height:0;overflow:hidden}" +
   ".home-main-overlap{padding-top:3.5rem}" +
   "@media(min-width:768px){.home-main-overlap{padding-top:4rem}}";
+
+/** Πριν το async index.css — αποφυγή FOUC/CLS στο sr-only H1 και crawl shell. */
+export { ROOT_CRITICAL_CSS as HOME_PAGE_CRITICAL_CSS } from "@/lib/rootCriticalCss";
 
 /** Compact hero — ίδιο ύψος με #home-hero-slot στο mobile (χωρίς CLS στο handoff). */
 export const HOME_HERO_COMPACT_SECTION_CLASS =

@@ -45,9 +45,9 @@ services:
       NODE_ENV: production
       ENCRYPTION_KEY: whatson-encryption-key-32chars!!
       NODE_OPTIONS: --max-old-space-size=1024
-      MORE_SHOWTIME_SYNC_WORKER: "true"
       # Worker = ξεχωριστό process (Strapi ~300-500MB + sync). 768 ήταν λίγο → OOM. Server έχει RAM.
       MORE_SHOWTIME_SYNC_WORKER_HEAP: "3072"
+      MORE_SHOWTIME_SYNC_BOOT_GRACE_MS: "300000"
       MORE_SHOWTIME_SYNC_CONCURRENCY: "5"
       MORE_SHOWTIME_SYNC_DELAY_MS: "40"
       MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX: "512"

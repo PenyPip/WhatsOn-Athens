@@ -11,7 +11,7 @@ import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { useDeferUntilIdleAfterLcp } from "@/hooks/useDeferUntilIdleAfterLcp";
 import { useSiteNow } from "@/hooks/useSiteNow";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMovies, useShowtimes, useRestaurants, useVenues, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useRestaurants, useVenuesForProgram, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
 import {
   homeNeedsArticles,
   homeNeedsDining,
@@ -377,7 +377,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     !deferProgramData ||
     awaitingShowtimes ||
     (showtimesFetching && (showtimes?.length ?? 0) === 0 && !showtimesError);
-  const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(needsVenues && deferHomeExtra);
+  const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenuesForProgram(
+    needsVenues && deferHomeExtra,
+  );
   const { data: restaurants, isLoading: restaurantsLoading, isError: restaurantsError } = useRestaurants(
     needsDining && deferHomeExtra,
   );

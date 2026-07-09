@@ -16,6 +16,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { Building2, Clapperboard, Loader2, Search, Theater } from "lucide-react";
 import { useMovies, useTheaterShows, useVenues, useShowtimes } from "@/hooks/useStrapi";
 import { useClientMounted } from "@/hooks/useClientMounted";
+import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import type { StrapiMovie, StrapiTheaterShow, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre, showtimeIsUpcoming } from "@/lib/homeMovieFilters";
@@ -68,11 +69,12 @@ type PanelRect = {
 function measurePanelRect(anchor: HTMLElement | null): PanelRect | null {
   if (!anchor) return null;
   const rect = anchor.getBoundingClientRect();
-  if (rect.width < 8) return null;
+  const width = Math.max(rect.width, anchor.offsetWidth, anchor.clientWidth);
+  if (width < 8) return null;
   return {
     top: rect.bottom + 6,
     left: rect.left,
-    width: rect.width,
+    width,
   };
 }
 
@@ -112,18 +114,19 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   const rootRef = useRef<HTMLDivElement>(null);
   const panelRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const hasOpenedRef = useRef(false);
   const routePathRef = useRef(location.pathname);
   const layoutFrameRef = useRef<number | null>(null);
+  const onHome = location.pathname === "/";
+  const deferLcp = useDeferUntilLcpDone();
   const [search, setSearch] = useState("");
   const [panelOpen, setPanelOpen] = useState(false);
   const [panelRect, setPanelRect] = useState<PanelRect | null>(null);
 
-  if (panelOpen) hasOpenedRef.current = true;
-
-  const searchActive = panelOpen || hasOpenedRef.current;
+  const searchActive = panelOpen && (!onHome || deferLcp);
   const favoriteIds = useFavoriteIds();
-  const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies(searchActive);
+  const { data: movies, isLoading: moviesLoading, isError: moviesError } = useMovies(searchActive, {
+    fullCatalog: false,
+  });
   const { data: showtimes } = useShowtimes(searchActive);
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenues(searchActive);
   const {
@@ -138,7 +141,12 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
     return enrichMoviesWithShowtimeGenre(list, showtimes);
   }, [movies, showtimes, searchActive]);
 
-  const loading = moviesLoading || venuesLoading || theaterLoading;
+  const loading =
+    searchActive &&
+    movies === undefined &&
+    venues === undefined &&
+    theaterShows === undefined &&
+    (moviesLoading || venuesLoading || theaterLoading);
   const listsError = moviesError || venuesError || theaterError;
 
   const close = useCallback(() => {
@@ -149,8 +157,8 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
 
   const syncPanelRect = useCallback(() => {
     const next = measurePanelRect(rootRef.current);
+    if (!next) return;
     setPanelRect((prev) => {
-      if (!next) return prev;
       if (
         prev &&
         prev.top === next.top &&
@@ -171,12 +179,22 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
     });
   }, [syncPanelRect]);
 
-  useImperativeHandle(ref, () => ({
-    focus: () => {
-      setPanelOpen(true);
-      inputRef.current?.focus({ preventScroll: true });
-    },
-  }));
+  const openPanel = useCallback(() => {
+    if (onHome && !deferLcp) return;
+    setPanelOpen(true);
+    schedulePanelRectSync();
+  }, [deferLcp, onHome, schedulePanelRectSync]);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      focus: () => {
+        openPanel();
+        inputRef.current?.focus({ preventScroll: true });
+      },
+    }),
+    [openPanel],
+  );
 
   useEffect(() => {
     if (routePathRef.current === location.pathname) return;
@@ -217,12 +235,22 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
 
   useEffect(() => {
     if (!panelOpen) return;
+    const root = rootRef.current;
+    if (!root || typeof ResizeObserver === "undefined") return;
+
+    const observer = new ResizeObserver(() => schedulePanelRectSync());
+    observer.observe(root);
+    return () => observer.disconnect();
+  }, [panelOpen, schedulePanelRectSync]);
+
+  useEffect(() => {
+    if (!panelOpen) return;
     const onPointerDown = (event: PointerEvent) => {
       if (eventHitsSearchUi(event, rootRef.current, panelRef.current)) return;
       setPanelOpen(false);
     };
-    document.addEventListener("pointerdown", onPointerDown);
-    return () => document.removeEventListener("pointerdown", onPointerDown);
+    document.addEventListener("pointerdown", onPointerDown, true);
+    return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [panelOpen]);
 
   const movieHits = useMemo(() => {
@@ -416,18 +444,28 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
   }
 
   const panel =
-    showPanel && panelRect && clientMounted
+    showPanel && clientMounted
       ? createPortal(
           <div
             ref={panelRef}
             id={panelId}
             role="listbox"
             className="fixed z-[200] max-h-[min(420px,60vh)] overflow-y-auto rounded-xl border border-white/15 bg-[#1a1b3a] py-2 text-[#F0EDF8] shadow-[0_12px_40px_rgba(0,0,0,0.45)]"
-            style={{
-              top: panelRect.top,
-              left: panelRect.left,
-              width: panelRect.width,
-            }}
+            style={
+              panelRect
+                ? {
+                    top: panelRect.top,
+                    left: panelRect.left,
+                    width: panelRect.width,
+                  }
+                : {
+                    top: 0,
+                    left: 0,
+                    width: 0,
+                    visibility: "hidden",
+                  }
+            }
+            onPointerDown={(event) => event.stopPropagation()}
           >
             {panelBody}
           </div>,
@@ -436,16 +474,30 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
       : null;
 
   return (
-    <div ref={rootRef} className={cn("relative min-w-0", className)}>
+    <div
+      ref={rootRef}
+      className={cn("relative min-w-0", className)}
+      onPointerDown={(event) => {
+        event.stopPropagation();
+        if (!panelOpen) openPanel();
+      }}
+    >
       <label htmlFor={inputId} className="sr-only">
         Αναζήτηση ταινίας, παράστασης ή χώρου προβολής
       </label>
       <div
+        role="presentation"
         className={cn(
           "flex items-center gap-2 rounded-full border border-white/20 bg-black/25 text-white/70 transition",
           "focus-within:border-white/35 focus-within:bg-black/35 focus-within:text-white",
           inputClassName,
         )}
+        onMouseDown={(event) => {
+          if (event.target === inputRef.current) return;
+          event.preventDefault();
+          openPanel();
+          inputRef.current?.focus({ preventScroll: true });
+        }}
       >
         <Search className="ml-3 h-4 w-4 shrink-0 opacity-70" aria-hidden />
         <input
@@ -455,10 +507,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
           enterKeyHint="search"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
-          onFocus={() => {
-            setPanelOpen(true);
-            schedulePanelRectSync();
-          }}
+          onFocus={openPanel}
           onKeyDown={onInputKeyDown}
           placeholder="Ταινίες, παραστάσεις, σινεμά…"
           autoComplete="off"

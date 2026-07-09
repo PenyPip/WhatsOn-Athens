@@ -3,9 +3,9 @@ import { useEffect, useState } from "react";
 const MOBILE_BREAKPOINT = 768;
 const MOBILE_MQL = `(max-width: ${MOBILE_BREAKPOINT - 1}px)`;
 
-/** Mobile viewport — SSR/hydration snapshot false, sync μετά mount (χωρίς window στο prerender). */
+/** Mobile viewport — mobile-first default (ασφαλές defer στο LCP) μέχρι measure. */
 export function useIsMobile(): boolean {
-  const [isMobile, setIsMobile] = useState(false);
+  const [isMobile, setIsMobile] = useState(true);
 
   useEffect(() => {
     const mql = window.matchMedia(MOBILE_MQL);

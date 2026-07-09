@@ -11,7 +11,7 @@ const STALE_MS = Number(process.env.MORE_SHOWTIME_SYNC_STALE_MS || 20 * 60 * 100
 const HEARTBEAT_MS = 30_000;
 const START_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_START_DELAY_MS || 2500);
 /** Χάρις πριν θεωρήσουμε ότι ο worker δεν ξεκίνησε (spawn + Strapi boot). */
-const WORKER_BOOT_GRACE_MS = Number(process.env.MORE_SHOWTIME_SYNC_BOOT_GRACE_MS || 120_000);
+const WORKER_BOOT_GRACE_MS = Number(process.env.MORE_SHOWTIME_SYNC_BOOT_GRACE_MS || 180_000);
 const MAX_PERSISTED_ERRORS = Number(process.env.MORE_SHOWTIME_SYNC_MAX_PERSISTED_ERRORS || 200);
 /** Worker (default): ξεχωριστή διεργασία — το admin/API μένει ζωντανό. In-process: MORE_SHOWTIME_SYNC_IN_PROCESS=true */
 const USE_WORKER = process.env.MORE_SHOWTIME_SYNC_IN_PROCESS !== 'true';
@@ -22,6 +22,78 @@ let activeJob = null;
 function ensureJobDir() {
   const dir = path.dirname(JOB_FILE);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+}
+
+function appendWorkerLog(line) {
+  try {
+    ensureJobDir();
+    fs.appendFileSync(WORKER_LOG, line.endsWith('\n') ? line : `${line}\n`);
+  } catch (e) {
+    console.error('[more-showtime-sync] worker log write failed', e?.message || e);
+  }
+}
+
+function readWorkerLogTail(maxBytes = 12_000) {
+  try {
+    if (!fs.existsSync(WORKER_LOG)) return '';
+    const stat = fs.statSync(WORKER_LOG);
+    if (stat.size <= 0) return '';
+    const start = Math.max(0, stat.size - maxBytes);
+    const fd = fs.openSync(WORKER_LOG, 'r');
+    const buf = Buffer.alloc(stat.size - start);
+    fs.readSync(fd, buf, 0, buf.length, start);
+    fs.closeSync(fd);
+    return buf.toString('utf8');
+  } catch {
+    return '';
+  }
+}
+
+function workerLogShowsRecentActivity(maxAgeMs = 300_000) {
+  try {
+    if (fs.existsSync(WORKER_LOG)) {
+      const stat = fs.statSync(WORKER_LOG);
+      if (Date.now() - stat.mtimeMs < maxAgeMs) {
+        const tail = readWorkerLogTail(4000);
+        if (/\[sync-worker\]|\[parent\]/i.test(tail)) return true;
+      }
+    }
+  } catch {
+    // ignore
+  }
+  return false;
+}
+
+function hasRecentWorkerProgress(job, maxAgeMs = 300_000) {
+  if (!job?.lastProgressAt) return false;
+  const age = Date.now() - new Date(job.lastProgressAt).getTime();
+  if (age > maxAgeMs) return false;
+  const p = String(job.progress || '');
+  return /Worker:/i.test(p) || /worker/i.test(p) || /συγχρονισμός More/i.test(p);
+}
+
+function workerEnvForSpawn() {
+  const env = { ...process.env, MORE_SHOWTIME_SYNC_WORKER: '1' };
+  // Το parent έχει NODE_OPTIONS=--max-old-space-size=1024· ο worker παίρνει heap από CLI args.
+  delete env.NODE_OPTIONS;
+  return env;
+}
+
+function preflightSpawnWorker(jobId) {
+  ensureJobDir();
+  const script = path.join(process.cwd(), 'scripts', 'sync-showtimes-worker.js');
+  if (!fs.existsSync(script)) {
+    throw new Error(`Δεν βρέθηκε το script worker: ${script}`);
+  }
+  try {
+    fs.accessSync(path.dirname(JOB_FILE), fs.constants.W_OK);
+    appendWorkerLog(`[parent] preflight ok job=${jobId} script=${script}\n`);
+  } catch (e) {
+    throw new Error(
+      `Ο φάκελος data/ δεν είναι εγγράψιμος (${path.dirname(JOB_FILE)}): ${e?.message || e}`,
+    );
+  }
+  return script;
 }
 
 function publicJob(job) {
@@ -292,9 +364,24 @@ function recoverDeadWorkerJob(job, strapi) {
     }
   }
 
+  const diskJob = loadFullJobFromDisk();
+  const activityJob = diskJob?.id === job.id ? diskJob : job;
+  if (
+    workerLogShowsRecentActivity(WORKER_BOOT_GRACE_MS + 60_000) ||
+    hasRecentWorkerProgress(activityJob, WORKER_BOOT_GRACE_MS + 60_000)
+  ) {
+    if (strapi) resumeOrphanedSyncWorker(strapi);
+    return publicJob(loadFullJobFromDisk()) || job;
+  }
+
+  const logTail = readWorkerLogTail(2000).trim();
+  const logHint = logTail
+    ? ` Τελευταίες γραμμές log: ${logTail.slice(-400).replace(/\s+/g, ' ')}`
+    : ' Το αρχείο log είναι κενό ή δεν δημιουργήθηκε.';
+
   const msg = pid
     ? 'Ο worker διακόπηκε (crash/OOM). Δες data/more-showtime-sync-worker.log και τρέξε ξανά sync.'
-    : 'Ο worker δεν ξεκίνησε εγκαίρως. Δες data/more-showtime-sync-worker.log (spawn/permissions).';
+    : `Ο worker δεν ξεκίνησε εγκαίρως. Δες data/more-showtime-sync-worker.log (spawn/permissions).${logHint}`;
 
   if (activeJob?.id === job.id) return failJob(activeJob, msg);
   const failed = {
@@ -400,11 +487,39 @@ function completeJobById(jobId, report, extraPatch = {}) {
   return patched;
 }
 
+function patchWorkerPidWithRetry(jobId, pid, attempts = 4) {
+  for (let i = 0; i < attempts; i++) {
+    const patched = patchJobOnDisk(jobId, { workerPid: pid ?? null });
+    if (patched) return patched;
+    if (i < attempts - 1) {
+      const waitUntil = Date.now() + 50 * (i + 1);
+      while (Date.now() < waitUntil) {
+        // σύντομη αναμονή πριν επανάληψη (race με άλλο patch από worker)
+      }
+    }
+  }
+  appendWorkerLog(
+    `[parent] WARN: could not persist workerPid=${pid ?? 'null'} job=${jobId} after ${attempts} tries\n`,
+  );
+  return null;
+}
+
 function spawnSyncWorker(strapi, jobId) {
-  const script = path.join(process.cwd(), 'scripts', 'sync-showtimes-worker.js');
+  const script = preflightSpawnWorker(jobId);
   const heapMb = String(process.env.MORE_SHOWTIME_SYNC_WORKER_HEAP || '2560').replace(/\D/g, '') || '2560';
-  ensureJobDir();
-  const logFd = fs.openSync(WORKER_LOG, 'a');
+  const startedAt = new Date().toISOString();
+  appendWorkerLog(
+    `[parent] spawn ${startedAt} job=${jobId} heap=${heapMb}MB exec=${process.execPath}\n`,
+  );
+
+  let logFd;
+  try {
+    logFd = fs.openSync(WORKER_LOG, 'a');
+  } catch (e) {
+    throw new Error(
+      `Δεν ανοίγει το log ${WORKER_LOG}: ${e?.message || e}. Έλεγξε permissions στο volume data/.`,
+    );
+  }
 
   // --expose-gc ως ΑΜΕΣΟ CLI arg (επιτρέπεται· μόνο το NODE_OPTIONS απαγορεύει το flag) →
   // ενεργοποιεί το maybeGc() ανάμεσα στα batches ώστε να αποδεσμεύεται μνήμη μέσα στο run.
@@ -414,9 +529,19 @@ function spawnSyncWorker(strapi, jobId) {
     {
       detached: true,
       stdio: ['ignore', logFd, logFd],
-      env: { ...process.env, MORE_SHOWTIME_SYNC_WORKER: '1' },
+      env: workerEnvForSpawn(),
     },
   );
+
+  child.on('error', (err) => {
+    appendWorkerLog(
+      `[parent] spawn error job=${jobId}: ${err?.message || err} code=${err?.code || '?'}\n`,
+    );
+    failJobById(
+      jobId,
+      `Αποτυχία spawn worker: ${err?.message || err}. Έλεγξε RAM, ${script} και permissions στο data/.`,
+    );
+  });
 
   child.on('exit', (code, signal) => {
     setTimeout(() => {
@@ -456,9 +581,15 @@ function spawnSyncWorker(strapi, jobId) {
 
   child.unref();
 
-  patchJobOnDisk(jobId, { workerPid: child.pid ?? null });
-  strapi.log.info(`[more-showtime-sync] worker spawned pid=${child.pid} job=${jobId} heap=${heapMb}MB`);
-  return child.pid;
+  const pid = child.pid ?? null;
+  appendWorkerLog(`[parent] spawned pid=${pid ?? 'null'} job=${jobId}\n`);
+  if (!pid) {
+    throw new Error('Το spawn δεν επέστρεψε pid — πιθανό πρόβλημα permissions ή έλλειψη RAM.');
+  }
+  patchWorkerPidWithRetry(jobId, pid);
+  const log = strapi?.log || console;
+  log.info(`[more-showtime-sync] worker spawned pid=${pid} job=${jobId} heap=${heapMb}MB`);
+  return pid;
 }
 
 /**

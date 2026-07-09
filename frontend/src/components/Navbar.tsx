@@ -220,9 +220,7 @@ const Navbar = () => {
 
       {mounted && activeSearchSlot ? createPortal(searchNode, activeSearchSlot) : null}
 
-      {mounted && (!isMobile || deferNav)
-        ? createPortal(mobileBottomNav, document.body)
-        : null}
+      {mounted && isMobile ? createPortal(mobileBottomNav, document.body) : null}
     </>
   );
 };

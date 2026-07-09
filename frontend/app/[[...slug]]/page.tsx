@@ -82,7 +82,7 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
 
   return (
     <>
-      {path === "/" ? <HomePageH1 /> : null}
+      {path === "/" && !showStaticLcp ? <HomePageH1 /> : null}
       {preloadPoster ? (
         <link rel="preload" as="image" href={preloadPoster} fetchPriority="high" />
       ) : null}

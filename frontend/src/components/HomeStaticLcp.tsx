@@ -26,7 +26,7 @@ export default function HomeStaticLcp({ posterHref, title, synopsis }: HomeStati
           <div className="home-static-lcp__inner">
             <div className="home-static-lcp__copy">
               <span className="home-static-lcp__badge">Πολυσυζητημένες</span>
-              <p className="home-static-lcp__title">{displayTitle}</p>
+              <h1 id="home-page-title" className="home-static-lcp__title">{displayTitle}</h1>
               {displaySynopsis ? <p className="home-static-lcp__synopsis">{displaySynopsis}</p> : null}
             </div>
             <div className="home-static-lcp__poster-wrap">
@@ -38,7 +38,7 @@ export default function HomeStaticLcp({ posterHref, title, synopsis }: HomeStati
                 height={480}
                 fetchPriority="high"
                 loading="eager"
-                decoding="sync"
+                decoding="async"
                 sizes="(max-width: 768px) 152px, 240px"
               />
             </div>
