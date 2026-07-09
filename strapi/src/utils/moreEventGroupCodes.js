@@ -18,7 +18,7 @@ function codeSlugRoot(code) {
 
 /** Κωδικοί evg_* που συνήθως αντιστοιχούν σε χώρο σινεμά (όχι ταινία). */
 const CINEMA_VENUE_CODE_PREFIX =
-  /^(therino|cine|sine|sinem|kinematographos|kinematografo|laistherino|olumpiontherino|sinekepos)/i;
+  /^(therino|cine|cinobo|sine|sinem|kinematographos|kinematografo|laistherino|olumpiontherino|sinekepos)/i;
 
 function looksLikeMovieCatalogTitle(title) {
   const raw = String(title || '').trim();
@@ -36,9 +36,10 @@ function looksLikeCinemaVenueCatalogTitle(title) {
   const t = normalizeCatalogText(title);
   if (/^(θεριν[οός]|therino)\s/.test(t)) return true;
   if (/\s[-–]\s*θεριν[οός]?$/.test(t)) return true;
+  if (/\bθεριν[οός]?$/.test(t)) return true;
   if (/θεριν[οός]\s+κινηματογραφ/.test(t)) return true;
   if (/κινηματογραφος\s|kinematographos\s/.test(t) && t.length < 60) return true;
-  if (/^(cine|sine|σινε|σινέ)\s/.test(t)) return true;
+  if (/^(cine|sine|σινε|σινέ|cinobo)\s/.test(t)) return true;
   if (/^(σινε|cine)\s*(μαρθα|μελινα|καρμεν)/.test(t)) return true;
   return false;
 }
@@ -46,7 +47,7 @@ function looksLikeCinemaVenueCatalogTitle(title) {
 function isVenueBundleCode(code) {
   const s = String(code || '').toLowerCase();
   if (/cinema|kinematog|movietheater/i.test(s)) return true;
-  if (/apollon|ribiera|europacinema|aiglecinema|athenaia/.test(codeSlugRoot(code))) return true;
+  if (/apollon|ribiera|europacinema|aiglecinema|athenaia|cinobomascot/.test(codeSlugRoot(code))) return true;
   return CINEMA_VENUE_CODE_PREFIX.test(codeSlugRoot(code));
 }
 

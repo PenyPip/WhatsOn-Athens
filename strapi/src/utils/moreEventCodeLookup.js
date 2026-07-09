@@ -21,6 +21,7 @@ const {
   resolveVenueEventGroupCodesFromEntry,
   classifyCinemaCatalogKind,
   extractEvgCodeFromText,
+  isVenueBundleCode,
   normalizeMoreVenueId,
   moreVenueIdLookupKeys,
 } = require('./moreEventGroupCodes');
@@ -1121,6 +1122,7 @@ function buildCmsEventGroupCodeIndex(cmsItems, cmsVenues) {
         cmsId: item.id,
         cmsTitle: item.title,
         inCms: true,
+        writtenInField: true,
       });
     }
     for (const link of item.moreCodeLinks || []) {
@@ -1145,6 +1147,7 @@ function buildCmsEventGroupCodeIndex(cmsItems, cmsVenues) {
         cmsTitle: venue.name,
         venueType: venue.type,
         inCms: true,
+        writtenInField: true,
       });
     }
     for (const link of collectMoreCodeLinksFromRaw(venue)) {
@@ -1195,7 +1198,15 @@ function filterCmsRefsForCatalogEntry(entry, refs) {
   }
 
   if (entry.kind === 'movie' && entry.category === 'cinema') {
-    return refs.filter((ref) => ref.contentType === 'movie' && ref.inCms);
+    const movieRefs = refs.filter((ref) => ref.contentType === 'movie' && ref.inCms);
+    if (movieRefs.length) return movieRefs;
+    // Κωδικός χώρου στο CMS αλλά ο κατάλογος More τον εμφάνισε ως «ταινία» (π.χ. Cinobo, θερινό χωρίς «Cine »).
+    const venueRefs = refs.filter((ref) => {
+      if (ref.contentType !== 'venue' || !ref.inCms) return false;
+      return !ref.venueType || ref.venueType === 'cinema';
+    });
+    if (venueRefs.length && isVenueBundleCode(entry.eventGroupCode)) return venueRefs;
+    return movieRefs;
   }
 
   return refs.filter((ref) => ref.inCms);
@@ -1206,6 +1217,15 @@ function annotateCatalogWithCmsStatus(entries, cmsCodeIndex, cmsVenueByMoreId) {
     const allRefs = cmsCodeIndex.get(entry.eventGroupCode) || [];
     let cmsRefs = filterCmsRefsForCatalogEntry(entry, allRefs);
     let inCms = cmsRefs.length > 0;
+
+    // Γραμμένος κωδικός (event_group_code / more_event_groups) — όχι «λείπει» ακόμα κι αν ο τύπος catalog ≠ CMS.
+    if (!inCms) {
+      const writtenRefs = allRefs.filter((ref) => ref.writtenInField && ref.inCms !== false);
+      if (writtenRefs.length) {
+        inCms = true;
+        cmsRefs = writtenRefs;
+      }
+    }
 
     // venue_bundle: αν λείπει κωδικός αλλά υπάρχει χώρος CMS με ίδιο More venueId → in_cms.
     if (!inCms && entry.kind === 'venue_bundle' && cmsVenueByMoreId?.size) {
