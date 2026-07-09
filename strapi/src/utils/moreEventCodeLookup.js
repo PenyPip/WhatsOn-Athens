@@ -127,10 +127,12 @@ function resolveMorePagePathFromChunk(chunk, category) {
 
 function parseMoreCatalogHtml(html, { category, classifyKind }) {
   const byCode = new Map();
+  let moreCatalogOrder = 0;
 
   for (const m of html.matchAll(/data-code="(evg_[a-z0-9_-]+)"/gi)) {
     const code = m[1];
     if (byCode.has(code)) continue;
+    moreCatalogOrder += 1;
 
     const chunk = html.slice(Math.max(0, m.index - 200), m.index + 4000);
     const pagePath = resolveMorePagePathFromChunk(chunk, category);
@@ -150,10 +152,21 @@ function parseMoreCatalogHtml(html, { category, classifyKind }) {
       codeSlugRoot: evgCodeSlugRoot(code),
       kind,
       category,
+      moreCatalogOrder,
     });
   }
 
   return [...byCode.values()];
+}
+
+/** Σειρά εμφάνισης στο More.com (πρώτα στη σελίδα ≈ πιο πρόσφατα). */
+function compareMoreCatalogOrder(a, b) {
+  const ao = Number(a?.moreCatalogOrder);
+  const bo = Number(b?.moreCatalogOrder);
+  if (Number.isFinite(ao) && Number.isFinite(bo)) return ao - bo;
+  if (Number.isFinite(ao)) return -1;
+  if (Number.isFinite(bo)) return 1;
+  return String(a?.title || '').localeCompare(String(b?.title || ''), 'el');
 }
 
 /** Ευρετήριο slug → καταχωρήσεις καταλόγου (σελίδα More + ρίζα evg_ κωδικού). */
@@ -281,7 +294,11 @@ async function fetchMoreCatalog() {
     classifyKind: () => 'show',
   });
 
-  return [...cinema, ...theater].sort((a, b) => a.title.localeCompare(b.title, 'el'));
+  let globalOrder = 0;
+  return [...cinema, ...theater].map((row) => ({
+    ...row,
+    moreCatalogOrder: globalOrder++,
+  }));
 }
 
 async function verifyEventGroupCodesParallel(codes, options = {}) {
@@ -1522,11 +1539,7 @@ async function enrichCatalogWithVenueProgramScrape(catalog, cmsVenues, cmsItems,
     });
   }
 
-  out.sort((a, b) => {
-    const ai = catalog.findIndex((r) => r.eventGroupCode === a.eventGroupCode);
-    const bi = catalog.findIndex((r) => r.eventGroupCode === b.eventGroupCode);
-    return ai - bi;
-  });
+  out.sort(compareMoreCatalogOrder);
 
   return out;
 }
@@ -1652,6 +1665,7 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
         moreUrl: e.moreUrl,
         kind: e.kind,
         category: e.category,
+        moreCatalogOrder: e.moreCatalogOrder,
       })),
       skipVerify,
       { onProgress: progress },
@@ -1706,6 +1720,7 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
       .sort((a, b) => a.title.localeCompare(b.title, 'el'))
       .slice(0, 400);
 
+    catalogOut.sort(compareMoreCatalogOrder);
     result.catalog = catalogOut;
     result.stats.catalogShown = result.catalog.length;
     result.stats.catalogVenueScrapeResolved = result.catalog

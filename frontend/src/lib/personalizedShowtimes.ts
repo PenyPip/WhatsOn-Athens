@@ -178,7 +178,7 @@ export function formatNextShowtimeLabel(
   return venue ? `${when} · ${venue}` : when;
 }
 
-function nextShowtimeAtVenue(
+export function nextShowtimeAtVenue(
   movieId: number,
   venueId: number,
   showtimes: StrapiShowtime[],

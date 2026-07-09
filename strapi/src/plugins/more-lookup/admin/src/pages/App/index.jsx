@@ -1667,7 +1667,16 @@ const App = () => {
         ? (result?.matches ?? []).filter((r) => r.matched).length
         : (result?.matches ?? []).filter((r) => r.matched && matchesCmsContentFilter(r, opt.id)).length,
   }));
-  const catalogFiltered = catalogScope.filter((row) => catalogMatchesKindFilter(row, catalogKindFilter));
+  const catalogFiltered = catalogScope
+    .filter((row) => catalogMatchesKindFilter(row, catalogKindFilter))
+    .sort((a, b) => {
+      const ao = Number(a.moreCatalogOrder);
+      const bo = Number(b.moreCatalogOrder);
+      if (Number.isFinite(ao) && Number.isFinite(bo)) return ao - bo;
+      if (Number.isFinite(ao)) return -1;
+      if (Number.isFinite(bo)) return 1;
+      return String(a.moreTitle || '').localeCompare(String(b.moreTitle || ''), 'el');
+    });
   const catalogMissingFiltered = catalogFiltered.filter((row) => !row.inCms).length;
   const catalogPageCount = Math.max(1, Math.ceil(catalogFiltered.length / CATALOG_PAGE_SIZE));
   const catalogPageSafe = Math.min(Math.max(1, catalogPage), catalogPageCount);
