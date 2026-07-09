@@ -11,6 +11,7 @@ import { resolveImdbRating } from "@/lib/movieImdb";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import {
   formatNextShowtimeLabel,
+  nextShowtimeAtVenue,
   nextShowtimeForMovie,
   personalizedProgramByVenue,
   showtimeSlotKey,
@@ -182,23 +183,33 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
                           {group.venueName}
                         </span>
                       )}
-                      <p className="mt-2 font-body text-sm leading-relaxed text-[#13143E]/75">
-                        {group.movies.map((m, i) => (
-                          <span key={m.slug || m.movieId}>
-                            {i > 0 ? <span className="text-[#13143E]/30">, </span> : null}
-                            {m.slug ? (
-                              <Link
-                                to={`/movies/${m.slug}`}
-                                className="text-[#13143E] transition-colors hover:text-[#872F8B]"
-                              >
-                                {m.title}
-                              </Link>
-                            ) : (
-                              <span className="text-[#13143E]">{m.title}</span>
-                            )}
-                          </span>
-                        ))}
-                      </p>
+                      <ul className="mt-3 flex list-none flex-col gap-2">
+                        {group.movies.map((m) => {
+                          const next = nextShowtimeAtVenue(m.movieId, group.venueId, showtimes, now);
+                          return (
+                            <li
+                              key={m.slug || m.movieId}
+                              className="rounded-lg border border-[#13143E]/8 bg-[#F7F5FC]/60 px-3 py-2"
+                            >
+                              {m.slug ? (
+                                <Link
+                                  to={`/movies/${m.slug}`}
+                                  className="font-body text-sm font-medium text-[#13143E] transition-colors hover:text-[#872F8B]"
+                                >
+                                  {m.title}
+                                </Link>
+                              ) : (
+                                <span className="font-body text-sm font-medium text-[#13143E]">{m.title}</span>
+                              )}
+                              {next ? (
+                                <p className="mt-0.5 font-body text-xs text-[#13143E]/55">
+                                  {formatNextShowtimeLabel(next, now, { omitVenue: true })}
+                                </p>
+                              ) : null}
+                            </li>
+                          );
+                        })}
+                      </ul>
                     </li>
                   ))}
                 </ul>

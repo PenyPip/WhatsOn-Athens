@@ -133,15 +133,24 @@ export function personalizedProgramShowtimes(
     .slice(0, options?.limit ?? 16);
 }
 
-export function formatNextShowtimeLabel(st: StrapiShowtime, now = new Date()): string {
+export function formatNextShowtimeLabel(
+  st: StrapiShowtime,
+  now = new Date(),
+  options?: { omitVenue?: boolean },
+): string {
   if (showtimeIsWeekBlock(st)) {
     const week = formatShowtimeWeekRangeLabel(st);
     const venue = st.venue?.trim();
+    if (options?.omitVenue) return week || "Εβδομάδα προβολών";
     return week ? (venue ? `${week} · ${venue}` : week) : venue || "Εβδομάδα προβολών";
   }
 
   const d = new Date(st.datetime);
-  if (Number.isNaN(d.getTime())) return st.venue?.trim() || "Προσεχώς";
+  if (Number.isNaN(d.getTime())) {
+    const venue = st.venue?.trim();
+    if (options?.omitVenue) return "Προσεχώς";
+    return venue || "Προσεχώς";
+  }
 
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const tomorrowStart = new Date(todayStart);
@@ -165,5 +174,25 @@ export function formatNextShowtimeLabel(st: StrapiShowtime, now = new Date()): s
       hour12: false,
     });
   }
+  if (options?.omitVenue) return when;
   return venue ? `${when} · ${venue}` : when;
+}
+
+function nextShowtimeAtVenue(
+  movieId: number,
+  venueId: number,
+  showtimes: StrapiShowtime[],
+  now: Date,
+): StrapiShowtime | null {
+  const upcoming = showtimes.filter(
+    (st) =>
+      st.movieId != null &&
+      Number(st.movieId) === movieId &&
+      st.venueId === venueId &&
+      showtimeIsUpcoming(st, now),
+  );
+  if (!upcoming.length) return null;
+  return [...upcoming].sort(
+    (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime(),
+  )[0];
 }
