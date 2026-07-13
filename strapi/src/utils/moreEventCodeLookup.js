@@ -28,6 +28,9 @@ const {
 const {
   createVenueScrapeCache,
   findCmsVenueForBundleCode,
+  buildVenueForProgramScrape,
+  hasVenueProgramScrapeCandidates,
+  loadVenueScrapeWithFallback,
   normalizeMoreUrl,
   SCRAPE_ENABLED,
 } = require('./moreVenueProgramScrape');
@@ -89,11 +92,12 @@ function slugFromMoreUrl(url, category = 'cinema') {
     .replace(/-/g, ' ');
 }
 
-/** Slug σελίδας More από URL (π.χ. /gr-el/tickets/cinemas/the-pout-pout-fish/). */
+/** Slug σελίδας More από URL (π.χ. /tickets/cinemas/…, /tickets/cinema/…, /tickets/cine-alexandra/). */
 function morePageSlugFromUrl(url) {
   const s = String(url || '').trim();
   const m =
     s.match(/\/tickets\/cinemas?\/([^/?#]+)/i) ||
+    s.match(/\/tickets\/cine-([^/?#]+)/i) ||
     s.match(/\/tickets\/theater\/([^/?#]+)/i);
   if (!m) return '';
   return decodeURIComponent(m[1]).replace(/\/$/, '').toLowerCase();
@@ -122,7 +126,7 @@ function resolveMorePagePathFromChunk(chunk, category) {
   const pathPattern =
     category === 'theater'
       ? /href="(\/gr-el\/tickets\/theater\/[^"?#]+)/i
-      : /href="(\/gr-el\/tickets\/cinemas?\/[^"?#]+)/i;
+      : /href="(\/gr-el\/tickets\/(?:cinemas?|cine-)[^"?#]+)/i;
   return chunk.match(pathPattern)?.[1]?.trim() || '';
 }
 
@@ -1508,9 +1512,13 @@ async function enrichCatalogWithVenueProgramScrape(catalog, cmsVenues, cmsItems,
     }
 
     const cmsVenue = findCmsVenueForBundleCode(row.eventGroupCode, cmsVenues);
-    const rawLink = cmsVenue?.more_link || cmsVenue?.moreLink || row.moreUrl;
-    const moreLink = normalizeMoreUrl(rawLink);
-    if (!moreLink) {
+    const venueForScrape = buildVenueForProgramScrape(cmsVenue, {
+      category: row.category,
+      eventGroupCode: row.eventGroupCode,
+      moreUrl: row.moreUrl,
+      morePathSlug: row.morePathSlug,
+    });
+    if (!hasVenueProgramScrapeCandidates(venueForScrape)) {
       out.push(row);
       continue;
     }
@@ -1520,7 +1528,10 @@ async function enrichCatalogWithVenueProgramScrape(catalog, cmsVenues, cmsItems,
       onProgress(`Scrape χώρων: ${scrapeCount}/${Math.min(maxScrapes, orderedBundles.length)}…`);
     }
 
-    const scrape = await scrapeCache.get(moreLink);
+    const { url: moreLink, result: scrape } = await loadVenueScrapeWithFallback(
+      venueForScrape,
+      scrapeCache,
+    );
     if (!scrape?.ok) {
       out.push({
         ...row,
@@ -1549,7 +1560,7 @@ async function enrichCatalogWithVenueProgramScrape(catalog, cmsVenues, cmsItems,
       ...row,
       venueScrape: {
         ok: true,
-        moreLink: scrape.moreLink,
+        moreLink: moreLink || scrape.moreLink,
         eventCount: events.length,
         resolvedCount: events.filter((e) => e.cmsMatch).length,
         uniqueTitles: scrape.uniqueTitles || [],

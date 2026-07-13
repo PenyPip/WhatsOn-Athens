@@ -10,6 +10,11 @@ const { collectVenueBundleCodes, collectTheaterVenueBundleCodes } = require('./m
 
 const MORE_CINEMA_WARMUP = 'https://www.more.com/gr-el/tickets/cinema/';
 const MORE_THEATER_WARMUP = 'https://www.more.com/gr-el/tickets/theater/';
+/** More.com: σελίδες προγράμματος σινεμά — cinemas (ταινίες/θερινά), cinema (κλασικά), cine-* (π.χ. cine-alexandra). */
+const CINEMA_PROGRAM_PATH_PREFIXES = [
+  '/gr-el/tickets/cinemas/',
+  '/gr-el/tickets/cinema/',
+];
 const USER_AGENT =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36';
 const FETCH_TIMEOUT_MS = Number(process.env.MORE_VENUE_SCRAPE_TIMEOUT_MS || 22_000);
@@ -499,9 +504,8 @@ function lookupScrapedEventRow(byEventId, eventId) {
 function resolveVenueMoreProgramLink(venue) {
   const direct = String(venue?.more_link ?? venue?.moreLink ?? '').trim();
   if (direct) return direct;
-  const slug = String(venue?.slug ?? '').trim();
-  if (slug) return `/gr-el/tickets/cinema/${slug}/`;
-  return '';
+  const paths = venueProgramPathsFromSlug(venue);
+  return paths[0] || '';
 }
 
 let cinemaListingHtmlCache = null;
@@ -513,7 +517,8 @@ const CINEMA_LISTING_CACHE_MS = Number(process.env.MORE_CINEMA_LISTING_CACHE_MS 
 const LISTING_KIND = {
   cinema: {
     warmupUrl: MORE_CINEMA_WARMUP,
-    pathPrefix: '/gr-el/tickets/cinema/',
+    pathPrefixes: CINEMA_PROGRAM_PATH_PREFIXES,
+    pathPrefix: CINEMA_PROGRAM_PATH_PREFIXES[1],
     getCache: () => cinemaListingHtmlCache,
     setCache: (html) => {
       cinemaListingHtmlCache = html;
@@ -537,6 +542,45 @@ function venueListingKind(venue) {
   const t = String(venue?.type ?? '').toLowerCase();
   if (t === 'theater' || t === 'theatre') return 'theater';
   return 'cinema';
+}
+
+function cinemaProgramPathsForSlug(slug) {
+  const s = String(slug || '').trim().replace(/^\/+|\/+$/g, '');
+  if (!s) return [];
+  const paths = CINEMA_PROGRAM_PATH_PREFIXES.map((prefix) => `${prefix}${s}/`);
+  if (!/^cine[-/]/i.test(s)) {
+    paths.push(`/gr-el/tickets/cine-${s}/`);
+  }
+  return paths;
+}
+
+function venueProgramPathsFromSlug(venue) {
+  const slug = String(venue?.slug ?? '').trim();
+  if (!slug) return [];
+  const kind = venueListingKind(venue);
+  if (kind === 'cinema') return cinemaProgramPathsForSlug(slug);
+  const cfg = LISTING_KIND[kind] || LISTING_KIND.cinema;
+  return [`${cfg.pathPrefix}${slug}/`];
+}
+
+/** Χώρος CMS ή γραμμή καταλόγου More → αντικείμενο για scrape / fallback URLs. */
+function buildVenueForProgramScrape(venue, catalogHints = {}) {
+  const category = catalogHints.category;
+  return {
+    ...(venue || {}),
+    type: venue?.type || (category === 'theater' ? 'theater' : 'cinema'),
+    event_group_code:
+      venue?.event_group_code || venue?.eventGroupCode || catalogHints.eventGroupCode || null,
+    more_link: venue?.more_link || venue?.moreLink || catalogHints.moreUrl || null,
+    slug: venue?.slug || catalogHints.morePathSlug || null,
+  };
+}
+
+function hasVenueProgramScrapeCandidates(venue) {
+  const v = venue || {};
+  if (v.more_link || v.moreLink || v.slug) return true;
+  if (v.event_group_code || v.eventGroupCode) return true;
+  return collectVenueBundleCodesForListing(v).length > 0;
 }
 
 function collectVenueBundleCodesForListing(venue) {
@@ -569,8 +613,8 @@ function extractProgramHrefNearBundleCode(html, eventGroupCode, pathPrefix) {
   if (codeIdx < 0) return '';
 
   const window = html.slice(codeIdx, codeIdx + 4000);
-  // Θερινά σινεμά: meta content="/gr-el/tickets/cinemas/…" (όχι μόνο /cinema/).
-  const hrefRe = /(?:href|content)=["'](\/gr-el\/tickets\/cinemas?\/[^"'?#]+?\/)["']/i;
+  // Πρώτο tickets URL δίπλα στο data-code (cinemas/, cinema/, cine-*, κ.λπ. — όχι theater).
+  const hrefRe = /(?:href|content)=["'](\/gr-el\/tickets\/(?!theater\/)[^"'?#]+?\/)["']/i;
   const match = window.match(hrefRe);
   if (match?.[1]) return normalizeMoreUrl(match[1]);
 
@@ -645,19 +689,14 @@ async function collectVenueMoreProgramLinkCandidates(venue) {
   };
 
   const kind = venueListingKind(venue);
-  const cfg = LISTING_KIND[kind] || LISTING_KIND.cinema;
 
   const directLink = venue?.more_link ?? venue?.moreLink;
   if (directLink && isMoreComProgramUrl(directLink)) {
     add(directLink);
   }
 
-  const slug = String(venue?.slug ?? '').trim();
-  if (slug) {
-    add(`${cfg.pathPrefix}${slug}/`);
-    if (kind === 'cinema') {
-      add(`/gr-el/tickets/cinemas/${slug}/`);
-    }
+  for (const path of venueProgramPathsFromSlug(venue)) {
+    add(path);
   }
 
   for (const code of collectVenueBundleCodesForListing(venue)) {
@@ -714,6 +753,7 @@ module.exports = {
   SCRAPE_ENABLED,
   SCRAPE_ON_SYNC,
   BUNDLE_SYNC_SCRAPE_ENABLED,
+  CINEMA_PROGRAM_PATH_PREFIXES,
   scrapeMoreVenueProgram,
   resolveVenueMoreProgramLink,
   resolveVenueMoreProgramLinkForScrape,
@@ -725,5 +765,8 @@ module.exports = {
   probeVenueProgramScrape,
   createVenueScrapeCache,
   findCmsVenueForBundleCode,
+  buildVenueForProgramScrape,
+  hasVenueProgramScrapeCandidates,
+  venueProgramPathsFromSlug,
   normalizeMoreUrl,
 };
