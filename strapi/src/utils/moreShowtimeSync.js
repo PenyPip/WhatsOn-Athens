@@ -150,6 +150,83 @@ function weekSyncOutcomeFromUpsert(result) {
   return result === 'created' || result === 'exists' ? 'synced' : 'failed';
 }
 
+/** Εβδομάδα-στόχος: synced αν υπάρχει προβολή (ταινία+ώρα ή τουλάχιστον χώρος+ώρα). */
+async function cinemaWeekEventCountsAsSynced(
+  strapi,
+  { venue, event, mapped, upsertResult, showtimeExistenceIndex },
+) {
+  if (upsertResult === 'created' || upsertResult === 'exists') return true;
+
+  const datetime = parseMoreEventDatetime(event?.eventDate);
+  if (!datetime) return false;
+
+  if (mapped?.movieId) {
+    const atMovie = await showtimeExistsAt(
+      strapi,
+      { movieId: mapped.movieId, venueId: venue.id, datetime },
+      showtimeExistenceIndex,
+    );
+    if (atMovie) return true;
+  }
+
+  return showtimeExistsAtVenue(
+    strapi,
+    { venueId: venue.id, datetime },
+    showtimeExistenceIndex,
+  );
+}
+
+async function bundleApiEventsNeedPlayTitleScrape(eventsCache, bundleCodes) {
+  for (const code of bundleCodes || []) {
+    let events = [];
+    try {
+      events = await eventsCache.get(code);
+    } catch {
+      events = [];
+    }
+    if (events.some((event) => !String(event?.playTitle || '').trim())) return true;
+  }
+  return false;
+}
+
+async function preloadCinemaBundleScrapeMappings({
+  venue,
+  eventsCache,
+  venueStats,
+  scrapeCache,
+  supplementalIndex,
+  eventIdIndex,
+  moviesForTitle,
+  report,
+  persistQueue,
+  onProgress,
+}) {
+  if (!BUNDLE_SYNC_SCRAPE_ENABLED || !moviesForTitle?.length) return false;
+  if (!(await bundleApiEventsNeedPlayTitleScrape(eventsCache, venue.bundleCodes))) return false;
+
+  if (onProgress) {
+    onProgress(`Σινεμά «${venue.name}»: scrape τίτλων (API χωρίς playTitle)…`);
+  }
+
+  const { url, result: scrape } = await loadVenueScrapeWithFallback(venue, scrapeCache);
+  if (!scrape?.ok) return false;
+
+  indexCinemaMappingsFromVenueScrape(
+    scrape,
+    supplementalIndex,
+    moviesForTitle,
+    report,
+    persistQueue,
+  );
+  mergeSupplementalIntoEventIdIndex(supplementalIndex, eventIdIndex);
+  if (venueStats) {
+    venueStats.scrapePreloaded = true;
+    venueStats.scrapeLink = url;
+    venueStats.scrapeEventCount = scrape.eventCount || 0;
+  }
+  return true;
+}
+
 function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -2115,7 +2192,17 @@ async function processOneCinemaBundleEvent(
   });
   venueSyncTracker.recordUpsertResult(venue.id, result);
   if (inWeek) {
-    venueSyncTracker.recordWeekEvent(venue.id, weekSyncOutcomeFromUpsert(result));
+    const synced = await cinemaWeekEventCountsAsSynced(strapi, {
+      venue,
+      event,
+      mapped,
+      upsertResult: result,
+      showtimeExistenceIndex,
+    });
+    venueSyncTracker.recordWeekEvent(venue.id, synced ? 'synced' : 'failed');
+    if (!synced && result !== 'created' && result !== 'exists') {
+      venueSyncTracker.record(venue.id, { weekSkippedUnknownEventId: 1 });
+    }
   }
   if (result === 'created') report.createdFromVenues += 1;
   return { kind: 'done', result };
@@ -2154,6 +2241,19 @@ async function syncCinemaVenueBundleEvents(
     report,
     persistQueue,
   };
+
+  await preloadCinemaBundleScrapeMappings({
+    venue,
+    eventsCache,
+    venueStats,
+    scrapeCache,
+    supplementalIndex,
+    eventIdIndex,
+    moviesForTitle,
+    report,
+    persistQueue,
+    onProgress,
+  });
 
   const pending = [];
 
@@ -2523,7 +2623,14 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
           { movieId: mapped.movieId, venueId: venue.id, datetime },
           showtimeExistenceIndex,
         );
-        tracker.recordWeekEvent(venue.id, exists ? 'synced' : 'failed');
+        const synced =
+          exists ||
+          (await showtimeExistsAtVenue(
+            strapi,
+            { venueId: venue.id, datetime },
+            showtimeExistenceIndex,
+          ));
+        tracker.recordWeekEvent(venue.id, synced ? 'synced' : 'failed');
       }
     }
 

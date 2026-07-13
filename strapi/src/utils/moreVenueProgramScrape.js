@@ -5,6 +5,7 @@ const { promisify } = require('util');
 const execFileAsync = promisify(execFile);
 
 const { fetchMore, formatMoreNetworkError } = require('./moreHttp');
+const { fetchMoreEventsByGroupCode } = require('./moreApi');
 const { collectVenueBundleCodes, collectTheaterVenueBundleCodes } = require('./moreEventGroupCodes');
 
 const MORE_CINEMA_WARMUP = 'https://www.more.com/gr-el/tickets/cinema/';
@@ -567,14 +568,46 @@ function extractProgramHrefNearBundleCode(html, eventGroupCode, pathPrefix) {
   const codeIdx = html.search(new RegExp(`data-code=["']${esc}["']`, 'i'));
   if (codeIdx < 0) return '';
 
-  const window = html.slice(codeIdx, codeIdx + 12_000);
-  const prefixEsc = pathPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const hrefRe = new RegExp(
-    `(?:href|content)=["'](${prefixEsc}[^"'?#]+/?)["']`,
-    'i',
-  );
+  const window = html.slice(codeIdx, codeIdx + 4000);
+  // Θερινά σινεμά: meta content="/gr-el/tickets/cinemas/…" (όχι μόνο /cinema/).
+  const hrefRe = /(?:href|content)=["'](\/gr-el\/tickets\/cinemas?\/[^"'?#]+?\/)["']/i;
   const match = window.match(hrefRe);
-  return match?.[1] ? normalizeMoreUrl(match[1]) : '';
+  if (match?.[1]) return normalizeMoreUrl(match[1]);
+
+  if (pathPrefix) {
+    const prefixEsc = pathPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const legacyRe = new RegExp(
+      `(?:href|content)=["'](${prefixEsc}[^"'?#]+/?)["']`,
+      'i',
+    );
+    const legacy = window.match(legacyRe);
+    if (legacy?.[1]) return normalizeMoreUrl(legacy[1]);
+  }
+
+  return '';
+}
+
+/** Scrape σελίδας χώρου πρέπει να έχει κοινά eventId με το bundle API — όχι λάθος σινεμά από listing. */
+async function scrapeOverlapsBundleCodes(scrape, bundleCodes) {
+  if (!scrape?.ok || !scrape?.byEventId?.size) return false;
+  const codes = (bundleCodes || []).map((c) => String(c || '').trim()).filter(Boolean);
+  if (!codes.length) return true;
+
+  const scrapedIds = new Set([...scrape.byEventId.keys()]);
+  for (const code of codes) {
+    let events = [];
+    try {
+      events = await fetchMoreEventsByGroupCode(code);
+    } catch {
+      continue;
+    }
+    const apiIds = events.map((e) => String(e?.eventId ?? '').trim()).filter(Boolean);
+    if (!apiIds.length) continue;
+    for (const id of apiIds) {
+      if (scrapedIds.has(id)) return true;
+    }
+  }
+  return false;
 }
 
 /** Σελίδα καταλόγου more.com: canonical href προγράμματος από bundle eventGroupCode (σινεμά ή θέατρο). */
@@ -619,6 +652,14 @@ async function collectVenueMoreProgramLinkCandidates(venue) {
     add(directLink);
   }
 
+  const slug = String(venue?.slug ?? '').trim();
+  if (slug) {
+    add(`${cfg.pathPrefix}${slug}/`);
+    if (kind === 'cinema') {
+      add(`/gr-el/tickets/cinemas/${slug}/`);
+    }
+  }
+
   for (const code of collectVenueBundleCodesForListing(venue)) {
     try {
       const fromListing = await lookupMoreLinkFromListing(code, kind);
@@ -627,9 +668,6 @@ async function collectVenueMoreProgramLinkCandidates(venue) {
       /* optional */
     }
   }
-
-  const slug = String(venue?.slug ?? '').trim();
-  if (slug) add(`${cfg.pathPrefix}${slug}/`);
 
   return candidates;
 }
@@ -642,21 +680,31 @@ async function resolveVenueMoreProgramLinkForScrape(venue) {
 /** Δοκιμάζει όλα τα πιθανά URLs μέχρι να βρει σελίδα με booking panel. */
 async function loadVenueScrapeWithFallback(venue, scrapeCache) {
   const candidates = await collectVenueMoreProgramLinkCandidates(venue);
+  const bundleCodes = collectVenueBundleCodesForListing(venue);
   const tried = [];
   if (!candidates.length) {
     return { url: null, result: { ok: false, error: 'no_candidates' }, tried, candidates };
   }
 
+  let lastOk = null;
   for (const url of candidates) {
     const result = await scrapeCache.get(url);
-    tried.push({
+    const entry = {
       url,
       ok: result?.ok === true,
       error: result?.error || null,
       eventCount: result?.eventCount || 0,
-    });
-    if (result?.ok) return { url, result, tried, candidates };
+    };
+    tried.push(entry);
+    if (!result?.ok) continue;
+    lastOk = { url, result };
+
+    const overlaps = await scrapeOverlapsBundleCodes(result, bundleCodes);
+    if (overlaps) return { url, result, tried, candidates };
+    entry.rejected = 'bundle_event_mismatch';
   }
+
+  if (lastOk) return { ...lastOk, tried, candidates };
 
   const last = await scrapeCache.get(candidates[0]);
   return { url: candidates[0], result: last, tried, candidates };
