@@ -1220,7 +1220,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   <span className="font-medium text-base">{r.userName}</span>
                   <span className="text-sm font-bold">{r.rating}/5 ★</span>
                 </div>
-                <p className="text-base text-muted-foreground">{r.body}</p>
+                {r.body?.trim() ? (
+                  <p className="text-base text-muted-foreground">{r.body}</p>
+                ) : null}
               </div>
             ))}
           </section>
@@ -1234,7 +1236,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         ) : null}
 
         <div id="write-review" className="card-elevated mx-auto max-w-md border border-[#13143E]/12 p-6 md:p-8 scroll-mt-28">
-          <h3 className="font-display mb-6 text-center text-xl font-semibold text-[#13143E]">Γράψε Κριτική</h3>
+          <h3 className="font-display mb-6 text-center text-xl font-semibold text-[#13143E]">Βαθμολόγησε</h3>
           {isAuthenticated ? (
             <WriteReviewForm
               contentType={isMovie ? "movie" : "theater"}

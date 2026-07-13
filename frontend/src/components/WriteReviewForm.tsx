@@ -32,10 +32,6 @@ export default function WriteReviewForm({
 
   const submit = async () => {
     setError(null);
-    if (body.trim().length < 20) {
-      setError("Η κριτική πρέπει να έχει τουλάχιστον 20 χαρακτήρες.");
-      return;
-    }
     setPending(true);
     try {
       await createMyReview({
@@ -97,7 +93,7 @@ export default function WriteReviewForm({
 
       <div>
         <label htmlFor="review-body" className="mb-2 block text-sm font-semibold text-foreground">
-          Κριτική
+          Κριτική <span className="font-normal text-muted-foreground">(προαιρετικά)</span>
         </label>
         <textarea
           id="review-body"
@@ -105,9 +101,8 @@ export default function WriteReviewForm({
           onChange={(e) => setBody(e.target.value)}
           rows={5}
           className="w-full resize-y rounded-lg border border-border bg-white px-3 py-2.5 text-sm leading-relaxed text-foreground shadow-sm placeholder:text-muted-foreground/60 focus:border-[#13143E]/35 focus:outline-none focus:ring-2 focus:ring-[#13143E]/15"
-          placeholder="Γράψε τη γνώμη σου για την ταινία ή την παράσταση..."
+          placeholder="Προαιρετικά — γράψε τη γνώμη σου με λόγια..."
         />
-        <p className="mt-1.5 text-xs text-muted-foreground">Τουλάχιστον 20 χαρακτήρες.</p>
       </div>
 
       {error ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
@@ -118,7 +113,7 @@ export default function WriteReviewForm({
         size="lg"
         className="h-12 w-full rounded-lg bg-[#13143E] text-base font-semibold text-white shadow-md hover:bg-[#1C1D62] disabled:opacity-60"
       >
-        {pending ? "Αποστολή..." : "Δημοσίευση κριτικής"}
+        {pending ? "Αποστολή..." : "Υποβολή βαθμολογίας"}
       </Button>
     </form>
   );

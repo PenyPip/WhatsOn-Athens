@@ -33,8 +33,7 @@
       "required": true
     },
     "body": {
-      "type": "text",
-      "required": true
+      "type": "text"
     },
     "movie": {
       "type": "relation",

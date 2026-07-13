@@ -73,9 +73,6 @@ module.exports = createCoreController('api::user-review.user-review', ({ strapi 
     if (!Number.isFinite(rating) || rating < 1 || rating > 5) {
       return ctx.badRequest('Rating must be between 1 and 5');
     }
-    if (reviewBody.length < 20) {
-      return ctx.badRequest('Review must be at least 20 characters');
-    }
 
     const data = {
       user: user.id,
@@ -83,7 +80,7 @@ module.exports = createCoreController('api::user-review.user-review', ({ strapi 
       user_email: user.email || null,
       content_type: contentType,
       rating,
-      body: reviewBody.slice(0, 4000),
+      body: reviewBody ? reviewBody.slice(0, 4000) : '',
     };
 
     if (contentType === 'movie') {

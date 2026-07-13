@@ -257,7 +257,7 @@ const Profile = () => {
                     className="flex items-center justify-between gap-3 rounded-lg border border-amber-200/60 bg-white px-4 py-3 text-sm font-medium transition-colors hover:border-amber-300"
                   >
                     <span>{item.title}</span>
-                    <span className="shrink-0 text-amber-700">Γράψε κριτική →</span>
+                    <span className="shrink-0 text-amber-700">Βαθμολόγησε →</span>
                   </Link>
                 </li>
               ))}
@@ -344,7 +344,9 @@ const Profile = () => {
                       Διαγραφή
                     </Button>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-2">{review.body}</p>
+                  {review.body?.trim() ? (
+                    <p className="text-sm text-muted-foreground mt-2">{review.body}</p>
+                  ) : null}
                 </div>
               ))}
             </div>

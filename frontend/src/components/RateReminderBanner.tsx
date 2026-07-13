@@ -40,7 +40,7 @@ export default function RateReminderBanner({ title, onRateClick, className = "" 
         className="shrink-0 bg-[#13143E] font-semibold text-white hover:bg-[#1C1D62]"
         onClick={scrollToReview}
       >
-        Γράψε κριτική
+        Γράψε βαθμολογία
       </Button>
     </div>
   );
