@@ -1,46 +1,7 @@
-import { useEffect } from "react";
-import { useHomeLcpOverlayDone } from "@/hooks/useHomeLcpDone";
-
 /**
- * Mobile: κρύβει το static LCP overlay πριν mount το lazy HomeBody.
- * Το Index περιμένει `spa-lcp-done` — χωρίς αυτό το component, deadlock.
+ * Παλιό handoff (idle → spa-lcp-done) αφαιρέθηκε: έκρυβε το static LCP πριν φορτώσει η live αφίσα
+ * και το Lighthouse έβλεπε lazy img ως LCP. Το handoff γίνεται στο MostTalkedAboutHero όταν έτοιμο το poster.
  */
 export default function HomeStaticLcpHandoff() {
-  const markOverlayDone = useHomeLcpOverlayDone();
-
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-    const staticEl = document.getElementById("home-static-lcp");
-    if (!staticEl) return;
-    if (!window.matchMedia("(max-width: 767px)").matches) return;
-    if (document.documentElement.classList.contains("spa-lcp-done")) return;
-
-    let cancelled = false;
-    let idleId: number | undefined;
-    const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (cancelled) return;
-        const finish = () => {
-          if (!cancelled) {
-            /** Μόνο overlay — το slot (#home-hero-slot) μένει μέχρι live hero + poster (MostTalkedAboutHero). */
-            markOverlayDone();
-          }
-        };
-        if (typeof requestIdleCallback !== "undefined") {
-          idleId = requestIdleCallback(finish, { timeout: 1200 });
-        } else {
-          finish();
-        }
-      });
-    });
-    return () => {
-      cancelled = true;
-      cancelAnimationFrame(frame);
-      if (idleId !== undefined && typeof cancelIdleCallback !== "undefined") {
-        cancelIdleCallback(idleId);
-      }
-    };
-  }, [markOverlayDone]);
-
   return null;
 }

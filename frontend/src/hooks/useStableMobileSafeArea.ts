@@ -7,6 +7,11 @@ export function useStableMobileSafeArea() {
   useLayoutEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia("(max-width: 767px)").matches) return;
 
+    const existing = parseFloat(
+      getComputedStyle(document.documentElement).getPropertyValue(CSS_VAR),
+    );
+    if (Number.isFinite(existing) && existing > 0) return;
+
     const probe = document.createElement("div");
     probe.setAttribute("aria-hidden", "true");
     probe.style.cssText =

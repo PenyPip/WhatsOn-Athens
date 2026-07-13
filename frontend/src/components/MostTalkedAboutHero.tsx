@@ -126,6 +126,8 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
   const staticLcpOnPage = useHomeStaticLcpOnPage();
   const [activeIndex, setActiveIndex] = useState(0);
   const [heroPosterReady, setHeroPosterReady] = useState(false);
+  const activeMovieId = movies[activeIndex]?.id;
+  const activePosterUrl = movies[activeIndex]?.posterUrl;
 
   const goTo = useCallback(
     (index: number) => {
@@ -151,13 +153,6 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
     if (typeof document === "undefined") return;
 
     const staticEl = document.getElementById("home-static-lcp");
-    const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
-
-    /** Mobile: handoff από HomeStaticLcpHandoff στο Index (πριν mount HomeBody). */
-    if (staticEl && isMobileViewport) {
-      if (document.documentElement.classList.contains("spa-lcp-done")) return;
-      return;
-    }
 
     if (loading) return;
 
@@ -167,12 +162,13 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
       return;
     }
 
+    if (staticEl && activePosterUrl?.trim() && !heroPosterReady) return;
+
     if (!staticEl) {
       const frame = requestAnimationFrame(() => markOverlayDone());
       return () => cancelAnimationFrame(frame);
     }
 
-    /** Desktop: μόνο overlay — το layout (margin/slot) αλλάζει αφού φορτώσει η αφίσα. */
     let cancelled = false;
     const frame = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
@@ -183,10 +179,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
       cancelled = true;
       cancelAnimationFrame(frame);
     };
-  }, [loading, movies.length, markOverlayDone, markLayoutDone]);
-
-  const activeMovieId = movies[activeIndex]?.id;
-  const activePosterUrl = movies[activeIndex]?.posterUrl;
+  }, [loading, movies.length, activePosterUrl, heroPosterReady, markOverlayDone, markLayoutDone]);
 
   useEffect(() => {
     setHeroPosterReady(false);
@@ -220,7 +213,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
   }, [loading, movies.length, activeMovieId, activePosterUrl, heroPosterReady, markLayoutDone]);
 
   const hasStaticLcp = staticLcpOnPage;
-  const prioritizePoster = !hasStaticLcp && activeIndex === 0;
+  const prioritizePoster = activeIndex === 0;
   const hasCarousel = movies.length > 1;
   const heroSwipe = useHeroSwipe(hasCarousel, activeIndex, goTo);
 
@@ -326,9 +319,9 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
                   alt={posterAltForMovie(active)}
                   width={512}
                   height={768}
-                  fetchPriority={prioritizePoster ? "high" : "auto"}
+                  fetchPriority={prioritizePoster ? (hasStaticLcp ? "auto" : "high") : "auto"}
                   loading={prioritizePoster ? "eager" : "lazy"}
-                  decoding={prioritizePoster ? "sync" : "async"}
+                  decoding={prioritizePoster ? "async" : "async"}
                   sizes="(max-width: 768px) 192px, 256px"
                   className="h-full w-full object-contain object-center"
                   onLoad={active.posterUrl ? onHeroPosterLoad : undefined}

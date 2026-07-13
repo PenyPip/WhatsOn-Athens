@@ -18,7 +18,7 @@ export const HOME_HERO_CRITICAL_CSS =
   "#home-static-lcp .home-static-lcp__poster-wrap{flex-shrink:0;aspect-ratio:2/3}" +
   "@media(min-width:1024px){#home-static-lcp .home-static-lcp__poster-wrap{width:17rem}}" +
   "#home-static-lcp img.home-static-lcp__poster{display:block;width:100%;height:100%;object-fit:contain;object-position:center;border-radius:.75rem}" +
-  "html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}" +
+  "html.spa-lcp-layout-done #home-static-lcp{opacity:0;visibility:hidden}" +
   "html.spa-lcp-layout-done #home-hero-slot{display:none}" +
   "#home-hero-ssr-spacer{background:#13143e;flex-shrink:0}" +
   "@media(max-width:767px){#home-hero-ssr-spacer{height:380px;min-height:380px;max-height:380px}}" +

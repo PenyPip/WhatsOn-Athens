@@ -6,7 +6,6 @@ import HomeSeoIntro from "@/components/HomeSeoIntro";
 import MarkLcpDone from "@/components/MarkLcpDone";
 import { layoutShowsHero } from "@/config/home";
 import { useHomeStaticLcpOnPage } from "@/contexts/HomeStaticLcpContext";
-import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useHomeLayout } from "@/hooks/useStrapi";
@@ -43,13 +42,12 @@ const Index = () => {
   const hasHero = layoutShowsHero(layout);
   const homeBodyReady = layout.sections.length > 0;
   const isMobile = useIsMobile();
-  const deferLcp = useDeferUntilLcpDone();
 
   useEffect(() => {
     if (isMobile) void import(/* webpackChunkName: "home-body" */ "@/views/HomeBody");
   }, [isMobile]);
 
-  const mountHomeBody = homeBodyReady && (!isMobile || deferLcp);
+  const mountHomeBody = homeBodyReady;
 
   return (
     <div className="min-h-screen md:pb-0">
