@@ -48,6 +48,8 @@ interface EventCardProps {
   theaterPriceLine?: string;
   /** Θέατρο: σύντομο πρόγραμμα (π.χ. «Τετ 19:00 · Πέμ 20:30»). */
   theaterScheduleLine?: string;
+  /** Ο χρήστης το έχει σημειώσει ως «το είδα». */
+  seen?: boolean;
   className?: string;
   index?: number;
 }
@@ -78,6 +80,7 @@ const EventCard = ({
   posterPriority = false,
   theaterPriceLine,
   theaterScheduleLine,
+  seen = false,
   className = "",
   index: _index = 0,
 }: EventCardProps) => {
@@ -141,6 +144,7 @@ const EventCard = ({
                       darkSectionCard &&
                         "home-tour-card bg-white shadow-[0_8px_28px_rgba(0,0,0,0.28)] ring-1 ring-white/20",
                     ),
+                seen && "ring-2 ring-sky-400/45",
               ),
         )}
       >
@@ -199,6 +203,11 @@ const EventCard = ({
               className={`home-tour-card-badge ${POSTER_BADGE_CORNER_TOP_LEFT} ${POSTER_BADGE_TOP_LEFT} text-xs`}
             >
               {badge}
+            </span>
+          ) : null}
+          {seen ? (
+            <span className="pointer-events-none absolute bottom-2 left-2 z-[3] rounded-md bg-sky-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">
+              Είδα
             </span>
           ) : null}
         </div>

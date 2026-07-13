@@ -53,9 +53,14 @@ import {
 } from "@/lib/showtimeSchedule";
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import FavoriteButton from "@/components/FavoriteButton";
+import SeenButton from "@/components/SeenButton";
+import RateReminderBanner from "@/components/RateReminderBanner";
 import PopularBadge from "@/components/PopularBadge";
 import WriteReviewForm from "@/components/WriteReviewForm";
 import { useAuth } from "@/contexts/AuthContext";
+import { fetchMyReviews } from "@/lib/userProfile";
+import { userHasReviewedContent } from "@/lib/seenContent";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useMoviePopularity } from "@/hooks/usePopularity";
 import { cn } from "@/lib/utils";
 import MovieDetailIntro from "@/components/MovieDetailIntro";
@@ -213,6 +218,7 @@ function reviewContentMatchesMovie(contentTitle: string, movie: StrapiMovie): bo
 
 const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { slug } = useParams();
+  const queryClient = useQueryClient();
   const [searchParams] = useSearchParams();
   const deepLink = useMemo(
     () => parseMovieShowtimeDeepLink(searchParams.toString()),
@@ -237,7 +243,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows(isTheaterRoute);
   const { data: editorialReviews } = useEditorialReviews();
   const { data: userReviews } = useUserReviews();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, profile } = useAuth();
+  const { data: myReviews } = useQuery({
+    queryKey: ["myReviews"],
+    queryFn: fetchMyReviews,
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+  });
   const favoriteIds = useFavoriteIds();
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(isMovieRoute);
   const { data: theaterPerformances, isLoading: performancesLoading } = useTheaterPerformances(isTheaterRoute);
@@ -636,6 +648,21 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       : r.contentTitle === event.title,
   );
 
+  const isSeen =
+    isMovie && movie?.id
+      ? (profile?.seenMovies ?? []).some((m) => m.id === movie.id)
+      : theaterShow?.id
+        ? (profile?.seenTheaterShows ?? []).some((s) => s.id === theaterShow.id)
+        : false;
+
+  const hasMyReview = userHasReviewedContent(myReviews, {
+    contentType: isMovie ? "movie" : "theater",
+    movieId: movie?.id,
+    theaterShowId: theaterShow?.id,
+  });
+
+  const showRateReminder = isAuthenticated && isSeen && !hasMyReview;
+
   const headline = isMovie && movie ? movieTitleLines(movie) : { primary: event.title, secondary: undefined as string | undefined };
   const movieSeo =
     isMovie && movie ? movieDetailSeo(movie, genreLabel, movieSeoHint) : null;
@@ -947,7 +974,22 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               {isMovie && movieSeo ? movieSeo.h1 : headline.primary}
             </h1>
             {isMovie && movie?.id ? (
-              <FavoriteButton kind="movie" entityId={movie.id} className="shrink-0 border-white/20 bg-black/30 text-white hover:text-rose-300" />
+              <div className="flex shrink-0 items-center gap-2">
+                <SeenButton
+                  kind="movie"
+                  entityId={movie.id}
+                  showLabel
+                  className="border-white/20 bg-black/30 text-white hover:text-sky-200"
+                />
+                <FavoriteButton kind="movie" entityId={movie.id} className="shrink-0 border-white/20 bg-black/30 text-white hover:text-rose-300" />
+              </div>
+            ) : theaterShow?.id ? (
+              <SeenButton
+                kind="theater"
+                entityId={theaterShow.id}
+                showLabel
+                className="shrink-0 border-white/20 bg-black/30 text-white hover:text-sky-200"
+              />
             ) : null}
             </div>
             {isMovie && movieSeo ? (
@@ -1184,13 +1226,23 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           </section>
         )}
 
-        <div className="card-elevated mx-auto max-w-md border border-[#13143E]/12 p-6 md:p-8">
+        {showRateReminder ? (
+          <RateReminderBanner
+            title={headline.primary}
+            className="mb-6"
+          />
+        ) : null}
+
+        <div id="write-review" className="card-elevated mx-auto max-w-md border border-[#13143E]/12 p-6 md:p-8 scroll-mt-28">
           <h3 className="font-display mb-6 text-center text-xl font-semibold text-[#13143E]">Γράψε Κριτική</h3>
           {isAuthenticated ? (
             <WriteReviewForm
               contentType={isMovie ? "movie" : "theater"}
               movieId={isMovie && movie ? movie.id : undefined}
               theaterShowId={!isMovie && theaterShow ? theaterShow.id : undefined}
+              onSuccess={() => {
+                void queryClient.invalidateQueries({ queryKey: ["myReviews"] });
+              }}
             />
           ) : (
             <div className="text-center">

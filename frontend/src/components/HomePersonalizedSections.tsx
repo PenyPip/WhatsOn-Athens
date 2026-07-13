@@ -4,6 +4,7 @@ import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import EventCard from "@/components/EventCard";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSeenIds } from "@/hooks/useSeenIds";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
@@ -35,6 +36,7 @@ type HomePersonalizedSectionsProps = {
 export default function HomePersonalizedSections({ movies, showtimes }: HomePersonalizedSectionsProps) {
   const defer = useDeferUntilLcpDone();
   const { isAuthenticated, profile } = useAuth();
+  const { movieIds: seenMovieIds } = useSeenIds();
   const now = useMemo(() => new Date(), []);
 
   const favoriteMovieIds = useMemo(
@@ -142,6 +144,7 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
                           posterSrcSet={catalog?.posterSrcSet}
                           isDubbed={catalog?.isDubbed ?? pm.isDubbed}
                           type="movie"
+                          seen={seenMovieIds.has(pm.id)}
                         />
                       </div>
                     );

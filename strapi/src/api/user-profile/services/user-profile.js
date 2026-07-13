@@ -13,6 +13,19 @@ const PROFILE_POPULATE = {
   favorite_venues: {
     fields: ['id', 'slug', 'name', 'summer_outdoor', 'venue_type', 'city'],
   },
+  seen_movies: {
+    fields: ['id', 'slug', 'title', 'original_title', 'is_dubbed', 'imdb_rating'],
+    populate: {
+      poster: { fields: ['url', 'formats'] },
+      movie_genres: { fields: ['slug', 'label', 'sort_order'] },
+    },
+  },
+  seen_theater_shows: {
+    fields: ['id', 'slug', 'title'],
+    populate: {
+      poster: { fields: ['url', 'formats'] },
+    },
+  },
 };
 
 async function findProfileByUserId(strapi, userId) {
@@ -41,6 +54,14 @@ module.exports = createCoreService('api::user-profile.user-profile', ({ strapi }
 
   async toggleFavoriteVenue(profileId, venueId) {
     return this.toggleRelation(profileId, 'favorite_venues', venueId);
+  },
+
+  async toggleSeenMovie(profileId, movieId) {
+    return this.toggleRelation(profileId, 'seen_movies', movieId);
+  },
+
+  async toggleSeenTheaterShow(profileId, theaterShowId) {
+    return this.toggleRelation(profileId, 'seen_theater_shows', theaterShowId);
   },
 
   async toggleRelation(profileId, field, entityId) {

@@ -47,6 +47,23 @@ function mapVenue(row) {
   };
 }
 
+function mapTheaterShow(row) {
+  if (!row) return null;
+  const poster = row.poster;
+  const posterUrl =
+    typeof poster === 'object' && poster?.url
+      ? poster.url
+      : typeof poster === 'object' && poster?.formats?.thumbnail?.url
+        ? poster.formats.thumbnail.url
+        : null;
+  return {
+    id: row.id,
+    slug: row.slug,
+    title: row.title,
+    posterUrl,
+  };
+}
+
 function sanitizeProfile(entry) {
   if (!entry) return null;
   return {
@@ -54,6 +71,8 @@ function sanitizeProfile(entry) {
     displayName: entry.display_name || null,
     favoriteMovies: (entry.favorite_movies || []).map(mapMovie).filter(Boolean),
     favoriteVenues: (entry.favorite_venues || []).map(mapVenue).filter(Boolean),
+    seenMovies: (entry.seen_movies || []).map(mapMovie).filter(Boolean),
+    seenTheaterShows: (entry.seen_theater_shows || []).map(mapTheaterShow).filter(Boolean),
   };
 }
 
@@ -117,6 +136,40 @@ module.exports = createCoreController('api::user-profile.user-profile', ({ strap
 
     const profile = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
     const toggle = await strapi.service('api::user-profile.user-profile').toggleFavoriteVenue(profile.id, venueId);
+    const refreshed = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
+
+    ctx.body = { data: { ...toggle, profile: sanitizeProfile(refreshed) } };
+  },
+
+  async toggleSeenMovie(ctx) {
+    const user = requireUser(ctx);
+    if (!user) return;
+    const movieId = Number(ctx.params.movieId);
+    if (!Number.isFinite(movieId) || movieId <= 0) return ctx.badRequest('Invalid movie id');
+
+    const movie = await strapi.db.query('api::movie.movie').findOne({ where: { id: movieId } });
+    if (!movie) return ctx.notFound('Movie not found');
+
+    const profile = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
+    const toggle = await strapi.service('api::user-profile.user-profile').toggleSeenMovie(profile.id, movieId);
+    const refreshed = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
+
+    ctx.body = { data: { ...toggle, profile: sanitizeProfile(refreshed) } };
+  },
+
+  async toggleSeenTheaterShow(ctx) {
+    const user = requireUser(ctx);
+    if (!user) return;
+    const theaterShowId = Number(ctx.params.theaterShowId);
+    if (!Number.isFinite(theaterShowId) || theaterShowId <= 0) return ctx.badRequest('Invalid theater show id');
+
+    const show = await strapi.db.query('api::theater-show.theater-show').findOne({ where: { id: theaterShowId } });
+    if (!show) return ctx.notFound('Theater show not found');
+
+    const profile = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
+    const toggle = await strapi
+      .service('api::user-profile.user-profile')
+      .toggleSeenTheaterShow(profile.id, theaterShowId);
     const refreshed = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
 
     ctx.body = { data: { ...toggle, profile: sanitizeProfile(refreshed) } };

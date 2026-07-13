@@ -28,6 +28,16 @@
       "type": "relation",
       "relation": "manyToMany",
       "target": "api::venue.venue"
+    },
+    "seen_movies": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::movie.movie"
+    },
+    "seen_theater_shows": {
+      "type": "relation",
+      "relation": "manyToMany",
+      "target": "api::theater-show.theater-show"
     }
   }
 }

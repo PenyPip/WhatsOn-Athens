@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Heart, Star, User, LogOut } from "lucide-react";
+import { useState, useMemo } from "react";
+import { Heart, Star, User, LogOut, Eye } from "lucide-react";
 import { Link } from "react-router-dom";
 import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import Footer from "@/components/Footer";
@@ -11,6 +11,7 @@ import EventCard from "@/components/EventCard";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { resolveImdbRating } from "@/lib/movieImdb";
 import { deleteMyReview } from "@/lib/userProfile";
+import { userHasReviewedContent } from "@/lib/seenContent";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchMyReviews } from "@/lib/userProfile";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
@@ -60,6 +61,19 @@ const Profile = () => {
     await queryClient.invalidateQueries({ queryKey: ["userReviews"] });
   };
 
+  const seenWithoutReview = useMemo(() => {
+    const reviews = myReviews ?? [];
+    const movies = (profile?.seenMovies ?? [])
+      .filter((m) => !userHasReviewedContent(reviews, { contentType: "movie", movieId: m.id }))
+      .map((m) => ({ kind: "movie" as const, id: m.id, slug: m.slug, title: m.title, posterUrl: m.posterUrl }));
+    const shows = (profile?.seenTheaterShows ?? [])
+      .filter(
+        (s) => !userHasReviewedContent(reviews, { contentType: "theater", theaterShowId: s.id }),
+      )
+      .map((s) => ({ kind: "theater" as const, id: s.id, slug: s.slug, title: s.title, posterUrl: s.posterUrl }));
+    return [...movies, ...shows];
+  }, [profile?.seenMovies, profile?.seenTheaterShows, myReviews]);
+
   if (loading) {
     return (
       <div className={PAGE_LIST_SHELL_CLASS}>
@@ -86,7 +100,7 @@ const Profile = () => {
               {mode === "login" ? "Σύνδεση" : "Εγγραφή"}
             </h2>
             <p className="text-muted-foreground text-sm mb-6 text-center">
-              Αποθήκευσε αγαπημένες ταινίες και κινηματογράφους, γράψε κριτικές.
+              Αποθήκευσε αγαπημένες ταινίες, σημείωσε τι είδες και γράψε κριτικές.
             </p>
 
             <div className="space-y-3">
@@ -223,6 +237,90 @@ const Profile = () => {
                 </li>
               ))}
             </ul>
+          )}
+        </section>
+
+        {seenWithoutReview.length > 0 ? (
+          <section className="rounded-xl border border-amber-300/45 bg-amber-50/80 p-5">
+            <div className="flex items-center gap-2 mb-3">
+              <Star className="w-5 h-5 text-amber-500" />
+              <h2 className="font-display text-lg font-semibold">Βαθμολόγησέ τα</h2>
+            </div>
+            <p className="text-sm text-muted-foreground mb-4">
+              Τα είδες αλλά δεν έχεις γράψει ακόμα κριτική — η γνώμη σου μετράει.
+            </p>
+            <ul className="space-y-2">
+              {seenWithoutReview.map((item) => (
+                <li key={`${item.kind}-${item.id}`}>
+                  <Link
+                    to={`/${item.kind === "movie" ? "movies" : "theater"}/${item.slug}#write-review`}
+                    className="flex items-center justify-between gap-3 rounded-lg border border-amber-200/60 bg-white px-4 py-3 text-sm font-medium transition-colors hover:border-amber-300"
+                  >
+                    <span>{item.title}</span>
+                    <span className="shrink-0 text-amber-700">Γράψε κριτική →</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          </section>
+        ) : null}
+
+        <section>
+          <div className="flex items-center gap-2 mb-4">
+            <Eye className="w-5 h-5 text-sky-600" />
+            <h2 className="font-display text-lg font-semibold">Έχω δει</h2>
+          </div>
+          {(profile?.seenMovies ?? []).length === 0 && (profile?.seenTheaterShows ?? []).length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Σημείωσε «Το είδα» σε ταινία ή παράσταση από τη σελίδα της.
+            </p>
+          ) : (
+            <div className="space-y-6">
+              {(profile?.seenMovies ?? []).length > 0 ? (
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                  {(profile?.seenMovies ?? []).map((movie) => {
+                    const tl = movieTitleLines(movie);
+                    return (
+                      <EventCard
+                        key={movie.id}
+                        slug={movie.slug}
+                        title={tl.primary}
+                        titleSecondary={tl.secondary}
+                        subtitle=""
+                        genre=""
+                        duration={0}
+                        imdbRating={movie.imdbRating ?? undefined}
+                        posterUrl={movie.posterUrl ?? undefined}
+                        isDubbed={movie.isDubbed}
+                        type="movie"
+                        seen
+                      />
+                    );
+                  })}
+                </div>
+              ) : null}
+              {(profile?.seenTheaterShows ?? []).length > 0 ? (
+                <ul className="grid gap-3 sm:grid-cols-2">
+                  {(profile?.seenTheaterShows ?? []).map((show) => (
+                    <li key={show.id}>
+                      <Link
+                        to={`/theater/${show.slug}`}
+                        className="card-elevated flex items-center gap-3 p-4 hover:border-sky-400/30 transition-colors"
+                      >
+                        {show.posterUrl ? (
+                          <img
+                            src={show.posterUrl}
+                            alt=""
+                            className="h-14 w-20 shrink-0 rounded object-cover"
+                          />
+                        ) : null}
+                        <span className="font-medium">{show.title}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
           )}
         </section>
 

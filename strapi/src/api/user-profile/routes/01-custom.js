@@ -23,6 +23,16 @@ module.exports = {
       handler: 'api::user-profile.user-profile.toggleFavoriteVenue',
     },
     {
+      method: 'POST',
+      path: '/user-profiles/me/seen-movies/:movieId',
+      handler: 'api::user-profile.user-profile.toggleSeenMovie',
+    },
+    {
+      method: 'POST',
+      path: '/user-profiles/me/seen-theater-shows/:theaterShowId',
+      handler: 'api::user-profile.user-profile.toggleSeenTheaterShow',
+    },
+    {
       method: 'GET',
       path: '/user-profiles/popularity/movie/:movieId',
       handler: 'api::user-profile.user-profile.moviePopularity',

@@ -20,11 +20,20 @@ export type ProfileVenue = {
   city: string | null;
 };
 
+export type ProfileTheaterShow = {
+  id: number;
+  slug: string;
+  title: string;
+  posterUrl: string | null;
+};
+
 export type UserProfile = {
   id: number;
   displayName: string | null;
   favoriteMovies: ProfileMovie[];
   favoriteVenues: ProfileVenue[];
+  seenMovies: ProfileMovie[];
+  seenTheaterShows: ProfileTheaterShow[];
   user?: {
     id: number;
     username: string;
@@ -68,6 +77,20 @@ export async function toggleFavoriteMovie(movieId: number) {
 export async function toggleFavoriteVenue(venueId: number) {
   return authFetch<{ active: boolean; profile: UserProfile }>(
     `/user-profiles/me/favorite-venues/${venueId}`,
+    { method: "POST", body: "{}" },
+  );
+}
+
+export async function toggleSeenMovie(movieId: number) {
+  return authFetch<{ active: boolean; profile: UserProfile }>(
+    `/user-profiles/me/seen-movies/${movieId}`,
+    { method: "POST", body: "{}" },
+  );
+}
+
+export async function toggleSeenTheaterShow(theaterShowId: number) {
+  return authFetch<{ active: boolean; profile: UserProfile }>(
+    `/user-profiles/me/seen-theater-shows/${theaterShowId}`,
     { method: "POST", body: "{}" },
   );
 }
