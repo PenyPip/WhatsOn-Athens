@@ -20,11 +20,10 @@ export default function ImdbRatingBadge({ rating, variant = "poster", className 
           className,
         )}
         style={{ backgroundColor: "#F5C518" }}
-        title={`IMDb ${label}/10`}
+        title={`IMDb ${label}`}
       >
         <span>IMDb</span>
         <span className="tabular-nums">{label}</span>
-        <span className="text-xs font-bold opacity-80">/10</span>
       </span>
     );
   }
@@ -37,7 +36,7 @@ export default function ImdbRatingBadge({ rating, variant = "poster", className 
           className,
         )}
         style={{ backgroundColor: "#F5C518" }}
-        title={`IMDb ${label}/10`}
+        title={`IMDb ${label}`}
       >
         <span>IMDb</span>
         <span className="tabular-nums">{label}</span>
@@ -52,7 +51,7 @@ export default function ImdbRatingBadge({ rating, variant = "poster", className 
         className,
       )}
       style={{ backgroundColor: "#F5C518" }}
-      title={`IMDb ${label}/10`}
+      title={`IMDb ${label}`}
     >
       <span>IMDb</span>
       <span className="tabular-nums">{label}</span>
