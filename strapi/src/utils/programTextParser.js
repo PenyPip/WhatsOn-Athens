@@ -1390,6 +1390,220 @@ function parseTableGridCinemaProgram(text, { refYear = new Date().getFullYear(),
   return { header: '', dateRange, movies, warnings };
 }
 
+const CALENDAR_GRID_DAY_NUM_RE = /^\d{1,2}$/;
+
+function isCalendarGridDowLine(line) {
+  const s = String(line || '').trim();
+  if (!s || s.length > 6 || CALENDAR_GRID_DAY_NUM_RE.test(s)) return false;
+  const n = normalizeGreek(s).replace(/\./g, '');
+  if (!n || n.length > 4) return false;
+  return dayNameToDow(n) != null;
+}
+
+function parseCalendarStartTimeLine(line) {
+  const n = normalizeGreek(String(line || '').trim());
+  const m = n.match(/^ωρα\s+εναρξης\s*:\s*(\d{1,2})[.:](\d{2})\s*$/);
+  if (!m) return null;
+  const hour = Number(m[1]);
+  const minute = Number(m[2]);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour > 23 || minute > 59) return null;
+  return { hour, minute };
+}
+
+function isCalendarGridTitleLine(line) {
+  const s = String(line || '').trim();
+  if (!s) return false;
+  if (isCalendarGridDowLine(s)) return false;
+  if (CALENDAR_GRID_DAY_NUM_RE.test(s)) return false;
+  if (parseCalendarStartTimeLine(s)) return false;
+  if (isTableGridNoiseLine(s)) return false;
+  const stripped = stripLineDecorators(s);
+  if (looksLikeTitle(stripped)) return true;
+  return /[a-zA-ZΑ-Ωα-ωάέήίόύώ]{2,}/u.test(stripped);
+}
+
+function daysInMonth(year, month) {
+  return new Date(year, month, 0).getDate();
+}
+
+function inferMonthYearForCalendarDays(dayNumbers, now = new Date()) {
+  const nums = [...new Set((dayNumbers || []).filter((d) => d >= 1 && d <= 31))];
+  if (!nums.length) {
+    return { month: now.getMonth() + 1, year: now.getFullYear() };
+  }
+
+  let best = null;
+  for (let monthOffset = -2; monthOffset <= 3; monthOffset += 1) {
+    const probe = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+    const year = probe.getFullYear();
+    const month = probe.getMonth() + 1;
+    const dim = daysInMonth(year, month);
+    const valid = nums.filter((d) => d <= dim);
+    if (!valid.length) continue;
+
+    const minD = Math.min(...valid);
+    const maxD = Math.max(...valid);
+    const sameMonthAsNow = now.getFullYear() === year && now.getMonth() + 1 === month;
+    const containsToday = sameMonthAsNow && valid.includes(now.getDate());
+    const spansToday = sameMonthAsNow && now.getDate() >= minD && now.getDate() <= maxD;
+
+    let score = valid.length * 10;
+    if (containsToday) score += 100;
+    else if (spansToday) score += 80;
+    else {
+      const mid = (minD + maxD) / 2;
+      score -= Math.abs(mid - now.getDate()) * 2;
+      score -= Math.abs(monthOffset) * 5;
+    }
+
+    if (!best || score > best.score) best = { month, year, score };
+  }
+
+  if (!best) {
+    return { month: now.getMonth() + 1, year: now.getFullYear() };
+  }
+
+  return { month: best.month, year: best.year };
+}
+
+function parseCalendarGridHeader(lines) {
+  const columns = [];
+  let i = 0;
+  while (i + 1 < lines.length) {
+    if (isCalendarGridDowLine(lines[i]) && CALENDAR_GRID_DAY_NUM_RE.test(lines[i + 1])) {
+      const dowKey = normalizeGreek(lines[i]).replace(/\./g, '');
+      columns.push({
+        dow: dayNameToDow(dowKey),
+        day: Number(lines[i + 1]),
+      });
+      i += 2;
+      continue;
+    }
+    break;
+  }
+  return { columns, startIndex: i };
+}
+
+function parseCalendarGridMovieBlocks(lines, startIndex) {
+  const blocks = [];
+  for (let i = startIndex; i < lines.length; i += 1) {
+    const titleLine = lines[i];
+    const timeLine = lines[i + 1];
+    if (!timeLine) break;
+
+    const time = parseCalendarStartTimeLine(timeLine);
+    if (!time || !isCalendarGridTitleLine(titleLine)) continue;
+
+    blocks.push({
+      title: cleanMovieTitle(titleLine),
+      hour: time.hour,
+      minute: time.minute,
+    });
+    i += 1;
+  }
+  return blocks;
+}
+
+function looksLikeCalendarGridProgram(text) {
+  if (looksLikeCatalogProgram(text) || looksLikeDayCentricProgram(text)) return false;
+
+  const lines = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const { columns, startIndex } = parseCalendarGridHeader(lines);
+  if (columns.length < 3) return false;
+
+  const blocks = parseCalendarGridMovieBlocks(lines, startIndex);
+  return blocks.length >= 3;
+}
+
+/**
+ * Μορφή πίνακα-ημερολογίου: Κυρ/12, Δευ/13, … · τίτλος · «Ώρα έναρξης: 21.00» (ανά κελί, row-major).
+ */
+function parseCalendarGridCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+  const lines = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const warnings = [];
+  const { columns, startIndex } = parseCalendarGridHeader(lines);
+  const blocks = parseCalendarGridMovieBlocks(lines, startIndex);
+
+  if (!columns.length || !blocks.length) {
+    return {
+      header: '',
+      dateRange: inferDateRangeFromCinemaWeek(now),
+      movies: [],
+      warnings: ['Δεν αναγνωρίστηκε πρόγραμμα πίνακα-ημερολογίου (μέρες + τίτλος + Ώρα έναρξης).'],
+    };
+  }
+
+  const { month, year } = inferMonthYearForCalendarDays(
+    columns.map((col) => col.day),
+    now,
+  );
+  const resolvedYear = Number.isFinite(year) ? year : refYear;
+
+  const movieMap = new Map();
+  const colCount = columns.length;
+
+  for (let i = 0; i < blocks.length; i += 1) {
+    const block = blocks[i];
+    const col = columns[i % colCount];
+    const weekRow = Math.floor(i / colCount);
+    if (!col || col.dow == null) continue;
+
+    const baseDate = localDate(resolvedYear, month, col.day);
+    const showDate = new Date(baseDate);
+    showDate.setDate(showDate.getDate() + weekRow * 7);
+
+    const datetime = buildAthensDatetimeFromLocalDate(showDate, block.hour, block.minute);
+    const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+
+    if (!movieMap.has(block.title)) {
+      movieMap.set(block.title, { title: block.title, scheduleText: '', showtimes: [] });
+    }
+    movieMap.get(block.title).showtimes.push({
+      dayLabel,
+      timeLabel,
+      datetime,
+      note: null,
+    });
+  }
+
+  const movies = [...movieMap.values()].map((movie) => ({
+    title: movie.title,
+    scheduleText: '',
+    showtimes: dedupeShowtimes(movie.showtimes),
+  }));
+
+  const allTimes = movies.flatMap((movie) => movie.showtimes.map((st) => st.datetime.getTime()));
+  let dateRange;
+  if (allTimes.length) {
+    const start = new Date(Math.min(...allTimes));
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(Math.max(...allTimes));
+    end.setHours(23, 59, 59, 999);
+    dateRange = { start, end, inferred: false };
+  } else {
+    dateRange = inferDateRangeFromCinemaWeek(now);
+    warnings.push('Δεν αναγνωρίστηκαν προβολές στον πίνακα-ημερολόγιο.');
+  }
+
+  if (movies.length && allTimes.length) {
+    warnings.push(
+      `Πίνακας-ημερολόγιο: ${columns.length} μέρες × ${Math.ceil(blocks.length / colCount)} σειρές · ${blocks.length} κελιά.`,
+    );
+  }
+
+  return { header: '', dateRange, movies, warnings };
+}
+
 function looksLikeMoreDayStackProgram(text) {
   if (looksLikeCatalogProgram(text) || looksLikeDayCentricProgram(text)) return false;
 
@@ -1860,6 +2074,10 @@ function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now 
 
   if (looksLikeMoreDayStackProgram(normalized)) {
     return parseMoreDayStackCinemaProgram(normalized, { refYear, now });
+  }
+
+  if (looksLikeCalendarGridProgram(normalized)) {
+    return parseCalendarGridCinemaProgram(normalized, { refYear, now });
   }
 
   if (looksLikeTableGridProgram(normalized)) {
