@@ -98,6 +98,10 @@ const DOW_STIS_RE = new RegExp(
   'giu',
 );
 
+/** «… στις …» με λίστα ημερών (κόμμα / & / και) πριν το «στις». */
+const MULTI_DAY_LIST_STIS_RE =
+  /(.+?)\s+στις\s+((?:\d{1,2}:\d{2})(?:\s*(?:&|,|και)\s*\d{1,2}:\d{2})*)/giu;
+
 const STIS_TIMES_RE = /(\d{1,2}):(\d{2})/g;
 
 const ORES_PROBOLIS_RE = /ωρες\s+προβολης\s*:\s*(.+)$/iu;
@@ -812,6 +816,30 @@ function parseDowRangeStisShowtimes(scheduleText, rangeStart, rangeEnd) {
 
   const isCovered = (index) =>
     covered.some(([start, end]) => index >= start && index < end);
+
+  MULTI_DAY_LIST_STIS_RE.lastIndex = 0;
+  while ((m = MULTI_DAY_LIST_STIS_RE.exec(hay)) !== null) {
+    if (isCovered(m.index)) continue;
+    const dayPart = String(m[1] || '').trim();
+    if (/\b(?:έως|εως|ως)\b/iu.test(dayPart)) continue;
+    if (!/(?:,|&|και)/iu.test(dayPart)) continue;
+    const dows = parseDayListFromString(dayPart);
+    if (dows.length < 2) continue;
+
+    covered.push([m.index, m.index + m[0].length]);
+    const times = parseTimesList(m[2]);
+    if (!times.length) continue;
+
+    for (const dow of dows) {
+      const dayDate = dateForDowInRange(dow, rangeStart, rangeEnd);
+      if (!dayDate) continue;
+      for (const { hour, minute } of times) {
+        const datetime = buildAthensDatetimeFromLocalDate(dayDate, hour, minute);
+        const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+        showtimes.push({ dayLabel, timeLabel, datetime, note: null });
+      }
+    }
+  }
 
   DOW_STIS_RE.lastIndex = 0;
   while ((m = DOW_STIS_RE.exec(hay)) !== null) {
@@ -1529,12 +1557,13 @@ function extractAuditoriumSchedule(line) {
 function parseDayListFromString(raw) {
   const dows = [];
   const chunks = String(raw || '')
-    .split(',')
+    .split(/\s*(?:,|&|και)\s*/iu)
     .map((s) => s.trim())
     .filter(Boolean);
   for (const chunk of chunks) {
     const cleaned = chunk
       .replace(/[.:]+\s*$/, '')
+      .replace(/\s+στις\s*$/iu, '')
       .replace(/\s+/g, ' ')
       .trim();
     const range = cleaned.match(
