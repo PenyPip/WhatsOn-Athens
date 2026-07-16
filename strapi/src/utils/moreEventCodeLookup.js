@@ -453,7 +453,25 @@ function isRejectedMoreCode(cms, code) {
   return (cms.rejectedMoreCodes || []).includes(key);
 }
 
-function matchCmsItemsToMore(cmsItems, catalog, minScore = DEFAULT_MIN_SCORE) {
+function buildTakenEventGroupCodesSet(cmsItems = [], cmsVenues = []) {
+  const taken = new Set();
+  for (const item of cmsItems) {
+    for (const code of cmsKnownEventGroupCodes(item)) {
+      const key = String(code || '').trim();
+      if (key) taken.add(key);
+    }
+  }
+  for (const venue of cmsVenues) {
+    for (const code of cmsKnownEventGroupCodes(venue)) {
+      const key = String(code || '').trim();
+      if (key) taken.add(key);
+    }
+  }
+  return taken;
+}
+
+function matchCmsItemsToMore(cmsItems, catalog, minScore = DEFAULT_MIN_SCORE, takenCodes = null) {
+  const taken = takenCodes || buildTakenEventGroupCodesSet(cmsItems, []);
   const results = [];
 
   for (const cms of cmsItems) {
@@ -492,6 +510,7 @@ function matchCmsItemsToMore(cmsItems, catalog, minScore = DEFAULT_MIN_SCORE) {
     for (const row of scored) {
       if (seenCodes.has(row.more.code)) continue;
       if (cmsHasEventGroupCode(cms, row.more.code)) continue;
+      if (taken.has(row.more.code)) continue;
       seenCodes.add(row.more.code);
       deduped.push(row);
     }
@@ -522,7 +541,8 @@ function matchCmsItemsToMore(cmsItems, catalog, minScore = DEFAULT_MIN_SCORE) {
 }
 
 /** Ταύτιση venue_bundle καταλόγου More ↔ χώροι σινεμά CMS. */
-function matchVenueBundlesToCms(cmsVenues, catalog, minScore = DEFAULT_MIN_SCORE) {
+function matchVenueBundlesToCms(cmsVenues, catalog, minScore = DEFAULT_MIN_SCORE, takenCodes = null) {
+  const taken = takenCodes || buildTakenEventGroupCodesSet([], cmsVenues);
   const config = CMS_LOOKUP_CONFIG.venue;
   const pool = catalog.filter((entry) => entry.kind === 'venue_bundle' && entry.category === 'cinema');
   const results = [];
@@ -556,6 +576,7 @@ function matchVenueBundlesToCms(cmsVenues, catalog, minScore = DEFAULT_MIN_SCORE
     for (const row of scored) {
       if (seenCodes.has(row.more.code)) continue;
       if (cmsHasEventGroupCode(cms, row.more.code)) continue;
+      if (taken.has(row.more.code)) continue;
       seenCodes.add(row.more.code);
       deduped.push(row);
     }
@@ -586,8 +607,10 @@ function matchVenueBundlesToCms(cmsVenues, catalog, minScore = DEFAULT_MIN_SCORE
 }
 
 /** Προτάσεις CMS χώρων για venue_bundle γραμμή καταλόγου που λείπει από CMS. */
-function suggestCmsVenuesForCatalogBundle(catalogRow, cmsVenuesMapped, minScore = MIN_HINT_SCORE) {
+function suggestCmsVenuesForCatalogBundle(catalogRow, cmsVenuesMapped, minScore = MIN_HINT_SCORE, takenCodes = null) {
   if (catalogRow?.kind !== 'venue_bundle') return [];
+  const taken = takenCodes || buildTakenEventGroupCodesSet([], cmsVenuesMapped || []);
+  if (taken.has(String(catalogRow.eventGroupCode || '').trim())) return [];
   const moreEntry = {
     title: catalogRow.moreTitle || catalogRow.title || '',
     code: catalogRow.eventGroupCode,
@@ -850,11 +873,6 @@ function rejectedGroupsFromEntry(entry) {
     .filter(Boolean);
 }
 
-function writtenEventGroupCodesFromEntry(entry, contentType) {
-  if (contentType === 'venue') return collectVenueBundleCodes(entry);
-  return collectEventGroupCodes(entry);
-}
-
 function catalogKindForCatalogEntry(entry) {
   if (entry?.kind === 'venue_bundle') {
     return entry?.category === 'theater' ? 'theater_venue' : 'venue_bundle';
@@ -864,8 +882,34 @@ function catalogKindForCatalogEntry(entry) {
   return entry?.kind || 'movie';
 }
 
+/** Όλοι οι evg_* από event_group_code + more_event_groups (χωρίς ευρετική φίλτρου). */
+function collectStoredMoreCodesLoose(entry) {
+  const codes = [];
+  const seen = new Set();
+  const add = (raw) => {
+    const code = String(raw || '').trim();
+    if (!code || !/^evg_/i.test(code) || seen.has(code)) return;
+    seen.add(code);
+    codes.push(code);
+  };
+  add(entry?.event_group_code ?? entry?.eventGroupCode);
+  const groups = entry?.more_event_groups ?? entry?.moreEventGroups ?? [];
+  for (const group of groups) {
+    add(group?.code ?? group?.attributes?.code);
+  }
+  for (const code of entry?.eventGroupCodes || []) add(code);
+  return codes;
+}
+
+function writtenEventGroupCodesFromEntry(entry, contentType) {
+  if (contentType === 'venue') {
+    return [...new Set([...collectVenueBundleCodes(entry), ...collectStoredMoreCodesLoose(entry)])];
+  }
+  return collectStoredMoreCodesLoose(entry);
+}
+
 function mapCmsLookupRow(row, contentType) {
-  const eventGroupCodes = collectEventGroupCodes(row);
+  const eventGroupCodes = collectStoredMoreCodesLoose(row);
   return {
     contentType,
     id: row.id,
@@ -1002,7 +1046,7 @@ function findCmsVenueByMoreId(moreVenueId, cmsVenueByMoreId) {
 }
 
 function mapCmsVenueLookupRow(row) {
-  const eventGroupCodes = collectVenueBundleCodes(row);
+  const eventGroupCodes = collectStoredMoreCodesLoose(row);
   return {
     contentType: 'venue',
     id: row.id,
@@ -1487,8 +1531,9 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
       loadCmsVenuesForLookup(strapi),
     ]);
     const cinemaVenues = cmsVenuesForMatch.filter((v) => v.venueType === 'cinema');
-    const rawMatches = matchCmsItemsToMore(cmsItems, catalog, minScore);
-    const rawVenueMatches = matchVenueBundlesToCms(cinemaVenues, catalog, minScore);
+    const takenCodes = buildTakenEventGroupCodesSet(cmsItems, cmsVenuesForMatch);
+    const rawMatches = matchCmsItemsToMore(cmsItems, catalog, minScore, takenCodes);
+    const rawVenueMatches = matchVenueBundlesToCms(cinemaVenues, catalog, minScore, takenCodes);
     const allRawMatches = [...rawMatches, ...rawVenueMatches];
 
     const codesToVerify = new Set();
@@ -1537,6 +1582,7 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
     const cinemaVenuesMapped = cmsVenuesForMatch.filter(
       (v) => !v.venueType || v.venueType === 'cinema',
     );
+    const takenCodesForCatalog = buildTakenEventGroupCodesSet(cmsItems, cmsVenuesForMatch);
     const cmsCodeIndex = buildCmsEventGroupCodeIndex(cmsItems, cmsVenues);
     const cmsVenueByMoreId = buildCmsVenueByMoreIdIndex(cmsVenues);
 
@@ -1581,7 +1627,12 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
             )
           : cinemaVenuesMapped;
       const fromMatches = venueSuggestionByCode.get(row.eventGroupCode) || null;
-      const venueSuggestions = suggestCmsVenuesForCatalogBundle(row, venuesForRow, minScore);
+      const venueSuggestions = suggestCmsVenuesForCatalogBundle(
+        row,
+        venuesForRow,
+        minScore,
+        takenCodesForCatalog,
+      );
       const best =
         fromMatches ||
         venueSuggestions[0] ||
