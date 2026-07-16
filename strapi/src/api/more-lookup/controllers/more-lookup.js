@@ -293,9 +293,11 @@ module.exports = {
       );
       ctx.body = {
         ...result,
-        message: result.alreadyLinked
-          ? `Ο κωδικός ${result.eventGroupCode} είναι ήδη συνδεδεμένος`
-          : `Συνδέθηκε ${result.eventGroupCode} → CMS #${result.cmsId}`,
+        message:
+          result.message ||
+          (result.alreadyLinked
+            ? `Ο κωδικός ${result.eventGroupCode} υπάρχει ήδη στο CMS`
+            : `Γράφτηκε ${result.eventGroupCode} στο more_event_groups (#${result.cmsId})`),
       };
     } catch (e) {
       ctx.status = 400;
@@ -325,7 +327,7 @@ module.exports = {
       );
       ctx.body = {
         ...result,
-        message: `Δημιουργήθηκε άμεσα draft χώρος «${result.venue.name}» (#${result.venue.id}) · Content Manager → Χώροι · μετά «Γράψε αυτόματα»`,
+        message: `Δημιουργήθηκε draft χώρος «${result.venue.name}» (#${result.venue.id}) με event_group_code`,
       };
     } catch (e) {
       ctx.status = 400;

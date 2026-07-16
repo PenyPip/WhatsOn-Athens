@@ -24,22 +24,6 @@ export interface CinemaDayPrice extends Schema.Component {
   };
 }
 
-export interface CinemaMoreCodeLink extends Schema.Component {
-  collectionName: 'components_cinema_more_code_links';
-  info: {
-    description: '\u03A1\u03B7\u03C4\u03AE \u03B1\u03BD\u03C4\u03B9\u03C3\u03C4\u03BF\u03AF\u03C7\u03B9\u03C3\u03B7 \u03BA\u03C9\u03B4\u03B9\u03BA\u03BF\u03CD More \u2192 \u03B1\u03C5\u03C4\u03AE \u03B7 \u03B5\u03B3\u03B3\u03C1\u03B1\u03C6\u03AE CMS (\u03B3\u03B9\u03B1 \u03C4\u03B1\u03CD\u03C4\u03B9\u03C3\u03B7 & \u03B5\u03C0\u03CC\u03BC\u03B5\u03BD\u03B5\u03C2 \u03B1\u03BD\u03B1\u03B6\u03B7\u03C4\u03AE\u03C3\u03B5\u03B9\u03C2).';
-    displayName: '\u03A3\u03CD\u03BD\u03B4\u03B5\u03C3\u03B7 More \u03BA\u03C9\u03B4\u03B9\u03BA\u03BF\u03CD';
-  };
-  attributes: {
-    catalog_kind: Attribute.Enumeration<
-      ['movie', 'venue_bundle', 'show', 'theater_venue']
-    > &
-      Attribute.Required;
-    code: Attribute.String & Attribute.Required;
-    more_title: Attribute.String;
-  };
-}
-
 export interface CinemaMoreEventGroup extends Schema.Component {
   collectionName: 'components_cinema_more_event_groups';
   info: {
@@ -170,7 +154,6 @@ declare module '@strapi/types' {
   export module Shared {
     export interface Components {
       'cinema.day-price': CinemaDayPrice;
-      'cinema.more-code-link': CinemaMoreCodeLink;
       'cinema.more-event-group': CinemaMoreEventGroup;
       'cinema.more-event-id': CinemaMoreEventId;
       'cinema.rejected-more-code': CinemaRejectedMoreCode;

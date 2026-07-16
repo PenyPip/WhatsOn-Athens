@@ -176,8 +176,6 @@ function venueScrapeTooltip(row) {
 }
 
 function catalogCmsStatusLabel(row) {
-  if (catalogVenueLinkedOnly(row)) return 'Συνδεδεμένο (more_code_links)';
-  if (row.cmsRefs?.[0]?.linkedManually && row.inCms) return 'Σύνδεση CMS';
   if (row.cmsStatus === 'in_cms' || catalogVenueResolved(row)) {
     if (row.kind === 'venue_bundle') return 'Χώρος στο CMS';
     return 'Στο CMS';
@@ -186,24 +184,16 @@ function catalogCmsStatusLabel(row) {
   return 'Λείπει';
 }
 
-/** Έχει γραφτεί κωδικός στο CMS (όχι μόνο more_code_links). */
+/** Έχει γραφτεί κωδικός στο CMS. */
 function catalogVenueResolved(row) {
   if (row.kind !== 'venue_bundle') return Boolean(row.inCms);
   const refs = row.cmsRefs || [];
   if (!refs.length) return false;
-  return refs.some((ref) => ref.inCms !== false && !ref.linkedManually);
-}
-
-/** Συνδεδεμένο via more_code_links — χρειάζεται «Γράψε αυτόματα». */
-function catalogVenueLinkedOnly(row) {
-  if (row.kind !== 'venue_bundle') return false;
-  if (row.linkedPendingApply) return true;
-  const refs = row.cmsRefs || [];
-  return refs.some((ref) => ref.linkedManually) && !catalogVenueResolved(row);
+  return refs.some((ref) => ref.inCms !== false);
 }
 
 function catalogVenueNeedsSetup(row) {
-  return row.kind === 'venue_bundle' && !catalogVenueResolved(row) && !catalogVenueLinkedOnly(row);
+  return row.kind === 'venue_bundle' && !catalogVenueResolved(row);
 }
 
 function cmsVenueChoicesForCatalogRow(row, allChoices = []) {
@@ -403,7 +393,7 @@ function CatalogVenueCreateFields({ row, nameValue, onNameChange, disabled }) {
         Νέος χώρος ({venueType === 'theater' ? 'θέατρο' : 'σινεμά'})
       </Typography>
       <Typography variant="pi" textColor="neutral500">
-        Δημιουργεί draft χώρο + more_code_links. Μετά «Γράψε αυτόματα» για event_group_code.
+        Δημιουργεί draft χώρο με event_group_code.
       </Typography>
       <input
         className="more-lookup-catalog-venue-input"
@@ -440,18 +430,6 @@ function CatalogVenueBundlePanel({
   onLinkSuggested,
   onCreateVenue,
 }) {
-  if (catalogVenueLinkedOnly(row)) {
-    const title = row.cmsRefs?.[0]?.cmsTitle || '—';
-    return (
-      <Flex direction="column" alignItems="flex-start" gap={1} style={{ maxWidth: '16rem' }}>
-        <Badge>Συνδεδεμένο: {title}</Badge>
-        <Typography variant="pi" textColor="primary700">
-          Τρέξε «Γράψε αυτόματα» για event_group_code.
-        </Typography>
-      </Flex>
-    );
-  }
-
   if (!catalogVenueNeedsSetup(row)) {
     return (
       <Typography variant="pi" textColor="neutral500">
@@ -643,7 +621,7 @@ function MatchRowActions({ loading, onLink, onReject }) {
         loading={loading}
         disabled={loading}
         onClick={onLink}
-        title="Σύνδεση → more_code_links"
+        title="Σύνδεση → more_event_groups"
       >
         Σύνδ.
       </Button>
@@ -1588,36 +1566,6 @@ const App = () => {
     }
   };
 
-  const applyToCms = async () => {
-    setLookupLoading(true);
-    setLookupJobKind('apply');
-    setLookupProgress('Εγγραφή συνδεδεμένων κωδικών στο CMS…');
-    try {
-      const applyResult = await finishLookupJob({
-        apply: true,
-        overwriteExisting: false,
-      });
-      mergeApplyIntoResult(applyResult);
-      const applied = applyResult?.apply?.stats?.applied ?? 0;
-      const skipped = applyResult?.apply?.stats?.skipped ?? 0;
-      toggleNotification({
-        type: applied > 0 ? 'success' : 'warning',
-        message: applyResult?.message || `Εγγράφηκαν: ${applied} · παραλείφθηκαν: ${skipped}`,
-      });
-    } catch (error) {
-      const message =
-        error?.response?.data?.error?.message ||
-        error?.message ||
-        error?.response?.data?.message ||
-        'Αποτυχία εγγραφής στο CMS.';
-      toggleNotification({ type: 'warning', message });
-    } finally {
-      setLookupLoading(false);
-      setLookupProgress(null);
-      setLookupJobKind(null);
-    }
-  };
-
   const matchDisplayRows = useMemo(
     () =>
       expandMatchRows(
@@ -1654,7 +1602,7 @@ const App = () => {
 
   const catalog = result?.catalog ?? [];
   const catalogScope = catalog.filter(
-    (row) => !catalogOnlyMissing || (!row.inCms && !catalogVenueLinkedOnly(row)),
+    (row) => !catalogOnlyMissing || !row.inCms,
   );
   const catalogFilterOptions = CATALOG_KIND_FILTERS.map((opt) => ({
     ...opt,
@@ -1831,16 +1779,15 @@ const App = () => {
           catRow.eventGroupCode === row.eventGroupCode
             ? {
                 ...catRow,
-                inCms: false,
-                linkedPendingApply: true,
-                cmsStatus: 'linked',
+                inCms: true,
+                cmsStatus: 'in_cms',
                 cmsRefs: [
                   {
                     contentType: 'venue',
                     cmsId: Number(cmsId),
                     cmsTitle,
-                    inCms: false,
-                    linkedManually: true,
+                    inCms: true,
+                    writtenInField: true,
                   },
                 ],
                 canLinkVenue: false,
@@ -1880,7 +1827,7 @@ const App = () => {
         type: 'success',
         message:
           res?.data?.message ||
-          `Συνδέθηκε ${code} → ${pickedTitle}. Τρέξε «Γράψε αυτόματα».`,
+          `Γράφτηκε ${code} → ${pickedTitle}.`,
       });
     } catch (error) {
       const message =
@@ -1938,7 +1885,7 @@ const App = () => {
         message:
           res?.data?.message ||
           (venue
-            ? `Δημιουργήθηκε «${venue.name}» (#${venue.id}) · τρέξε «Γράψε αυτόματα»`
+            ? `Δημιουργήθηκε «${venue.name}» (#${venue.id}) με event_group_code`
             : 'Δημιουργήθηκε χώρος.'),
       });
     } catch (error) {
@@ -2091,7 +2038,7 @@ const App = () => {
                   <WorkflowStep
                     number="2"
                     title="Εγγραφή & σύνδεση"
-                    detail="Σύνδεση / δημιουργία χώρου · «Γράψε αυτόματα» → event_group_code"
+                    detail="Σύνδεση / δημιουργία χώρου → more_event_groups / event_group_code"
                   />
                 </GridItem>
                 <GridItem col={4} s={12}>
@@ -2108,7 +2055,7 @@ const App = () => {
             <Box paddingTop={4} padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
               <PanelHeader
                 title="Βήμα 1 — Κωδικοί More"
-                subtitle="Σύνδεση κωδικών → more_code_links · «Γράψε αυτόματα» γράφει στα πεδία CMS"
+                subtitle="Σύνδεση κωδικών απευθείας στο more_event_groups"
               />
               <Flex gap={3} paddingTop={2} wrap="wrap" alignItems="center">
                 <Button
@@ -2119,15 +2066,6 @@ const App = () => {
                 >
                   {lookupLoading ? 'Ταύτιση…' : 'Εκτέλεση ταύτισης'}
                 </Button>
-                <Button
-                  variant="success"
-                  loading={lookupLoading}
-                  onClick={applyToCms}
-                  disabled={lookupLoading || syncLoading}
-                  style={actionButtonStyle}
-                >
-                  Γράψε αυτόματα
-                </Button>
               </Flex>
               {lookupLoading && lookupProgress ? (
                 <Box paddingTop={3}>
@@ -2135,16 +2073,13 @@ const App = () => {
                     {lookupProgress}
                   </Typography>
                   <Typography variant="pi" textColor="neutral500" paddingTop={1}>
-                    {lookupJobKind === 'apply'
-                      ? 'Γράφει τους συνδεδεμένους κωδικούς (more_code_links) — χωρίς νέα αναζήτηση More.'
-                      : 'Η ταύτιση τρέχει στο server — μπορεί να διαρκέσει 1–5 λεπτά (κατάλογος More + επαλήθευση API).'}
+                    Η ταύτιση τρέχει στο server — μπορεί να διαρκέσει 1–5 λεπτά (κατάλογος More + επαλήθευση API).
                   </Typography>
                 </Box>
               ) : null}
               <Box paddingTop={4}>
                 <Typography variant="pi" textColor="neutral500">
-                  Η ταύτιση δείχνει κωδικούς που λείπουν από το CMS. Πάτα «Σύνδ.» για more_code_links, μετά
-                  «Γράψε αυτόματα».
+                  Η ταύτιση δείχνει κωδικούς που λείπουν από το CMS. Πάτα «Σύνδ.» για εγγραφή στο more_event_groups.
                 </Typography>
               </Box>
             </Box>
@@ -2328,7 +2263,7 @@ const App = () => {
             <Box padding={4}>
               <PanelHeader
                 title="Πίνακας 1 — Προτάσεις ταύτισης"
-                subtitle={`«Σύνδ.» → more_code_links · μετά «Γράψε αυτόματα». ${matchDisplayRows.length} εμφανίζονται`}
+                subtitle={`«Σύνδ.» → more_event_groups · ${matchDisplayRows.length} εμφανίζονται`}
                 action={
                   <Button
                     size="S"
@@ -2479,7 +2414,7 @@ const App = () => {
             <Box padding={4}>
               <PanelHeader
                 title="Πίνακας 2 — Κατάλογος More"
-                subtitle={`Σύνδεση / δημιουργία χώρου · ${catalogFiltered.length} εμφανίζονται · ${catalogMissingFiltered} λείπουν`}
+                subtitle={`Σύνδεση / δημιουργία χώρου (άμεσα στο CMS) · ${catalogFiltered.length} εμφανίζονται · ${catalogMissingFiltered} λείπουν`}
               />
               <Flex gap={4} wrap="wrap" paddingTop={3} alignItems="flex-end">
                 <TypeFilterBar
@@ -2563,11 +2498,6 @@ const App = () => {
                     </Td>
                     <Td>
                       {catalogVenueResolved(row) || (row.inCms && row.kind !== 'venue_bundle') ? (
-                        <Badge>
-                          {catalogCmsStatusLabel(row)}
-                          {row.cmsRefs?.[0]?.cmsTitle ? `: ${row.cmsRefs[0].cmsTitle}` : ''}
-                        </Badge>
-                      ) : catalogVenueLinkedOnly(row) ? (
                         <Badge>
                           {catalogCmsStatusLabel(row)}
                           {row.cmsRefs?.[0]?.cmsTitle ? `: ${row.cmsRefs[0].cmsTitle}` : ''}

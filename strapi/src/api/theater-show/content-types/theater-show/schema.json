@@ -107,13 +107,6 @@
       "private": true,
       "description": "Cache More eventId → αυτή η παράσταση (από scrape). Χρησιμοποιείται από sync."
     },
-    "more_code_links": {
-      "type": "component",
-      "repeatable": true,
-      "component": "cinema.more-code-link",
-      "private": true,
-      "description": "Προσωρινές συνδέσεις More lookup (πριν «Γράψε αυτόματα»). Δεν εμφανίζεται στο CMS — χρησιμοποίησε More lookup."
-    },
     "rejected_more_codes": {
       "type": "component",
       "repeatable": true,
