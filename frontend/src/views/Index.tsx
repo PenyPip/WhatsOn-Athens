@@ -1,4 +1,4 @@
-import { lazy, Suspense, useEffect } from "react";
+import { Suspense, useEffect } from "react";
 import Footer from "@/components/Footer";
 import HomePageBodyShell from "@/components/HomePageBodyShell";
 import HomeStaticLcpHandoff from "@/components/HomeStaticLcpHandoff";
@@ -9,10 +9,11 @@ import { useHomeStaticLcpOnPage } from "@/contexts/HomeStaticLcpContext";
 import { usePageSeo } from "@/hooks/usePageSeo";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useHomeLayout } from "@/hooks/useStrapi";
+import { ChunkLoadErrorBoundary, lazyWithChunkReload, tryReloadForStaleChunk } from "@/lib/lazyWithChunkReload";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import type { ResolvedHomepageLayout } from "@/config/home";
 
-const HomeBody = lazy(() => import(/* webpackChunkName: "home-body" */ "@/views/HomeBody"));
+const HomeBody = lazyWithChunkReload(() => import(/* webpackChunkName: "home-body" */ "@/views/HomeBody"));
 
 function HomeBodyMountGate({
   ready,
@@ -28,9 +29,11 @@ function HomeBodyMountGate({
     return shell;
   }
   return (
-    <Suspense fallback={shell}>
-      <HomeBody layout={layout} />
-    </Suspense>
+    <ChunkLoadErrorBoundary>
+      <Suspense fallback={shell}>
+        <HomeBody layout={layout} />
+      </Suspense>
+    </ChunkLoadErrorBoundary>
   );
 }
 
@@ -44,7 +47,10 @@ const Index = () => {
   const isMobile = useIsMobile();
 
   useEffect(() => {
-    if (isMobile) void import(/* webpackChunkName: "home-body" */ "@/views/HomeBody");
+    if (!isMobile) return;
+    void import(/* webpackChunkName: "home-body" */ "@/views/HomeBody").catch((error) => {
+      tryReloadForStaleChunk(error);
+    });
   }, [isMobile]);
 
   const mountHomeBody = homeBodyReady;

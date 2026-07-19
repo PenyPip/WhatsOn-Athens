@@ -1,6 +1,7 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { api, type StrapiArticle } from "@/lib/api";
 import { CONTENT_QUERY_OPTIONS } from "@/lib/contentQuery";
+import { tryReloadForStaleChunk } from "@/lib/lazyWithChunkReload";
 
 const ARTICLE_LIST_LIMITS = [6, 100] as const;
 
@@ -29,5 +30,8 @@ export function prefetchArticleBySlug(queryClient: QueryClient, slug: string) {
 
 /** JS chunk λεπτομέρειας — πριν το κλικ, λιγότερο Suspense placeholder. */
 export function prefetchArticleDetailChunk() {
-  return import(/* webpackChunkName: "article-detail" */ "@/views/ArticleDetail");
+  return import(/* webpackChunkName: "article-detail" */ "@/views/ArticleDetail").catch((error) => {
+    tryReloadForStaleChunk(error);
+    throw error;
+  });
 }

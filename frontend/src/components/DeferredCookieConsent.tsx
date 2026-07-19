@@ -1,8 +1,9 @@
 "use client";
 
-import { lazy, Suspense, useEffect, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
+import { lazyWithChunkReload } from "@/lib/lazyWithChunkReload";
 
-const CookieConsentBanner = lazy(() => import("@/components/CookieConsentBanner"));
+const CookieConsentBanner = lazyWithChunkReload(() => import("@/components/CookieConsentBanner"));
 
 /** Μετά το πρώτο paint — δεν μπαίνει στο critical path (κινητό PSI). */
 export default function DeferredCookieConsent() {

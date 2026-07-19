@@ -1,6 +1,11 @@
-import { lazy, Suspense, useEffect, type ReactNode } from "react";
+import { Suspense, useEffect, type ReactNode } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { prefetchArticleDetailChunk } from "@/lib/articlePrefetch";
+import {
+  ChunkLoadErrorBoundary,
+  installStaleTabRecovery,
+  lazyWithChunkReload,
+} from "@/lib/lazyWithChunkReload";
 import { cn } from "@/lib/utils";
 import UrlBackedMemoryRouter from "@/components/UrlBackedMemoryRouter";
 import ScrollToTop from "@/components/ScrollToTop";
@@ -9,29 +14,35 @@ import DeferredCookieConsent from "@/components/DeferredCookieConsent";
 import RouteFallback from "@/components/RouteFallback";
 import Index from "./views/Index";
 
-const GoogleAnalytics = lazy(() => import("@/components/GoogleAnalytics"));
-const Movies = lazy(() => import(/* webpackChunkName: "movies" */ "./views/Movies"));
-const TheaterPage = lazy(() => import(/* webpackChunkName: "theater" */ "./views/Theater"));
-const TheaterVenueProgram = lazy(() =>
+const GoogleAnalytics = lazyWithChunkReload(() => import("@/components/GoogleAnalytics"));
+const Movies = lazyWithChunkReload(() => import(/* webpackChunkName: "movies" */ "./views/Movies"));
+const TheaterPage = lazyWithChunkReload(() => import(/* webpackChunkName: "theater" */ "./views/Theater"));
+const TheaterVenueProgram = lazyWithChunkReload(() =>
   import(/* webpackChunkName: "theater-venue" */ "./views/TheaterVenueProgram"),
 );
-const EventDetail = lazy(() => import(/* webpackChunkName: "event-detail" */ "./views/EventDetail"));
-const Venues = lazy(() => import(/* webpackChunkName: "venues" */ "./views/Venues"));
-const Dining = lazy(() => import(/* webpackChunkName: "dining" */ "./views/Dining"));
-const DiningDetail = lazy(() => import(/* webpackChunkName: "dining-detail" */ "./views/DiningDetail"));
-const Reviews = lazy(() => import(/* webpackChunkName: "reviews" */ "./views/Reviews"));
-const ReviewDetail = lazy(() => import(/* webpackChunkName: "review-detail" */ "./views/ReviewDetail"));
-const Articles = lazy(() => import(/* webpackChunkName: "articles" */ "./views/Articles"));
-const ArticleDetail = lazy(() => import(/* webpackChunkName: "article-detail" */ "./views/ArticleDetail"));
-const Events = lazy(() => import(/* webpackChunkName: "events" */ "./views/Events"));
-const CulturalEventDetail = lazy(() => import(/* webpackChunkName: "cultural-event-detail" */ "./views/CulturalEventDetail"));
-const Privacy = lazy(() => import(/* webpackChunkName: "privacy" */ "./views/Privacy"));
-const Profile = lazy(() => import(/* webpackChunkName: "profile" */ "./views/Profile"));
-const NotFound = lazy(() => import(/* webpackChunkName: "not-found" */ "./views/NotFound"));
+const EventDetail = lazyWithChunkReload(() => import(/* webpackChunkName: "event-detail" */ "./views/EventDetail"));
+const Venues = lazyWithChunkReload(() => import(/* webpackChunkName: "venues" */ "./views/Venues"));
+const Dining = lazyWithChunkReload(() => import(/* webpackChunkName: "dining" */ "./views/Dining"));
+const DiningDetail = lazyWithChunkReload(() => import(/* webpackChunkName: "dining-detail" */ "./views/DiningDetail"));
+const Reviews = lazyWithChunkReload(() => import(/* webpackChunkName: "reviews" */ "./views/Reviews"));
+const ReviewDetail = lazyWithChunkReload(() => import(/* webpackChunkName: "review-detail" */ "./views/ReviewDetail"));
+const Articles = lazyWithChunkReload(() => import(/* webpackChunkName: "articles" */ "./views/Articles"));
+const ArticleDetail = lazyWithChunkReload(() => import(/* webpackChunkName: "article-detail" */ "./views/ArticleDetail"));
+const Events = lazyWithChunkReload(() => import(/* webpackChunkName: "events" */ "./views/Events"));
+const CulturalEventDetail = lazyWithChunkReload(() =>
+  import(/* webpackChunkName: "cultural-event-detail" */ "./views/CulturalEventDetail"),
+);
+const Privacy = lazyWithChunkReload(() => import(/* webpackChunkName: "privacy" */ "./views/Privacy"));
+const Profile = lazyWithChunkReload(() => import(/* webpackChunkName: "profile" */ "./views/Profile"));
+const NotFound = lazyWithChunkReload(() => import(/* webpackChunkName: "not-found" */ "./views/NotFound"));
 
 /** Suspense μόνο για lazy routes — η αρχική δεν αντικαθίσταται από placeholder (CLS). */
 function LazyPage({ children }: { children: ReactNode }) {
-  return <Suspense fallback={<RouteFallback />}>{children}</Suspense>;
+  return (
+    <ChunkLoadErrorBoundary>
+      <Suspense fallback={<RouteFallback />}>{children}</Suspense>
+    </ChunkLoadErrorBoundary>
+  );
 }
 
 function AppRoutes() {
@@ -81,6 +92,8 @@ function AppShell({ homeMainOverlap, homeStaticLcp }: AppShellProps) {
       void prefetchArticleDetailChunk();
     }
   }, [pathname]);
+
+  useEffect(() => installStaleTabRecovery(), []);
 
   return (
     <>

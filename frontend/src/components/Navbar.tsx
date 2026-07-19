@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useRef, useState } from "react";
+import { Suspense, useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useIdleMount } from "@/hooks/useIdleMount";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
@@ -8,12 +8,13 @@ import { useStableMobileSafeArea } from "@/hooks/useStableMobileSafeArea";
 import { Link, useLocation } from "react-router-dom";
 import { User } from "lucide-react";
 import { useSiteNavigationData } from "@/hooks/useStrapi";
+import { lazyWithChunkReload } from "@/lib/lazyWithChunkReload";
 import { isNavLinkActive } from "@/lib/navigation";
 import { navIconComponent } from "@/lib/navIcons";
 import type { NavSearchHandle } from "@/components/GlobalSearch";
 import MobileNavDrawer, { MobileNavMenuButton } from "@/components/MobileNavDrawer";
 
-const NavSearch = lazy(() =>
+const NavSearch = lazyWithChunkReload(() =>
   import("@/components/GlobalSearch").then((m) => ({ default: m.NavSearch })),
 );
 
