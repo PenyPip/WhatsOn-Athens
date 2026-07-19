@@ -135,9 +135,9 @@ function movieAlternatives(parsedTitle, cmsMovies, { limit = ALT_MATCH_LIMIT } =
 
 const { formatAthensWallClock } = require('./athensTime');
 
-async function showtimeExistsAt(strapi, { movieId, venueId, datetime }) {
+async function findShowtimesAtSlot(strapi, { movieId, venueId, datetime }) {
   const t = datetime instanceof Date ? datetime.getTime() : new Date(datetime).getTime();
-  if (Number.isNaN(t)) return false;
+  if (Number.isNaN(t)) return [];
   const rows = await strapi.entityService.findMany('api::showtime.showtime', {
     filters: {
       movie: { id: movieId },
@@ -147,9 +147,32 @@ async function showtimeExistsAt(strapi, { movieId, venueId, datetime }) {
         $lte: new Date(t + 60_000).toISOString(),
       },
     },
-    limit: 1,
+    fields: ['id', 'datetime'],
+    sort: { id: 'desc' },
+    limit: 50,
   });
-  return Array.isArray(rows) && rows.length > 0;
+  return Array.isArray(rows) ? rows : [];
+}
+
+async function deleteOlderDuplicateShowtimes(strapi, rows) {
+  if (!Array.isArray(rows) || rows.length <= 1) return 0;
+  const sorted = [...rows].sort((a, b) => Number(b.id) - Number(a.id));
+  let deleted = 0;
+  for (const row of sorted.slice(1)) {
+    if (row?.id == null) continue;
+    try {
+      await strapi.entityService.delete('api::showtime.showtime', row.id);
+      deleted += 1;
+    } catch (e) {
+      strapi.log.warn(`[program-import] summer dedupe delete #${row.id}: ${e?.message || e}`);
+    }
+  }
+  return deleted;
+}
+
+async function showtimeExistsAt(strapi, { movieId, venueId, datetime }) {
+  const rows = await findShowtimesAtSlot(strapi, { movieId, venueId, datetime });
+  return rows.length > 0;
 }
 
 function getProgramImportStatus() {
@@ -435,12 +458,18 @@ async function createProgramTextShowtimes(
       if (inTargetWeek) summary.weekExpected += 1;
 
       try {
-        const exists = await showtimeExistsAt(strapi, {
+        const matches = await findShowtimesAtSlot(strapi, {
           movieId,
           venueId: venue.id,
           datetime,
         });
-        if (exists) {
+        if (matches.length > 0) {
+          if (venue.summer_outdoor === true && matches.length > 1) {
+            const removed = await deleteOlderDuplicateShowtimes(strapi, matches);
+            if (removed > 0) {
+              summary.dedupedSummer = (summary.dedupedSummer || 0) + removed;
+            }
+          }
           summary.skippedExists += 1;
           if (inTargetWeek) summary.weekSynced += 1;
           continue;

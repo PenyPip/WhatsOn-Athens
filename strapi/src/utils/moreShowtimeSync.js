@@ -1229,6 +1229,7 @@ function mergeMovieSyncReports(target, source) {
     'createdFromVenues',
     'createdCinemaVenues',
     'alreadyExists',
+    'dedupedSummerShowtimes',
     'skippedPast',
     'skippedNoVenue',
     'skippedUnknownEventId',
@@ -1444,7 +1445,18 @@ async function showtimeExistsAt(strapi, { movieId, venueId, datetime }, existenc
     return true;
   }
 
-  const t = datetime.getTime();
+  const rows = await findShowtimesAtSlot(strapi, { movieId, venueId, datetime });
+  const exists = rows.length > 0;
+  if (exists) {
+    addShowtimeToExistenceIndex(existenceIndex, movieId, venueId, datetime);
+  }
+  return exists;
+}
+
+/** Όλες οι προβολές για ταινία+χώρο μέσα σε ±60s από την ώρα. */
+async function findShowtimesAtSlot(strapi, { movieId, venueId, datetime }) {
+  const t = datetime instanceof Date ? datetime.getTime() : new Date(datetime).getTime();
+  if (Number.isNaN(t)) return [];
   const rows = await strapi.entityService.findMany('api::showtime.showtime', {
     filters: {
       movie: { id: movieId },
@@ -1454,13 +1466,83 @@ async function showtimeExistsAt(strapi, { movieId, venueId, datetime }, existenc
         $lte: new Date(t + 60_000).toISOString(),
       },
     },
-    limit: 1,
+    fields: ['id', 'datetime'],
+    sort: { id: 'desc' },
+    limit: 50,
   });
-  const exists = Array.isArray(rows) && rows.length > 0;
-  if (exists) {
-    addShowtimeToExistenceIndex(existenceIndex, movieId, venueId, datetime);
+  return Array.isArray(rows) ? rows : [];
+}
+
+/**
+ * Θερινό: ίδια ταινία + χώρος + ώρα → κράτα την πιο πρόσφατη (μεγαλύτερο id), σβήσε τις άλλες.
+ * @returns {number} πόσα διαγράφηκαν
+ */
+async function deleteOlderDuplicateShowtimes(strapi, rows) {
+  if (!Array.isArray(rows) || rows.length <= 1) return 0;
+  const sorted = [...rows].sort((a, b) => Number(b.id) - Number(a.id));
+  let deleted = 0;
+  for (const row of sorted.slice(1)) {
+    if (row?.id == null) continue;
+    try {
+      await strapi.entityService.delete('api::showtime.showtime', row.id);
+      deleted += 1;
+    } catch (e) {
+      strapi.log.warn(
+        `[more-showtime-sync] summer dedupe delete #${row.id} failed: ${e?.message || e}`,
+      );
+    }
   }
-  return exists;
+  return deleted;
+}
+
+/**
+ * Καθαρισμός υπαρχόντων διπλότυπων σε θερινά (summer_outdoor) για μελλοντικές προβολές.
+ */
+async function pruneDuplicateSummerShowtimes(strapi, now, report) {
+  const summerVenues = await findAllEntities(strapi, 'api::venue.venue', {
+    filters: { summer_outdoor: true },
+    fields: ['id'],
+    publicationState: 'preview',
+    pageSize: 200,
+    maxRecords: 2_000,
+  });
+  const venueIds = summerVenues.map((v) => v.id).filter((id) => id != null);
+  if (!venueIds.length) return 0;
+
+  const rows = await findAllEntities(strapi, 'api::showtime.showtime', {
+    filters: {
+      datetime: { $gte: now.toISOString() },
+      venue: { id: { $in: venueIds } },
+    },
+    fields: ['id', 'datetime'],
+    populate: {
+      movie: { fields: ['id'] },
+      venue: { fields: ['id'] },
+    },
+    pageSize: 250,
+    maxRecords: 40_000,
+  });
+
+  const groups = new Map();
+  for (const row of rows) {
+    const movieId = row.movie?.id ?? row.movie;
+    const venueId = row.venue?.id ?? row.venue;
+    const key = showtimeMinuteKey(movieId, venueId, row.datetime);
+    if (!key) continue;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(row);
+  }
+
+  let deleted = 0;
+  for (const group of groups.values()) {
+    if (group.length <= 1) continue;
+    deleted += await deleteOlderDuplicateShowtimes(strapi, group);
+  }
+
+  if (deleted > 0 && report) {
+    report.dedupedSummerShowtimes = (report.dedupedSummerShowtimes || 0) + deleted;
+  }
+  return deleted;
 }
 
 function showtimeExistsAtVenueInIndex(index, venueId, datetime) {
@@ -1602,20 +1684,44 @@ async function upsertShowtimeFromEvent(strapi, report, {
     return 'past';
   }
 
-  const exists = await showtimeExistsAt(
-    strapi,
-    {
+  const isSummerVenue = venue.summer_outdoor === true;
+
+  // Θερινό: αν υπάρχουν διπλότυπα (ίδια ταινία+χώρος+ώρα), κράτα την τελευταία.
+  if (isSummerVenue) {
+    const matches = await findShowtimesAtSlot(strapi, {
       movieId,
       venueId: venue.id,
       datetime,
-    },
-    showtimeExistenceIndex,
-  );
+    });
+    if (matches.length > 0) {
+      const removed = await deleteOlderDuplicateShowtimes(strapi, matches);
+      if (removed > 0) {
+        report.dedupedSummerShowtimes = (report.dedupedSummerShowtimes || 0) + removed;
+        if (statsTarget) {
+          statsTarget.dedupedSummer = (statsTarget.dedupedSummer || 0) + removed;
+        }
+      }
+      addShowtimeToExistenceIndex(showtimeExistenceIndex, movieId, venue.id, datetime);
+      report.alreadyExists += 1;
+      if (statsTarget) statsTarget.alreadyExists += 1;
+      return 'exists';
+    }
+  } else {
+    const exists = await showtimeExistsAt(
+      strapi,
+      {
+        movieId,
+        venueId: venue.id,
+        datetime,
+      },
+      showtimeExistenceIndex,
+    );
 
-  if (exists) {
-    report.alreadyExists += 1;
-    if (statsTarget) statsTarget.alreadyExists += 1;
-    return 'exists';
+    if (exists) {
+      report.alreadyExists += 1;
+      if (statsTarget) statsTarget.alreadyExists += 1;
+      return 'exists';
+    }
   }
 
   await strapi.entityService.create('api::showtime.showtime', {
@@ -1734,6 +1840,7 @@ function emptySyncCounters() {
   return {
     created: 0,
     alreadyExists: 0,
+    dedupedSummerShowtimes: 0,
     updatedSoldOut: 0,
     skippedPast: 0,
     skippedNoVenue: 0,
@@ -2910,6 +3017,9 @@ async function syncMovieShowtimesFromMore(strapi, {
     });
   }
 
+  if (onProgress) onProgress('Καθαρισμός διπλότυπων προβολών σε θερινά…');
+  await pruneDuplicateSummerShowtimes(strapi, now, report);
+
   report.eventIdIndex = eventIdIndex;
   return trimReportDetailArrays(report);
 }
@@ -3657,6 +3767,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     createdCinemaVenuesList: movieReport.createdCinemaVenuesList,
     venueUpdatedStatuses: movieReport.venueUpdatedStatuses,
     alreadyExists: movieReport.alreadyExists + theaterReport.alreadyExists,
+    dedupedSummerShowtimes: movieReport.dedupedSummerShowtimes || 0,
     updatedSoldOut: theaterReport.updatedSoldOut,
     skippedPast: movieReport.skippedPast + theaterReport.skippedPast,
     skippedNoVenue: movieReport.skippedNoVenue + theaterReport.skippedNoVenue,
@@ -3691,6 +3802,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
       ? ` · στη βάση: ${dbCreated.total} (showtimes ${dbCreated.showtimes} · παραστάσεις ${dbCreated.performances})`
       : '') +
     ` · υπήρχαν: ${report.alreadyExists}` +
+    (report.dedupedSummerShowtimes
+      ? ` · θερινά διπλότυπα σβησμένα: ${report.dedupedSummerShowtimes}`
+      : '') +
     (report.createdCinemaVenues
       ? ` · νέα σινεμά: ${report.createdCinemaVenues}`
       : '') +
