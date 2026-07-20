@@ -21,8 +21,20 @@ renew_args=(renew --webroot -w "$WEBROOT" --quiet --no-random-sleep-on-renew)
 # Πρώτη φορά / ληγμένο cert: CERTBOT_FORCE=1 ./scripts/renew-ssl.sh
 if [ "${CERTBOT_FORCE:-0}" = "1" ]; then
   echo "==> Force renew (webroot) για ${DOMAIN}…"
-  certbot certonly --webroot -w "$WEBROOT" -d "$DOMAIN" -d "$EXTRA_DOMAIN" \
-    --force-renewal --non-interactive --agree-tos "${CERTBOT_EMAIL:+--email $CERTBOT_EMAIL}"
+  force_args=(
+    certonly
+    --webroot
+    -w "$WEBROOT"
+    -d "$DOMAIN"
+    -d "$EXTRA_DOMAIN"
+    --force-renewal
+    --non-interactive
+    --agree-tos
+  )
+  if [ -n "${CERTBOT_EMAIL:-}" ]; then
+    force_args+=(--email "$CERTBOT_EMAIL")
+  fi
+  certbot "${force_args[@]}"
 else
   if ! certbot "${renew_args[@]}"; then
     echo "==> Το renew απέτυχε — δοκίμασε: CERTBOT_FORCE=1 $0" >&2
