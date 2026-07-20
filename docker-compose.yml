@@ -106,6 +106,7 @@ services:
       - nginx_api_cache:/var/cache/nginx
       - strapi_uploads:/app/public/uploads:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
+      - /var/www/certbot:/var/www/certbot:ro
     depends_on:
       frontend:
         condition: service_started
