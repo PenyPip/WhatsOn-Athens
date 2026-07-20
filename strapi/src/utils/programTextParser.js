@@ -1390,6 +1390,235 @@ function parseTableGridCinemaProgram(text, { refYear = new Date().getFullYear(),
   return { header: '', dateRange, movies, warnings };
 }
 
+/** Μονό γράμμα Dow σε θερινά ημερολόγια (Δ/Τ/Π/Σ/Κ) — μόνο για αναγνώριση στήλης. */
+const STACKED_CAL_DOW_LETTER_RE = /^[ΤΠΣΚΔ]$/iu;
+
+function parseTimeToken(raw) {
+  const s = String(raw || '').trim();
+  let m = s.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) m = s.match(/^(\d{1,2})\.(\d{2})$/);
+  if (!m) return null;
+  const hour = Number(m[1]);
+  const minute = Number(m[2]);
+  if (!Number.isFinite(hour) || !Number.isFinite(minute) || hour > 23 || minute > 59) return null;
+  return { hour, minute };
+}
+
+function isStackedCalTimeLine(line) {
+  const tokens = String(line || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  if (!tokens.length) return false;
+  return tokens.every((token) => parseTimeToken(token));
+}
+
+function extractTimesFromLine(line) {
+  const tokens = String(line || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean);
+  const times = [];
+  for (const token of tokens) {
+    const t = parseTimeToken(token);
+    if (t) times.push(t);
+  }
+  return times;
+}
+
+/**
+ * Header τύπου:
+ *   Δ
+ *   20
+ *   ΙΟΥΛ
+ *   Τ
+ *   21
+ *   ΙΟΥΛ
+ * (το γράμμα ημέρας είναι προαιρετικό· η ημερομηνία βγαίνει από ημέρα+μήνα).
+ */
+function parseStackedMonthCalendarHeader(lines) {
+  const columns = [];
+  let i = 0;
+  while (i < lines.length) {
+    let j = i;
+    if (STACKED_CAL_DOW_LETTER_RE.test(lines[j] || '')) j += 1;
+    if (j >= lines.length || !/^\d{1,2}$/.test(String(lines[j]).trim())) break;
+    const day = Number(lines[j]);
+    j += 1;
+    if (j >= lines.length) break;
+    const month = monthNameToNumber(lines[j]);
+    if (!month || day < 1 || day > 31) break;
+    columns.push({ day, month });
+    j += 1;
+    i = j;
+  }
+  return { columns, startIndex: i };
+}
+
+function isStackedCalTitleLine(line) {
+  const s = String(line || '').trim();
+  if (!s) return false;
+  if (STACKED_CAL_DOW_LETTER_RE.test(s)) return false;
+  if (/^\d{1,2}$/.test(s)) return false;
+  if (monthNameToNumber(s)) return false;
+  if (isStackedCalTimeLine(s)) return false;
+  if (isTableGridNoiseLine(s)) return false;
+  if (parseCalendarStartTimeLine(s)) return false;
+  const stripped = stripLineDecorators(s);
+  if (looksLikeTitle(stripped)) return true;
+  return /[a-zA-ZΑ-Ωα-ωάέήίόύώ]{2,}/u.test(stripped) && !/\d{1,2}[.:]\d{2}/.test(stripped);
+}
+
+function parseStackedMonthCalendarMovieBlocks(lines, startIndex, colCount) {
+  const blocks = [];
+  let i = startIndex;
+
+  while (i < lines.length) {
+    if (isTableGridNoiseLine(lines[i])) {
+      i += 1;
+      continue;
+    }
+
+    if (isStackedCalTimeLine(lines[i])) {
+      const times = [];
+      while (i < lines.length && times.length < colCount) {
+        if (!isStackedCalTimeLine(lines[i])) break;
+        times.push(...extractTimesFromLine(lines[i]));
+        i += 1;
+        if (times.length >= colCount) break;
+      }
+      if (times.length) {
+        blocks.push({
+          title: blocks.length ? `Προβολή ${blocks.length + 1}` : 'Πρόγραμμα',
+          times: times.slice(0, colCount),
+        });
+      }
+      continue;
+    }
+
+    if (isStackedCalTitleLine(lines[i])) {
+      const title = cleanMovieTitle(lines[i]);
+      i += 1;
+      const times = [];
+      while (i < lines.length && times.length < colCount) {
+        if (isStackedCalTitleLine(lines[i]) && !isStackedCalTimeLine(lines[i])) break;
+        if (!isStackedCalTimeLine(lines[i])) break;
+        times.push(...extractTimesFromLine(lines[i]));
+        i += 1;
+      }
+      // «Ώρα έναρξης: 21.00» ανά στήλη (παλιά μορφή μικτή με stacked header)
+      while (i < lines.length && times.length < colCount) {
+        const start = parseCalendarStartTimeLine(lines[i]);
+        if (!start) break;
+        times.push(start);
+        i += 1;
+      }
+      blocks.push({ title, times: times.slice(0, Math.max(times.length, 0)) });
+      continue;
+    }
+
+    i += 1;
+  }
+
+  return blocks;
+}
+
+function looksLikeStackedMonthCalendarProgram(text) {
+  if (looksLikeCatalogProgram(text) || looksLikeDayCentricProgram(text)) return false;
+
+  const lines = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const { columns, startIndex } = parseStackedMonthCalendarHeader(lines);
+  if (columns.length < 3) return false;
+
+  const rest = lines.slice(startIndex);
+  const timeLines = rest.filter((line) => isStackedCalTimeLine(line)).length;
+  const titleLines = rest.filter((line) => isStackedCalTitleLine(line)).length;
+  const startTimeLines = rest.filter((line) => parseCalendarStartTimeLine(line)).length;
+
+  return timeLines >= 3 || (titleLines >= 1 && (timeLines >= 1 || startTimeLines >= 1));
+}
+
+/**
+ * Πίνακας-ημερολόγιο με στήλες σε ξεχωριστές γραμμές:
+ * Δ / 20 / ΙΟΥΛ / Τ / 21 / ΙΟΥΛ / … και μετά ώρες 21:00 (ή τίτλος + ώρες).
+ */
+function parseStackedMonthCalendarProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+  const lines = String(text || '')
+    .replace(/\r\n/g, '\n')
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const warnings = [];
+  const { columns, startIndex } = parseStackedMonthCalendarHeader(lines);
+  const blocks = parseStackedMonthCalendarMovieBlocks(lines, startIndex, columns.length);
+
+  if (columns.length < 3) {
+    return {
+      header: '',
+      dateRange: inferDateRangeFromCinemaWeek(now),
+      movies: [],
+      warnings: ['Δεν αναγνωρίστηκε ημερολόγιο Δ/ημέρα/ΙΟΥΛ (χρειάζονται ≥3 στήλες).'],
+    };
+  }
+
+  const movies = [];
+  for (const block of blocks) {
+    if (!block.times.length) {
+      warnings.push(`«${block.title}»: χωρίς ώρες κάτω από το ημερολόγιο.`);
+      movies.push({ title: block.title, scheduleText: '', showtimes: [] });
+      continue;
+    }
+
+    const showtimes = [];
+    const fallback = block.times[0];
+    for (let i = 0; i < columns.length; i += 1) {
+      const col = columns[i];
+      const time = block.times[i] || fallback;
+      if (!time) continue;
+      const year = refYear || now.getFullYear();
+      // Αν ο μήνας είναι πίσω από «τώρα» κατά πολύ (π.χ. Δεκ όταν είμαστε Ιαν), +1 χρόνο — απλό heuristic.
+      let useYear = year;
+      if (col.month < now.getMonth() + 1 - 1 && now.getMonth() + 1 >= 11) {
+        useYear = year + 1;
+      }
+      const dayDate = localDate(useYear, col.month, col.day);
+      const datetime = buildAthensDatetimeFromLocalDate(dayDate, time.hour, time.minute);
+      const { dayLabel, timeLabel } = formatAthensWallClock(datetime);
+      showtimes.push({ dayLabel, timeLabel, datetime, note: null });
+    }
+
+    movies.push({
+      title: block.title,
+      scheduleText: '',
+      showtimes: dedupeShowtimes(showtimes),
+    });
+  }
+
+  const allTimes = movies.flatMap((movie) => movie.showtimes.map((st) => st.datetime.getTime()));
+  let dateRange;
+  if (allTimes.length) {
+    const start = new Date(Math.min(...allTimes));
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(Math.max(...allTimes));
+    end.setHours(23, 59, 59, 999);
+    dateRange = { start, end, inferred: false };
+    warnings.push(
+      `Ημερολόγιο στηλών (Δ/ημέρα/μήνας): ${columns.length} μέρες · ${movies.filter((m) => m.showtimes.length).length} ταινίες.`,
+    );
+  } else {
+    dateRange = inferDateRangeFromCinemaWeek(now);
+    warnings.push('Βρέθηκε header ημερολογίου αλλά καμία ώρα (21:00) μετά τις στήλες.');
+  }
+
+  return { header: '', dateRange, movies, warnings };
+}
+
 const CALENDAR_GRID_DAY_NUM_RE = /^\d{1,2}$/;
 
 function isCalendarGridDowLine(line) {
@@ -2074,6 +2303,10 @@ function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now 
 
   if (looksLikeMoreDayStackProgram(normalized)) {
     return parseMoreDayStackCinemaProgram(normalized, { refYear, now });
+  }
+
+  if (looksLikeStackedMonthCalendarProgram(normalized)) {
+    return parseStackedMonthCalendarProgram(normalized, { refYear, now });
   }
 
   if (looksLikeCalendarGridProgram(normalized)) {
