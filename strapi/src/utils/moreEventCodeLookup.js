@@ -112,6 +112,29 @@ function compactSlugKey(raw) {
     .replace(/[^a-z0-9]+/g, '');
 }
 
+/**
+ * Αυστηρή σύγκριση slug/code: ίσα OK· substring μόνο αν το μικρότερο είναι αρκετά μεγάλο
+ * (αποφυγή: «mart» ⊆ «marturaskategorias» → λάθος θέατρο).
+ */
+function slugKeysCompatible(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a];
+  if (shorter.length < 8) return false;
+  if (shorter.length / longer.length < 0.6) return false;
+  return longer.includes(shorter);
+}
+
+/** Compact τίτλοι: substring μόνο με αρκετό μήκος (όχι «Ο Μάρτυρας» ⊆ «Μάρτυρας Κατηγορίας» με 1 λέξη). */
+function compactTitlesCompatible(a, b) {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  const [shorter, longer] = a.length <= b.length ? [a, b] : [b, a];
+  if (shorter.length < 10) return false;
+  if (shorter.length / longer.length < 0.55) return false;
+  return longer.includes(shorter);
+}
+
 function evgCodeSlugRoot(code) {
   return String(code || '')
     .replace(/^evg_/i, '')
@@ -217,8 +240,8 @@ function scoreMatchByMorePagePath(cms, moreEntry) {
 
   for (const cmsKey of cmsKeys) {
     if (pathKey && cmsKey === pathKey) return 0.99;
-    if (codeKey && (cmsKey === codeKey || cmsKey.includes(codeKey) || codeKey.includes(cmsKey))) {
-      return 0.96;
+    if (codeKey && slugKeysCompatible(cmsKey, codeKey)) {
+      return cmsKey === codeKey ? 0.96 : 0.93;
     }
   }
   return 0;
@@ -426,22 +449,23 @@ function scoreMatch(cmsMovie, moreEntry) {
     if (!nc || !nt) continue;
 
     if (nc === moreCompact || nw === nt) best = Math.max(best, 1);
-    else if (moreCompact.includes(nc) || nc.includes(moreCompact)) {
+    else if (compactTitlesCompatible(nc, moreCompact)) {
       best = Math.max(best, 0.92);
-    } else if (nt.includes(nw) || nw.includes(nt)) {
+    } else if (nw.length >= 12 && nt.length >= 12 && (nt.includes(nw) || nw.includes(nt))) {
       best = Math.max(best, 0.85);
     } else {
       const words = nw.split(' ').filter((w) => w.length > 3);
       const hits = words.filter((w) => nt.includes(w)).length;
-      if (words.length && hits >= Math.min(2, words.length)) {
+      // Χρειάζονται ≥2 κοινές λέξεις — μία λέξη («Μάρτυρας») δεν αρκεί.
+      if (words.length >= 2 && hits >= 2) {
         best = Math.max(best, 0.7 + (hits / words.length) * 0.15);
       }
     }
 
     const codeKey = compactSlugKey(slugPart);
     const cmsKey = compactSlugKey(c);
-    if (codeKey && cmsKey && (cmsKey === codeKey || cmsKey.includes(codeKey) || codeKey.includes(cmsKey))) {
-      best = Math.max(best, 0.96);
+    if (codeKey && cmsKey && slugKeysCompatible(cmsKey, codeKey)) {
+      best = Math.max(best, cmsKey === codeKey ? 0.96 : 0.93);
     }
   }
   return best;

@@ -95,13 +95,23 @@ function scorePlayTitleMatch(cmsTitle, playTitle) {
       if (!moreCompact || !nt) continue;
 
       if (nc === moreCompact || nw === nt) best = Math.max(best, 1);
-      else if (moreCompact.includes(nc) || nc.includes(moreCompact)) best = Math.max(best, 0.92);
-      else if (nt.includes(nw) || nw.includes(nt)) best = Math.max(best, 0.85);
       else {
-        const words = nw.split(' ').filter((w) => w.length > 3);
-        const hits = words.filter((w) => nt.includes(w)).length;
-        if (words.length && hits >= Math.min(2, words.length)) {
-          best = Math.max(best, 0.7 + (hits / words.length) * 0.15);
+        const [shorter, longer] =
+          nc.length <= moreCompact.length ? [nc, moreCompact] : [moreCompact, nc];
+        if (
+          shorter.length >= 10 &&
+          shorter.length / longer.length >= 0.55 &&
+          longer.includes(shorter)
+        ) {
+          best = Math.max(best, 0.92);
+        } else if (nw.length >= 12 && nt.length >= 12 && (nt.includes(nw) || nw.includes(nt))) {
+          best = Math.max(best, 0.85);
+        } else {
+          const words = nw.split(' ').filter((w) => w.length > 3);
+          const hits = words.filter((w) => nt.includes(w)).length;
+          if (words.length >= 2 && hits >= 2) {
+            best = Math.max(best, 0.7 + (hits / words.length) * 0.15);
+          }
         }
       }
     }
