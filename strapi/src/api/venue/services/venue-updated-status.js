@@ -341,9 +341,49 @@ async function applyCinemaVenueUpdatedStatuses(
     if (autoCreated.has(venueId)) stats.autoCreated = true;
 
     const current = currentById.get(venueId);
+    const normalizedCurrent = isVenueUpdatedStatus(current)
+      ? current
+      : VENUE_UPDATED_STATUS.NO_NEW;
     const next = computeVenueUpdatedStatus(stats, now);
 
-    if (current === VENUE_UPDATED_STATUS.COMPLETE && next !== VENUE_UPDATED_STATUS.NEEDS_MANUAL) {
+    // Καμία προβολή εβδομάδας στο More αυτό το run — μην κρατάς «complete» από παλιό sync.
+    if (next === null) {
+      const reason = 'no_upcoming_week_events';
+      const effectiveStatus =
+        normalizedCurrent === VENUE_UPDATED_STATUS.COMPLETE
+          ? VENUE_UPDATED_STATUS.NO_NEW
+          : normalizedCurrent;
+      const needsWrite = effectiveStatus !== normalizedCurrent;
+
+      if (needsWrite) {
+        await strapi.entityService.update('api::venue.venue', venueId, {
+          data: { updated: effectiveStatus },
+        });
+        summary.updated += 1;
+      } else if (effectiveStatus === VENUE_UPDATED_STATUS.NO_NEW) {
+        summary.unchanged_no_new += 1;
+      }
+
+      summary[effectiveStatus] = (summary[effectiveStatus] || 0) + 1;
+      pushVenue(
+        buildVenueStatusEntry({
+          venueId,
+          venueName: nameById.get(venueId),
+          previousStatus: current,
+          status: effectiveStatus,
+          preserved: !needsWrite,
+          stats,
+          reason,
+        }),
+      );
+      continue;
+    }
+
+    // Πραγματικά πλήρες αυτό το run — OK να μείνει complete χωρίς άλλη εγγραφή.
+    if (
+      next === VENUE_UPDATED_STATUS.COMPLETE &&
+      normalizedCurrent === VENUE_UPDATED_STATUS.COMPLETE
+    ) {
       summary.preserved_complete += 1;
       summary.complete += 1;
       pushVenue(
@@ -354,12 +394,16 @@ async function applyCinemaVenueUpdatedStatuses(
           status: VENUE_UPDATED_STATUS.COMPLETE,
           preserved: true,
           stats,
+          reason: 'sync_complete',
         }),
       );
       continue;
     }
 
-    if (current === VENUE_UPDATED_STATUS.COMPLETE && next === VENUE_UPDATED_STATUS.NEEDS_MANUAL) {
+    if (
+      normalizedCurrent === VENUE_UPDATED_STATUS.COMPLETE &&
+      next === VENUE_UPDATED_STATUS.NEEDS_MANUAL
+    ) {
       await strapi.entityService.update('api::venue.venue', venueId, {
         data: { updated: VENUE_UPDATED_STATUS.NEEDS_MANUAL },
       });
@@ -379,30 +423,8 @@ async function applyCinemaVenueUpdatedStatuses(
       );
       continue;
     }
-    if (next === null) {
-      const reason = 'no_upcoming_week_events';
-      const effectiveStatus = isVenueUpdatedStatus(current)
-        ? current
-        : VENUE_UPDATED_STATUS.NO_NEW;
-      if (effectiveStatus === VENUE_UPDATED_STATUS.NO_NEW) {
-        summary.unchanged_no_new += 1;
-      }
-      summary[effectiveStatus] = (summary[effectiveStatus] || 0) + 1;
-      pushVenue(
-        buildVenueStatusEntry({
-          venueId,
-          venueName: nameById.get(venueId),
-          previousStatus: current,
-          status: effectiveStatus,
-          preserved: true,
-          stats,
-          reason,
-        }),
-      );
-      continue;
-    }
 
-    if (next === current) {
+    if (next === normalizedCurrent) {
       summary[next] += 1;
       pushVenue(
         buildVenueStatusEntry({
@@ -485,7 +507,7 @@ async function applyVenueUpdatedStatusFromProgramImport(
     };
   }
 
-  if (current === VENUE_UPDATED_STATUS.COMPLETE && next !== VENUE_UPDATED_STATUS.NEEDS_MANUAL) {
+  if (current === VENUE_UPDATED_STATUS.COMPLETE && next === VENUE_UPDATED_STATUS.COMPLETE) {
     return {
       venueId: id,
       venueName: venue.name,

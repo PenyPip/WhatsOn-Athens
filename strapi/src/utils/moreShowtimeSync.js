@@ -2677,7 +2677,6 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
   let filled = 0;
 
   for (const venue of venuesWithBundle) {
-    if (venue.updated === VENUE_UPDATED_STATUS.COMPLETE) continue;
     if (!venue.bundleCodes?.length) continue;
 
     const existing = statsByVenueId.get(venue.id);
