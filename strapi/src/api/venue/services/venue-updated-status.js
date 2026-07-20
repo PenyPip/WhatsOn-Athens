@@ -2,6 +2,11 @@
 
 /** @typedef {'no_new' | 'complete' | 'needs_manual'} VenueUpdatedStatus */
 
+const {
+  getTargetCinemaWeekBoundsForVenueStatus,
+  getVenueStatusWeekPhaseLabel,
+} = require('../../../utils/cinemaWeek');
+
 const VENUE_UPDATED_STATUS = {
   NO_NEW: 'no_new',
   COMPLETE: 'complete',
@@ -52,8 +57,13 @@ function explainVenueSyncStatusReason(stats, { reason, next } = {}) {
   const weekMismatch = stats.weekSkippedVenueMismatch || 0;
 
   if (reason === 'no_upcoming_week_events') {
-    if (weekExpected === 0) parts.push('καμία προβολή εβδομάδας στο More');
-    else parts.push(`προβολές εβδομάδας: ${weekSynced}/${weekExpected}`);
+    if (weekExpected === 0) {
+      parts.push(
+        `καμία προβολή εβδομάδας-στόχου (${getVenueStatusWeekPhaseLabel()}) στο More/CMS`,
+      );
+    } else parts.push(`προβολές εβδομάδας: ${weekSynced}/${weekExpected}`);
+  } else if (stats.cmsWeekFallback && weekExpected > 0) {
+    parts.push(`CMS εβδομάδας-στόχου: ${weekSynced} προβολές (χωρίς More week count)`);
   } else if (weekExpected > 0) {
     if (weekFailed > 0) {
       const detail =
@@ -238,9 +248,9 @@ function venueHasManualSyncIssues(stats) {
 
 /**
  * Κατάσταση μετά More sync.
- * - complete: όλες οι προβολές της ερχόμενης εβδομάδας (Πέμπτη→Τετάρτη) πέρασαν
+ * - complete: όλες οι προβολές της εβδομάδας-στόχου (Πέμπτη→Τετάρτη) πέρασαν
  * - needs_manual: κάποιες όχι (άγνωστη ταινία, mismatch, μερικό sync)
- * - null: καμία προβολή εβδομάδας στο More — κράτα no_new
+ * - null: καμία προβολή εβδομάδας-στόχου στο More/CMS
  *
  * @returns {VenueUpdatedStatus | null}
  */
@@ -260,6 +270,43 @@ function computeVenueUpdatedStatus(stats, now = new Date()) {
   }
 
   return null;
+}
+
+/**
+ * Όταν το More δεν μέτρησε εβδομάδα-στόχο (weekExpected=0), κοίτα πραγματικές
+ * προβολές στο CMS για την ίδια εβδομάδα — αλλιώς μένουν λάθος «no_new».
+ */
+async function enrichTrackerWeekStatsFromCmsShowtimes(strapi, tracker, now = new Date()) {
+  if (!tracker?.entries) return { enriched: 0 };
+  const { start, end } = getTargetCinemaWeekBoundsForVenueStatus(now);
+  const rangeStart = new Date(Math.max(start.getTime(), now.getTime()));
+  let enriched = 0;
+
+  for (const [venueId, stats] of tracker.entries()) {
+    if ((stats.weekExpected || 0) > 0) continue;
+
+    const rows = await strapi.entityService.findMany('api::showtime.showtime', {
+      filters: {
+        venue: { id: venueId },
+        datetime: {
+          $gte: rangeStart.toISOString(),
+          $lte: end.toISOString(),
+        },
+      },
+      fields: ['id'],
+      pagination: { pageSize: 200 },
+    });
+    const count = Array.isArray(rows) ? rows.length : 0;
+    if (count <= 0) continue;
+
+    stats.weekExpected = count;
+    stats.weekSynced = count;
+    stats.weekFailed = 0;
+    stats.cmsWeekFallback = true;
+    enriched += 1;
+  }
+
+  return { enriched, weekPhase: getVenueStatusWeekPhaseLabel(now), rangeStart, end };
 }
 
 async function migrateVenueUpdatedBooleanToEnum(strapi) {
@@ -298,6 +345,9 @@ async function applyCinemaVenueUpdatedStatuses(
   for (const venueId of ensureVenueIds || []) {
     tracker.touch(venueId);
   }
+
+  const cmsEnrich = await enrichTrackerWeekStatsFromCmsShowtimes(strapi, tracker, now);
+
   const summary = {
     no_new: 0,
     complete: 0,
@@ -309,6 +359,8 @@ async function applyCinemaVenueUpdatedStatuses(
     no_new_to_manual: 0,
     complete_to_manual: 0,
     updated: 0,
+    cmsWeekEnriched: cmsEnrich.enriched || 0,
+    weekPhase: cmsEnrich.weekPhase || getVenueStatusWeekPhaseLabel(now),
     venues: [],
   };
 
@@ -575,6 +627,7 @@ module.exports = {
   isVenueUpdatedStatus,
   createVenueSyncStatsTracker,
   computeVenueUpdatedStatus,
+  enrichTrackerWeekStatsFromCmsShowtimes,
   migrateVenueUpdatedBooleanToEnum,
   applyCinemaVenueUpdatedStatuses,
   applyVenueUpdatedStatusFromProgramImport,

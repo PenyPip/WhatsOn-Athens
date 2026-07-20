@@ -2697,11 +2697,16 @@ async function fillCinemaVenueWeekStatsFromBundles(strapi, {
         const inWeek = moreEventInTargetCinemaWeekForVenueStatus(event, now);
         if (!inWeek) continue;
 
-        hadWeekEvents = true;
         const eventId = String(event.eventId ?? '').trim();
         const mapped = eventIdIndex.get(eventId);
         const datetime = parseMoreEventDatetime(event.eventDate);
-        if (!datetime || datetime < now) continue;
+        if (!datetime || datetime < now) {
+          // inWeek αλλά χωρίς έγκυρη μελλοντική ώρα — μέτρα ως αποτυχία, όχι «άδειο».
+          tracker.recordWeekEvent(venue.id, 'failed');
+          hadWeekEvents = true;
+          continue;
+        }
+        hadWeekEvents = true;
 
         if (!mapped) {
           const exists = await showtimeExistsAtVenue(
