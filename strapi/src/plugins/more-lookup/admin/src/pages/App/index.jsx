@@ -196,6 +196,17 @@ function catalogVenueNeedsSetup(row) {
   return row.kind === 'venue_bundle' && !catalogVenueResolved(row);
 }
 
+/** Ταινία / παράσταση στον κατάλογο που λείπει από CMS → έγκριση δημιουργίας draft. */
+function catalogContentNeedsCreate(row) {
+  if (catalogVenueResolved(row) || row.inCms) return false;
+  return row.kind === 'movie' || row.kind === 'show';
+}
+
+function catalogContentTypeLabel(row) {
+  if (row.kind === 'show' || row.category === 'theater') return 'παράσταση';
+  return 'ταινία';
+}
+
 function cmsVenueChoicesForCatalogRow(row, allChoices = []) {
   if (row.category === 'theater') {
     return allChoices.filter(
@@ -1799,6 +1810,88 @@ const App = () => {
     });
   };
 
+  const markCatalogContentCreated = (row, { cmsId, cmsTitle, contentType }) => {
+    setResult((prev) => {
+      if (!prev?.catalog?.length) return prev;
+      return {
+        ...prev,
+        catalog: prev.catalog.map((catRow) =>
+          catRow.eventGroupCode === row.eventGroupCode
+            ? {
+                ...catRow,
+                inCms: true,
+                cmsStatus: 'in_cms',
+                cmsRefs: [
+                  {
+                    contentType: contentType || (row.kind === 'show' ? 'theater_show' : 'movie'),
+                    cmsId: Number(cmsId),
+                    cmsTitle,
+                    inCms: true,
+                    writtenInField: true,
+                  },
+                ],
+              }
+            : catRow,
+        ),
+      };
+    });
+  };
+
+  const createCatalogContent = async (row) => {
+    if (!row.eventGroupCode || !catalogContentNeedsCreate(row)) return;
+    const code = row.eventGroupCode;
+    setBusyKey(`content:${code}`);
+    try {
+      const res = await post('/api/more-lookup/create-content', {
+        eventGroupCode: code,
+        kind: row.kind,
+        category: row.category,
+        title: row.moreTitle,
+        moreTitle: row.moreTitle,
+        moreUrl: row.moreUrl,
+      });
+      const entry = res?.data?.entry;
+      const contentType = res?.data?.contentType;
+      if (entry?.id) {
+        markCatalogContentCreated(row, {
+          cmsId: entry.id,
+          cmsTitle: entry.title,
+          contentType,
+        });
+      }
+      const enrichedBits = [];
+      const en = res?.data?.enriched;
+      if (en?.synopsis) enrichedBits.push('σύνοψη');
+      if (en?.duration) enrichedBits.push(`${en.duration}'`);
+      if (en?.runStart) enrichedBits.push(`από ${en.runStart}`);
+      if (en?.eventCount) enrichedBits.push(`${en.eventCount} events`);
+      if (en?.posterUploaded) enrichedBits.push('αφίσα');
+      else if (en?.posterUrl) enrichedBits.push('αφίσα (δεν ανέβηκε)');
+      toggleNotification({
+        type: 'success',
+        message:
+          res?.data?.message ||
+          (entry
+            ? `Draft «${entry.title}» (#${entry.id}) — unpublished`
+            : 'Δημιουργήθηκε draft.'),
+      });
+      if (enrichedBits.length) {
+        toggleNotification({
+          type: 'info',
+          message: `Συμπληρώθηκαν: ${enrichedBits.join(' · ')}`,
+        });
+      }
+    } catch (error) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.errors?.[0]?.error ||
+        'Αποτυχία δημιουργίας draft.';
+      toggleNotification({ type: 'warning', message });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
   const linkCatalogVenueWithId = async (row, cmsId, busySuffix = 'link') => {
     const code = row.eventGroupCode;
     if (!cmsId || !code) {
@@ -2038,7 +2131,7 @@ const App = () => {
                   <WorkflowStep
                     number="2"
                     title="Εγγραφή & σύνδεση"
-                    detail="Σύνδεση / δημιουργία χώρου → more_event_groups / event_group_code"
+                    detail="Έγκριση ταινίας/θεάτρου (draft) ή σύνδεση/δημιουργία χώρου"
                   />
                 </GridItem>
                 <GridItem col={4} s={12}>
@@ -2414,7 +2507,7 @@ const App = () => {
             <Box padding={4}>
               <PanelHeader
                 title="Πίνακας 2 — Κατάλογος More"
-                subtitle={`Σύνδεση / δημιουργία χώρου (άμεσα στο CMS) · ${catalogFiltered.length} εμφανίζονται · ${catalogMissingFiltered} λείπουν`}
+                subtitle={`Σύνδεση / δημιουργία · έγκριση ταινίας/παράστασης ως draft · ${catalogFiltered.length} εμφανίζονται · ${catalogMissingFiltered} λείπουν`}
               />
               <Flex gap={4} wrap="wrap" paddingTop={3} alignItems="flex-end">
                 <TypeFilterBar
@@ -2576,6 +2669,23 @@ const App = () => {
                           onLinkSuggested={linkCatalogVenueSuggested}
                           onCreateVenue={createCatalogVenue}
                         />
+                      ) : catalogContentNeedsCreate(row) ? (
+                        <Flex direction="column" alignItems="flex-start" gap={1}>
+                          <Typography variant="pi" textColor="neutral600">
+                            Δημιουργεί unpublished {catalogContentTypeLabel(row)} με όσα βρίσκει στο More
+                            (τίτλος, σύνοψη, διάρκεια, κωδικός, αφίσα αν υπάρχει).
+                          </Typography>
+                          <Button
+                            size="S"
+                            variant="success"
+                            loading={busyKey === `content:${row.eventGroupCode}`}
+                            disabled={Boolean(busyKey) && busyKey !== `content:${row.eventGroupCode}`}
+                            onClick={() => createCatalogContent(row)}
+                            title="Έγκριση → draft unpublished στο CMS"
+                          >
+                            Έγκριση → draft
+                          </Button>
+                        </Flex>
                       ) : (
                         <Typography variant="pi" textColor="neutral500">
                           —

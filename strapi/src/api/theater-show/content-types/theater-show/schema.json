@@ -7,6 +7,9 @@
     "displayName": "Θέατρο",
     "description": "Το έργο — όχι ο χώρος. Οι εμφανίσεις ανά χώρο: «Παράσταση»."
   },
+  "options": {
+    "draftAndPublish": true
+  },
   "attributes": {
     "title": {
       "type": "string",

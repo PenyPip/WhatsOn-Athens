@@ -6,6 +6,7 @@ const {
   rejectMoreEventGroupCode,
   linkMoreCodeToCms,
   createVenueFromMoreCatalog,
+  createCmsContentFromMoreCatalog,
   DEFAULT_MIN_SCORE,
   DEFAULT_APPLY_MIN_SCORE,
 } = require('../../../utils/moreEventCodeLookup');
@@ -329,6 +330,31 @@ module.exports = {
         ...result,
         message: `Δημιουργήθηκε draft χώρος «${result.venue.name}» (#${result.venue.id}) με event_group_code`,
       };
+    } catch (e) {
+      ctx.status = 400;
+      ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+    }
+  },
+
+  async createContent(ctx) {
+    const body = ctx.request.body ?? {};
+    const adminEmail = ctx.state?.admin?.email || 'unknown';
+
+    try {
+      const result = await createCmsContentFromMoreCatalog(strapi, {
+        eventGroupCode: body.eventGroupCode,
+        kind: body.kind,
+        catalogKind: body.catalogKind,
+        category: body.category,
+        title: body.title,
+        moreTitle: body.moreTitle,
+        moreUrl: body.moreUrl,
+        originalTitle: body.originalTitle,
+      });
+      strapi.log.info(
+        `[more-lookup] create-content by ${adminEmail} ${result.contentType} #${result.entry.id} → ${body.eventGroupCode}`,
+      );
+      ctx.body = result;
     } catch (e) {
       ctx.status = 400;
       ctx.body = { ok: false, error: { message: e?.message || String(e) } };

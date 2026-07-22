@@ -83,5 +83,14 @@ module.exports = {
         policies: ['global::is-admin'],
       },
     },
+    {
+      method: 'POST',
+      path: '/more-lookup/create-content',
+      handler: 'more-lookup.createContent',
+      config: {
+        auth: false,
+        policies: ['global::is-admin'],
+      },
+    },
   ],
 };
