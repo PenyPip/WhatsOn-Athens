@@ -280,25 +280,12 @@ async function fetchText(url) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    // Το More συχνά απαντά 302 → queue-it Safenet· το πραγματικό HTML είναι
-    // ήδη στο body του 302. Αν ακολουθήσουμε redirects → «redirect count exceeded».
     const res = await fetchMore(url, {
       signal: controller.signal,
       headers: { 'User-Agent': USER_AGENT, Accept: 'text/html,application/json' },
-      redirect: 'manual',
     });
-    const status = Number(res.status) || 0;
-    const text = await res.text();
-    const usable =
-      text &&
-      text.length > 800 &&
-      (/og:title|PlayDetails|getattachment|itemprop="name"|data-code=/i.test(text) ||
-        status === 200);
-    if (usable && (status === 200 || status === 301 || status === 302 || status === 303)) {
-      return text;
-    }
-    if (!res.ok) throw new Error(`HTTP ${status} ${url}`);
-    return text;
+    if (!res.ok) throw new Error(`HTTP ${res.status} ${url}`);
+    return res.text();
   } catch (e) {
     throw formatMoreNetworkError(e, {
       url,
@@ -823,23 +810,16 @@ async function createVenueFromMoreCatalog(strapi, options = {}) {
 }
 
 function decodeHtmlEntities(s) {
-  const raw = String(s || '');
-  if (!raw) return '';
-  try {
-    // eslint-disable-next-line global-require
-    return require('he').decode(raw);
-  } catch {
-    return raw
-      .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
-      .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
-      .replace(/&nbsp;/gi, ' ')
-      .replace(/&hellip;/gi, '…')
-      .replace(/&quot;/g, '"')
-      .replace(/&#39;|&apos;/g, "'")
-      .replace(/&lt;/g, '<')
-      .replace(/&gt;/g, '>')
-      .replace(/&amp;/g, '&');
-  }
+  return String(s || '')
+    .replace(/&hellip;/gi, '…')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/&#x([0-9a-f]+);/gi, (_, h) => String.fromCharCode(parseInt(h, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;|&apos;/g, "'")
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>');
 }
 
 function stripHtmlToText(raw) {
@@ -925,18 +905,10 @@ function parseMoreTitleParts(raw, { pathSlug = '', playTitle = '' } = {}) {
   if (!originalTitle && displayTitle && isMostlyLatinTitle(displayTitle)) {
     originalTitle = displayTitle;
   }
-  // Ελληνικός τίτλος + αγγλικό-looking slug από URL (π.χ. toy-story-5 → Toy Story 5).
-  // Όχι μονόλεξα μεταγραμμένα (emmoni) — καλύτερα ο ελληνικός ως original_title.
+  // Ελληνικός τίτλος + latin slug από URL (π.χ. toy-story-5 → Toy Story 5).
   if (!originalTitle && displayTitle && hasGreekLetters(displayTitle)) {
     const fromSlug = humanizeMorePathSlug(pathSlug);
-    const slugParts = String(pathSlug || '')
-      .split('-')
-      .filter((p) => p && !/^\d+$/.test(p));
-    const looksEnglishSlug =
-      fromSlug &&
-      isMostlyLatinTitle(fromSlug) &&
-      (slugParts.length >= 2 || /^(the|a|an)(-|$)/i.test(pathSlug));
-    if (looksEnglishSlug && fromSlug.length >= 3) {
+    if (fromSlug && isMostlyLatinTitle(fromSlug) && fromSlug.length >= 3) {
       originalTitle = fromSlug;
     }
   }
@@ -1043,21 +1015,13 @@ async function scrapeMorePageMeta(moreUrl) {
       pick(/<title[^>]*>([^<]+)<\/title>/i);
 
     const overview = extractMoreOverview(html);
-    const ogDescription = decodeHtmlEntities(
+    const ogDescription =
       pick(/property="og:description"\s+content="([^"]+)"/i) ||
-        pick(/name="description"\s+content="([^"]+)"/i),
-    );
-    const ldDescription = stripHtmlToText(ld?.description || '');
-    // Προτίμηση καθαρού og/ld· overview συχνά έχει HTML entities / tags.
+      pick(/name="description"\s+content="([^"]+)"/i);
     const description =
-      [ogDescription, ldDescription, overview]
-        .map((t) => String(t || '').replace(/\s+/g, ' ').trim())
-        .sort((a, b) => b.length - a.length)
-        .find((t) => t.length > 40) ||
-      ogDescription ||
-      ldDescription ||
       overview ||
-      '';
+      stripHtmlToText(ld?.description || '') ||
+      decodeHtmlEntities(ogDescription);
 
     const director =
       pickHtmlById(html, 'PageContent_PlayDetails_Movie_Director') ||
@@ -2421,6 +2385,10 @@ async function applyMoreEventCodeMatches(strapi, options = {}) {
 }
 
 module.exports = {
+  scrapeMorePageMeta,
+  pickLikelyDurationMinutes,
+  parseMoreTitleParts,
+  enrichFromMoreEvents,
   DEFAULT_MIN_SCORE,
   DEFAULT_APPLY_MIN_SCORE,
   MIN_HINT_SCORE,

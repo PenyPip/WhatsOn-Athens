@@ -1862,7 +1862,10 @@ const App = () => {
       const enrichedBits = [];
       const en = res?.data?.enriched;
       if (en?.synopsis) enrichedBits.push('σύνοψη');
+      if (en?.director) enrichedBits.push('σκηνοθέτη');
+      if (en?.castCount) enrichedBits.push(`${en.castCount} ηθοποιούς`);
       if (en?.duration) enrichedBits.push(`${en.duration}'`);
+      if (en?.originalTitle) enrichedBits.push(`original: ${en.originalTitle}`);
       if (en?.runStart) enrichedBits.push(`από ${en.runStart}`);
       if (en?.eventCount) enrichedBits.push(`${en.eventCount} events`);
       if (en?.posterUploaded) enrichedBits.push('αφίσα');
