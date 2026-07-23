@@ -31,7 +31,7 @@ const GREEK_DOW_LABEL = {
 };
 
 const DAY_NAMES =
-  'Δευτέρα|Δευτ\\.?|Δευ\\.?|Δε\\.|Τρίτη|Τρίτ\\.?|Τρι\\.?|Τρ\\.|Τετάρτη|Τετ\\.?|Τε\\.|Πέμπτη|Πέμ\\.?|Πεμ\\.?|Πέ\\.|Πε\\.|Παρασκευή|Παρ\\.?|Πα\\.|Σάββατο|Σαβ\\.?|Σάβ\\.?|Σα\\.|Κυριακή|Κυρ\\.?|Κυ\\.';
+  'Δευτέρα|Δευτ\\.?|Δευ\\.?|Δε\\.?|Τρίτη|Τρίτ\\.?|Τρι\\.?|Τρ\\.?|Τετάρτη|Τετ\\.?|Τε\\.?|Πέμπτη|Πέμ\\.?|Πεμ\\.?|Πέ\\.?|Πε\\.?|Παρασκευή|Παρ\\.?|Πα\\.?|Σάββατο|Σαβ\\.?|Σάβ\\.?|Σα\\.?|Κυριακή|Κυρ\\.?|Κυ\\.?';
 
 const SHOWTIME_RE = new RegExp(
   `(?:^|[\\s,;·|])(${DAY_NAMES})\\s+(\\d{1,2})[.:](\\d{2})\\b`,
@@ -486,7 +486,10 @@ function firstShowtimeMatch(line) {
 }
 
 function dayNameToDow(raw) {
-  const n = normalizeGreek(raw).replace(/\./g, '');
+  const n = normalizeGreek(raw).replace(/\./g, '').trim();
+  if (!n) return null;
+  // Ολόκληρο εύρος («πεμ-τρ») δεν είναι μία μέρα — μην κάνεις prefix match στο «πεμ».
+  if (/[-–—]/.test(n)) return null;
   if (GREEK_DOW[n] != null) return GREEK_DOW[n];
   const prefix = n.slice(0, 3);
   for (const [key, dow] of Object.entries(GREEK_DOW)) {
@@ -2004,13 +2007,14 @@ function parseDayListFromString(raw) {
     .map((s) => s.trim())
     .filter(Boolean);
   for (const chunk of chunks) {
+    // Μην κόβεις τις τελείες μέσα στο «Πέμ.-Τρ.» — μόνο τελικό : από «στις:».
     const cleaned = chunk
-      .replace(/[.:]+\s*$/, '')
+      .replace(/:+\s*$/, '')
       .replace(/\s+στις\s*$/iu, '')
       .replace(/\s+/g, ' ')
       .trim();
     const range = cleaned.match(
-      new RegExp(`^(${DAY_NAMES})\\.?\\s*[-–]\\s*(${DAY_NAMES})\\.?\\s*$`, 'iu'),
+      new RegExp(`^(${DAY_NAMES})\\s*[-–—]\\s*(${DAY_NAMES})\\.?\\s*$`, 'iu'),
     );
     if (range) {
       const a = dayNameToDow(range[1]);
@@ -2032,11 +2036,12 @@ function parseTimesAndNote(raw) {
     note = paren[1].trim();
     s = s.slice(0, paren.index).trim();
   }
-  const meta = s.match(/\b(μεταγλω?ττισμένο|μεταγλ\.?|υποτ\.?|υποτιτλισμένο)\b/giu);
+  // Όχι \\b — στα ελληνικά συχνά αποτυγχάνει (μεταγλ. / υποτ.).
+  const meta = s.match(/(μεταγλωττισμέν[οη]|μεταγλωτισμέν[οη]|μεταγλ\.?|υποτιτλισμέν[οη]|υποτ\.?)/giu);
   if (meta) {
     note = note ? `${note}; ${meta.join(', ')}` : meta.join(', ');
     for (const m of meta) s = s.replace(m, '');
-    s = s.trim();
+    s = s.replace(/\s+/g, ' ').trim();
   }
   const times = [];
   for (const bit of s.split('/')) {

@@ -905,6 +905,28 @@ function absoluteMoreUrl(raw) {
   return u;
 }
 
+function slugLooksLikeGreekTransliteration(slug) {
+  const parts = String(slug || '')
+    .toLowerCase()
+    .split('-')
+    .filter((p) => p && !/^\d+$/.test(p));
+  if (!parts.length) return false;
+  // Ελληνικά μόρια στο slug → μεταγραφή, όχι αγγλικός τίτλος.
+  if (
+    parts.some((p) =>
+      /^(o|i|to|ta|oi|tou|tis|ton|tin|sto|stin|ston|gia|kai|me|se|mia)$/i.test(p),
+    )
+  ) {
+    return true;
+  }
+  const enPart =
+    /^(the|a|an|and|or|of|in|on|to|my|our|story|christmas|dinner|party|night|day|love|man|woman|boy|girl|last|first|house|city|war|dead|life|death|black|white|red|blue|green|new|old|big|little|good|bad|invite|tuner|birthday|together|bitter|sweet|happy|dark|light|summer|winter|autumn|spring|movie|cinema|show|live|world|home|family|friend|king|queen|prince|princess|doctor|mister|miss|lord|lady)$/i;
+  const greekish = parts.filter(
+    (p) => !enPart.test(p) && /(as|os|is|ou|on|ai|oi|ein|oun)$/i.test(p),
+  );
+  return greekish.length >= Math.max(1, Math.ceil(parts.length * 0.5));
+}
+
 function parseMoreTitleParts(raw, { pathSlug = '', playTitle = '' } = {}) {
   const cleaned = cleanMoreDisplayTitle(raw);
   const play = cleanMoreDisplayTitle(playTitle);
@@ -915,7 +937,6 @@ function parseMoreTitleParts(raw, { pathSlug = '', playTitle = '' } = {}) {
     .filter((p) => p && !isMoreBoilerplateTitlePart(p));
 
   let originalTitle = '';
-  // Δεύτερο μέρος τίτλου μόνο αν μοιάζει με πραγματικό πρωτότυπο (όχι «Εισιτήρια…»).
   if (parts.length >= 2 && isMostlyLatinTitle(parts[1]) && parts[1] !== parts[0]) {
     originalTitle = parts[1];
   }
@@ -925,18 +946,19 @@ function parseMoreTitleParts(raw, { pathSlug = '', playTitle = '' } = {}) {
   if (!originalTitle && displayTitle && isMostlyLatinTitle(displayTitle)) {
     originalTitle = displayTitle;
   }
-  // Ελληνικός τίτλος + αγγλικό-looking slug από URL (π.χ. toy-story-5 → Toy Story 5).
-  // Όχι μονόλεξα μεταγραμμένα (emmoni) — καλύτερα ο ελληνικός ως original_title.
+  // Ελληνικός τίτλος + αγγλικό URL slug (the-dinner → The Dinner).
+  // Όχι μεταγραμμένα ελληνικά (martyras-katigorias).
   if (!originalTitle && displayTitle && hasGreekLetters(displayTitle)) {
     const fromSlug = humanizeMorePathSlug(pathSlug);
     const slugParts = String(pathSlug || '')
       .split('-')
       .filter((p) => p && !/^\d+$/.test(p));
-    const looksEnglishSlug =
+    if (
       fromSlug &&
       isMostlyLatinTitle(fromSlug) &&
-      (slugParts.length >= 2 || /^(the|a|an)(-|$)/i.test(pathSlug));
-    if (looksEnglishSlug && fromSlug.length >= 3) {
+      slugParts.length >= 2 &&
+      !slugLooksLikeGreekTransliteration(pathSlug)
+    ) {
       originalTitle = fromSlug;
     }
   }
@@ -1003,16 +1025,59 @@ function extractMoreCastNames(html) {
 
 function extractMoreOverview(html) {
   const patterns = [
+    /id="PageContent_PlayDetails_Summary"[^>]*>([\s\S]*?)<\/span>/i,
     /id="PageContent_PlayDetails_[^"]*Overview[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span|section)/i,
     /class="overview"[^>]*>([\s\S]*?)<\/div>/i,
-    /id="PageContent_PlayDetails_Summary"[^>]*>([\s\S]*?)<\/(?:div|span)/i,
   ];
   for (const re of patterns) {
     const m = html.match(re);
     const text = m ? stripHtmlToText(m[1]) : '';
-    if (text && text.length > 40) return text;
+    if (text && text.length > 20 && !/&[a-z]+;/i.test(text)) return text;
   }
   return '';
+}
+
+function extractMoreRuntimeMinutes(html) {
+  const labeled = pickHtmlById(html, 'PageContent_PlayDetails_Movie_Runtime');
+  const raw = labeled || String(html || '').match(/(\d{2,3})\s*λεπτά/i)?.[0] || '';
+  const m = String(raw).match(/(\d{2,3})/);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) && n >= 20 && n <= 400 ? n : null;
+}
+
+/** img μπορεί να έχει src πριν το id — δεν βασιζόμαστε στη σειρά attributes. */
+function extractMorePosterSrc(html) {
+  const imgTag =
+    String(html || '').match(
+      /<img\b[^>]*\bid=["']PageContent_PlayDetails_MoviePoster["'][^>]*>/i,
+    )?.[0] ||
+    String(html || '').match(/<img\b[^>]*\bsrc=["'][^"']*mposter[^"']*["'][^>]*>/i)?.[0] ||
+    '';
+  if (imgTag) {
+    const src = imgTag.match(/\bsrc=["']([^"']+)["']/i)?.[1];
+    if (src) return src;
+  }
+  return (
+    String(html || '').match(
+      /src=["']([^"']*getattachment\/[0-9a-f-]{36}\/mposter[^"']*)["']/i,
+    )?.[1] || ''
+  );
+}
+
+function pickBestSynopsis(...candidates) {
+  const cleaned = candidates
+    .map((t) =>
+      decodeHtmlEntities(String(t || ''))
+        .replace(/\s+/g, ' ')
+        .trim(),
+    )
+    .filter((t) => t.length >= 15)
+    .filter((t) => !/&[a-z]+;/i.test(t))
+    .filter((t) => !/^εισιτήρια/i.test(t));
+  if (!cleaned.length) return '';
+  cleaned.sort((a, b) => b.length - a.length);
+  return cleaned[0];
 }
 
 function normalizeMoreAttachmentUrl(raw) {
@@ -1048,31 +1113,16 @@ async function scrapeMorePageMeta(moreUrl) {
         pick(/name="description"\s+content="([^"]+)"/i),
     );
     const ldDescription = stripHtmlToText(ld?.description || '');
-    // Προτίμηση καθαρού og/ld· overview συχνά έχει HTML entities / tags.
-    const description =
-      [ogDescription, ldDescription, overview]
-        .map((t) => String(t || '').replace(/\s+/g, ' ').trim())
-        .sort((a, b) => b.length - a.length)
-        .find((t) => t.length > 40) ||
-      ogDescription ||
-      ldDescription ||
-      overview ||
-      '';
+    const description = pickBestSynopsis(overview, ldDescription, ogDescription);
 
     const director =
       pickHtmlById(html, 'PageContent_PlayDetails_Movie_Director') ||
       stripHtmlToText(ld?.director?.name || ld?.director || '');
 
     const cast = extractMoreCastNames(html);
+    const durationFromPage = extractMoreRuntimeMinutes(html);
 
-    const posterFromImg =
-      html.match(
-        /id="PageContent_PlayDetails_MoviePoster"[^>]*src="([^"]+)"/i,
-      )?.[1] ||
-      html.match(
-        /src="([^"]*getattachment\/[0-9a-f-]{36}\/mposter[^"]*)"/i,
-      )?.[1] ||
-      '';
+    const posterFromImg = extractMorePosterSrc(html);
     const imageLabelPath = pickHtmlById(html, 'ImageLabel');
     const ogImage = pick(/property="og:image"\s+content="([^"]+)"/i);
     const ldImage = ld?.image
@@ -1080,6 +1130,7 @@ async function scrapeMorePageMeta(moreUrl) {
         ? ld.image[0]
         : ld.image
       : '';
+    const metaImage = pick(/itemprop="image"\s+content="([^"]+)"/i);
 
     const attachmentIds = [];
     const seenIds = new Set();
@@ -1089,8 +1140,7 @@ async function scrapeMorePageMeta(moreUrl) {
       seenIds.add(key);
       attachmentIds.push(key);
     };
-    // Προτεραιότητα: πραγματική αφίσα σελίδας, όχι το μικρό social og:image.
-    for (const raw of [posterFromImg, imageLabelPath, ldImage, ogImage]) {
+    for (const raw of [posterFromImg, imageLabelPath, metaImage, ldImage, ogImage]) {
       const m = String(raw || '').match(/\/getattachment\/([0-9a-f-]{36})/i);
       if (m) pushId(m[1]);
     }
@@ -1107,13 +1157,14 @@ async function scrapeMorePageMeta(moreUrl) {
     };
     pushPoster(posterFromImg);
     pushPoster(imageLabelPath);
+    pushPoster(metaImage);
     pushPoster(ldImage);
     for (const id of attachmentIds) {
       pushPoster(`https://www.more.com/getattachment/${id}/`);
     }
     pushPoster(ogImage);
 
-    const titleParts = parseMoreTitleParts(ogTitle || playTitle, {
+    const titleParts = parseMoreTitleParts(playTitle || ogTitle, {
       pathSlug,
       playTitle,
     });
@@ -1125,13 +1176,14 @@ async function scrapeMorePageMeta(moreUrl) {
       description: description || null,
       director: director || null,
       cast,
+      durationFromPage,
       image: posterCandidates[0] || null,
       posterCandidates,
       attachmentUrls: attachmentIds.map((id) => `https://www.more.com/getattachment/${id}/`),
       pathSlug,
     };
-  } catch {
-    return null;
+  } catch (e) {
+    return { scrapeError: e?.message || String(e) };
   }
 }
 
@@ -1160,6 +1212,9 @@ async function uploadRemotePosterToStrapi(strapi, imageUrl, nameHint = 'poster')
   const fs = require('fs');
   const path = require('path');
   const os = require('os');
+  const { execFile } = require('child_process');
+  const { promisify } = require('util');
+  const execFileAsync = promisify(execFile);
   const { fetchMore } = require('./moreHttp');
 
   const controller = new AbortController();
@@ -1167,38 +1222,73 @@ async function uploadRemotePosterToStrapi(strapi, imageUrl, nameHint = 'poster')
   let tmp = null;
 
   try {
-    const res = await fetchMore(url, {
-      signal: controller.signal,
-      headers: { 'User-Agent': USER_AGENT, Accept: 'image/*,*/*' },
-      redirect: 'follow',
-    });
-    if (!res.ok) return null;
+    let buf = null;
+    let contentType = '';
 
-    const contentType = String(res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
-    if (contentType && !contentType.startsWith('image/')) return null;
+    try {
+      const res = await fetchMore(url, {
+        signal: controller.signal,
+        headers: { 'User-Agent': USER_AGENT, Accept: 'image/*,*/*' },
+        redirect: 'follow',
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      contentType = String(res.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+      if (contentType && !contentType.startsWith('image/') && !contentType.includes('octet-stream')) {
+        throw new Error(`not_image:${contentType}`);
+      }
+      buf = Buffer.from(await res.arrayBuffer());
+    } catch (fetchErr) {
+      tmp = path.join(os.tmpdir(), `more-poster-${Date.now()}-${Math.random().toString(36).slice(2)}.bin`);
+      await execFileAsync(
+        'curl',
+        ['-sSL', '--http1.1', '--max-time', '25', '-A', USER_AGENT, '-o', tmp, url],
+        { maxBuffer: 12 * 1024 * 1024 },
+      );
+      buf = fs.readFileSync(tmp);
+    }
 
-    const buf = Buffer.from(await res.arrayBuffer());
-    // Πολύ μικρό = logo/placeholder· τα social og crops (~5KB) είναι άχρηστα ως αφίσα.
     const minBytes = looksLikeWeakMoreSocialImage(url) ? 20_000 : 4_000;
-    if (buf.length < minBytes) return null;
+    if (!buf || buf.length < minBytes) return null;
+
+    const isJpeg = buf[0] === 0xff && buf[1] === 0xd8;
+    const isPng = buf[0] === 0x89 && buf[1] === 0x50;
+    const isWebp =
+      buf.length > 12 &&
+      buf.slice(0, 4).toString() === 'RIFF' &&
+      buf.slice(8, 12).toString() === 'WEBP';
+    const isGif = buf.slice(0, 3).toString() === 'GIF';
+    if (!isJpeg && !isPng && !isWebp && !isGif) return null;
 
     let ext = 'jpg';
-    if (contentType.includes('png') || /\.png(\?|$)/i.test(url)) ext = 'png';
-    else if (contentType.includes('webp')) ext = 'webp';
-    else if (contentType.includes('gif')) ext = 'gif';
-    else if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = 'jpg';
+    if (isPng || contentType.includes('png')) ext = 'png';
+    else if (isWebp || contentType.includes('webp')) ext = 'webp';
+    else if (isGif || contentType.includes('gif')) ext = 'gif';
 
-    const safeName = String(nameHint || 'poster')
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]+/g, '-')
-      .replace(/^-+|-+$/g, '')
-      .slice(0, 60) || 'poster';
+    const safeName =
+      String(nameHint || 'poster')
+        .toLowerCase()
+        .replace(/[^a-z0-9._-]+/g, '-')
+        .replace(/^-+|-+$/g, '')
+        .slice(0, 60) || 'poster';
     const fileName = `${safeName}.${ext}`;
-    tmp = path.join(os.tmpdir(), `more-poster-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`);
-    fs.writeFileSync(tmp, buf);
+    const nextTmp = path.join(
+      os.tmpdir(),
+      `more-poster-${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`,
+    );
+    fs.writeFileSync(nextTmp, buf);
+    if (tmp && tmp !== nextTmp) {
+      try {
+        fs.unlinkSync(tmp);
+      } catch {
+        /* ignore */
+      }
+    }
+    tmp = nextTmp;
 
-    const mime = contentType && contentType.startsWith('image/') ? contentType : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
-    // Strapi 4: `path` + `name` + `type` + `size`
+    const mime =
+      contentType && contentType.startsWith('image/')
+        ? contentType
+        : `image/${ext === 'jpg' ? 'jpeg' : ext}`;
     const uploaded = await strapi.plugin('upload').service('upload').upload({
       data: {
         fileInfo: {
@@ -1209,11 +1299,8 @@ async function uploadRemotePosterToStrapi(strapi, imageUrl, nameHint = 'poster')
       },
       files: {
         path: tmp,
-        filepath: tmp,
         name: fileName,
-        originalFilename: fileName,
         type: mime,
-        mimetype: mime,
         size: buf.length,
       },
     });
@@ -1360,29 +1447,35 @@ async function createCmsContentFromMoreCatalog(strapi, options = {}) {
   const uid = isTheater ? 'api::theater-show.theater-show' : 'api::movie.movie';
 
   const moreUrl = String(options.moreUrl || '').trim();
-  const catalogTitle = String(options.title || options.moreTitle || '').trim();
-  const pageMeta = await scrapeMorePageMeta(moreUrl);
+  const catalogTitle = cleanMoreDisplayTitle(options.title || options.moreTitle || '');
+  const pageMetaRaw = await scrapeMorePageMeta(moreUrl);
+  const pageMeta =
+    pageMetaRaw &&
+    (pageMetaRaw.playTitle || pageMetaRaw.title || pageMetaRaw.description || pageMetaRaw.image)
+      ? pageMetaRaw
+      : null;
   const eventsMeta = await enrichFromMoreEvents(code);
 
   const pathSlug =
     pageMeta?.pathSlug || morePageSlugFromUrl(moreUrl) || slugifyVenueNameForLookup(catalogTitle) || 'item';
-  const titleParts = parseMoreTitleParts(pageMeta?.title || catalogTitle, {
+  const titleParts = parseMoreTitleParts(pageMeta?.playTitle || pageMeta?.title || catalogTitle, {
     pathSlug,
-    playTitle: pageMeta?.playTitle || pageMeta?.title || '',
+    playTitle: pageMeta?.playTitle || '',
   });
+  // Προτεραιότητα τίτλου από τη σελίδα More, όχι από κατάλογο.
   const title =
-    cleanMoreDisplayTitle(options.title || titleParts.title || catalogTitle || pageMeta?.playTitle) ||
-    'Χωρίς τίτλο';
+    cleanMoreDisplayTitle(pageMeta?.playTitle || titleParts.title || catalogTitle) || 'Χωρίς τίτλο';
 
   const castNames = Array.isArray(pageMeta?.cast) ? pageMeta.cast.filter(Boolean) : [];
   const castComponents = castNames.slice(0, 30).map((person_name) => ({ person_name }));
 
   const enriched = {
     fromPage: Boolean(pageMeta),
+    scrapeError: pageMetaRaw?.scrapeError || null,
     synopsis: pageMeta?.description || null,
     director: pageMeta?.director || null,
     castCount: castComponents.length,
-    duration: eventsMeta.duration,
+    duration: pageMeta?.durationFromPage || eventsMeta.duration || null,
     runStart: eventsMeta.runStart,
     runEnd: eventsMeta.runEnd,
     venueNames: eventsMeta.venueNames,
@@ -1428,6 +1521,13 @@ async function createCmsContentFromMoreCatalog(strapi, options = {}) {
     if (castComponents.length) data.cast = castComponents;
     if (posterId) data.poster = posterId;
     const created = await strapi.entityService.create(uid, { data });
+    if (posterId) {
+      try {
+        await strapi.entityService.update(uid, created.id, { data: { poster: posterId } });
+      } catch {
+        /* ήδη στο create */
+      }
+    }
     return {
       ok: true,
       contentType,
@@ -1468,6 +1568,13 @@ async function createCmsContentFromMoreCatalog(strapi, options = {}) {
   if (castComponents.length) data.cast = castComponents;
   if (posterId) data.poster = posterId;
   const created = await strapi.entityService.create(uid, { data });
+  if (posterId) {
+    try {
+      await strapi.entityService.update(uid, created.id, { data: { poster: posterId } });
+    } catch {
+      /* ήδη στο create */
+    }
+  }
   return {
     ok: true,
     contentType,
