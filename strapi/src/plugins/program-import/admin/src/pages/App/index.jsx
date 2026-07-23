@@ -173,27 +173,29 @@ function statusLabel(status) {
   return status;
 }
 
-/** Αναζήτηση ταινίας CMS — δεν render-άρει όλες τις options (γρήγορο με εκατοντάδες ταινίες). */
+/** Αναζήτηση ταινίας CMS — absolute list ώστε να μην κόβεται μέσα σε table. */
 function CmsMovieSearchSelect({ movies, value, onChange, placeholder = 'Αναζήτηση ταινίας…', disabled }) {
   const [filter, setFilter] = useState('');
   const [open, setOpen] = useState(false);
   const wrapRef = useRef(null);
+  const inputRef = useRef(null);
 
   const selected = useMemo(
-    () => movies.find((m) => String(m.id) === String(value)),
+    () => (movies || []).find((m) => String(m.id) === String(value)),
     [movies, value],
   );
 
   const filtered = useMemo(() => {
+    const all = Array.isArray(movies) ? movies : [];
     const q = filter.trim().toLocaleLowerCase('el');
     const list = !q
-      ? movies
-      : movies.filter((m) => {
+      ? all
+      : all.filter((m) => {
           const title = String(m.title || '').toLocaleLowerCase('el');
           const orig = String(m.originalTitle || '').toLocaleLowerCase('el');
           return title.includes(q) || orig.includes(q);
         });
-    return list.slice(0, 40);
+    return list.slice(0, 50);
   }, [filter, movies]);
 
   useEffect(() => {
@@ -201,69 +203,88 @@ function CmsMovieSearchSelect({ movies, value, onChange, placeholder = 'Αναζ
     const onDoc = (e) => {
       if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
     };
-    document.addEventListener('mousedown', onDoc);
-    return () => document.removeEventListener('mousedown', onDoc);
+    // click (όχι mousedown) — αλλιώς κλείνει πριν προλάβει το pick
+    document.addEventListener('click', onDoc);
+    return () => document.removeEventListener('click', onDoc);
   }, [open]);
+
+  const pick = (id) => {
+    onChange(String(id));
+    setOpen(false);
+    setFilter('');
+  };
 
   return (
     <div ref={wrapRef} className="program-import-movie-picker">
       {selected ? (
-        <Flex gap={2} alignItems="center" wrap="wrap" marginBottom={1}>
-          <Typography variant="pi" textColor="primary600">
-            {selected.title}
-          </Typography>
-          <Button
-            size="S"
-            variant="tertiary"
+        <div className="program-import-movie-picker-selected">
+          <span className="program-import-movie-picker-selected-title">{selected.title}</span>
+          <button
+            type="button"
+            className="program-import-movie-picker-change"
             disabled={disabled}
-            onClick={() => {
+            onClick={(e) => {
+              e.stopPropagation();
               onChange('');
               setFilter('');
               setOpen(true);
+              setTimeout(() => inputRef.current?.focus(), 0);
             }}
           >
             Αλλαγή
-          </Button>
-        </Flex>
+          </button>
+        </div>
       ) : null}
-      <input
-        type="search"
-        className="program-import-venue-search-input"
-        placeholder={placeholder}
-        value={filter}
-        disabled={disabled}
-        autoComplete="off"
-        onChange={(e) => {
-          setFilter(e.target.value);
-          setOpen(true);
-        }}
-        onFocus={() => setOpen(true)}
-      />
-      {open ? (
-        filtered.length > 0 ? (
-          <div className="program-import-venue-picker-list" role="listbox">
-            {filtered.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className="program-import-venue-picker-option"
-                disabled={disabled}
-                onClick={() => {
-                  onChange(String(m.id));
-                  setOpen(false);
-                  setFilter('');
-                }}
-              >
-                {m.title}
-                {m.originalTitle && m.originalTitle !== m.title ? ` · ${m.originalTitle}` : ''}
-              </button>
-            ))}
-          </div>
-        ) : (
-          <Typography variant="pi" textColor="neutral500">
-            Δεν βρέθηκε ταινία — γράψε μέρος του τίτλου
-          </Typography>
-        )
+      {!selected ? (
+        <>
+          <input
+            ref={inputRef}
+            type="search"
+            className="program-import-venue-search-input"
+            placeholder={placeholder}
+            value={filter}
+            disabled={disabled}
+            autoComplete="off"
+            onChange={(e) => {
+              setFilter(e.target.value);
+              setOpen(true);
+            }}
+            onFocus={() => setOpen(true)}
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpen(true);
+            }}
+          />
+          {open ? (
+            <div className="program-import-movie-picker-list" role="listbox">
+              {filtered.length > 0 ? (
+                filtered.map((m) => (
+                  <button
+                    key={m.id}
+                    type="button"
+                    className="program-import-venue-picker-option"
+                    disabled={disabled}
+                    onMouseDown={(e) => {
+                      // Αποφυγή blur του input πριν το click
+                      e.preventDefault();
+                      e.stopPropagation();
+                      pick(m.id);
+                    }}
+                  >
+                    {m.title}
+                    {m.originalTitle && m.originalTitle !== m.title ? ` · ${m.originalTitle}` : ''}
+                  </button>
+                ))
+              ) : (
+                <div className="program-import-movie-picker-empty">
+                  {(movies || []).length === 0
+                    ? 'Δεν φορτώθηκαν ταινίες CMS'
+                    : 'Δεν βρέθηκε — δοκίμασε άλλο κείμενο'}
+                </div>
+              )}
+            </div>
+          ) : null}
+        </>
       ) : null}
     </div>
   );

@@ -7,6 +7,67 @@
 
 .program-import-preview-table {
   overflow-x: auto;
+  overflow-y: visible;
+}
+
+.program-import-preview-table table,
+.program-import-preview-table tbody,
+.program-import-preview-table tr,
+.program-import-preview-table td {
+  overflow: visible;
+}
+
+.program-import-movie-picker {
+  width: 100%;
+  max-width: 28rem;
+  position: relative;
+  z-index: 2;
+}
+
+.program-import-movie-picker-selected {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.program-import-movie-picker-selected-title {
+  font-size: 0.8125rem;
+  color: #4945ff;
+  font-weight: 600;
+}
+
+.program-import-movie-picker-change {
+  border: none;
+  background: transparent;
+  color: #666687;
+  cursor: pointer;
+  font-size: 0.75rem;
+  text-decoration: underline;
+  padding: 0;
+}
+
+.program-import-movie-picker-list {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 2px);
+  z-index: 50;
+  max-height: 16rem;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid #dcdce4;
+  border-radius: 0.25rem;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(33, 33, 52, 0.12);
+  -webkit-overflow-scrolling: touch;
+}
+
+.program-import-movie-picker-empty {
+  padding: 0.55rem 0.65rem;
+  font-size: 0.75rem;
+  color: #666687;
 }
 
 .program-import-movie-block {
@@ -130,12 +191,6 @@
   font-size: 0.8125rem;
   line-height: 1.35;
   color: #32324d;
-}
-
-.program-import-movie-picker {
-  width: 100%;
-  max-width: 28rem;
-  position: relative;
 }
 
 .program-import-venue-search-input:disabled {
