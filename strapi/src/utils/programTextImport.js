@@ -15,8 +15,16 @@ const {
 
 const PREVIEW_MIN_SCORE = Number(process.env.PROGRAM_IMPORT_MATCH_MIN || 0.72);
 const ALT_MATCH_LIMIT = 5;
+const CREATE_CONCURRENCY = Math.max(2, Number(process.env.PROGRAM_IMPORT_CREATE_CONCURRENCY || 8));
 
-async function findAllMovies(strapi) {
+let moviesCache = { at: 0, rows: null };
+const MOVIES_CACHE_TTL_MS = 60_000;
+
+async function findAllMovies(strapi, { bypassCache = false } = {}) {
+  const now = Date.now();
+  if (!bypassCache && moviesCache.rows && now - moviesCache.at < MOVIES_CACHE_TTL_MS) {
+    return moviesCache.rows;
+  }
   const rows = [];
   let page = 1;
   const pageSize = 200;
@@ -33,13 +41,83 @@ async function findAllMovies(strapi) {
     if (list.length < pageSize) break;
     page += 1;
   }
-  return rows.map((row) => ({
+  const mapped = rows.map((row) => ({
     id: row.id,
     title: row.title,
     originalTitle: row.original_title,
     slug: row.slug,
     contentType: 'movie',
   }));
+  moviesCache = { at: Date.now(), rows: mapped };
+  return mapped;
+}
+
+function minuteKey(datetime) {
+  const t = datetime instanceof Date ? datetime.getTime() : new Date(datetime).getTime();
+  if (Number.isNaN(t)) return null;
+  return Math.round(t / 60_000);
+}
+
+function showtimeSlotKey(movieId, datetime) {
+  const mk = minuteKey(datetime);
+  if (mk == null || movieId == null) return null;
+  return `${Number(movieId)}|${mk}`;
+}
+
+/**
+ * Ένα query για όλα τα showtimes του venue στο εύρος του προγράμματος.
+ * @returns {Promise<Set<string>>} keys `${movieId}|${minute}`
+ */
+async function loadExistingShowtimeKeySet(strapi, venueId, datetimes) {
+  const keys = new Set();
+  const times = (datetimes || [])
+    .map((d) => (d instanceof Date ? d.getTime() : new Date(d).getTime()))
+    .filter((t) => Number.isFinite(t));
+  if (!times.length) return keys;
+
+  const min = Math.min(...times) - 120_000;
+  const max = Math.max(...times) + 120_000;
+  let page = 1;
+  const pageSize = 500;
+  while (page <= 40) {
+    const batch = await strapi.entityService.findMany('api::showtime.showtime', {
+      filters: {
+        venue: { id: venueId },
+        datetime: {
+          $gte: new Date(min).toISOString(),
+          $lte: new Date(max).toISOString(),
+        },
+      },
+      fields: ['id', 'datetime'],
+      populate: { movie: { fields: ['id'] } },
+      pagination: { page, pageSize },
+    });
+    const list = Array.isArray(batch) ? batch : [];
+    if (!list.length) break;
+    for (const row of list) {
+      const movieId = row.movie?.id ?? row.movie;
+      const k = showtimeSlotKey(movieId, row.datetime);
+      if (k) keys.add(k);
+    }
+    if (list.length < pageSize) break;
+    page += 1;
+  }
+  return keys;
+}
+
+async function mapPool(items, concurrency, fn) {
+  const list = Array.isArray(items) ? items : [];
+  const results = new Array(list.length);
+  let next = 0;
+  const workers = Array.from({ length: Math.min(concurrency, Math.max(1, list.length)) }, async () => {
+    while (next < list.length) {
+      const i = next;
+      next += 1;
+      results[i] = await fn(list[i], i);
+    }
+  });
+  await Promise.all(workers);
+  return results;
 }
 
 async function findAllCinemas(strapi) {
@@ -202,10 +280,19 @@ async function buildPreviewFromParsed(
   const summerScreeningDefault =
     summerMeta.userChoice === true || (summerMeta.venueOutdoor === true && !summerMeta.hasPerShowtimeFlags);
 
+  const allDatetimes = [];
+  for (const movie of parsed.movies || []) {
+    for (const st of movie.showtimes || []) {
+      if (st?.datetime) allDatetimes.push(st.datetime);
+    }
+  }
+  const existingKeys = await loadExistingShowtimeKeySet(strapi, venue.id, allDatetimes);
+
   const movies = [];
   const proposals = [];
   let totalShowtimes = 0;
   let existingShowtimes = 0;
+  let pastShowtimes = 0;
   let proposalIdx = 0;
 
   for (const movie of parsed.movies) {
@@ -218,17 +305,19 @@ async function buildPreviewFromParsed(
     for (const st of movie.showtimes) {
       totalShowtimes += 1;
       proposalIdx += 1;
-      const exists =
-        match?.cmsId && st.datetime >= now
-          ? await showtimeExistsAt(strapi, {
-              movieId: match.cmsId,
-              venueId: venue.id,
-              datetime: st.datetime,
-            })
-          : false;
+      const isPast = st.datetime < now;
+      if (isPast) pastShowtimes += 1;
+
+      const slotKey = match?.cmsId ? showtimeSlotKey(match.cmsId, st.datetime) : null;
+      const exists = Boolean(slotKey && existingKeys.has(slotKey));
       if (exists) existingShowtimes += 1;
 
       const { dateLabel, timeLabel } = formatAthensWallClock(st.datetime);
+      let status = 'unmatched';
+      if (isPast) status = 'past';
+      else if (exists) status = 'exists';
+      else if (match?.cmsId) status = 'new';
+
       const row = {
         id: `p-${proposalIdx}`,
         parsedTitle: movie.title,
@@ -242,8 +331,10 @@ async function buildPreviewFromParsed(
         note: st.note,
         summer_screening: resolveSummerScreeningForShowtime(st, { summerScreeningDefault }),
         exists,
-        approved: !exists && Boolean(match?.cmsId),
-        status: exists ? 'exists' : match?.cmsId ? 'new' : 'unmatched',
+        isPast,
+        // Παρελθόν / ήδη υπάρχοντα δεν εγκρίνονται — αλλιώς «μένουν» μετά το create.
+        approved: !isPast && !exists && Boolean(match?.cmsId),
+        status,
       };
 
       showtimes.push({
@@ -253,6 +344,7 @@ async function buildPreviewFromParsed(
         note: st.note,
         summer_screening: resolveSummerScreeningForShowtime(st, { summerScreeningDefault }),
         exists,
+        isPast,
       });
       proposals.push(row);
     }
@@ -294,7 +386,12 @@ async function buildPreviewFromParsed(
     warnings: parsed.warnings,
     movies,
     proposals,
-    cmsMovies: cmsMovies.map((m) => ({ id: m.id, title: m.title })),
+    // Slim list για manual pick — το UI φιλτράρει τοπικά με αναζήτηση.
+    cmsMovies: cmsMovies.map((m) => ({
+      id: m.id,
+      title: m.title,
+      originalTitle: m.originalTitle || null,
+    })),
     ocrPreview: parsed.ocrPreview,
     summary: {
       movieCount: movies.length,
@@ -302,7 +399,8 @@ async function buildPreviewFromParsed(
       matchedMovies,
       unmatchedMovies,
       existingShowtimes,
-      creatableShowtimes: totalShowtimes - existingShowtimes,
+      pastShowtimes,
+      creatableShowtimes: Math.max(0, totalShowtimes - existingShowtimes - pastShowtimes),
       approvableCount,
     },
     matchMinScore: PREVIEW_MIN_SCORE,
@@ -400,10 +498,13 @@ async function createProgramTextShowtimes(
     weekSkippedNoMovie: 0,
   };
 
+  const createdSlots = [];
   const trackWeekFailure = () => {
     summary.weekFailed += 1;
   };
 
+  // Συλλογή slots προς δημιουργία (μόνο approved + με movie).
+  const work = [];
   for (const item of list) {
     const movieId = Number(item.movieId);
     const parsedTitle = String(item.parsedTitle || '').trim();
@@ -454,56 +555,97 @@ async function createProgramTextShowtimes(
         continue;
       }
 
-      const inTargetWeek = isDatetimeInTargetCinemaWeekForVenueStatus(datetime, now);
-      if (inTargetWeek) summary.weekExpected += 1;
-
-      try {
-        const matches = await findShowtimesAtSlot(strapi, {
-          movieId,
-          venueId: venue.id,
-          datetime,
-        });
-        if (matches.length > 0) {
-          if (venue.summer_outdoor === true && matches.length > 1) {
-            const removed = await deleteOlderDuplicateShowtimes(strapi, matches);
-            if (removed > 0) {
-              summary.dedupedSummer = (summary.dedupedSummer || 0) + removed;
-            }
-          }
-          summary.skippedExists += 1;
-          if (inTargetWeek) summary.weekSynced += 1;
-          continue;
-        }
-
-        const note = st.note ? String(st.note).trim() : '';
-        const traceParts = [
-          'Εισαγωγή προγράμματος (admin)',
-          `venue=${venue.name}`,
-          parsedTitle ? `title=${parsedTitle}` : null,
-          note ? `note=${note}` : null,
-        ].filter(Boolean);
-
-        await strapi.entityService.create('api::showtime.showtime', {
-          data: {
-            schedule_kind: 'exact',
-            datetime: datetime.toISOString(),
-            movie: movieId,
-            venue: venue.id,
-            summer_screening: st.summer_screening === true,
-            import_source: 'manual',
-            import_trace: traceParts.join(' · '),
-          },
-        });
-        summary.created += 1;
-        if (inTargetWeek) summary.weekSynced += 1;
-      } catch (e) {
-        summary.errors += 1;
-        if (inTargetWeek) trackWeekFailure();
-        strapi.log.warn(`[program-import] create showtime failed: ${e?.message || e}`);
-      }
+      work.push({
+        movieId,
+        parsedTitle,
+        datetime,
+        note: st.note,
+        summer_screening: st.summer_screening === true,
+      });
     }
   }
 
+  const existingKeys = await loadExistingShowtimeKeySet(
+    strapi,
+    venue.id,
+    work.map((w) => w.datetime),
+  );
+
+  const outcomes = await mapPool(work, CREATE_CONCURRENCY, async (job) => {
+    const inTargetWeek = isDatetimeInTargetCinemaWeekForVenueStatus(job.datetime, now);
+    try {
+      const slotKey = showtimeSlotKey(job.movieId, job.datetime);
+      if (slotKey && existingKeys.has(slotKey)) {
+        return { type: 'exists', inTargetWeek };
+      }
+
+      const matches = await findShowtimesAtSlot(strapi, {
+        movieId: job.movieId,
+        venueId: venue.id,
+        datetime: job.datetime,
+      });
+      if (matches.length > 0) {
+        let dedupedSummer = 0;
+        if (venue.summer_outdoor === true && matches.length > 1) {
+          dedupedSummer = await deleteOlderDuplicateShowtimes(strapi, matches);
+        }
+        if (slotKey) existingKeys.add(slotKey);
+        return { type: 'exists', inTargetWeek, dedupedSummer };
+      }
+
+      const note = job.note ? String(job.note).trim() : '';
+      const traceParts = [
+        'Εισαγωγή προγράμματος (admin)',
+        `venue=${venue.name}`,
+        job.parsedTitle ? `title=${job.parsedTitle}` : null,
+        note ? `note=${note}` : null,
+      ].filter(Boolean);
+
+      await strapi.entityService.create('api::showtime.showtime', {
+        data: {
+          schedule_kind: 'exact',
+          datetime: job.datetime.toISOString(),
+          movie: job.movieId,
+          venue: venue.id,
+          summer_screening: job.summer_screening === true,
+          import_source: 'manual',
+          import_trace: traceParts.join(' · '),
+        },
+      });
+      if (slotKey) existingKeys.add(slotKey);
+      return {
+        type: 'created',
+        inTargetWeek,
+        slot: {
+          movieId: job.movieId,
+          datetime: job.datetime.toISOString(),
+          parsedTitle: job.parsedTitle,
+        },
+      };
+    } catch (e) {
+      strapi.log.warn(`[program-import] create showtime failed: ${e?.message || e}`);
+      return { type: 'error', inTargetWeek };
+    }
+  });
+
+  for (const outcome of outcomes) {
+    if (!outcome) continue;
+    if (outcome.inTargetWeek) summary.weekExpected += 1;
+    if (outcome.type === 'created') {
+      summary.created += 1;
+      if (outcome.slot) createdSlots.push(outcome.slot);
+      if (outcome.inTargetWeek) summary.weekSynced += 1;
+    } else if (outcome.type === 'exists') {
+      summary.skippedExists += 1;
+      if (outcome.dedupedSummer) {
+        summary.dedupedSummer = (summary.dedupedSummer || 0) + outcome.dedupedSummer;
+      }
+      if (outcome.inTargetWeek) summary.weekSynced += 1;
+    } else if (outcome.type === 'error') {
+      summary.errors += 1;
+      if (outcome.inTargetWeek) trackWeekFailure();
+    }
+  }
   const meta = {
     unmatchedMovies: Number(importMeta.unmatchedMovies || 0),
   };
@@ -527,6 +669,7 @@ async function createProgramTextShowtimes(
     ok: true,
     venue: { id: venue.id, name: venue.name },
     summary,
+    createdSlots,
     venueUpdated,
     venueUpdatedLabel: venueUpdated?.status ? VENUE_UPDATED_LABELS[venueUpdated.status] : null,
   };

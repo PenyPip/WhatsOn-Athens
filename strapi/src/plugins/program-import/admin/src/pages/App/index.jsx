@@ -11,8 +11,6 @@ import {
   Grid,
   GridItem,
   Textarea,
-  SingleSelect,
-  SingleSelectOption,
   Alert,
   Badge,
   Table,
@@ -54,6 +52,7 @@ function detectPerLineSummerInText(text) {
 function CinemaVenueSearchSelect({ cinemas, value, onChange, disabled, loading }) {
   const [filter, setFilter] = useState('');
   const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
 
   const selected = useMemo(
     () => cinemas.find((c) => String(c.id) === String(value)),
@@ -69,8 +68,17 @@ function CinemaVenueSearchSelect({ cinemas, value, onChange, disabled, loading }
           .toLocaleLowerCase('el')
           .includes(q);
       })
-      .slice(0, 80);
+      .slice(0, 60);
   }, [cinemas, filter]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
 
   const pickVenue = (id) => {
     onChange(String(id));
@@ -79,7 +87,8 @@ function CinemaVenueSearchSelect({ cinemas, value, onChange, disabled, loading }
   };
 
   return (
-    <Flex direction="column" alignItems="stretch" gap={2} className="program-import-venue-picker">
+    <div ref={wrapRef} className="program-import-venue-picker">
+      <Flex direction="column" alignItems="stretch" gap={2}>
       {selected ? (
         <Flex gap={2} alignItems="center" wrap="wrap">
           <Typography variant="pi" textColor="primary600">
@@ -139,7 +148,8 @@ function CinemaVenueSearchSelect({ cinemas, value, onChange, disabled, loading }
           </Typography>
         )
       ) : null}
-    </Flex>
+      </Flex>
+    </div>
   );
 }
 
@@ -159,7 +169,104 @@ function statusLabel(status) {
   if (status === 'manual') return 'Χειροκίνητη ταύτιση';
   if (status === 'exists') return 'Υπάρχει ήδη';
   if (status === 'unmatched') return 'Χωρίς ταινία CMS';
+  if (status === 'past') return 'Παρελθόν';
   return status;
+}
+
+/** Αναζήτηση ταινίας CMS — δεν render-άρει όλες τις options (γρήγορο με εκατοντάδες ταινίες). */
+function CmsMovieSearchSelect({ movies, value, onChange, placeholder = 'Αναζήτηση ταινίας…', disabled }) {
+  const [filter, setFilter] = useState('');
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef(null);
+
+  const selected = useMemo(
+    () => movies.find((m) => String(m.id) === String(value)),
+    [movies, value],
+  );
+
+  const filtered = useMemo(() => {
+    const q = filter.trim().toLocaleLowerCase('el');
+    const list = !q
+      ? movies
+      : movies.filter((m) => {
+          const title = String(m.title || '').toLocaleLowerCase('el');
+          const orig = String(m.originalTitle || '').toLocaleLowerCase('el');
+          return title.includes(q) || orig.includes(q);
+        });
+    return list.slice(0, 40);
+  }, [filter, movies]);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    const onDoc = (e) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target)) setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  return (
+    <div ref={wrapRef} className="program-import-movie-picker">
+      {selected ? (
+        <Flex gap={2} alignItems="center" wrap="wrap" marginBottom={1}>
+          <Typography variant="pi" textColor="primary600">
+            {selected.title}
+          </Typography>
+          <Button
+            size="S"
+            variant="tertiary"
+            disabled={disabled}
+            onClick={() => {
+              onChange('');
+              setFilter('');
+              setOpen(true);
+            }}
+          >
+            Αλλαγή
+          </Button>
+        </Flex>
+      ) : null}
+      <input
+        type="search"
+        className="program-import-venue-search-input"
+        placeholder={placeholder}
+        value={filter}
+        disabled={disabled}
+        autoComplete="off"
+        onChange={(e) => {
+          setFilter(e.target.value);
+          setOpen(true);
+        }}
+        onFocus={() => setOpen(true)}
+      />
+      {open ? (
+        filtered.length > 0 ? (
+          <div className="program-import-venue-picker-list" role="listbox">
+            {filtered.map((m) => (
+              <button
+                key={m.id}
+                type="button"
+                className="program-import-venue-picker-option"
+                disabled={disabled}
+                onClick={() => {
+                  onChange(String(m.id));
+                  setOpen(false);
+                  setFilter('');
+                }}
+              >
+                {m.title}
+                {m.originalTitle && m.originalTitle !== m.title ? ` · ${m.originalTitle}` : ''}
+              </button>
+            ))}
+          </div>
+        ) : (
+          <Typography variant="pi" textColor="neutral500">
+            Δεν βρέθηκε ταινία — γράψε μέρος του τίτλου
+          </Typography>
+        )
+      ) : null}
+    </div>
+  );
 }
 
 function readFileAsDataUrl(file) {
@@ -191,6 +298,7 @@ export default function App() {
   const [loadingCinemas, setLoadingCinemas] = useState(true);
   const [parsing, setParsing] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [showPastShowtimes, setShowPastShowtimes] = useState(false);
 
   const maxImages = aiStatus?.maxImages || MAX_IMAGES_DEFAULT;
 
@@ -268,7 +376,15 @@ export default function App() {
 
   const setManualMovieForTitle = useCallback(
     (title, movieId) => {
-      if (!movieId) return;
+      if (!movieId) {
+        setManualMovieByTitle((prev) => {
+          if (!prev[title]) return prev;
+          const next = { ...prev };
+          delete next[title];
+          return next;
+        });
+        return;
+      }
       setManualMovieByTitle((prev) => ({ ...prev, [title]: Number(movieId) }));
       setSkippedMovieTitles((prev) => {
         if (!prev[title]) return prev;
@@ -303,21 +419,48 @@ export default function App() {
       const manualId = manualMovieByTitle[row.parsedTitle];
       const movieId = movieIdForTitle(row.parsedTitle, row.movieMatch);
       const cmsTitle = movieId ? cmsMovieById.get(movieId) || row.cmsTitle : null;
-      const canApprove = Boolean(movieId) && !row.exists;
-      const defaultApproved = row.approved || Boolean(manualId);
+      const isPast = row.isPast === true || row.status === 'past';
+      const canApprove = Boolean(movieId) && !row.exists && !isPast;
+      const defaultApproved = !isPast && (row.approved || Boolean(manualId));
       const approved =
         approvedById[row.id] !== undefined ? approvedById[row.id] : defaultApproved;
+      let status = row.status;
+      if (isPast) status = 'past';
+      else if (!movieId) status = 'unmatched';
+      else if (row.exists) status = 'exists';
+      else if (manualId) status = 'manual';
+      else status = 'new';
       return {
         ...row,
         movieId,
         cmsTitle,
+        isPast,
         canApprove,
         approved: canApprove ? approved : false,
-        status: !movieId ? 'unmatched' : row.exists ? 'exists' : manualId ? 'manual' : 'new',
+        status,
         summer_screening: row.summer_screening === true || markSummer === true,
       };
     });
   }, [approvedById, cmsMovieById, manualMovieByTitle, markSummer, movieIdForTitle, preview]);
+
+  const visibleProposals = useMemo(() => {
+    const list = showPastShowtimes
+      ? enrichedProposals
+      : enrichedProposals.filter((p) => !p.isPast);
+    // Προτεραιότητα: νέες / unmatched πρώτα, exists/past στο τέλος.
+    const rank = (p) => {
+      if (p.status === 'new' || p.status === 'manual') return 0;
+      if (p.status === 'unmatched') return 1;
+      if (p.status === 'exists') return 2;
+      return 3;
+    };
+    return [...list].sort((a, b) => rank(a) - rank(b));
+  }, [enrichedProposals, showPastShowtimes]);
+
+  const pastCount = useMemo(
+    () => enrichedProposals.filter((p) => p.isPast).length,
+    [enrichedProposals],
+  );
 
   const approvedCount = useMemo(
     () => enrichedProposals.filter((p) => p.approved).length,
@@ -506,6 +649,9 @@ export default function App() {
       const skippedParts = [
         s.skippedNotApproved ? `${s.skippedNotApproved} δεν εγκρίθηκαν` : null,
         s.skippedNoMovie ? `${s.skippedNoMovie} χωρίς ταινία CMS` : null,
+        s.skippedExists ? `${s.skippedExists} υπήρχαν ήδη` : null,
+        s.skippedPast ? `${s.skippedPast} παρελθόν` : null,
+        s.errors ? `${s.errors} σφάλματα` : null,
       ].filter(Boolean);
       const statusPart = vu?.statusLabel
         ? ` · updated: ${vu.statusLabel}${vu.reasonDetail ? ` (${vu.reasonDetail})` : ''}`
@@ -514,11 +660,49 @@ export default function App() {
         type: 'success',
         message: `Δημιουργήθηκαν ${s.created} προβολές${skippedParts.length ? ` · ${skippedParts.join(' · ')}` : ''}${statusPart}`,
       });
-      await runPreview({
-        venueId: preview.venue.id,
-        mode: preview.inputKind || inputMode,
-        textValue: text,
-        imageValues: images,
+
+      // Τοπική ενημέρωση — χωρίς πλήρες re-parse (αργό).
+      const createdKeys = new Set(
+        (data.createdSlots || []).map((slot) => {
+          const t = new Date(slot.datetime).getTime();
+          return `${Number(slot.movieId)}|${Math.round(t / 60_000)}`;
+        }),
+      );
+      setPreview((prev) => {
+        if (!prev) return prev;
+        const nextProposals = (prev.proposals || []).map((p) => {
+          const movieId = movieIdForTitle(p.parsedTitle, p.movieMatch) || p.movieId;
+          const t = new Date(p.datetime).getTime();
+          const key = `${Number(movieId)}|${Math.round(t / 60_000)}`;
+          if (movieId && createdKeys.has(key)) {
+            return { ...p, exists: true, approved: false, status: 'exists' };
+          }
+          return p;
+        });
+        const existingShowtimes = nextProposals.filter((p) => p.exists).length;
+        const pastShowtimes = nextProposals.filter((p) => p.isPast || p.status === 'past').length;
+        return {
+          ...prev,
+          proposals: nextProposals,
+          summary: {
+            ...prev.summary,
+            existingShowtimes,
+            pastShowtimes,
+            approvableCount: nextProposals.filter(
+              (p) => !p.exists && !p.isPast && p.status !== 'past' && (p.movieId || p.movieMatch),
+            ).length,
+          },
+        };
+      });
+      setApprovedById((prev) => {
+        const next = { ...prev };
+        for (const p of enrichedProposals) {
+          if (!p.approved || !p.movieId) continue;
+          const t = new Date(p.datetime).getTime();
+          const key = `${Number(p.movieId)}|${Math.round(t / 60_000)}`;
+          if (createdKeys.has(key)) next[p.id] = false;
+        }
+        return next;
       });
     } catch (e) {
       toggleNotification({ type: 'warning', message: e?.message || 'Αποτυχία δημιουργίας' });
@@ -528,13 +712,10 @@ export default function App() {
   }, [
     approvedCount,
     enrichedProposals,
-    images,
-    inputMode,
+    movieIdForTitle,
     post,
     preview,
     pendingUnmatchedTitles,
-    runPreview,
-    text,
     toggleNotification,
   ]);
 
@@ -826,17 +1007,14 @@ export default function App() {
                                 </Flex>
                               ) : null}
                               <Box minWidth="280px" maxWidth="480px">
-                                <SingleSelect
-                                  placeholder="Επίλεξε ταινία CMS"
-                                  value={resolvedId ? String(resolvedId) : undefined}
-                                  onChange={(val) => setManualMovieForTitle(block.parsedTitle, Number(val))}
-                                >
-                                  {(preview.cmsMovies || []).map((m) => (
-                                    <SingleSelectOption key={m.id} value={String(m.id)}>
-                                      {m.title}
-                                    </SingleSelectOption>
-                                  ))}
-                                </SingleSelect>
+                                <CmsMovieSearchSelect
+                                  movies={preview.cmsMovies || []}
+                                  value={resolvedId ? String(resolvedId) : ''}
+                                  onChange={(val) =>
+                                    setManualMovieForTitle(block.parsedTitle, val ? Number(val) : '')
+                                  }
+                                  placeholder="Αναζήτηση ταινίας CMS…"
+                                />
                               </Box>
                             </>
                           ) : null}
@@ -853,7 +1031,19 @@ export default function App() {
               ) : null}
 
               <div className="program-import-preview-table">
-                <Table colCount={6} rowCount={enrichedProposals.length}>
+                {pastCount > 0 ? (
+                  <Flex gap={2} alignItems="center" marginBottom={2} wrap="wrap">
+                    <Checkbox
+                      aria-label="Εμφάνιση παρελθόντος"
+                      checked={showPastShowtimes}
+                      onChange={(e) => setShowPastShowtimes(e.target.checked)}
+                    />
+                    <Typography variant="pi" textColor="neutral600">
+                      Εμφάνιση {pastCount} παρελθοντικών προβολών (δεν εισάγονται)
+                    </Typography>
+                  </Flex>
+                ) : null}
+                <Table colCount={6} rowCount={visibleProposals.length}>
                   <Thead>
                     <Tr>
                       <Th>
@@ -871,7 +1061,7 @@ export default function App() {
                     </Tr>
                   </Thead>
                   <Tbody>
-                    {enrichedProposals.map((p) => (
+                    {visibleProposals.map((p) => (
                       <Tr key={p.id}>
                         <Td>
                           <Checkbox
@@ -887,17 +1077,14 @@ export default function App() {
                         <Td>
                           {!p.movieId ? (
                             <Box minWidth="200px">
-                              <SingleSelect
-                                placeholder="Διάλεξε ταινία"
-                                value={undefined}
-                                onChange={(val) => setManualMovieForTitle(p.parsedTitle, Number(val))}
-                              >
-                                {(preview.cmsMovies || []).map((m) => (
-                                  <SingleSelectOption key={m.id} value={String(m.id)}>
-                                    {m.title}
-                                  </SingleSelectOption>
-                                ))}
-                              </SingleSelect>
+                              <CmsMovieSearchSelect
+                                movies={preview.cmsMovies || []}
+                                value=""
+                                onChange={(val) =>
+                                  setManualMovieForTitle(p.parsedTitle, val ? Number(val) : '')
+                                }
+                                placeholder="Διάλεξε ταινία…"
+                              />
                             </Box>
                           ) : (
                             <Typography variant="pi" textColor="neutral800">
