@@ -18,6 +18,7 @@ import {
   Th,
   Td,
   Badge,
+  TextInput,
 } from '@strapi/design-system';
 import { useFetchClient, useNotification } from '@strapi/helper-plugin';
 
@@ -1366,6 +1367,7 @@ const App = () => {
   const [syncLoading, setSyncLoading] = useState(false);
   const [syncProgress, setSyncProgress] = useState(null);
   const [syncProgressAt, setSyncProgressAt] = useState(null);
+  const [syncVenueCmsId, setSyncVenueCmsId] = useState('');
   const [, setProgressTick] = useState(0);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupProgress, setLookupProgress] = useState(null);
@@ -2032,16 +2034,34 @@ const App = () => {
     }
   };
 
-  const runSyncRequest = async (scope = 'all') => {
-    const scopeLabel = scope === 'cinema' ? 'σινεμά' : scope === 'theater' ? 'θέατρο' : 'σινεμά + θέατρο';
+  const runSyncRequest = async (scopeOrOpts = 'all') => {
+    const opts =
+      typeof scopeOrOpts === 'object' && scopeOrOpts != null
+        ? scopeOrOpts
+        : { scope: scopeOrOpts };
+    const scope = opts.scope === 'cinema' || opts.scope === 'theater' ? opts.scope : 'all';
+    const venueId =
+      opts.venueId != null && String(opts.venueId).trim()
+        ? Number(opts.venueId)
+        : undefined;
+    const scopeLabel =
+      venueId != null
+        ? `σινεμά #${venueId}`
+        : scope === 'cinema'
+          ? 'σινεμά'
+          : scope === 'theater'
+            ? 'θέατρο'
+            : 'σινεμά + θέατρο';
     setSyncLoading(true);
     setSyncProgress(`Έναρξη συγχρονισμού (${scopeLabel})…`);
     setSyncReport(null);
     let finishedOk = false;
+    const body = { scope: venueId != null ? 'cinema' : scope };
+    if (venueId != null && Number.isFinite(venueId)) body.venueId = venueId;
     try {
       let res;
       try {
-        res = await post('/api/more-lookup/sync-showtimes', { scope });
+        res = await post('/api/more-lookup/sync-showtimes', body);
       } catch (postErr) {
         if (isTransientGatewayError(postErr)) {
           setSyncProgress('502 στην έναρξη — το worker μπορεί να ξεκίνησε, αναμονή…');
@@ -2093,7 +2113,7 @@ const App = () => {
       throw new Error(
         data?.error ||
           data?.progress ||
-          'Δεν ξεκίνηκε συγχρονισμός — έλεγξε data/more-showtime-sync-worker.log',
+          'Δεν ξεκίνησε συγχρονισμός — έλεγξε data/more-showtime-sync-worker.log',
       );
     } catch (error) {
       if (isTransientGatewayError(error)) {
@@ -2137,7 +2157,17 @@ const App = () => {
   const syncShowtimes = () => runSyncRequest('all');
   const syncShowtimesCinema = () => runSyncRequest('cinema');
   const syncShowtimesTheater = () => runSyncRequest('theater');
-
+  const syncOneCinemaVenue = () => {
+    const id = Number(String(syncVenueCmsId || '').trim());
+    if (!Number.isFinite(id) || id <= 0) {
+      toggleNotification({
+        type: 'warning',
+        message: 'Βάλε το CMS id του σινεμά (π.χ. από Χώροι → Σινεμά, ο αριθμός #…).',
+      });
+      return;
+    }
+    runSyncRequest({ scope: 'cinema', venueId: id });
+  };
   return (
     <Layout>
       <HeaderLayout
@@ -2270,6 +2300,35 @@ const App = () => {
                     λιγότερη μνήμη). «Σινεμά» / «Θέατρο» τρέχουν μόνο το ένα σκέλος — χρήσιμα αν θέλεις
                     χαμηλό peak μνήμης ή γρήγορη ενημέρωση μόνο της μίας κατηγορίας.
                   </Typography>
+                  <Box paddingTop={4} padding={4} background="neutral100" hasRadius>
+                    <Typography variant="sigma" textColor="neutral700" fontWeight="semiBold">
+                      Sync ένα σινεμά (διάγνωση)
+                    </Typography>
+                    <Typography variant="pi" textColor="neutral600" paddingTop={2} paddingBottom={3}>
+                      CMS id του χώρου (ο αριθμός στην επεξεργασία σινεμά, π.χ. #42). Μετά το sync
+                      εμφανίζεται αναφορά «τι φταίει» αν δεν πέρασαν προβολές.
+                    </Typography>
+                    <Flex gap={3} alignItems="flex-end" wrap="wrap">
+                      <Box style={{ minWidth: '10rem', flex: '0 1 12rem' }}>
+                        <TextInput
+                          label="CMS id σινεμά"
+                          name="syncVenueCmsId"
+                          placeholder="π.χ. 42"
+                          value={syncVenueCmsId}
+                          onChange={(e) => setSyncVenueCmsId(e.target.value)}
+                          disabled={syncLoading || loading}
+                        />
+                      </Box>
+                      <Button
+                        variant="secondary"
+                        onClick={syncOneCinemaVenue}
+                        disabled={syncLoading || loading}
+                        loading={syncLoading}
+                      >
+                        Sync αυτό το σινεμά
+                      </Button>
+                    </Flex>
+                  </Box>
                   {syncLoading && syncProgress ? (
                     <Box paddingTop={3}>
                       <Typography variant="pi" textColor="primary700" fontWeight="semiBold">
