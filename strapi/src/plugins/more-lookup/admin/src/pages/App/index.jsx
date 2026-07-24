@@ -1207,6 +1207,43 @@ function SyncReportPanel({ report }) {
         </Box>
       ) : null}
 
+      {report.venueDiagnosis ? (
+        <Box paddingBottom={missingIds.length || errorCount ? 4 : 0}>
+          <SyncReportSection title="Διάγνωση σινεμά" tone="warning">
+            <Typography variant="pi" textColor="neutral700" paddingBottom={2}>
+              {report.venueDiagnosis.name
+                ? `«${report.venueDiagnosis.name}»`
+                : '—'}
+              {report.venueDiagnosis.venueId != null
+                ? ` #${report.venueDiagnosis.venueId}`
+                : ''}
+              {report.venueDiagnosis.moreVenueId
+                ? ` · More venueId ${report.venueDiagnosis.moreVenueId}`
+                : ' · χωρίς More venueId'}
+              {report.venueDiagnosis.hasBundle
+                ? ` · bundle: ${(report.venueDiagnosis.bundleCodes || []).join(', ') || 'ναι'}`
+                : ' · χωρίς bundle'}
+            </Typography>
+            <Typography variant="pi" textColor="neutral600" paddingBottom={2}>
+              Νέες: {report.venueDiagnosis.created ?? 0} · υπήρχαν:{' '}
+              {report.venueDiagnosis.alreadyExists ?? 0} · άγνωστο eventId:{' '}
+              {report.venueDiagnosis.skippedUnknownEventId ?? 0}
+              {report.venueDiagnosis.weekExpected != null
+                ? ` · εβδομάδα: ${report.venueDiagnosis.weekSynced ?? 0}/${report.venueDiagnosis.weekExpected}`
+                : ''}
+              {report.venueDiagnosis.statusLabel
+                ? ` · ${report.venueDiagnosis.statusLabel}`
+                : ''}
+            </Typography>
+            {(report.venueDiagnosis.hints || []).map((hint) => (
+              <Typography key={hint} variant="pi" textColor="neutral700" paddingTop={1}>
+                · {hint}
+              </Typography>
+            ))}
+          </SyncReportSection>
+        </Box>
+      ) : null}
+
       {missingIds.length > 0 ? (
         <Box paddingBottom={errorCount ? 4 : 0}>
           <SyncReportSection title={`Λείπουν More venueId (${missingIds.length})`} tone="warning">

@@ -228,22 +228,28 @@ module.exports = {
     const body = ctx.request.body ?? {};
     const movieId = body.movieId ?? ctx.query?.movieId;
     const theaterShowId = body.theaterShowId ?? ctx.query?.theaterShowId;
+    const venueId = body.venueId ?? ctx.query?.venueId;
     const wait = body.wait === true || ctx.query?.wait === 'true';
     const adminEmail = ctx.state?.admin?.email || 'unknown';
 
     const rawScope = body.scope ?? ctx.query?.scope;
-    const scope = rawScope === 'cinema' || rawScope === 'theater' ? rawScope : 'all';
+    let scope = rawScope === 'cinema' || rawScope === 'theater' ? rawScope : 'all';
+    if (venueId != null && String(venueId).trim()) scope = 'cinema';
 
     const syncOptions = {
       movieId: movieId != null && String(movieId).trim() ? Number(movieId) : undefined,
       theaterShowId:
         theaterShowId != null && String(theaterShowId).trim() ? Number(theaterShowId) : undefined,
+      venueId: venueId != null && String(venueId).trim() ? Number(venueId) : undefined,
       scope,
       force: body.force === true,
     };
 
     if (wait) {
-      strapi.log.info(`[more-showtime-sync] blocking run by ${adminEmail}`);
+      strapi.log.info(
+        `[more-showtime-sync] blocking run by ${adminEmail}` +
+          (syncOptions.venueId ? ` venueId=${syncOptions.venueId}` : ''),
+      );
       try {
         const report = await syncShowtimesFromMore(strapi, syncOptions);
         ctx.body = report;
@@ -262,7 +268,9 @@ module.exports = {
     }
 
     strapi.log.info(
-      `[more-showtime-sync] background run by ${adminEmail} scope=${scope}${syncOptions.force ? ' (force)' : ''}`,
+      `[more-showtime-sync] background run by ${adminEmail} scope=${scope}` +
+        (syncOptions.venueId ? ` venueId=${syncOptions.venueId}` : '') +
+        `${syncOptions.force ? ' (force)' : ''}`,
     );
     const started = startMoreShowtimeSyncJob(strapi, syncOptions);
     ctx.body = {

@@ -782,12 +782,19 @@ function startMoreShowtimeSyncJob(strapi, options = {}) {
     options.scope === 'cinema' || options.scope === 'theater' ? options.scope : 'all';
   if (options.movieId != null) scope = 'cinema';
   if (options.theaterShowId != null) scope = 'theater';
+  if (options.venueId != null) scope = 'cinema';
   const phases = scope === 'all' ? ['cinema', 'theater'] : [scope];
 
   const id = `sync-${Date.now()}`;
   const startedAt = new Date().toISOString();
   const scopeLabel =
-    scope === 'cinema' ? 'σινεμά' : scope === 'theater' ? 'θέατρο' : 'σινεμά + θέατρο';
+    options.venueId != null
+      ? `σινεμά #${options.venueId}`
+      : scope === 'cinema'
+        ? 'σινεμά'
+        : scope === 'theater'
+          ? 'θέατρο'
+          : 'σινεμά + θέατρο';
   activeJob = {
     id,
     status: 'running',
@@ -803,6 +810,7 @@ function startMoreShowtimeSyncJob(strapi, options = {}) {
     workerOptions: {
       movieId: options.movieId,
       theaterShowId: options.theaterShowId,
+      venueId: options.venueId,
     },
   };
   persistJob(activeJob);

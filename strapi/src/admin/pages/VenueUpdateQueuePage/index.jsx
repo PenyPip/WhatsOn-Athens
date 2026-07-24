@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Layout,
   HeaderLayout,
@@ -17,9 +17,11 @@ import {
   Loader,
   Link,
 } from '@strapi/design-system';
-import { useFetchClient } from '@strapi/helper-plugin';
+import { useFetchClient, useNotification } from '@strapi/helper-plugin';
 
 const VENUE_COLLECTION = '/content-manager/collection-types/api::venue.venue';
+const SYNC_POLL_MS = 2500;
+const SYNC_MAX_WAIT_MS = 12 * 60 * 1000;
 
 function venueEditPath(id) {
   return `${VENUE_COLLECTION}/${id}`;
@@ -45,6 +47,11 @@ function formatGeneratedAt(iso) {
   } catch {
     return iso;
   }
+}
+
+function isTransientGatewayError(err) {
+  const status = err?.response?.status ?? err?.status;
+  return status === 502 || status === 503 || status === 504;
 }
 
 function QueueSection({ title, subtitle, tone, count, listPath, children }) {
@@ -75,7 +82,70 @@ function QueueSection({ title, subtitle, tone, count, listPath, children }) {
   );
 }
 
-function VenueQueueTable({ rows, emptyLabel, showAutoCreated = false, showTargetWeekDiagnostics = false }) {
+function VenueDiagnosisBox({ report, progress }) {
+  if (!report && !progress) return null;
+  const d = report?.venueDiagnosis;
+  const hints = Array.isArray(d?.hints) ? d.hints : [];
+
+  return (
+    <Box padding={5} background="primary100" hasRadius marginBottom={6}>
+      <Typography variant="delta" textColor="primary700" paddingBottom={2}>
+        Τελευταίο sync σινεμά
+      </Typography>
+      {progress && !report ? (
+        <Typography variant="pi" textColor="primary600">
+          {progress}
+        </Typography>
+      ) : null}
+      {report?.message ? (
+        <Typography variant="pi" textColor="neutral800" fontWeight="semiBold" paddingBottom={2}>
+          {report.message}
+        </Typography>
+      ) : null}
+      {d ? (
+        <Box paddingTop={2}>
+          <Typography variant="pi" textColor="neutral700">
+            {d.name ? `«${d.name}»` : '—'}
+            {d.venueId != null ? ` #${d.venueId}` : ''}
+            {d.moreVenueId ? ` · More venueId ${d.moreVenueId}` : ' · χωρίς More venueId'}
+            {d.hasBundle
+              ? ` · bundle: ${(d.bundleCodes || []).join(', ') || 'ναι'}`
+              : ' · χωρίς bundle'}
+            {d.statusLabel ? ` · ${d.statusLabel}` : ''}
+          </Typography>
+          <Typography variant="pi" textColor="neutral600" paddingTop={2}>
+            Νέες: {d.created ?? 0} · υπήρχαν: {d.alreadyExists ?? 0} · άγνωστο eventId:{' '}
+            {d.skippedUnknownEventId ?? 0} · mismatch: {d.skippedVenueMismatch ?? 0}
+            {d.weekExpected != null
+              ? ` · εβδομάδα: ${d.weekSynced ?? 0}/${d.weekExpected}`
+              : ''}
+          </Typography>
+          {hints.length ? (
+            <Box paddingTop={3}>
+              <Typography variant="pi" fontWeight="semiBold" textColor="neutral800">
+                Τι φταίει / τι να κοιτάξεις
+              </Typography>
+              {hints.map((hint) => (
+                <Typography key={hint} variant="pi" textColor="neutral700" paddingTop={1}>
+                  · {hint}
+                </Typography>
+              ))}
+            </Box>
+          ) : null}
+        </Box>
+      ) : null}
+    </Box>
+  );
+}
+
+function VenueQueueTable({
+  rows,
+  emptyLabel,
+  showAutoCreated = false,
+  showTargetWeekDiagnostics = false,
+  onSyncVenue,
+  syncingVenueId,
+}) {
   if (!rows?.length) {
     return (
       <Typography variant="pi" textColor="neutral500">
@@ -163,7 +233,18 @@ function VenueQueueTable({ rows, emptyLabel, showAutoCreated = false, showTarget
                 </Td>
               ) : null}
               <Td>
-                <Link to={venueEditPath(row.id)}>Επεξεργασία</Link>
+                <Flex gap={3} alignItems="center" wrap="wrap">
+                  <Button
+                    size="S"
+                    variant="secondary"
+                    loading={syncingVenueId === row.id}
+                    disabled={syncingVenueId != null && syncingVenueId !== row.id}
+                    onClick={() => onSyncVenue?.(row)}
+                  >
+                    Sync More
+                  </Button>
+                  <Link to={venueEditPath(row.id)}>Επεξεργασία</Link>
+                </Flex>
               </Td>
             </Tr>
           ))}
@@ -174,10 +255,15 @@ function VenueQueueTable({ rows, emptyLabel, showAutoCreated = false, showTarget
 }
 
 const VenueUpdateQueuePage = () => {
-  const { get } = useFetchClient();
+  const { get, post } = useFetchClient();
+  const toggleNotification = useNotification();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [data, setData] = useState(null);
+  const [syncingVenueId, setSyncingVenueId] = useState(null);
+  const [syncProgress, setSyncProgress] = useState('');
+  const [syncReport, setSyncReport] = useState(null);
+  const pollCancelled = useRef(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -200,15 +286,106 @@ const VenueUpdateQueuePage = () => {
 
   useEffect(() => {
     load();
+    return () => {
+      pollCancelled.current = true;
+    };
   }, [load]);
 
+  const pollSyncJob = useCallback(async () => {
+    const started = Date.now();
+    while (!pollCancelled.current && Date.now() - started < SYNC_MAX_WAIT_MS) {
+      await new Promise((resolve) => setTimeout(resolve, SYNC_POLL_MS));
+      if (pollCancelled.current) break;
+      const res = await get('/api/more-lookup/sync-showtimes/status');
+      const job = res?.data;
+      if (job?.progress) setSyncProgress(job.progress);
+      if (job?.status === 'completed' && job?.report) return job.report;
+      if (job?.status === 'failed') {
+        throw new Error(job?.error || job?.progress || 'Αποτυχία συγχρονισμού');
+      }
+    }
+    throw new Error('Λήξη χρόνου αναμονής sync — έλεγξε data/more-showtime-sync-worker.log');
+  }, [get]);
+
+  const syncVenue = useCallback(
+    async (row) => {
+      if (!row?.id || syncingVenueId != null) return;
+      pollCancelled.current = false;
+      setSyncingVenueId(row.id);
+      setSyncReport(null);
+      setSyncProgress(`Έναρξη sync «${row.name}»…`);
+      try {
+        let res;
+        try {
+          res = await post('/api/more-lookup/sync-showtimes', {
+            scope: 'cinema',
+            venueId: row.id,
+          });
+        } catch (postErr) {
+          if (isTransientGatewayError(postErr)) {
+            setSyncProgress('502 στην έναρξη — αναμονή worker…');
+            await new Promise((resolve) => setTimeout(resolve, 10000));
+            const report = await pollSyncJob();
+            setSyncReport(report);
+            toggleNotification({
+              type: report?.created > 0 ? 'success' : 'info',
+              message: report?.message || 'Sync ολοκληρώθηκε.',
+            });
+            await load();
+            return;
+          }
+          throw postErr;
+        }
+
+        const dataRes = res?.data;
+        if (dataRes?.status === 'completed' && dataRes?.report) {
+          setSyncReport(dataRes.report);
+          toggleNotification({
+            type: dataRes.report?.created > 0 ? 'success' : 'info',
+            message: dataRes.report?.message || 'Sync ολοκληρώθηκε.',
+          });
+          await load();
+          return;
+        }
+        if (dataRes?.status === 'running' || dataRes?.status === 'started') {
+          if (dataRes?.progress) setSyncProgress(dataRes.progress);
+          const report = await pollSyncJob();
+          setSyncReport(report);
+          toggleNotification({
+            type: report?.created > 0 ? 'success' : 'info',
+            message: report?.message || 'Sync ολοκληρώθηκε.',
+          });
+          await load();
+          return;
+        }
+        if (dataRes?.status === 'failed') {
+          throw new Error(dataRes?.error || dataRes?.progress || 'Αποτυχία συγχρονισμού');
+        }
+        throw new Error(dataRes?.error || dataRes?.progress || 'Δεν ξεκίνηκε συγχρονισμός');
+      } catch (err) {
+        const message =
+          err?.response?.data?.error?.message || err?.message || 'Αποτυχία sync σινεμά.';
+        setSyncProgress('');
+        toggleNotification({ type: 'warning', message });
+      } finally {
+        setSyncingVenueId(null);
+        setSyncProgress('');
+      }
+    },
+    [syncingVenueId, post, pollSyncJob, toggleNotification, load],
+  );
+
   const counts = data?.counts || {};
+  const tableProps = {
+    onSyncVenue: syncVenue,
+    syncingVenueId,
+  };
 
   return (
     <Layout>
       <HeaderLayout
         title="Τι να ενημερώσω"
-        subtitle="Λίστες σινεμά ανά κατάσταση ενημέρωσης — μόνο published στα «χωρίς νέες» / «χειροκίνητα»."
+        subtitle="Λίστες σινεμά ανά κατάσταση ενημέρωσης — Sync More ανά σινεμά για διάγνωση."
         primaryAction={
           <Button onClick={load} loading={loading} variant="secondary">
             Ανανέωση
@@ -228,6 +405,8 @@ const VenueUpdateQueuePage = () => {
           </Box>
         ) : null}
 
+        <VenueDiagnosisBox report={syncReport} progress={syncProgress} />
+
         {data ? (
           <>
             <Box paddingBottom={4}>
@@ -241,7 +420,8 @@ const VenueUpdateQueuePage = () => {
               <Typography variant="pi" textColor="neutral500" paddingTop={2}>
                 <strong>Πέμπτη–Κυριακή:</strong> ελέγχουμε την <strong>τρέχουσα</strong> εβδομάδα κινηματογράφου
                 (Πέμ→Τετ). <strong>Δευτέρα–Τετάρτη:</strong> την <strong>ερχόμενη</strong>. Κάθε{' '}
-                <strong>Σάββατο 06:00</strong> όλα επανέρχονται σε <strong>no_new</strong>.
+                <strong>Σάββατο 06:00</strong> όλα επανέρχονται σε <strong>no_new</strong>. Πάτα{' '}
+                <strong>Sync More</strong> σε ένα σινεμά για να δεις γιατί δεν περνάνε προβολές.
               </Typography>
             </Box>
 
@@ -259,6 +439,7 @@ const VenueUpdateQueuePage = () => {
                 rows={data.noNew}
                 emptyLabel="Κανένα δημοσιευμένο σινεμά σε κατάσταση no_new."
                 showTargetWeekDiagnostics
+                {...tableProps}
               />
             </QueueSection>
 
@@ -275,6 +456,7 @@ const VenueUpdateQueuePage = () => {
               <VenueQueueTable
                 rows={data.needsManual}
                 emptyLabel="Κανένα δημοσιευμένο σινεμά σε κατάσταση needs_manual."
+                {...tableProps}
               />
             </QueueSection>
 
@@ -291,6 +473,7 @@ const VenueUpdateQueuePage = () => {
               <VenueQueueTable
                 rows={data.complete}
                 emptyLabel="Κανένα δημοσιευμένο σινεμά σε κατάσταση complete."
+                {...tableProps}
               />
             </QueueSection>
 
@@ -318,6 +501,7 @@ const VenueUpdateQueuePage = () => {
                 rows={data.unpublished}
                 emptyLabel="Κανένα unpublished σινεμά."
                 showAutoCreated
+                {...tableProps}
               />
             </QueueSection>
           </>
