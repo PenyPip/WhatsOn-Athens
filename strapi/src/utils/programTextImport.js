@@ -2,7 +2,14 @@
 
 const { parseProgramText, parseProgramFromImages, isAiEnabled, isOcrAvailable } = require('./programTextParse');
 const { aiConfig, MAX_VISION_IMAGES } = require('./programTextAiParser');
-const { formatWeekLabel, formatLocalYmd, isDatetimeInTargetCinemaWeekForVenueStatus, listCinemaWeekChoices, resolveProgramImportWeekBounds } = require('./cinemaWeek');
+const {
+  formatWeekLabel,
+  formatLocalYmd,
+  isDatetimeInTargetCinemaWeekForVenueStatus,
+  isDatetimeInCurrentCinemaWeek,
+  listCinemaWeekChoices,
+  resolveProgramImportWeekBounds,
+} = require('./cinemaWeek');
 const { scrapeAthinoramaHallProgram, normalizeAthinoramaHallUrl } = require('./athinoramaHallScrape');
 const {
   applyVenueUpdatedStatusFromProgramImport,
@@ -523,7 +530,16 @@ async function previewProgramTextImport(
 
 async function createProgramTextShowtimes(
   strapi,
-  { venueId, items, importMeta = {}, now = new Date() } = {},
+  {
+    venueId,
+    items,
+    importMeta = {},
+    now = new Date(),
+    /** 'target' = εβδομάδα-στόχος updated · 'current' = τρέχουσα (Athinorama). */
+    weekMode = 'target',
+    importTracePrefix = 'Εισαγωγή προγράμματος (admin)',
+    applyVenueStatus = true,
+  } = {},
 ) {
   const venue = await loadVenue(strapi, venueId);
   if (!venue) {
@@ -537,6 +553,11 @@ async function createProgramTextShowtimes(
   if (!list.length) {
     return { ok: false, error: 'Δεν δόθηκαν προβολές για δημιουργία.' };
   }
+
+  const inStatusWeek =
+    weekMode === 'current'
+      ? (dt) => isDatetimeInCurrentCinemaWeek(dt, now)
+      : (dt) => isDatetimeInTargetCinemaWeekForVenueStatus(dt, now);
 
   const summary = {
     created: 0,
@@ -570,7 +591,7 @@ async function createProgramTextShowtimes(
       for (const st of showtimes) {
         const datetime = new Date(st.datetime);
         if (Number.isNaN(datetime.getTime()) || datetime < now) continue;
-        if (!isDatetimeInTargetCinemaWeekForVenueStatus(datetime, now)) continue;
+        if (!inStatusWeek(datetime)) continue;
         summary.weekExpected += 1;
         summary.weekSkippedNoMovie += 1;
         trackWeekFailure();
@@ -591,7 +612,7 @@ async function createProgramTextShowtimes(
         if (
           !Number.isNaN(datetime.getTime()) &&
           datetime >= now &&
-          isDatetimeInTargetCinemaWeekForVenueStatus(datetime, now)
+          inStatusWeek(datetime)
         ) {
           summary.weekExpected += 1;
           summary.weekSkippedNotApproved += 1;
@@ -627,7 +648,7 @@ async function createProgramTextShowtimes(
   );
 
   const outcomes = await mapPool(work, CREATE_CONCURRENCY, async (job) => {
-    const inTargetWeek = isDatetimeInTargetCinemaWeekForVenueStatus(job.datetime, now);
+    const inTargetWeek = inStatusWeek(job.datetime);
     try {
       const slotKey = showtimeSlotKey(job.movieId, job.datetime);
       if (slotKey && existingKeys.has(slotKey)) {
@@ -650,7 +671,7 @@ async function createProgramTextShowtimes(
 
       const note = job.note ? String(job.note).trim() : '';
       const traceParts = [
-        'Εισαγωγή προγράμματος (admin)',
+        importTracePrefix,
         `venue=${venue.name}`,
         job.parsedTitle ? `title=${job.parsedTitle}` : null,
         note ? `note=${note}` : null,
@@ -705,20 +726,23 @@ async function createProgramTextShowtimes(
     unmatchedMovies: Number(importMeta.unmatchedMovies || 0),
   };
 
-  const venueUpdated = await applyVenueUpdatedStatusFromProgramImport(
-    strapi,
-    venue.id,
-    {
-      created: summary.created,
-      alreadyExists: summary.skippedExists,
-      errors: summary.errors,
-      weekExpected: summary.weekExpected,
-      weekSynced: summary.weekSynced,
-      weekFailed: summary.weekFailed,
-      unmatchedMovies: meta.unmatchedMovies,
-    },
-    { importMeta: meta, now },
-  );
+  let venueUpdated = null;
+  if (applyVenueStatus) {
+    venueUpdated = await applyVenueUpdatedStatusFromProgramImport(
+      strapi,
+      venue.id,
+      {
+        created: summary.created,
+        alreadyExists: summary.skippedExists,
+        errors: summary.errors,
+        weekExpected: summary.weekExpected,
+        weekSynced: summary.weekSynced,
+        weekFailed: summary.weekFailed,
+        unmatchedMovies: meta.unmatchedMovies,
+      },
+      { importMeta: meta, now },
+    );
+  }
 
   return {
     ok: true,

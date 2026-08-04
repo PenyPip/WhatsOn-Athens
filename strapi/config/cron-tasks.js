@@ -3,6 +3,8 @@
 /**
  * Κάθε Σάββατο 06:00 (ώρα server) — `venue.updated` → no_new για όλα τα σινεμά.
  * Μέχρι Κυριακή: στόχος = τρέχουσα εβδομάδα κινηματογράφου · Δευτέρα+: επόμενη.
+ *
+ * Athinorama (τρέχουσα εβδομάδα μόνο): Πέμπτη 3× — το Athinorama δεν έχει μελλοντικές προβολές.
  */
 module.exports = {
   resetCinemaVenueUpdatedMonday: {
@@ -16,6 +18,32 @@ module.exports = {
     },
     options: {
       rule: '0 6 * * 6',
+    },
+  },
+  /**
+   * Πέμπτη ~10:00 / 14:00 / 18:00 Europe/Athens (ώρα server UTC: 07/11/15 το καλοκαίρι).
+   * Ξανατρέχει μέχρι να γεμίσουν τα εκκρεμή — το πρόγραμμα συχνά ανεβαίνει σταδιακά.
+   */
+  athinoramaPendingSyncThursday: {
+    task: async ({ strapi }) => {
+      if (process.env.ATHINORAMA_AUTO_SYNC === 'false') return;
+      try {
+        const {
+          syncPendingAthinoramaVenues,
+          isAthinoramaSyncThursday,
+        } = require('../src/utils/athinoramaShowtimeSync');
+        if (!isAthinoramaSyncThursday()) return;
+        const report = await syncPendingAthinoramaVenues(strapi, {
+          onProgress: (msg) => strapi.log.info(`[cron] ${msg}`),
+        });
+        strapi.log.info(`[cron] athinoramaPendingSyncThursday: ${report.message}`);
+      } catch (e) {
+        strapi.log.error('[cron] athinoramaPendingSyncThursday', e);
+      }
+    },
+    options: {
+      // Πέμπτη 07:00, 11:00, 15:00 UTC ≈ 10:00 / 14:00 / 18:00 Αθήνα (θερινή ώρα)
+      rule: '0 6,10,14 * * 4',
     },
   },
   deletePastCinemaShowtimesDaily: {

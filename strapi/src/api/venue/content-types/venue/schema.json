@@ -42,7 +42,7 @@
     },
     "athinorama_link": {
       "type": "string",
-      "description": "URL σελίδας αίθουσας στο Athinorama (π.χ. https://www.athinorama.gr/cinema/halls/…-1000115/). Χρησιμοποιείται στο manual import για αυτόματη φόρτωση προγράμματος."
+      "description": "URL σελίδας αίθουσας στο Athinorama (π.χ. https://www.athinorama.gr/cinema/halls/…-1000115/). Auto-sync Πέμπτη + manual import — μόνο τρέχουσα εβδομάδα."
     },
     "venue_id": {
       "type": "string",

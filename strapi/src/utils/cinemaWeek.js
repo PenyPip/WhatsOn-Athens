@@ -203,6 +203,12 @@ function isDatetimeInTargetCinemaWeekForVenueStatus(dt, now = new Date()) {
   return isDatetimeInRange(dt, start, end, now);
 }
 
+/** Exact datetime μέσα στην τρέχουσα εβδομάδα κινηματογράφου (Athinorama). */
+function isDatetimeInCurrentCinemaWeek(dt, now = new Date()) {
+  const { start, end } = getCurrentCinemaWeekBounds(now);
+  return isDatetimeInRange(dt, start, end, now);
+}
+
 /** Exact datetime μέσα στην άμεση επόμενη εβδομάδα κινηματογράφου (μελλοντικές μόνο). */
 function isDatetimeInUpcomingCinemaWeek(dt, now = new Date()) {
   if (!(dt instanceof Date) || Number.isNaN(dt.getTime())) return false;
@@ -235,5 +241,6 @@ module.exports = {
   formatLocalYmd,
   isDatetimeInUpcomingCinemaWeek,
   isDatetimeInTargetCinemaWeekForVenueStatus,
+  isDatetimeInCurrentCinemaWeek,
   isVenueCompleteEligible,
 };

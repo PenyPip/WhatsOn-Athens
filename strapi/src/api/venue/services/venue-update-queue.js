@@ -35,6 +35,7 @@ function mapVenueRow(row, extra = {}) {
     published: row.publishedAt != null,
     autoCreatedFromSync: isAutoCreatedFromSync(row.info),
     hasBundle: venueHasBundleCodes(row),
+    hasAthinoramaLink: Boolean(String(row.athinorama_link || '').trim()),
     venueId: row.venue_id || null,
     ...extra,
   };
@@ -78,6 +79,7 @@ async function findAllCinemaVenues(strapi, filters = {}) {
         'info',
         'event_group_code',
         'venue_id',
+        'athinorama_link',
       ],
       populate: { more_event_groups: { fields: ['code'] } },
       publicationState: 'preview',
@@ -106,6 +108,9 @@ async function getUpdateQueues(strapi) {
   const complete = published.filter((row) => row.updated === VENUE_UPDATED_STATUS.COMPLETE);
   const unpublishedAutoCreated = unpublished.filter((row) => isAutoCreatedFromSync(row.info));
   const unpublishedOther = unpublished.filter((row) => !isAutoCreatedFromSync(row.info));
+  const athinoramaPending = [...noNew, ...needsManual].filter((row) =>
+    Boolean(String(row.athinorama_link || '').trim()),
+  );
 
   const noNewWithDiagnostics = [];
   for (const row of noNew) {
@@ -134,6 +139,7 @@ async function getUpdateQueues(strapi) {
       unpublishedOther: unpublishedOther.length,
       publishedTotal: published.length,
       cinemaTotal: all.length,
+      athinoramaPending: athinoramaPending.length,
     },
     noNew: noNewWithDiagnostics,
     needsManual: needsManual.map((row) => mapVenueRow(row)),

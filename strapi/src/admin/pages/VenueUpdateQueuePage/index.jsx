@@ -263,6 +263,8 @@ const VenueUpdateQueuePage = () => {
   const [syncingVenueId, setSyncingVenueId] = useState(null);
   const [syncProgress, setSyncProgress] = useState('');
   const [syncReport, setSyncReport] = useState(null);
+  const [athinoramaSyncing, setAthinoramaSyncing] = useState(false);
+  const [athinoramaReport, setAthinoramaReport] = useState(null);
   const pollCancelled = useRef(false);
 
   const load = useCallback(async () => {
@@ -375,6 +377,31 @@ const VenueUpdateQueuePage = () => {
     [syncingVenueId, post, pollSyncJob, toggleNotification, load],
   );
 
+  const syncAthinoramaPending = useCallback(async () => {
+    if (athinoramaSyncing || syncingVenueId != null) return;
+    setAthinoramaSyncing(true);
+    setAthinoramaReport(null);
+    try {
+      const res = await post('/api/venues/sync-athinorama-pending', {});
+      const report = res?.data;
+      setAthinoramaReport(report || null);
+      toggleNotification({
+        type: report?.failed > 0 ? 'warning' : 'success',
+        message: report?.message || 'Athinorama sync ολοκληρώθηκε.',
+      });
+      await load();
+    } catch (err) {
+      const message =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        'Αποτυχία Athinorama sync.';
+      toggleNotification({ type: 'warning', message });
+    } finally {
+      setAthinoramaSyncing(false);
+    }
+  }, [athinoramaSyncing, syncingVenueId, post, toggleNotification, load]);
+
   const counts = data?.counts || {};
   const tableProps = {
     onSyncVenue: syncVenue,
@@ -385,11 +412,20 @@ const VenueUpdateQueuePage = () => {
     <Layout>
       <HeaderLayout
         title="Τι να ενημερώσω"
-        subtitle="Λίστες σινεμά ανά κατάσταση ενημέρωσης — Sync More ανά σινεμά για διάγνωση."
+        subtitle="Λίστες σινεμά ανά κατάσταση — Sync More ή Athinorama για όσα δεν είναι ενημερωμένα."
         primaryAction={
-          <Button onClick={load} loading={loading} variant="secondary">
-            Ανανέωση
-          </Button>
+          <Flex gap={2}>
+            <Button
+              onClick={syncAthinoramaPending}
+              loading={athinoramaSyncing}
+              disabled={syncingVenueId != null}
+            >
+              Sync Athinorama ({counts.athinoramaPending ?? '…'})
+            </Button>
+            <Button onClick={load} loading={loading} variant="secondary" disabled={athinoramaSyncing}>
+              Ανανέωση
+            </Button>
+          </Flex>
         }
       />
       <ContentLayout>
@@ -407,6 +443,37 @@ const VenueUpdateQueuePage = () => {
 
         <VenueDiagnosisBox report={syncReport} progress={syncProgress} />
 
+        {athinoramaReport ? (
+          <Box padding={5} background="secondary100" hasRadius marginBottom={6}>
+            <Typography variant="delta" paddingBottom={2}>
+              Τελευταίο Athinorama sync
+            </Typography>
+            <Typography variant="pi" textColor="neutral800" fontWeight="semiBold">
+              {athinoramaReport.message}
+            </Typography>
+            <Typography variant="pi" textColor="neutral600" paddingTop={2}>
+              Εβδομάδα: {athinoramaReport.weekLabel || '—'} · εκκρεμή:{' '}
+              {athinoramaReport.pendingCount ?? '—'} · OK: {athinoramaReport.synced ?? 0} · αποτυχίες:{' '}
+              {athinoramaReport.failed ?? 0}
+              {athinoramaReport.currentWeekPhase === false
+                ? ' · (Δευ–Τετ: δεν αλλάζει το πεδίο updated — στόχος είναι η επόμενη εβδομάδα)'
+                : ''}
+            </Typography>
+            {Array.isArray(athinoramaReport.results) && athinoramaReport.results.some((r) => !r.ok) ? (
+              <Box paddingTop={3}>
+                {athinoramaReport.results
+                  .filter((r) => !r.ok)
+                  .slice(0, 12)
+                  .map((r) => (
+                    <Typography key={r.venueId} variant="pi" textColor="danger600" paddingTop={1}>
+                      · {r.venueName || `#${r.venueId}`}: {r.error || 'σφάλμα'}
+                    </Typography>
+                  ))}
+              </Box>
+            ) : null}
+          </Box>
+        ) : null}
+
         {data ? (
           <>
             <Box paddingBottom={4}>
@@ -420,8 +487,9 @@ const VenueUpdateQueuePage = () => {
               <Typography variant="pi" textColor="neutral500" paddingTop={2}>
                 <strong>Πέμπτη–Κυριακή:</strong> ελέγχουμε την <strong>τρέχουσα</strong> εβδομάδα κινηματογράφου
                 (Πέμ→Τετ). <strong>Δευτέρα–Τετάρτη:</strong> την <strong>ερχόμενη</strong>. Κάθε{' '}
-                <strong>Σάββατο 06:00</strong> όλα επανέρχονται σε <strong>no_new</strong>. Πάτα{' '}
-                <strong>Sync More</strong> σε ένα σινεμά για να δεις γιατί δεν περνάνε προβολές.
+                <strong>Σάββατο 06:00</strong> όλα επανέρχονται σε <strong>no_new</strong>. Το{' '}
+                <strong>Sync Athinorama</strong> φορτώνει μόνο την τρέχουσα εβδομάδα για σινεμά με link που δεν
+                είναι complete (cron Πέμπτη 3×). <strong>Sync More</strong> ανά σινεμά για διάγνωση.
               </Typography>
             </Box>
 
