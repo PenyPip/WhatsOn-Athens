@@ -429,6 +429,28 @@ const VenueUpdateQueuePage = () => {
         }
       />
       <ContentLayout>
+        <Box padding={5} background="primary100" hasRadius marginBottom={6}>
+          <Flex justifyContent="space-between" alignItems="flex-start" gap={4} wrap="wrap">
+            <Box>
+              <Typography variant="delta" textColor="primary700">
+                Sync Athinorama — τρέχουσα εβδομάδα
+              </Typography>
+              <Typography variant="pi" textColor="neutral700" paddingTop={2}>
+                Ενημερώνει όλα τα δημοσιευμένα σινεμά με Athinorama link που δεν είναι ακόμα complete
+                ({counts.athinoramaPending ?? 0} εκκρεμή). Μόνο την τρέχουσα εβδομάδα Πέμ→Τετ.
+              </Typography>
+            </Box>
+            <Button
+              size="L"
+              onClick={syncAthinoramaPending}
+              loading={athinoramaSyncing}
+              disabled={syncingVenueId != null}
+            >
+              Sync Athinorama ({counts.athinoramaPending ?? '…'})
+            </Button>
+          </Flex>
+        </Box>
+
         {loading && !data ? (
           <Box padding={8}>
             <Loader>Φόρτωση λιστών…</Loader>
