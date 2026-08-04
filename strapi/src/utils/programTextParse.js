@@ -46,8 +46,8 @@ function mergeMovieShowtimesFromRegex(aiMovies, regexMovies) {
   });
 }
 
-function enrichAiParseWithRegex(aiResult, text, { refYear, now }) {
-  const regexResult = parseCinemaProgramText(text, { refYear, now });
+function enrichAiParseWithRegex(aiResult, text, { refYear, now, weekBounds }) {
+  const regexResult = parseCinemaProgramText(text, { refYear, now, weekBounds });
   const aiShowtimeCount = (aiResult.movies || []).reduce(
     (n, m) => n + (m.showtimes?.length || 0),
     0,
@@ -104,7 +104,7 @@ function enrichAiParseWithRegex(aiResult, text, { refYear, now }) {
 /**
  * Ανάλυση από screenshot(s): AI vision → OCR → AI κείμενο → κανόνες.
  */
-async function parseProgramFromImages(images, { refYear, venueName, now = new Date() } = {}) {
+async function parseProgramFromImages(images, { refYear, venueName, now = new Date(), weekBounds = null } = {}) {
   const year = refYear ?? now.getFullYear();
   const warnings = [];
   let imageCount = Array.isArray(images) ? images.filter(Boolean).length : 0;
@@ -114,6 +114,7 @@ async function parseProgramFromImages(images, { refYear, venueName, now = new Da
       refYear: year,
       venueName,
       now,
+      weekBounds,
     });
     if (aiResult && !aiResult.error && aiResult.movies?.length) {
       return {
@@ -162,6 +163,7 @@ async function parseProgramFromImages(images, { refYear, venueName, now = new Da
       refYear: year,
       venueName,
       now,
+      weekBounds,
     });
     if (aiText && !aiText.error && aiText.movies?.length) {
       return {
@@ -179,7 +181,7 @@ async function parseProgramFromImages(images, { refYear, venueName, now = new Da
     if (aiText?.error) warnings.push(`AI κείμενο: ${aiText.error}`);
   }
 
-  const regexResult = parseCinemaProgramText(ocr.text, { refYear: year, now });
+  const regexResult = parseCinemaProgramText(ocr.text, { refYear: year, now, weekBounds });
   return buildRegexTextResult(
     { ...regexResult, imageCount, ocrPreview: ocr.text.slice(0, 1200) },
     [
@@ -194,7 +196,10 @@ async function parseProgramFromImages(images, { refYear, venueName, now = new Da
 /**
  * Ενιαία ανάλυση κειμένου: πρώτα AI (αν διαθέσιμο), μετά κανόνες.
  */
-async function parseProgramText(text, { refYear, venueName, now = new Date(), preferAi = false } = {}) {
+async function parseProgramText(
+  text,
+  { refYear, venueName, now = new Date(), preferAi = false, weekBounds = null } = {},
+) {
   const trimmed = String(text || '').trim();
   if (!trimmed) {
     return {
@@ -214,13 +219,14 @@ async function parseProgramText(text, { refYear, venueName, now = new Date(), pr
       refYear: year,
       venueName,
       now,
+      weekBounds,
     });
     if (aiResult && !aiResult.error && aiResult.movies?.length) {
-      return enrichAiParseWithRegex(aiResult, trimmed, { refYear: year, now });
+      return enrichAiParseWithRegex(aiResult, trimmed, { refYear: year, now, weekBounds });
     }
   }
 
-  const regexResult = parseCinemaProgramText(trimmed, { refYear: year, now });
+  const regexResult = parseCinemaProgramText(trimmed, { refYear: year, now, weekBounds });
   const warnings = [...(regexResult.warnings || [])];
 
   if (aiResult?.error) {

@@ -2,7 +2,7 @@
 
 const { parseProgramText, parseProgramFromImages, isAiEnabled, isOcrAvailable } = require('./programTextParse');
 const { aiConfig, MAX_VISION_IMAGES } = require('./programTextAiParser');
-const { formatWeekLabel, isDatetimeInTargetCinemaWeekForVenueStatus } = require('./cinemaWeek');
+const { formatWeekLabel, formatLocalYmd, isDatetimeInTargetCinemaWeekForVenueStatus, listCinemaWeekChoices, resolveProgramImportWeekBounds } = require('./cinemaWeek');
 const {
   applyVenueUpdatedStatusFromProgramImport,
   VENUE_UPDATED_LABELS,
@@ -255,6 +255,8 @@ async function showtimeExistsAt(strapi, { movieId, venueId, datetime }) {
 
 function getProgramImportStatus() {
   const cfg = aiConfig();
+  const cinemaWeeks = listCinemaWeekChoices();
+  const defaultWeek = cinemaWeeks.find((w) => w.isTarget) || cinemaWeeks.find((w) => w.isCurrent) || cinemaWeeks[0];
   return {
     aiEnabled: isAiEnabled(),
     ocrEnabled: isOcrAvailable(),
@@ -262,6 +264,8 @@ function getProgramImportStatus() {
     visionModel: cfg.visionModel,
     maxImages: MAX_VISION_IMAGES,
     matchMinScore: PREVIEW_MIN_SCORE,
+    cinemaWeeks,
+    defaultWeekStart: defaultWeek?.weekStart || null,
   };
 }
 
@@ -411,7 +415,7 @@ async function buildPreviewFromParsed(
 
 async function previewProgramTextImport(
   strapi,
-  { text, images, venueId, refYear, summerScreening } = {},
+  { text, images, venueId, refYear, summerScreening, weekStart, weekOffset } = {},
 ) {
   const venue = await loadVenue(strapi, venueId);
   if (!venue) {
@@ -421,6 +425,8 @@ async function previewProgramTextImport(
     return { ok: false, error: 'Ο επιλεγμένος χώρος δεν είναι κινηματογράφος.' };
   }
 
+  const now = new Date();
+  const weekBounds = resolveProgramImportWeekBounds({ weekStart, weekOffset, now });
   const imageList = Array.isArray(images) ? images.filter(Boolean) : [];
   const trimmed = String(text || '').trim();
 
@@ -432,13 +438,15 @@ async function previewProgramTextImport(
     parsed = await parseProgramFromImages(imageList, {
       refYear,
       venueName: venue.name,
-      now: new Date(),
+      now,
+      weekBounds,
     });
   } else if (trimmed) {
     parsed = await parseProgramText(trimmed, {
       refYear,
       venueName: venue.name,
-      now: new Date(),
+      now,
+      weekBounds,
     });
   } else {
     return { ok: false, error: 'Δώσε κείμενο ή εικόνα προγράμματος.' };
@@ -457,13 +465,22 @@ async function previewProgramTextImport(
     };
   }
 
-  return buildPreviewFromParsed(strapi, {
+  const preview = await buildPreviewFromParsed(strapi, {
     venue,
     parsed,
     inputKind,
     programText: trimmed || parsed.ocrPreview || '',
     summerScreening: summerScreening === true,
   });
+  return {
+    ...preview,
+    selectedWeek: {
+      start: weekBounds.start.toISOString(),
+      end: weekBounds.end.toISOString(),
+      label: formatWeekLabel(weekBounds.start, weekBounds.end),
+      weekStart: formatLocalYmd(weekBounds.start),
+    },
+  };
 }
 
 async function createProgramTextShowtimes(

@@ -1,5 +1,7 @@
 'use strict';
 
+const { formatWeekLabel } = require('./cinemaWeek');
+
 const AI_TIMEOUT_MS = Number(process.env.PROGRAM_IMPORT_AI_TIMEOUT_MS || 90_000);
 const MAX_VISION_IMAGES = Number(process.env.PROGRAM_IMPORT_MAX_IMAGES || 4);
 const MAX_IMAGE_BYTES = Number(process.env.PROGRAM_IMPORT_MAX_IMAGE_BYTES || 4 * 1024 * 1024);
@@ -134,10 +136,13 @@ function extractJsonFromResponse(text) {
   }
 }
 
-function buildSystemPrompt({ refYear, venueName, todayIso, fromImage = false }) {
+function buildSystemPrompt({ refYear, venueName, todayIso, fromImage = false, weekLabel = null }) {
   const source = fromImage
     ? 'εικόνα/screenshot προγράμματος (Facebook, site, αφίσα κ.λπ.)'
     : 'ελεύθερο ελληνικό κείμενο (Facebook, email, site)';
+  const weekHint = weekLabel
+    ? `- Εβδομάδα προγράμματος (Πέμπτη→Τετάρτη): ${weekLabel}. Αν δίνονται μόνο ονόματα ημερών χωρίς ημερομηνίες, χαρτογράφησέ τις μέσα σε αυτή την εβδομάδα.`
+    : '- Αν δίνονται μόνο μέρες (Πέμπτη, Σάββατο), υπολόγισε την πραγματική ημερομηνία μέσα στο εύρος.';
   return `Είσαι βοηθός εισαγωγής προγράμματος κινηματογράφου στο CMS.
 Ανάλυσε ${source} και επέστρεψε ΜΟΝΟ έγκυρο JSON.
 
@@ -146,7 +151,7 @@ function buildSystemPrompt({ refYear, venueName, todayIso, fromImage = false }) 
 - Ώρες: 24h, μορφή time "HH:MM" (π.χ. "17:20" όχι "17.20").
 - Ημερομηνίες: μορφή date "YYYY-MM-DD".
 - Αν φαίνεται εύρος (π.χ. 25/6–1/7), χρησιμοποίησε έτος ${refYear} εκτός αν αναφέρεται άλλο.
-- Αν δίνονται μόνο μέρες (Πέμπτη, Σάββατο), υπολόγισε την πραγματική ημερομηνία μέσα στο εύρος.
+${weekHint}
 - Υποστήριξε μορφές όπως «Πέμπτη έως Κυριακή στις 20:50 & 22:45» και «25 Ιουνίου έως 1 Ιουλίου».
 - Σημειώσεις (μεταγλωττισμένο, υποτιτλισμένο, παρουσία συντελεστών) στο πεδίο note.
 - Μην εφευρίσκεις προβολές που δεν φαίνονται.
@@ -172,7 +177,10 @@ Schema JSON:
 /**
  * Ανάλυση με LLM (OpenAI-compatible). Επιστρέφει null αν AI απενεργοποιημένο/αποτυχία.
  */
-async function parseCinemaProgramTextWithAi(text, { refYear, venueName, now = new Date() } = {}) {
+async function parseCinemaProgramTextWithAi(
+  text,
+  { refYear, venueName, now = new Date(), weekBounds = null } = {},
+) {
   const cfg = aiConfig();
   if (!cfg.enabled) return null;
 
@@ -180,6 +188,10 @@ async function parseCinemaProgramTextWithAi(text, { refYear, venueName, now = ne
   if (!trimmed) return null;
 
   const todayIso = now.toISOString().slice(0, 10);
+  const weekLabel =
+    weekBounds?.start && weekBounds?.end
+      ? formatWeekLabel(new Date(weekBounds.start), new Date(weekBounds.end))
+      : null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
@@ -198,7 +210,7 @@ async function parseCinemaProgramTextWithAi(text, { refYear, venueName, now = ne
         messages: [
           {
             role: 'system',
-            content: buildSystemPrompt({ refYear, venueName, todayIso }),
+            content: buildSystemPrompt({ refYear, venueName, todayIso, weekLabel }),
           },
           {
             role: 'user',
@@ -294,7 +306,10 @@ function validateVisionImages(images) {
 /**
  * Ανάλυση προγράμματος από screenshot(s) με vision LLM.
  */
-async function parseCinemaProgramImagesWithAi(images, { refYear, venueName, now = new Date() } = {}) {
+async function parseCinemaProgramImagesWithAi(
+  images,
+  { refYear, venueName, now = new Date(), weekBounds = null } = {},
+) {
   const cfg = aiConfig();
   if (!cfg.enabled) {
     return { error: 'AI απενεργοποιημένο — όρισε OPENAI_API_KEY.', parseSource: 'ai_failed' };
@@ -306,6 +321,10 @@ async function parseCinemaProgramImagesWithAi(images, { refYear, venueName, now 
   }
 
   const todayIso = now.toISOString().slice(0, 10);
+  const weekLabel =
+    weekBounds?.start && weekBounds?.end
+      ? formatWeekLabel(new Date(weekBounds.start), new Date(weekBounds.end))
+      : null;
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), AI_TIMEOUT_MS);
 
@@ -338,7 +357,13 @@ async function parseCinemaProgramImagesWithAi(images, { refYear, venueName, now 
         messages: [
           {
             role: 'system',
-            content: buildSystemPrompt({ refYear, venueName, todayIso, fromImage: true }),
+            content: buildSystemPrompt({
+              refYear,
+              venueName,
+              todayIso,
+              fromImage: true,
+              weekLabel,
+            }),
           },
           {
             role: 'user',

@@ -307,6 +307,7 @@ export default function App() {
   const [cinemas, setCinemas] = useState([]);
   const [aiStatus, setAiStatus] = useState(null);
   const [venueId, setVenueId] = useState('');
+  const [weekStart, setWeekStart] = useState('');
   const [markSummer, setMarkSummer] = useState(false);
   const [summerTouched, setSummerTouched] = useState(false);
   const [inputMode, setInputMode] = useState('text');
@@ -365,7 +366,11 @@ export default function App() {
         ]);
         if (cancelled) return;
         setCinemas(cinemaRes?.data?.cinemas || []);
-        setAiStatus(statusRes?.data || null);
+        const status = statusRes?.data || null;
+        setAiStatus(status);
+        if (status?.defaultWeekStart) {
+          setWeekStart((prev) => prev || status.defaultWeekStart);
+        }
       } catch (e) {
         toggleNotification({
           type: 'warning',
@@ -515,6 +520,7 @@ export default function App() {
         payload.text = textValue;
       }
       payload.summerScreening = markSummer === true;
+      if (weekStart) payload.weekStart = weekStart;
       const res = await post('/api/program-import/preview', payload);
       const data = res?.data;
       if (!data?.ok) throw new Error(data?.error || 'Αποτυχία ανάλυσης');
@@ -527,7 +533,7 @@ export default function App() {
       setSkippedMovieTitles({});
       return data;
     },
-    [markSummer, post],
+    [markSummer, post, weekStart],
   );
 
   const handleParse = useCallback(async () => {
@@ -782,6 +788,39 @@ export default function App() {
                 loading={loadingCinemas}
               />
             </GridItem>
+            <GridItem col={12} s={6}>
+              <Typography variant="pi" fontWeight="bold" as="label" htmlFor="week-select">
+                Εβδομάδα προγράμματος (Πέμ → Τετ)
+              </Typography>
+              <Box paddingTop={1}>
+                <select
+                  id="week-select"
+                  className="program-import-week-select"
+                  value={weekStart}
+                  onChange={(e) => setWeekStart(e.target.value)}
+                  disabled={parsing || creating}
+                  style={{
+                    width: '100%',
+                    minHeight: '2.5rem',
+                    padding: '0.5rem 0.75rem',
+                    borderRadius: '4px',
+                    border: '1px solid #dcdce4',
+                    background: '#fff',
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  {(aiStatus?.cinemaWeeks || []).map((w) => (
+                    <option key={w.weekStart} value={w.weekStart}>
+                      {w.label}
+                    </option>
+                  ))}
+                </select>
+              </Box>
+              <Typography variant="pi" textColor="neutral500" paddingTop={1}>
+                Αν το κείμενο έχει μόνο «Πέμπτη / Σάββατο» χωρίς ημερομηνίες, οι μέρες χαρτογραφούνται σε αυτή
+                την εβδομάδα. Αν υπάρχει ρητό εύρος (π.χ. 25/6–1/7), προτεραιότητα έχει το κείμενο.
+              </Typography>
+            </GridItem>
             {venueId ? (
               <GridItem col={12}>
                 {summerLocked ? (
@@ -921,7 +960,11 @@ export default function App() {
               <Flex justifyContent="space-between" alignItems="center" gap={2} wrap="wrap">
                 <Typography variant="beta">
                   2. Έγκριση — {preview.venue.name}
-                  {preview.dateRange ? ` · ${preview.dateRange.label}` : ''}
+                  {preview.selectedWeek?.label
+                    ? ` · εβδομάδα ${preview.selectedWeek.label}`
+                    : preview.dateRange
+                      ? ` · ${preview.dateRange.label}`
+                      : ''}
                 </Typography>
                 <Flex gap={2}>
                   <Badge>{parseSourceLabel(preview.parseSource)}</Badge>

@@ -25,6 +25,8 @@ module.exports = {
       venueId: body.venueId,
       refYear: body.refYear != null ? Number(body.refYear) : undefined,
       summerScreening: body.summerScreening === true,
+      weekStart: body.weekStart,
+      weekOffset: body.weekOffset != null ? Number(body.weekOffset) : undefined,
     });
     if (!result.ok) {
       ctx.status = 400;

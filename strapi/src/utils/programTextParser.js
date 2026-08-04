@@ -448,7 +448,14 @@ function parseProgramDateRange(text, refYear = new Date().getFullYear()) {
   return { start, end, inferred: false };
 }
 
-function inferDateRangeFromCinemaWeek(now = new Date()) {
+function inferDateRangeFromCinemaWeek(now = new Date(), weekBounds = null) {
+  if (weekBounds?.start && weekBounds?.end) {
+    const start = new Date(weekBounds.start);
+    const end = new Date(weekBounds.end);
+    if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime())) {
+      return { start, end, inferred: true };
+    }
+  }
   const { start, end } = getTargetCinemaWeekBoundsForVenueStatus(now);
   return { start, end, inferred: true };
 }
@@ -1129,7 +1136,7 @@ function looksLikeDayCentricProgram(text) {
 }
 
 /** Μορφή: «Πέμπτη 25/06» → «20:50» → «ΤΑΙΝΙΑ - …» (ανά ημέρα). */
-function parseDayCentricCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+function parseDayCentricCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date(), weekBounds = null } = {}) {
   const lines = String(text || '')
     .replace(/\r\n/g, '\n')
     .split('\n')
@@ -1188,7 +1195,7 @@ function parseDayCentricCinemaProgram(text, { refYear = new Date().getFullYear()
     end.setHours(23, 59, 59, 999);
     dateRange = { start, end, inferred: false };
   } else {
-    dateRange = inferDateRangeFromCinemaWeek(now);
+    dateRange = inferDateRangeFromCinemaWeek(now, weekBounds);
   }
 
   const warnings = movies.length
@@ -1342,7 +1349,7 @@ function looksLikeTableGridProgram(text) {
 }
 
 /** Μορφή πίνακα (π.χ. Arian): τίτλος → στήλες «01 ΙΟΥΛ» → ώρες «22:40». */
-function parseTableGridCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+function parseTableGridCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date(), weekBounds = null } = {}) {
   const blocks = splitTableGridBlocks(text);
   const movies = [];
   const warnings = [];
@@ -1383,7 +1390,7 @@ function parseTableGridCinemaProgram(text, { refYear = new Date().getFullYear(),
     end.setHours(23, 59, 59, 999);
     dateRange = { start, end, inferred: false };
   } else {
-    dateRange = inferDateRangeFromCinemaWeek(now);
+    dateRange = inferDateRangeFromCinemaWeek(now, weekBounds);
   }
 
   if (!movies.length) {
@@ -1550,7 +1557,7 @@ function looksLikeStackedMonthCalendarProgram(text) {
  * Πίνακας-ημερολόγιο με στήλες σε ξεχωριστές γραμμές:
  * Δ / 20 / ΙΟΥΛ / Τ / 21 / ΙΟΥΛ / … και μετά ώρες 21:00 (ή τίτλος + ώρες).
  */
-function parseStackedMonthCalendarProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+function parseStackedMonthCalendarProgram(text, { refYear = new Date().getFullYear(), now = new Date(), weekBounds = null } = {}) {
   const lines = String(text || '')
     .replace(/\r\n/g, '\n')
     .split('\n')
@@ -1564,7 +1571,7 @@ function parseStackedMonthCalendarProgram(text, { refYear = new Date().getFullYe
   if (columns.length < 3) {
     return {
       header: '',
-      dateRange: inferDateRangeFromCinemaWeek(now),
+      dateRange: inferDateRangeFromCinemaWeek(now, weekBounds),
       movies: [],
       warnings: ['Δεν αναγνωρίστηκε ημερολόγιο Δ/ημέρα/ΙΟΥΛ (χρειάζονται ≥3 στήλες).'],
     };
@@ -1615,7 +1622,7 @@ function parseStackedMonthCalendarProgram(text, { refYear = new Date().getFullYe
       `Ημερολόγιο στηλών (Δ/ημέρα/μήνας): ${columns.length} μέρες · ${movies.filter((m) => m.showtimes.length).length} ταινίες.`,
     );
   } else {
-    dateRange = inferDateRangeFromCinemaWeek(now);
+    dateRange = inferDateRangeFromCinemaWeek(now, weekBounds);
     warnings.push('Βρέθηκε header ημερολογίου αλλά καμία ώρα (21:00) μετά τις στήλες.');
   }
 
@@ -1755,7 +1762,7 @@ function looksLikeCalendarGridProgram(text) {
 /**
  * Μορφή πίνακα-ημερολογίου: Κυρ/12, Δευ/13, … · τίτλος · «Ώρα έναρξης: 21.00» (ανά κελί, row-major).
  */
-function parseCalendarGridCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+function parseCalendarGridCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date(), weekBounds = null } = {}) {
   const lines = String(text || '')
     .replace(/\r\n/g, '\n')
     .split('\n')
@@ -1769,7 +1776,7 @@ function parseCalendarGridCinemaProgram(text, { refYear = new Date().getFullYear
   if (!columns.length || !blocks.length) {
     return {
       header: '',
-      dateRange: inferDateRangeFromCinemaWeek(now),
+      dateRange: inferDateRangeFromCinemaWeek(now, weekBounds),
       movies: [],
       warnings: ['Δεν αναγνωρίστηκε πρόγραμμα πίνακα-ημερολογίου (μέρες + τίτλος + Ώρα έναρξης).'],
     };
@@ -1823,7 +1830,7 @@ function parseCalendarGridCinemaProgram(text, { refYear = new Date().getFullYear
     end.setHours(23, 59, 59, 999);
     dateRange = { start, end, inferred: false };
   } else {
-    dateRange = inferDateRangeFromCinemaWeek(now);
+    dateRange = inferDateRangeFromCinemaWeek(now, weekBounds);
     warnings.push('Δεν αναγνωρίστηκαν προβολές στον πίνακα-ημερολόγιο.');
   }
 
@@ -1862,7 +1869,7 @@ function looksLikeMoreDayStackProgram(text) {
 /**
  * Μορφή More.com / αγγλικό paste: «2» → «Jul, Thu» → «8:50pm» → τίτλος → «11pm» → τίτλος (ανά ημέρα).
  */
-function parseMoreDayStackCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+function parseMoreDayStackCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date(), weekBounds = null } = {}) {
   const lines = String(text || '')
     .replace(/\r\n/g, '\n')
     .split('\n')
@@ -1946,7 +1953,7 @@ function parseMoreDayStackCinemaProgram(text, { refYear = new Date().getFullYear
     end.setHours(23, 59, 59, 999);
     dateRange = { start, end, inferred: false };
   } else {
-    dateRange = inferDateRangeFromCinemaWeek(now);
+    dateRange = inferDateRangeFromCinemaWeek(now, weekBounds);
   }
 
   const warnings = movies.length
@@ -2188,11 +2195,11 @@ function groupStackedTitleProgramBlocks(text) {
   return groups;
 }
 
-function parseStackedTitleCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+function parseStackedTitleCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date(), weekBounds = null } = {}) {
   const warnings = [];
   let dateRange = parseProgramDateRange(text, refYear);
   if (!dateRange) {
-    dateRange = inferDateRangeFromCinemaWeek(now);
+    dateRange = inferDateRangeFromCinemaWeek(now, weekBounds);
     warnings.push(
       'Δεν βρέθηκε ρητό εύρος ημερομηνιών — χρησιμοποιείται η εβδομάδα-στόχος κινηματογράφου.',
     );
@@ -2231,13 +2238,13 @@ function parseStackedTitleCinemaProgram(text, { refYear = new Date().getFullYear
   };
 }
 
-function parseCatalogCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+function parseCatalogCinemaProgram(text, { refYear = new Date().getFullYear(), now = new Date(), weekBounds = null } = {}) {
   const lines = String(text || '').replace(/\r\n/g, '\n').split('\n');
 
   let dateRange = parseProgramDateRange(text, refYear);
   const warnings = [];
   if (!dateRange) {
-    dateRange = inferDateRangeFromCinemaWeek(now);
+    dateRange = inferDateRangeFromCinemaWeek(now, weekBounds);
     warnings.push(
       'Δεν βρέθηκε ρητό εύρος ημερομηνιών — χρησιμοποιείται η τρέχουσα/επόμενη εβδομάδα κινηματογράφου.',
     );
@@ -2290,36 +2297,36 @@ function parseCatalogCinemaProgram(text, { refYear = new Date().getFullYear(), n
  * Ανάλυση ελεύθερου κειμένου προγράμματος σινεμά.
  * Δεν απαιτεί συγκεκριμένη μορφή — αρκούν μέρες, ώρες και (ιδανικά) εύρος ημερομηνιών.
  */
-function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now = new Date() } = {}) {
+function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now = new Date(), weekBounds = null } = {}) {
   const warnings = [];
   const normalized = String(text || '').replace(/\r\n/g, '\n').trim();
 
   if (looksLikeCatalogProgram(normalized)) {
-    return parseCatalogCinemaProgram(normalized, { refYear, now });
+    return parseCatalogCinemaProgram(normalized, { refYear, now, weekBounds });
   }
 
   if (looksLikeStackedTitleProgram(normalized)) {
-    return parseStackedTitleCinemaProgram(normalized, { refYear, now });
+    return parseStackedTitleCinemaProgram(normalized, { refYear, now, weekBounds });
   }
 
   if (looksLikeDayCentricProgram(normalized)) {
-    return parseDayCentricCinemaProgram(normalized, { refYear, now });
+    return parseDayCentricCinemaProgram(normalized, { refYear, now, weekBounds });
   }
 
   if (looksLikeMoreDayStackProgram(normalized)) {
-    return parseMoreDayStackCinemaProgram(normalized, { refYear, now });
+    return parseMoreDayStackCinemaProgram(normalized, { refYear, now, weekBounds });
   }
 
   if (looksLikeStackedMonthCalendarProgram(normalized)) {
-    return parseStackedMonthCalendarProgram(normalized, { refYear, now });
+    return parseStackedMonthCalendarProgram(normalized, { refYear, now, weekBounds });
   }
 
   if (looksLikeCalendarGridProgram(normalized)) {
-    return parseCalendarGridCinemaProgram(normalized, { refYear, now });
+    return parseCalendarGridCinemaProgram(normalized, { refYear, now, weekBounds });
   }
 
   if (looksLikeTableGridProgram(normalized)) {
-    return parseTableGridCinemaProgram(normalized, { refYear, now });
+    return parseTableGridCinemaProgram(normalized, { refYear, now, weekBounds });
   }
 
   const { header, movies } = splitMovieBlocks(normalized);
@@ -2332,7 +2339,7 @@ function parseCinemaProgramText(text, { refYear = new Date().getFullYear(), now 
 
   let dateRange = parseProgramDateRange(normalized, refYear);
   if (!dateRange) {
-    dateRange = inferDateRangeFromCinemaWeek(now);
+    dateRange = inferDateRangeFromCinemaWeek(now, weekBounds);
     warnings.push(
       'Δεν βρέθηκε ρητό εύρος ημερομηνιών (π.χ. 25/6 – 1/7) — χρησιμοποιείται η τρέχουσα/επόμενη εβδομάδα κινηματογράφου.',
     );
