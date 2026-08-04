@@ -40,6 +40,10 @@
       "type": "string",
       "description": "URL ιστοσελίδας/κρατήσεων του χώρου (σινεμά ή θέατρο) — εμφανίζεται ως «Περισσότερα» / κράτηση."
     },
+    "athinorama_link": {
+      "type": "string",
+      "description": "URL σελίδας αίθουσας στο Athinorama (π.χ. https://www.athinorama.gr/cinema/halls/…-1000115/). Χρησιμοποιείται στο manual import για αυτόματη φόρτωση προγράμματος."
+    },
     "venue_id": {
       "type": "string",
       "description": "More.com venueId (π.χ. 3345 για Αίγλη). Για πολυαίθουσα: «3394,3395» ή κενό αν sync γίνεται μόνο από venue bundle (evg_*). Με bundle sync όλες οι αίθουσες του κινηματογράφου εισάγονται στον ίδιο CMS χώρο."

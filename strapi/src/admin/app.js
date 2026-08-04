@@ -18,6 +18,7 @@ const config = {
       'content-manager.content-types.api::venue.venue.venue_id': 'More venueId',
       'content-manager.content-types.api::venue.venue.event_group_code': 'Venue bundle (More)',
       'content-manager.content-types.api::venue.venue.more_link': 'More link',
+      'content-manager.content-types.api::venue.venue.athinorama_link': 'Athinorama link',
       'content-manager.enum.api::venue.venue.type.cinema': 'Σινεμά',
       'content-manager.enum.api::venue.venue.type.theater': 'Θέατρο',
       'content-manager.enum.api::venue.venue.type.other': 'Άλλο',

@@ -3,6 +3,7 @@
 const { parseProgramText, parseProgramFromImages, isAiEnabled, isOcrAvailable } = require('./programTextParse');
 const { aiConfig, MAX_VISION_IMAGES } = require('./programTextAiParser');
 const { formatWeekLabel, formatLocalYmd, isDatetimeInTargetCinemaWeekForVenueStatus, listCinemaWeekChoices, resolveProgramImportWeekBounds } = require('./cinemaWeek');
+const { scrapeAthinoramaHallProgram, normalizeAthinoramaHallUrl } = require('./athinoramaHallScrape');
 const {
   applyVenueUpdatedStatusFromProgramImport,
   VENUE_UPDATED_LABELS,
@@ -127,7 +128,7 @@ async function findAllCinemas(strapi) {
   while (page <= 20) {
     const batch = await strapi.entityService.findMany('api::venue.venue', {
       filters: { type: 'cinema' },
-      fields: ['id', 'name', 'slug', 'summer_outdoor'],
+      fields: ['id', 'name', 'slug', 'summer_outdoor', 'athinorama_link'],
       publicationState: 'preview',
       sort: { name: 'asc' },
       pagination: { page, pageSize },
@@ -143,6 +144,7 @@ async function findAllCinemas(strapi) {
     name: row.name,
     slug: row.slug,
     summerOutdoor: row.summer_outdoor === true,
+    athinoramaLink: row.athinorama_link ? String(row.athinorama_link).trim() : null,
   }));
 }
 
@@ -188,7 +190,7 @@ async function loadVenue(strapi, venueId) {
   const id = Number(venueId);
   if (!Number.isFinite(id)) return null;
   return strapi.entityService.findOne('api::venue.venue', id, {
-    fields: ['id', 'name', 'slug', 'type', 'summer_outdoor'],
+    fields: ['id', 'name', 'slug', 'type', 'summer_outdoor', 'athinorama_link'],
     publicationState: 'preview',
   });
 }
@@ -415,7 +417,7 @@ async function buildPreviewFromParsed(
 
 async function previewProgramTextImport(
   strapi,
-  { text, images, venueId, refYear, summerScreening, weekStart, weekOffset } = {},
+  { text, images, venueId, refYear, summerScreening, weekStart, weekOffset, source } = {},
 ) {
   const venue = await loadVenue(strapi, venueId);
   if (!venue) {
@@ -429,11 +431,45 @@ async function previewProgramTextImport(
   const weekBounds = resolveProgramImportWeekBounds({ weekStart, weekOffset, now });
   const imageList = Array.isArray(images) ? images.filter(Boolean) : [];
   const trimmed = String(text || '').trim();
+  const fromAthinorama = source === 'athinorama' || source === 'athinorama_link';
 
   let parsed;
   let inputKind = 'text';
+  let athinoramaMeta = null;
 
-  if (imageList.length > 0) {
+  if (fromAthinorama) {
+    const link = normalizeAthinoramaHallUrl(venue.athinorama_link);
+    if (!link) {
+      return {
+        ok: false,
+        error:
+          'Λείπει ή είναι άκυρο το πεδίο Athinorama link στον χώρο (URL τύπου /cinema/halls/…).',
+      };
+    }
+    inputKind = 'athinorama';
+    const scraped = await scrapeAthinoramaHallProgram(link, { weekBounds });
+    if (!scraped.ok) {
+      return {
+        ok: false,
+        error: scraped.error || 'Αποτυχία φόρτωσης Athinorama.',
+        warnings: scraped.warnings,
+        parseSource: 'athinorama',
+        athinoramaUrl: scraped.url || link,
+      };
+    }
+    parsed = {
+      header: venue.name,
+      dateRange: scraped.dateRange,
+      movies: scraped.movies,
+      warnings: scraped.warnings || [],
+      parseSource: 'athinorama',
+    };
+    athinoramaMeta = {
+      url: scraped.url,
+      stats: scraped.stats,
+      programText: scraped.programText || '',
+    };
+  } else if (imageList.length > 0) {
     inputKind = 'image';
     parsed = await parseProgramFromImages(imageList, {
       refYear,
@@ -449,7 +485,7 @@ async function previewProgramTextImport(
       weekBounds,
     });
   } else {
-    return { ok: false, error: 'Δώσε κείμενο ή εικόνα προγράμματος.' };
+    return { ok: false, error: 'Δώσε κείμενο, εικόνα ή φόρτωσε από Athinorama.' };
   }
 
   if (!parsed.movies?.length) {
@@ -462,6 +498,7 @@ async function previewProgramTextImport(
       warnings: parsed.warnings,
       parseSource: parsed.parseSource,
       ocrPreview: parsed.ocrPreview,
+      athinoramaUrl: athinoramaMeta?.url,
     };
   }
 
@@ -469,7 +506,7 @@ async function previewProgramTextImport(
     venue,
     parsed,
     inputKind,
-    programText: trimmed || parsed.ocrPreview || '',
+    programText: trimmed || athinoramaMeta?.programText || parsed.ocrPreview || '',
     summerScreening: summerScreening === true,
   });
   return {
@@ -480,6 +517,7 @@ async function previewProgramTextImport(
       label: formatWeekLabel(weekBounds.start, weekBounds.end),
       weekStart: formatLocalYmd(weekBounds.start),
     },
+    athinorama: athinoramaMeta,
   };
 }
 

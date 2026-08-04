@@ -27,6 +27,7 @@ module.exports = {
       summerScreening: body.summerScreening === true,
       weekStart: body.weekStart,
       weekOffset: body.weekOffset != null ? Number(body.weekOffset) : undefined,
+      source: body.source,
     });
     if (!result.ok) {
       ctx.status = 400;

@@ -154,6 +154,7 @@ function CinemaVenueSearchSelect({ cinemas, value, onChange, disabled, loading }
 }
 
 function parseSourceLabel(source) {
+  if (source === 'athinorama') return 'Athinorama';
   if (source === 'ai_vision') return 'AI (εικόνα)';
   if (source === 'ai_ocr') return 'AI (OCR εικόνας)';
   if (source === 'ai') return 'AI (κείμενο)';
@@ -510,11 +511,15 @@ export default function App() {
 
   const canParse =
     venueId && (inputMode === 'text' ? text.trim().length > 0 : images.length > 0);
+  const athinoramaLink = selectedVenue?.athinoramaLink || null;
+  const canLoadAthinorama = Boolean(venueId && athinoramaLink);
 
   const runPreview = useCallback(
     async ({ venueId: vId, mode, textValue, imageValues }) => {
       const payload = { venueId: Number(vId) };
-      if (mode === 'image') {
+      if (mode === 'athinorama') {
+        payload.source = 'athinorama';
+      } else if (mode === 'image') {
         payload.images = imageValues.map((img) => img.dataUrl);
       } else {
         payload.text = textValue;
@@ -525,6 +530,10 @@ export default function App() {
       const data = res?.data;
       if (!data?.ok) throw new Error(data?.error || 'Αποτυχία ανάλυσης');
       setPreview(data);
+      if (mode === 'athinorama' && data?.athinorama?.programText) {
+        setText(data.athinorama.programText);
+        setInputMode('text');
+      }
       const initialApproved = {};
       for (const p of data.proposals || []) {
         initialApproved[p.id] = p.approved;
@@ -571,8 +580,42 @@ export default function App() {
     } finally {
       setParsing(false);
     }
-  }, [aiStatus, images, inputMode, runPreview, text, toggleNotification, venueId]);
+  }, [images, inputMode, runPreview, text, toggleNotification, venueId]);
 
+  const handleLoadAthinorama = useCallback(async () => {
+    if (!venueId) {
+      toggleNotification({ type: 'warning', message: 'Επίλεξε κινηματογράφο.' });
+      return;
+    }
+    if (!athinoramaLink) {
+      toggleNotification({
+        type: 'warning',
+        message: 'Βάλε Athinorama link στο CMS του χώρου (URL /cinema/halls/…).',
+      });
+      return;
+    }
+    setParsing(true);
+    setPreview(null);
+    setManualMovieByTitle({});
+    setApprovedById({});
+    setSkippedMovieTitles({});
+    try {
+      const data = await runPreview({
+        venueId,
+        mode: 'athinorama',
+        textValue: '',
+        imageValues: [],
+      });
+      toggleNotification({
+        type: 'success',
+        message: `${data.summary.totalShowtimes} προβολές · Athinorama`,
+      });
+    } catch (e) {
+      toggleNotification({ type: 'warning', message: e?.message || 'Αποτυχία Athinorama' });
+    } finally {
+      setParsing(false);
+    }
+  }, [athinoramaLink, runPreview, toggleNotification, venueId]);
   const handleFilesSelected = useCallback(
     async (event) => {
       const files = [...(event.target.files || [])];
@@ -947,9 +990,35 @@ export default function App() {
             )}
 
             <GridItem col={12}>
-              <Button onClick={handleParse} loading={parsing} disabled={!canParse}>
-                Ανάλυση & προεπισκόπηση
-              </Button>
+              <Flex gap={2} wrap="wrap" alignItems="center">
+                <Button onClick={handleParse} loading={parsing} disabled={!canParse}>
+                  Ανάλυση & προεπισκόπηση
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleLoadAthinorama}
+                  loading={parsing}
+                  disabled={!canLoadAthinorama || parsing}
+                  title={
+                    athinoramaLink
+                      ? athinoramaLink
+                      : 'Βάλε Athinorama link στο CMS του χώρου (Χώροι → επεξεργασία)'
+                  }
+                >
+                  Φόρτωση από Athinorama
+                </Button>
+              </Flex>
+              {venueId && !athinoramaLink ? (
+                <Typography variant="pi" textColor="neutral500" paddingTop={2}>
+                  Για αυτόματη φόρτωση: στο CMS του χώρου βάλε πεδίο «Athinorama link» (URL
+                  /cinema/halls/…).
+                </Typography>
+              ) : null}
+              {athinoramaLink ? (
+                <Typography variant="pi" textColor="neutral500" paddingTop={2}>
+                  Athinorama: {athinoramaLink}
+                </Typography>
+              ) : null}
             </GridItem>
           </Grid>
         </Box>
