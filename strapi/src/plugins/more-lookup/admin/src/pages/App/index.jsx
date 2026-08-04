@@ -1368,6 +1368,7 @@ const App = () => {
   const [syncProgress, setSyncProgress] = useState(null);
   const [syncProgressAt, setSyncProgressAt] = useState(null);
   const [syncVenueCmsId, setSyncVenueCmsId] = useState('');
+  const [athinoramaSyncing, setAthinoramaSyncing] = useState(false);
   const [, setProgressTick] = useState(0);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupProgress, setLookupProgress] = useState(null);
@@ -2157,6 +2158,35 @@ const App = () => {
   const syncShowtimes = () => runSyncRequest('all');
   const syncShowtimesCinema = () => runSyncRequest('cinema');
   const syncShowtimesTheater = () => runSyncRequest('theater');
+  const syncAthinoramaPending = async () => {
+    if (athinoramaSyncing || syncLoading) return;
+    setAthinoramaSyncing(true);
+    setSyncProgress('Athinorama: φόρτωση εκκρεμών σινεμά (τρέχουσα εβδομάδα)…');
+    setSyncProgressAt(Date.now());
+    try {
+      const res = await post('/api/venues/sync-athinorama-pending', {});
+      const report = res?.data;
+      setSyncReport({
+        ...(report || {}),
+        message: report?.message || 'Athinorama sync ολοκληρώθηκε.',
+        source: 'athinorama',
+      });
+      setSyncProgress(report?.message || 'Athinorama sync ολοκληρώθηκε.');
+      toggleNotification({
+        type: report?.failed > 0 ? 'warning' : 'success',
+        message: report?.message || 'Athinorama sync ολοκληρώθηκε.',
+      });
+    } catch (error) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.message ||
+        'Αποτυχία Athinorama sync.';
+      setSyncProgress(message);
+      toggleNotification({ type: 'warning', message });
+    } finally {
+      setAthinoramaSyncing(false);
+    }
+  };
   const syncOneCinemaVenue = () => {
     const id = Number(String(syncVenueCmsId || '').trim());
     if (!Number.isFinite(id) || id <= 0) {
@@ -2250,38 +2280,59 @@ const App = () => {
             <Box paddingTop={4} padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
               <PanelHeader
                 title="Βήμα 2 — Συγχρονισμός προβολών"
-                subtitle="More API → Προβολή ταινίας / Παράσταση · μόνο χειροκίνητα (χωρίς cron)"
+                subtitle="More API ή Athinorama (τρέχουσα εβδομάδα) → προβολές"
                 action={
-                  showtimeSyncEnabled ? (
-                    <Flex gap={2} wrap="wrap">
-                      <Button
-                        variant="success"
-                        loading={syncLoading}
-                        onClick={syncShowtimes}
-                        disabled={syncLoading || loading}
-                        style={actionButtonStyle}
-                        title="Σινεμά → Θέατρο σε δύο σειριακά worker processes (λιγότερη μνήμη)"
-                      >
-                        {syncLoading ? 'Sync…' : 'Τρέξε sync (Όλα)'}
-                      </Button>
+                  <Flex gap={2} wrap="wrap">
+                    {showtimeSyncEnabled ? (
+                      <>
+                        <Button
+                          variant="success"
+                          loading={syncLoading}
+                          onClick={syncShowtimes}
+                          disabled={syncLoading || loading || athinoramaSyncing}
+                          style={actionButtonStyle}
+                          title="Σινεμά → Θέατρο σε δύο σειριακά worker processes (λιγότερη μνήμη)"
+                        >
+                          {syncLoading ? 'Sync…' : 'Τρέξε sync (Όλα)'}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          loading={athinoramaSyncing}
+                          onClick={syncAthinoramaPending}
+                          disabled={syncLoading || loading || athinoramaSyncing}
+                          title="Εκκρεμή σινεμά με Athinorama link · μόνο τρέχουσα εβδομάδα Πέμ→Τετ"
+                        >
+                          {athinoramaSyncing ? 'Athinorama…' : 'Sync Athinorama'}
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={syncShowtimesCinema}
+                          disabled={syncLoading || loading || athinoramaSyncing}
+                          title="Μόνο προβολές σινεμά (ταινίες) — χαμηλότερο peak μνήμης"
+                        >
+                          Σινεμά
+                        </Button>
+                        <Button
+                          variant="secondary"
+                          onClick={syncShowtimesTheater}
+                          disabled={syncLoading || loading || athinoramaSyncing}
+                          title="Μόνο παραστάσεις θεάτρου — χαμηλότερο peak μνήμης"
+                        >
+                          Θέατρο
+                        </Button>
+                      </>
+                    ) : (
                       <Button
                         variant="secondary"
-                        onClick={syncShowtimesCinema}
-                        disabled={syncLoading || loading}
-                        title="Μόνο προβολές σινεμά (ταινίες) — χαμηλότερο peak μνήμης"
+                        loading={athinoramaSyncing}
+                        onClick={syncAthinoramaPending}
+                        disabled={athinoramaSyncing}
+                        title="Εκκρεμή σινεμά με Athinorama link · μόνο τρέχουσα εβδομάδα Πέμ→Τετ"
                       >
-                        Σινεμά
+                        {athinoramaSyncing ? 'Athinorama…' : 'Sync Athinorama'}
                       </Button>
-                      <Button
-                        variant="secondary"
-                        onClick={syncShowtimesTheater}
-                        disabled={syncLoading || loading}
-                        title="Μόνο παραστάσεις θεάτρου — χαμηλότερο peak μνήμης"
-                      >
-                        Θέατρο
-                      </Button>
-                    </Flex>
-                  ) : null
+                    )}
+                  </Flex>
                 }
               />
               {!showtimeSyncEnabled ? (
