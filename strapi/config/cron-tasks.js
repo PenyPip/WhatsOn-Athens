@@ -4,6 +4,7 @@
  * Κάθε Σάββατο 06:00 (ώρα server) — `venue.updated` → no_new για όλα τα σινεμά.
  * Μέχρι Κυριακή: στόχος = τρέχουσα εβδομάδα κινηματογράφου · Δευτέρα+: επόμενη.
  *
+ * More σινεμά (ταινίες): Κυριακή–Τετάρτη 3×/ημέρα.
  * Athinorama (τρέχουσα εβδομάδα μόνο): Πέμπτη 3× — το Athinorama δεν έχει μελλοντικές προβολές.
  */
 module.exports = {
@@ -18,6 +19,43 @@ module.exports = {
     },
     options: {
       rule: '0 6 * * 6',
+    },
+  },
+  /**
+   * Κυριακή–Τετάρτη ~10:00 / 14:00 / 18:00 Europe/Athens (UTC καλοκαίρι: 07/11/15).
+   * Βασικό More sync μόνο σινεμά/ταινίες (επόμενη εβδομάδα Δευ–Τετ · τρέχουσα Κυρ).
+   */
+  moreCinemaShowtimeSyncSunWed: {
+    task: async ({ strapi }) => {
+      if (process.env.MORE_SHOWTIME_SYNC_ENABLED === 'false') return;
+      if (process.env.MORE_SHOWTIME_SYNC_CRON === 'false') return;
+      try {
+        const { athensLocalDate } = require('../src/utils/cinemaWeek');
+        const dow = athensLocalDate().getDay(); // 0=Κυρ … 3=Τετ
+        if (dow < 0 || dow > 3) return;
+
+        const { startMoreShowtimeSyncJob, getMoreShowtimeSyncJob } = require('../src/utils/moreShowtimeSyncJob');
+        const existing = getMoreShowtimeSyncJob(strapi);
+        if (existing?.status === 'running') {
+          strapi.log.info(
+            `[cron] moreCinemaShowtimeSyncSunWed: ήδη τρέχει job=${existing.id} — skip`,
+          );
+          return;
+        }
+
+        const started = startMoreShowtimeSyncJob(strapi, { scope: 'cinema' });
+        strapi.log.info(
+          `[cron] moreCinemaShowtimeSyncSunWed: ${
+            started.started ? 'started' : started.reason || 'not_started'
+          } job=${started.job?.id || '—'}`,
+        );
+      } catch (e) {
+        strapi.log.error('[cron] moreCinemaShowtimeSyncSunWed', e);
+      }
+    },
+    options: {
+      // Κυρ–Τετ 07:00, 11:00, 15:00 UTC ≈ 10:00 / 14:00 / 18:00 Αθήνα (θερινή ώρα)
+      rule: '0 7,11,15 * * 0,1,2,3',
     },
   },
   /**

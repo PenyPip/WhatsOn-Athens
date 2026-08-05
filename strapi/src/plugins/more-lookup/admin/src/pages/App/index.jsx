@@ -2280,7 +2280,7 @@ const App = () => {
             <Box paddingTop={4} padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
               <PanelHeader
                 title="Βήμα 2 — Συγχρονισμός προβολών"
-                subtitle="More API ή Athinorama (τρέχουσα εβδομάδα) → προβολές"
+                subtitle="More API (cron Κυρ–Τετ 3× · σινεμά) ή Athinorama (Πέμπτη) → προβολές"
                 action={
                   <Flex gap={2} wrap="wrap">
                     {showtimeSyncEnabled ? (
