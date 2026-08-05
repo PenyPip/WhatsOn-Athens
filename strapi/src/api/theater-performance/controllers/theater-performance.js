@@ -47,6 +47,7 @@ const PERFORMANCE_FIELDS = [
   'available_seats',
   'price',
   'sold_out',
+  'createdAt',
 ];
 
 module.exports = createCoreController('api::theater-performance.theater-performance', ({ strapi }) => ({

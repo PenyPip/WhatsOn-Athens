@@ -22,6 +22,7 @@ import {
 import {
   theaterPerformanceSummary,
   theaterShowHasUpcomingPerformances,
+  theaterShowListBadge,
 } from "@/lib/theaterPerformances";
 
 const TheaterPage = () => {
@@ -149,15 +150,7 @@ const TheaterPage = () => {
                     theaterPriceLine={priceLine ?? undefined}
                     theaterScheduleLine={scheduleLine ?? undefined}
                     index={i}
-                    badge={
-                      show.soldOut
-                        ? "SOLD OUT"
-                        : show.isPremiere
-                          ? "Πρεμιέρα"
-                          : show.isLastShows
-                            ? "Τελευταίες"
-                            : undefined
-                    }
+                    badge={theaterShowListBadge(show, showPerformances)}
                   />
                 );
               })}

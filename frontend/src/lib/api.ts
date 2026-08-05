@@ -1156,6 +1156,12 @@ function mapTheaterPerformance(raw: unknown): StrapiTheaterPerformance[] {
     theaterShowTitle,
     theaterShowPosterUrl,
     theaterShowSoldOut,
+    createdAt:
+      typeof s.createdAt === "string" && s.createdAt.trim()
+        ? s.createdAt
+        : typeof s.created_at === "string" && s.created_at.trim()
+          ? s.created_at
+          : undefined,
   });
 
   return s.datetime ? [toRow(s.datetime, 0)] : [];
@@ -1454,6 +1460,8 @@ export interface StrapiTheaterPerformance {
   theaterShowTitle?: string;
   theaterShowPosterUrl?: string | null;
   theaterShowSoldOut?: boolean;
+  /** Πότε μπήκε στο CMS — για σήμανση «Νέο» / «Νέες παραστάσεις» (7 ημέρες). */
+  createdAt?: string;
 }
 
 export type StrapiEventType = "cinema" | "theater" | "music" | "art" | "food" | "other";

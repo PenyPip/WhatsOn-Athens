@@ -91,7 +91,7 @@ import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import { TheaterTicketHeroPreview } from "@/components/TheaterTicketPrices";
 import ScheduleCompactRow from "@/components/ScheduleCompactRow";
-import { groupTheaterPerformancesByVenue } from "@/lib/theaterPerformances";
+import { groupTheaterPerformancesByVenue, isTheaterPerformanceNewlyAdded, theaterShowHasNewlyAddedPerformances } from "@/lib/theaterPerformances";
 import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
 import {
   cinemaGroupKey,
@@ -573,7 +573,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <MapPin className="h-4 w-4 shrink-0 text-[#13143E]/70" aria-hidden />
         <div>
           <h2 className="font-display text-lg font-semibold text-foreground md:text-xl">Πού & πότε παίζεται</h2>
-          <p className="mt-0.5 text-sm text-muted-foreground">Επερχόμενες εμφανίσεις ανά χώρο</p>
+          {theaterShowHasNewlyAddedPerformances(eventPerformances) ? (
+            <p className="mt-0.5 text-sm font-medium text-amber-800">✦ Νέες παραστάσεις αυτή την εβδομάδα</p>
+          ) : (
+            <p className="mt-0.5 text-sm text-muted-foreground">Επερχόμενες εμφανίσεις ανά χώρο</p>
+          )}
         </div>
       </div>
       {performancesLoading && theaterPerformances === undefined ? (
@@ -612,6 +616,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                       hallName={p.hallName}
                       priceLabel={theaterPerformancePriceLabel(p)}
                       soldOut={Boolean(p.soldOut || theaterShow?.soldOut)}
+                      newlyAdded={isTheaterPerformanceNewlyAdded(p)}
                       emphasized
                     />
                   ))}

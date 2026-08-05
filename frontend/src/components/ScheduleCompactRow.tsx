@@ -8,6 +8,8 @@ type ScheduleCompactRowProps = {
   priceLabel?: string | null;
   soldOut?: boolean;
   emphasized?: boolean;
+  /** Παράσταση που μπήκε πρόσφατα στο CMS (π.χ. τελευταίες 7 ημέρες). */
+  newlyAdded?: boolean;
 };
 
 /** Γραμμή ημερομηνίας/ώρας — κοινή για προβολές ταινίας και θεατρικές παραστάσεις. */
@@ -17,7 +19,18 @@ export default function ScheduleCompactRow({
   priceLabel,
   soldOut = false,
   emphasized = false,
+  newlyAdded = false,
 }: ScheduleCompactRowProps) {
+  const newMark = newlyAdded ? (
+    <span
+      className="inline-flex shrink-0 items-center gap-0.5 rounded bg-amber-500/15 px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800"
+      title="Νέα παράσταση"
+    >
+      <span aria-hidden>✦</span>
+      Νέο
+    </span>
+  ) : null;
+
   if (showtimeIsWeekBlock(slot)) {
     const weekLabel = formatShowtimeWeekRangeLabel(slot);
     return (
@@ -27,9 +40,12 @@ export default function ScheduleCompactRow({
           emphasized ? "py-3 text-sm sm:py-3.5" : "py-3.5 text-sm",
         )}
       >
-        <p className="font-medium text-foreground">
-          {weekLabel ?? "Εβδομάδα εμφανίσεων"}
-          <span className="text-muted-foreground"> · ώρες σύντομα</span>
+        <p className="flex flex-wrap items-center gap-x-2 gap-y-0.5 font-medium text-foreground">
+          <span>
+            {weekLabel ?? "Εβδομάδα εμφανίσεων"}
+            <span className="text-muted-foreground"> · ώρες σύντομα</span>
+          </span>
+          {newMark}
         </p>
         {hallName ? <p className="text-muted-foreground">Αίθουσα · {hallName}</p> : null}
       </li>
@@ -64,6 +80,7 @@ export default function ScheduleCompactRow({
           >
             {d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false })}
           </span>
+          {newMark}
           {soldOut ? (
             <span className="shrink-0 rounded bg-rose-600/10 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-rose-700">
               Sold out

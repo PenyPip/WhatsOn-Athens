@@ -176,3 +176,44 @@ export function performanceOverlapsDateRange(
   if (Number.isNaN(t)) return true;
   return t >= fromMs && t <= toMs;
 }
+
+/** Παραστάσεις που μπήκαν στο CMS τις τελευταίες N ημέρες → σήμανση «Νέο». */
+export const NEW_THEATER_PERFORMANCE_DAYS = 7;
+
+export function isTheaterPerformanceNewlyAdded(
+  p: { createdAt?: string | null },
+  now = new Date(),
+  days = NEW_THEATER_PERFORMANCE_DAYS,
+): boolean {
+  const raw = p.createdAt;
+  if (!raw || typeof raw !== "string") return false;
+  const created = new Date(raw).getTime();
+  if (!Number.isFinite(created)) return false;
+  const ageMs = now.getTime() - created;
+  return ageMs >= 0 && ageMs <= days * 24 * 60 * 60 * 1000;
+}
+
+export function theaterShowHasNewlyAddedPerformances(
+  performances: { createdAt?: string | null }[],
+  now = new Date(),
+  days = NEW_THEATER_PERFORMANCE_DAYS,
+): boolean {
+  return (performances || []).some((p) => isTheaterPerformanceNewlyAdded(p, now, days));
+}
+
+/** Badge κάρτας θεάτρου — προτεραιότητα: sold out → νέες παραστάσεις → πρεμιέρα → τελευταίες. */
+export function theaterShowListBadge(
+  show: {
+    soldOut?: boolean;
+    isPremiere?: boolean;
+    isLastShows?: boolean;
+  },
+  performances: { createdAt?: string | null }[] = [],
+  now = new Date(),
+): string | undefined {
+  if (show.soldOut) return "SOLD OUT";
+  if (theaterShowHasNewlyAddedPerformances(performances, now)) return "Νέες παραστάσεις";
+  if (show.isPremiere) return "Πρεμιέρα";
+  if (show.isLastShows) return "Τελευταίες";
+  return undefined;
+}
