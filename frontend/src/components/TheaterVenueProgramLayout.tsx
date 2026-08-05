@@ -110,7 +110,7 @@ export default function TheaterVenueProgramLayout({
                         Sold out
                       </p>
                     ) : theaterShowHasNewlyAddedPerformances(group.slots) ? (
-                      <p className="mt-2 text-xs font-semibold uppercase tracking-wide text-amber-800">
+                      <p className="mt-2 text-xs font-semibold tracking-wide text-[#9B2C2C]">
                         ✦ Νέες παραστάσεις
                       </p>
                     ) : null}

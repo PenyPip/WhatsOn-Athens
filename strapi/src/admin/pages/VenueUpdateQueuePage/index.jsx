@@ -475,8 +475,9 @@ const VenueUpdateQueuePage = () => {
             </Typography>
             <Typography variant="pi" textColor="neutral600" paddingTop={2}>
               Εβδομάδα: {athinoramaReport.weekLabel || '—'} · εκκρεμή:{' '}
-              {athinoramaReport.pendingCount ?? '—'} · OK: {athinoramaReport.synced ?? 0} · αποτυχίες:{' '}
-              {athinoramaReport.failed ?? 0}
+              {athinoramaReport.pendingCount ?? '—'} · OK: {athinoramaReport.synced ?? 0} · νέες:{' '}
+              {athinoramaReport.created ?? athinoramaReport.createdTotal ?? 0} · υπήρχαν:{' '}
+              {athinoramaReport.alreadyExists ?? 0} · αποτυχίες: {athinoramaReport.failed ?? 0}
               {athinoramaReport.currentWeekPhase === false
                 ? ' · (Δευ–Τετ: δεν αλλάζει το πεδίο updated — στόχος είναι η επόμενη εβδομάδα)'
                 : ''}

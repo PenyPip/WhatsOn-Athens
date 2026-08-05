@@ -5,7 +5,7 @@ import MoviePosterMeta from "@/components/MoviePosterMeta";
 import { cn } from "@/lib/utils";
 import GenreLinks from "@/components/GenreLinks";
 import type { GenreLinkItem } from "@/lib/movieGenreLinks";
-import { POSTER_BADGE_CORNER_TOP_LEFT, POSTER_BADGE_TOP_LEFT } from "@/lib/posterBadges";
+import { POSTER_BADGE_CORNER_TOP_LEFT, POSTER_BADGE_TOP_LEFT, POSTER_BADGE_TOP_LEFT_NEW } from "@/lib/posterBadges";
 
 interface EventCardProps {
   slug: string;
@@ -99,6 +99,8 @@ const EventCard = ({
   const isMovie = type === "movie";
   const isTheater = type === "theater";
   const soldOutBadge = typeof badge === "string" && badge.trim().toUpperCase() === "SOLD OUT";
+  const newPerformancesBadge =
+    typeof badge === "string" && badge.trim().toLocaleLowerCase("el") === "νέες παραστάσεις";
   /** Οριζόντια αφίσα θεάτρου — ολόκληρη, χωρίς crop σε 2:3. */
   const landscapePoster = isTheater;
   /** Αρχική περιοδείες: μόνο τίτλος κάτω από την αφίσα. */
@@ -200,7 +202,13 @@ const EventCard = ({
             </div>
           ) : badge ? (
             <span
-              className={`home-tour-card-badge ${POSTER_BADGE_CORNER_TOP_LEFT} ${POSTER_BADGE_TOP_LEFT} text-xs`}
+              className={cn(
+                "home-tour-card-badge",
+                POSTER_BADGE_CORNER_TOP_LEFT,
+                newPerformancesBadge ? POSTER_BADGE_TOP_LEFT_NEW : POSTER_BADGE_TOP_LEFT,
+                "text-xs",
+                newPerformancesBadge && "normal-case tracking-normal",
+              )}
             >
               {badge}
             </span>

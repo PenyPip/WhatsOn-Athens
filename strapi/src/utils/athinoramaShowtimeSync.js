@@ -283,11 +283,19 @@ async function syncPendingAthinoramaVenues(
   });
 
   report.results = results;
+  let alreadyExistsTotal = 0;
+  let unmatchedMoviesTotal = 0;
+  let weekSyncedTotal = 0;
+  let weekExpectedTotal = 0;
   for (const row of results) {
     if (row?.ok) {
       report.synced += 1;
-      report.createdTotal += row.created || 0;
-      if (row.venueUpdated?.status === VENUE_UPDATED_STATUS.COMPLETE && row.venueUpdated?.updated) {
+      report.createdTotal += Number(row.created || 0);
+      alreadyExistsTotal += Number(row.skippedExists || 0);
+      unmatchedMoviesTotal += Number(row.unmatchedMovies || 0);
+      weekSyncedTotal += Number(row.weekSynced || 0);
+      weekExpectedTotal += Number(row.weekExpected || 0);
+      if (row.venueUpdated?.status === VENUE_UPDATED_STATUS.COMPLETE) {
         report.becameComplete += 1;
       }
     } else {
@@ -295,9 +303,17 @@ async function syncPendingAthinoramaVenues(
     }
   }
 
-  report.message = `Athinorama ${weekLabel}: ${report.synced}/${pending.length} OK · +${report.createdTotal} προβολές · ${report.becameComplete} → complete${
+  // Πεδία συμβατά με SyncReportPanel (More) — αλλιώς «Νέες εγγραφές» μένει πάντα 0.
+  report.created = report.createdTotal;
+  report.alreadyExists = alreadyExistsTotal;
+  report.unmatchedMovies = unmatchedMoviesTotal;
+  report.weekSynced = weekSyncedTotal;
+  report.weekExpected = weekExpectedTotal;
+  report.source = 'athinorama';
+
+  report.message = `Athinorama ${weekLabel}: ${report.synced}/${pending.length} OK · +${report.createdTotal} νέες · ${alreadyExistsTotal} υπήρχαν · ${report.becameComplete} complete${
     report.failed ? ` · ${report.failed} αποτυχίες` : ''
-  }`;
+  }${unmatchedMoviesTotal ? ` · ${unmatchedMoviesTotal} ταινίες χωρίς CMS` : ''}`;
 
   return report;
 }

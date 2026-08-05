@@ -3,6 +3,10 @@
 export const POSTER_BADGE_TOP_LEFT =
   "rounded bg-[#13143E] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm";
 
+/** «Νέες παραστάσεις» — ήπιο κόκκινο, όχι alarm/ribbon. */
+export const POSTER_BADGE_TOP_LEFT_NEW =
+  "rounded-md bg-[#F6E0DE] px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#9B2C2C] shadow-sm ring-1 ring-[#9B2C2C]/18";
+
 export const POSTER_BADGE_TOP_RIGHT_AMBER =
   "rounded bg-amber-500/90 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[#13143E] shadow-sm";
 

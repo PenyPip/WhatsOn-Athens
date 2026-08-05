@@ -21,6 +21,7 @@ import {
 } from "@/lib/theaterRegionFilters";
 import {
   theaterPerformanceSummary,
+  theaterShowHasNewlyAddedPerformances,
   theaterShowHasUpcomingPerformances,
   theaterShowListBadge,
 } from "@/lib/theaterPerformances";
@@ -60,7 +61,7 @@ const TheaterPage = () => {
   const filteredShows = useMemo(() => {
     const venueList = venues ?? [];
     const cityFilterReady = venues !== undefined;
-    return upcomingShows.filter((show) => {
+    const filtered = upcomingShows.filter((show) => {
       const perfs = performancesByShowSlug.get(show.slug) ?? [];
       return theaterShowMatchesListFilters(show, perfs, venueList, {
         region: regionFilter,
@@ -68,6 +69,13 @@ const TheaterPage = () => {
         toYmd: appliedTo,
         cityFilterReady,
       });
+    });
+    // Παραγωγές με νέες παραστάσεις (τελευταίες 7 ημέρες) πρώτες.
+    return [...filtered].sort((a, b) => {
+      const aNew = theaterShowHasNewlyAddedPerformances(performancesByShowSlug.get(a.slug) ?? []);
+      const bNew = theaterShowHasNewlyAddedPerformances(performancesByShowSlug.get(b.slug) ?? []);
+      if (aNew === bNew) return 0;
+      return aNew ? -1 : 1;
     });
   }, [upcomingShows, regionFilter, appliedFrom, appliedTo, performancesByShowSlug, venues]);
 
