@@ -525,6 +525,290 @@ function CatalogVenueBundlePanel({
   );
 }
 
+function catalogContentCmsType(row) {
+  return row.kind === 'show' || row.category === 'theater' ? 'theater_show' : 'movie';
+}
+
+function cmsContentChoicesForCatalogRow(row, allChoices = []) {
+  const want = catalogContentCmsType(row);
+  return allChoices.filter((item) => item.contentType === want);
+}
+
+function catalogContentSuggestionOptions(row) {
+  const seen = new Set();
+  const options = [];
+  const add = (opt) => {
+    const id = Number(opt.id ?? opt.cmsId);
+    if (!Number.isFinite(id) || seen.has(id)) return;
+    seen.add(id);
+    options.push({
+      id,
+      title: opt.title || opt.cmsTitle || `#${id}`,
+      score: opt.score,
+      originalTitle: opt.originalTitle || '',
+    });
+  };
+  for (const suggestion of row.contentSuggestions || []) add(suggestion);
+  if (row.suggestedContent) add(row.suggestedContent);
+  return options;
+}
+
+function catalogContentOptionList(row, cmsContentChoices = []) {
+  const seen = new Set();
+  const options = [];
+  const add = (opt) => {
+    const id = Number(opt.id ?? opt.cmsId);
+    if (!Number.isFinite(id) || seen.has(id)) return;
+    seen.add(id);
+    options.push({
+      id,
+      title: opt.title || opt.cmsTitle || `#${id}`,
+      score: opt.score,
+      originalTitle: opt.originalTitle || '',
+    });
+  };
+  for (const suggestion of catalogContentSuggestionOptions(row)) add(suggestion);
+  for (const item of cmsContentChoicesForCatalogRow(row, cmsContentChoices)) add(item);
+  return options;
+}
+
+function CatalogContentPicker({ row, cmsContentChoices, value, onChange, disabled, compact = false }) {
+  const [showBrowse, setShowBrowse] = React.useState(false);
+  const [filter, setFilter] = React.useState('');
+
+  if (!catalogContentNeedsCreate(row)) return null;
+
+  const suggestions = React.useMemo(() => catalogContentSuggestionOptions(row), [row]);
+  const browseOptions = React.useMemo(() => {
+    if (!showBrowse) return [];
+    const q = filter.trim().toLocaleLowerCase('el');
+    return cmsContentChoicesForCatalogRow(row, cmsContentChoices)
+      .filter((item) => {
+        if (!q) return true;
+        const hay = `${item.title || ''} ${item.originalTitle || ''}`.toLocaleLowerCase('el');
+        return hay.includes(q);
+      })
+      .slice(0, 60);
+  }, [showBrowse, filter, row, cmsContentChoices]);
+
+  const selectedId = value ? Number(value) : null;
+  const selectedTitle = React.useMemo(() => {
+    if (!Number.isFinite(selectedId)) return '';
+    const fromList = catalogContentOptionList(row, cmsContentChoices).find(
+      (opt) => opt.id === selectedId,
+    );
+    return fromList?.title || `#${selectedId}`;
+  }, [selectedId, row, cmsContentChoices]);
+
+  const pickItem = (id) => {
+    onChange(String(id));
+    setShowBrowse(false);
+    setFilter('');
+  };
+
+  const renderOptionButton = (opt, { score } = {}) => {
+    const isSelected = selectedId === Number(opt.id);
+    return (
+      <button
+        key={opt.id}
+        type="button"
+        className={[
+          'more-lookup-venue-picker-option',
+          isSelected ? 'more-lookup-venue-picker-option--selected' : '',
+        ]
+          .filter(Boolean)
+          .join(' ')}
+        disabled={disabled}
+        onClick={() => pickItem(opt.id)}
+      >
+        {opt.title}
+        {opt.originalTitle && opt.originalTitle !== opt.title
+          ? ` (${opt.originalTitle})`
+          : ''}
+        {score != null ? ` (Sc ${Number(score).toFixed(2)})` : ''}
+      </button>
+    );
+  };
+
+  const typeLabel = catalogContentTypeLabel(row);
+
+  return (
+    <Flex direction="column" alignItems="flex-start" gap={2} className="more-lookup-venue-picker">
+      {!compact ? (
+        <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
+          Άλλη {typeLabel} CMS
+        </Typography>
+      ) : null}
+      {selectedId ? (
+        <Flex gap={2} alignItems="center" wrap="wrap">
+          <Typography variant="pi" textColor="primary600">
+            Επιλέχθηκε: {selectedTitle}
+          </Typography>
+          <Button
+            size="S"
+            variant="tertiary"
+            disabled={disabled}
+            onClick={() => onChange('')}
+          >
+            Ακύρωση
+          </Button>
+        </Flex>
+      ) : (
+        <Typography variant="pi" textColor="neutral500">
+          Δεν έχει επιλεγεί {typeLabel} — πάτα πρόταση ή αναζήτηση
+        </Typography>
+      )}
+      {suggestions.length > 0 ? (
+        <div
+          className="more-lookup-venue-picker-list more-lookup-venue-picker-list--suggestions"
+          role="listbox"
+          aria-label={`Προτεινόμενες ${typeLabel} CMS`}
+        >
+          {suggestions.map((opt) => renderOptionButton(opt, { score: opt.score }))}
+        </div>
+      ) : null}
+      <Button
+        size="S"
+        variant="tertiary"
+        disabled={disabled}
+        onClick={() => setShowBrowse((open) => !open)}
+      >
+        {showBrowse
+          ? 'Κλείσιμο λίστας CMS'
+          : `Όλες οι ${typeLabel === 'παράσταση' ? 'παραστάσεις' : 'ταινίες'} CMS…`}
+      </Button>
+      {showBrowse ? (
+        <>
+          <input
+            className="more-lookup-catalog-venue-input"
+            type="search"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            disabled={disabled}
+            placeholder={`Αναζήτηση ${typeLabel}…`}
+            autoComplete="off"
+          />
+          <div
+            className="more-lookup-venue-picker-list"
+            role="listbox"
+            aria-label={`Όλες οι ${typeLabel} CMS`}
+          >
+            {browseOptions.length > 0 ? (
+              browseOptions.map((item) =>
+                renderOptionButton({
+                  id: item.id,
+                  title: item.title,
+                  originalTitle: item.originalTitle,
+                }),
+              )
+            ) : (
+              <Typography variant="pi" textColor="neutral500" padding={2}>
+                Δεν βρέθηκε {typeLabel}
+              </Typography>
+            )}
+          </div>
+        </>
+      ) : null}
+    </Flex>
+  );
+}
+
+function CatalogContentPanel({
+  row,
+  cmsContentChoices,
+  pick,
+  onPickChange,
+  busyKey,
+  onLinkContent,
+  onLinkSuggested,
+  onCreateContent,
+}) {
+  if (!catalogContentNeedsCreate(row)) {
+    return (
+      <Typography variant="pi" textColor="neutral500">
+        —
+      </Typography>
+    );
+  }
+
+  const codeKey = row.eventGroupCode || '';
+  const linkBusy = busyKey === `content-link:${codeKey}`;
+  const createBusy = busyKey === `content:${codeKey}`;
+  const suggestedBusy = busyKey === `content-suggested:${codeKey}`;
+  const anyBusy = Boolean(busyKey);
+  const suggested = row.suggestedContent;
+  const hasPick = Boolean(pick);
+  const typeLabel = catalogContentTypeLabel(row);
+
+  return (
+    <Flex direction="column" alignItems="stretch" gap={3} className="more-lookup-venue-bundle-panel">
+      {suggested ? (
+        <Flex direction="column" alignItems="flex-start" gap={1}>
+          <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
+            Πρόταση ταύτισης
+          </Typography>
+          <Button
+            size="S"
+            variant="success"
+            loading={suggestedBusy}
+            disabled={anyBusy && !suggestedBusy}
+            onClick={() => onLinkSuggested(row, suggested)}
+            title={`Σύνδεση More κωδικού με την προτεινόμενη ${typeLabel} CMS`}
+          >
+            Σύνδεση με «{suggested.cmsTitle || suggested.title}»
+          </Button>
+          <Typography variant="pi" textColor="neutral500">
+            Score {Number(suggested.score || 0).toFixed(2)} · 1 κλικ
+          </Typography>
+        </Flex>
+      ) : null}
+
+      <Flex direction="column" alignItems="stretch" gap={2}>
+        <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
+          {suggested ? `Ή άλλη ${typeLabel}` : `Υπάρχουσα ${typeLabel} CMS`}
+        </Typography>
+        <CatalogContentPicker
+          row={row}
+          cmsContentChoices={cmsContentChoices}
+          value={pick}
+          onChange={onPickChange}
+          disabled={anyBusy}
+          compact
+        />
+        <Button
+          size="S"
+          variant="secondary"
+          loading={linkBusy}
+          disabled={!hasPick || (anyBusy && !linkBusy)}
+          onClick={() => onLinkContent(row)}
+        >
+          Σύνδεση
+        </Button>
+      </Flex>
+
+      <Flex direction="column" alignItems="stretch" gap={2}>
+        <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
+          Νέα {typeLabel}
+        </Typography>
+        <Typography variant="pi" textColor="neutral500">
+          Δημιουργεί unpublished {typeLabel} με όσα βρίσκει στο More (τίτλος, σύνοψη, διάρκεια,
+          κωδικός, αφίσα αν υπάρχει).
+        </Typography>
+        <Button
+          size="S"
+          variant="default"
+          loading={createBusy}
+          disabled={anyBusy && !createBusy}
+          onClick={() => onCreateContent(row)}
+          title="Έγκριση → draft unpublished στο CMS"
+        >
+          Έγκριση → draft
+        </Button>
+      </Flex>
+    </Flex>
+  );
+}
+
 function rowKey(row) {
   return `${row.contentType || 'movie'}:${row.cmsId ?? row.movieId ?? row.theaterShowId ?? row.venueId}`;
 }
@@ -1469,6 +1753,7 @@ const App = () => {
   const [lookupJobKind, setLookupJobKind] = useState(null);
   const [selectedMatchKeys, setSelectedMatchKeys] = useState(() => new Set());
   const [catalogVenuePick, setCatalogVenuePick] = useState({});
+  const [catalogContentPick, setCatalogContentPick] = useState({});
   const [catalogCreateName, setCatalogCreateName] = useState({});
   const { get, post } = useFetchClient();
   const toggleNotification = useNotification();
@@ -1668,6 +1953,20 @@ const App = () => {
         if (!catalogVenueNeedsSetup(row)) continue;
         if (next[row.eventGroupCode]) continue;
         const suggestedId = row.suggestedVenue?.cmsId ?? row.suggestedVenue?.id;
+        if (suggestedId != null) {
+          next[row.eventGroupCode] = String(suggestedId);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    setCatalogContentPick((prev) => {
+      const next = { ...prev };
+      let changed = false;
+      for (const row of result.catalog) {
+        if (!catalogContentNeedsCreate(row)) continue;
+        if (next[row.eventGroupCode]) continue;
+        const suggestedId = row.suggestedContent?.cmsId ?? row.suggestedContent?.id;
         if (suggestedId != null) {
           next[row.eventGroupCode] = String(suggestedId);
           changed = true;
@@ -1964,11 +2263,80 @@ const App = () => {
                     writtenInField: true,
                   },
                 ],
+                canLinkContent: false,
+                canCreateContent: false,
+                suggestedContent: null,
+                contentSuggestions: [],
               }
             : catRow,
         ),
       };
     });
+  };
+
+  const linkCatalogContentWithId = async (row, cmsId, busySuffix = 'content-link') => {
+    const code = row.eventGroupCode;
+    if (!cmsId || !code) {
+      toggleNotification({
+        type: 'warning',
+        message: `Επίλεξε πρώτα ${catalogContentTypeLabel(row)} CMS.`,
+      });
+      return;
+    }
+    const contentType = catalogContentCmsType(row);
+    const busy = `${busySuffix}:${code}`;
+    setBusyKey(busy);
+    try {
+      const res = await post('/api/more-lookup/link', {
+        contentType,
+        cmsId: Number(cmsId),
+        movieId: contentType === 'movie' ? Number(cmsId) : undefined,
+        theaterShowId: contentType === 'theater_show' ? Number(cmsId) : undefined,
+        eventGroupCode: code,
+        catalogKind: row.kind === 'show' ? 'show' : 'movie',
+        moreTitle: row.moreTitle,
+      });
+      const pickedTitle =
+        catalogContentOptionList(row, result?.cmsContentChoices || []).find(
+          (opt) => opt.id === Number(cmsId),
+        )?.title ||
+        row.suggestedContent?.cmsTitle ||
+        `#${cmsId}`;
+      markCatalogContentCreated(row, {
+        cmsId,
+        cmsTitle: pickedTitle,
+        contentType,
+      });
+      setCatalogContentPick((prev) => {
+        const next = { ...prev };
+        delete next[code];
+        return next;
+      });
+      toggleNotification({
+        type: res?.data?.alreadyLinked ? 'info' : 'success',
+        message:
+          res?.data?.message ||
+          `Γράφτηκε ${code} → ${pickedTitle}.`,
+      });
+    } catch (error) {
+      const message =
+        error?.response?.data?.error?.message ||
+        error?.response?.data?.errors?.[0]?.error ||
+        'Αποτυχία σύνδεσης.';
+      toggleNotification({ type: 'warning', message });
+    } finally {
+      setBusyKey(null);
+    }
+  };
+
+  const linkCatalogContent = (row) => {
+    const cmsId = catalogContentPick[row.eventGroupCode] || null;
+    return linkCatalogContentWithId(row, cmsId, 'content-link');
+  };
+
+  const linkCatalogContentSuggested = (row, suggestion) => {
+    const cmsId = suggestion?.cmsId ?? suggestion?.id;
+    return linkCatalogContentWithId(row, cmsId, 'content-suggested');
   };
 
   const createCatalogContent = async (row) => {
@@ -2914,22 +3282,21 @@ const App = () => {
                           onCreateVenue={createCatalogVenue}
                         />
                       ) : catalogContentNeedsCreate(row) ? (
-                        <Flex direction="column" alignItems="flex-start" gap={1}>
-                          <Typography variant="pi" textColor="neutral600">
-                            Δημιουργεί unpublished {catalogContentTypeLabel(row)} με όσα βρίσκει στο More
-                            (τίτλος, σύνοψη, διάρκεια, κωδικός, αφίσα αν υπάρχει).
-                          </Typography>
-                          <Button
-                            size="S"
-                            variant="success"
-                            loading={busyKey === `content:${row.eventGroupCode}`}
-                            disabled={Boolean(busyKey) && busyKey !== `content:${row.eventGroupCode}`}
-                            onClick={() => createCatalogContent(row)}
-                            title="Έγκριση → draft unpublished στο CMS"
-                          >
-                            Έγκριση → draft
-                          </Button>
-                        </Flex>
+                        <CatalogContentPanel
+                          row={row}
+                          cmsContentChoices={result?.cmsContentChoices || []}
+                          pick={catalogContentPick[row.eventGroupCode] || ''}
+                          onPickChange={(next) =>
+                            setCatalogContentPick((prev) => ({
+                              ...prev,
+                              [row.eventGroupCode]: next,
+                            }))
+                          }
+                          busyKey={busyKey}
+                          onLinkContent={linkCatalogContent}
+                          onLinkSuggested={linkCatalogContentSuggested}
+                          onCreateContent={createCatalogContent}
+                        />
                       ) : (
                         <Typography variant="pi" textColor="neutral500">
                           —

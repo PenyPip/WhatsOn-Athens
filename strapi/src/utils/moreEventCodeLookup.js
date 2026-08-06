@@ -693,6 +693,47 @@ function suggestCmsVenuesForCatalogBundle(catalogRow, cmsVenuesMapped, minScore 
   return (qualifying.length ? qualifying : scored).slice(0, 6);
 }
 
+/** Προτάσεις υπάρχουσας ταινίας / παράστασης CMS για γραμμή καταλόγου More που λείπει. */
+function suggestCmsContentForCatalogRow(catalogRow, cmsItems, minScore = MIN_HINT_SCORE, takenCodes = null) {
+  if (catalogRow?.kind !== 'movie' && catalogRow?.kind !== 'show') return [];
+  const taken = takenCodes || buildTakenEventGroupCodesSet(cmsItems || [], []);
+  if (taken.has(String(catalogRow.eventGroupCode || '').trim())) return [];
+  const wantType = catalogRow.kind === 'show' ? 'theater_show' : 'movie';
+  const moreEntry = {
+    title: catalogRow.moreTitle || catalogRow.title || '',
+    code: catalogRow.eventGroupCode,
+    moreUrl: catalogRow.moreUrl,
+    category: catalogRow.category,
+    codeSlugRoot: evgCodeSlugRoot(catalogRow.eventGroupCode),
+  };
+  const scored = [];
+  for (const cms of cmsItems || []) {
+    if (cms.contentType !== wantType) continue;
+    if (isRejectedMoreCode(cms, catalogRow.eventGroupCode)) continue;
+    if (cmsHasEventGroupCode(cms, catalogRow.eventGroupCode)) continue;
+    const score = scoreMatch(
+      {
+        title: cms.title,
+        slug: cms.slug,
+        originalTitle: cms.originalTitle || '',
+      },
+      moreEntry,
+    );
+    if (score >= MIN_HINT_SCORE) {
+      scored.push({
+        cmsId: cms.id,
+        cmsTitle: cms.title,
+        contentType: wantType,
+        score: Number(score.toFixed(3)),
+        originalTitle: cms.originalTitle || '',
+      });
+    }
+  }
+  scored.sort((a, b) => b.score - a.score);
+  const qualifying = scored.filter((row) => row.score >= minScore);
+  return (qualifying.length ? qualifying : scored).slice(0, 6);
+}
+
 function buildSuggestedVenueCreatePayload(catalogRow) {
   const verify = catalogRow.verify;
   const sample = verify?.sampleVenues?.[0];
@@ -2418,14 +2459,29 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
     });
 
     const venueSuggestionByCode = new Map();
+    const contentSuggestionByCode = new Map();
     for (const row of result.matches || []) {
-      if (row.contentType !== 'venue') continue;
+      if (row.contentType === 'venue') {
+        for (const code of row.suggestedEventGroupCodes || []) {
+          const prev = venueSuggestionByCode.get(code);
+          if (!prev || Number(row.score) > Number(prev.score)) {
+            venueSuggestionByCode.set(code, {
+              cmsId: row.cmsId,
+              cmsTitle: row.cmsTitle,
+              score: row.score,
+            });
+          }
+        }
+        continue;
+      }
+      if (row.contentType !== 'movie' && row.contentType !== 'theater_show') continue;
       for (const code of row.suggestedEventGroupCodes || []) {
-        const prev = venueSuggestionByCode.get(code);
+        const prev = contentSuggestionByCode.get(code);
         if (!prev || Number(row.score) > Number(prev.score)) {
-          venueSuggestionByCode.set(code, {
+          contentSuggestionByCode.set(code, {
             cmsId: row.cmsId,
             cmsTitle: row.cmsTitle,
+            contentType: row.contentType,
             score: row.score,
           });
         }
@@ -2433,39 +2489,72 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
     }
 
     catalogOut = catalogOut.map((row) => {
-      if (row.kind !== 'venue_bundle' || row.inCms) return row;
-      const venuesForRow =
-        row.category === 'theater'
-          ? cmsVenuesForMatch.filter(
-              (v) => !v.venueType || v.venueType === 'theater' || v.venueType === 'other',
-            )
-          : cinemaVenuesMapped;
-      const fromMatches = venueSuggestionByCode.get(row.eventGroupCode) || null;
-      const venueSuggestions = suggestCmsVenuesForCatalogBundle(
-        row,
-        venuesForRow,
-        minScore,
-        takenCodesForCatalog,
-      );
-      const best =
-        fromMatches ||
-        venueSuggestions[0] ||
-        null;
-      const suggestedCreateVenue = buildSuggestedVenueCreatePayload(row);
-      return {
-        ...row,
-        suggestedVenue: best,
-        venueSuggestions,
-        suggestedCreateVenue,
-        canLinkVenue: true,
-        canCreateVenue: Boolean(row.eventGroupCode),
-      };
+      if (row.kind === 'venue_bundle' && !row.inCms) {
+        const venuesForRow =
+          row.category === 'theater'
+            ? cmsVenuesForMatch.filter(
+                (v) => !v.venueType || v.venueType === 'theater' || v.venueType === 'other',
+              )
+            : cinemaVenuesMapped;
+        const fromMatches = venueSuggestionByCode.get(row.eventGroupCode) || null;
+        const venueSuggestions = suggestCmsVenuesForCatalogBundle(
+          row,
+          venuesForRow,
+          minScore,
+          takenCodesForCatalog,
+        );
+        const best =
+          fromMatches ||
+          venueSuggestions[0] ||
+          null;
+        const suggestedCreateVenue = buildSuggestedVenueCreatePayload(row);
+        return {
+          ...row,
+          suggestedVenue: best,
+          venueSuggestions,
+          suggestedCreateVenue,
+          canLinkVenue: true,
+          canCreateVenue: Boolean(row.eventGroupCode),
+        };
+      }
+      if ((row.kind === 'movie' || row.kind === 'show') && !row.inCms) {
+        const fromMatches = contentSuggestionByCode.get(row.eventGroupCode) || null;
+        const contentSuggestions = suggestCmsContentForCatalogRow(
+          row,
+          cmsItems,
+          minScore,
+          takenCodesForCatalog,
+        );
+        const best =
+          fromMatches ||
+          contentSuggestions[0] ||
+          null;
+        return {
+          ...row,
+          suggestedContent: best,
+          contentSuggestions,
+          canLinkContent: true,
+          canCreateContent: Boolean(row.eventGroupCode),
+        };
+      }
+      return row;
     });
 
     result.cmsVenueChoices = cmsVenuesForMatch
       .map((v) => ({ id: v.id, title: v.title, slug: v.slug, venueType: v.venueType }))
       .sort((a, b) => a.title.localeCompare(b.title, 'el'))
       .slice(0, 400);
+
+    result.cmsContentChoices = cmsItems
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        originalTitle: item.originalTitle || '',
+        slug: item.slug,
+        contentType: item.contentType,
+      }))
+      .sort((a, b) => a.title.localeCompare(b.title, 'el'))
+      .slice(0, 500);
 
     catalogOut.sort(compareMoreCatalogOrder);
     result.catalog = catalogOut;
