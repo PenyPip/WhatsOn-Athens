@@ -572,145 +572,10 @@ function catalogContentOptionList(row, cmsContentChoices = []) {
   return options;
 }
 
-function CatalogContentPicker({ row, cmsContentChoices, value, onChange, disabled, compact = false }) {
-  const [showBrowse, setShowBrowse] = React.useState(false);
-  const [filter, setFilter] = React.useState('');
-
-  if (!catalogContentNeedsCreate(row)) return null;
-
-  const suggestions = React.useMemo(() => catalogContentSuggestionOptions(row), [row]);
-  const browseOptions = React.useMemo(() => {
-    if (!showBrowse) return [];
-    const q = filter.trim().toLocaleLowerCase('el');
-    return cmsContentChoicesForCatalogRow(row, cmsContentChoices)
-      .filter((item) => {
-        if (!q) return true;
-        const hay = `${item.title || ''} ${item.originalTitle || ''}`.toLocaleLowerCase('el');
-        return hay.includes(q);
-      })
-      .slice(0, 60);
-  }, [showBrowse, filter, row, cmsContentChoices]);
-
-  const selectedId = value ? Number(value) : null;
-  const selectedTitle = React.useMemo(() => {
-    if (!Number.isFinite(selectedId)) return '';
-    const fromList = catalogContentOptionList(row, cmsContentChoices).find(
-      (opt) => opt.id === selectedId,
-    );
-    return fromList?.title || `#${selectedId}`;
-  }, [selectedId, row, cmsContentChoices]);
-
-  const pickItem = (id) => {
-    onChange(String(id));
-    setShowBrowse(false);
-    setFilter('');
-  };
-
-  const renderOptionButton = (opt, { score } = {}) => {
-    const isSelected = selectedId === Number(opt.id);
-    return (
-      <button
-        key={opt.id}
-        type="button"
-        className={[
-          'more-lookup-venue-picker-option',
-          isSelected ? 'more-lookup-venue-picker-option--selected' : '',
-        ]
-          .filter(Boolean)
-          .join(' ')}
-        disabled={disabled}
-        onClick={() => pickItem(opt.id)}
-      >
-        {opt.title}
-        {opt.originalTitle && opt.originalTitle !== opt.title
-          ? ` (${opt.originalTitle})`
-          : ''}
-        {score != null ? ` (Sc ${Number(score).toFixed(2)})` : ''}
-      </button>
-    );
-  };
-
-  const typeLabel = catalogContentTypeLabel(row);
-
-  return (
-    <Flex direction="column" alignItems="flex-start" gap={2} className="more-lookup-venue-picker">
-      {!compact ? (
-        <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
-          Άλλη {typeLabel} CMS
-        </Typography>
-      ) : null}
-      {selectedId ? (
-        <Flex gap={2} alignItems="center" wrap="wrap">
-          <Typography variant="pi" textColor="primary600">
-            Επιλέχθηκε: {selectedTitle}
-          </Typography>
-          <Button
-            size="S"
-            variant="tertiary"
-            disabled={disabled}
-            onClick={() => onChange('')}
-          >
-            Ακύρωση
-          </Button>
-        </Flex>
-      ) : (
-        <Typography variant="pi" textColor="neutral500">
-          Δεν έχει επιλεγεί {typeLabel} — πάτα πρόταση ή αναζήτηση
-        </Typography>
-      )}
-      {suggestions.length > 0 ? (
-        <div
-          className="more-lookup-venue-picker-list more-lookup-venue-picker-list--suggestions"
-          role="listbox"
-          aria-label={`Προτεινόμενες ${typeLabel} CMS`}
-        >
-          {suggestions.map((opt) => renderOptionButton(opt, { score: opt.score }))}
-        </div>
-      ) : null}
-      <Button
-        size="S"
-        variant="tertiary"
-        disabled={disabled}
-        onClick={() => setShowBrowse((open) => !open)}
-      >
-        {showBrowse
-          ? 'Κλείσιμο λίστας CMS'
-          : `Όλες οι ${typeLabel === 'παράσταση' ? 'παραστάσεις' : 'ταινίες'} CMS…`}
-      </Button>
-      {showBrowse ? (
-        <>
-          <input
-            className="more-lookup-catalog-venue-input"
-            type="search"
-            value={filter}
-            onChange={(event) => setFilter(event.target.value)}
-            disabled={disabled}
-            placeholder={`Αναζήτηση ${typeLabel}…`}
-            autoComplete="off"
-          />
-          <div
-            className="more-lookup-venue-picker-list"
-            role="listbox"
-            aria-label={`Όλες οι ${typeLabel} CMS`}
-          >
-            {browseOptions.length > 0 ? (
-              browseOptions.map((item) =>
-                renderOptionButton({
-                  id: item.id,
-                  title: item.title,
-                  originalTitle: item.originalTitle,
-                }),
-              )
-            ) : (
-              <Typography variant="pi" textColor="neutral500" padding={2}>
-                Δεν βρέθηκε {typeLabel}
-              </Typography>
-            )}
-          </div>
-        </>
-      ) : null}
-    </Flex>
-  );
+function truncateLabel(text, max = 28) {
+  const s = String(text || '').trim();
+  if (s.length <= max) return s;
+  return `${s.slice(0, max - 1)}…`;
 }
 
 function CatalogContentPanel({
@@ -723,7 +588,47 @@ function CatalogContentPanel({
   onLinkSuggested,
   onCreateContent,
 }) {
-  if (!catalogContentNeedsCreate(row)) {
+  const [showBrowse, setShowBrowse] = React.useState(false);
+  const [filter, setFilter] = React.useState('');
+  const needsCreate = catalogContentNeedsCreate(row);
+  const codeKey = row.eventGroupCode || '';
+  const linkBusy = busyKey === `content-link:${codeKey}`;
+  const createBusy = busyKey === `content:${codeKey}`;
+  const suggestedBusy = busyKey === `content-suggested:${codeKey}`;
+  const anyBusy = Boolean(busyKey);
+  const suggested = needsCreate ? row.suggestedContent : null;
+  const hasPick = Boolean(pick);
+  const typeLabel = catalogContentTypeLabel(row);
+  const selectedId = pick ? Number(pick) : null;
+
+  const selectedTitle = React.useMemo(() => {
+    if (!needsCreate || !Number.isFinite(selectedId)) return '';
+    const fromList = catalogContentOptionList(row, cmsContentChoices).find(
+      (opt) => opt.id === selectedId,
+    );
+    return fromList?.title || `#${selectedId}`;
+  }, [needsCreate, selectedId, row, cmsContentChoices]);
+
+  const browseOptions = React.useMemo(() => {
+    if (!needsCreate || !showBrowse) return [];
+    const q = filter.trim().toLocaleLowerCase('el');
+    const suggestions = catalogContentSuggestionOptions(row);
+    const suggestionIds = new Set(suggestions.map((s) => s.id));
+    const fromCms = cmsContentChoicesForCatalogRow(row, cmsContentChoices).filter((item) => {
+      if (suggestionIds.has(Number(item.id))) return false;
+      if (!q) return true;
+      const hay = `${item.title || ''} ${item.originalTitle || ''}`.toLocaleLowerCase('el');
+      return hay.includes(q);
+    });
+    const filteredSuggestions = q
+      ? suggestions.filter((s) =>
+          `${s.title || ''} ${s.originalTitle || ''}`.toLocaleLowerCase('el').includes(q),
+        )
+      : suggestions;
+    return [...filteredSuggestions, ...fromCms].slice(0, 50);
+  }, [needsCreate, showBrowse, filter, row, cmsContentChoices]);
+
+  if (!needsCreate) {
     return (
       <Typography variant="pi" textColor="neutral500">
         —
@@ -731,80 +636,121 @@ function CatalogContentPanel({
     );
   }
 
-  const codeKey = row.eventGroupCode || '';
-  const linkBusy = busyKey === `content-link:${codeKey}`;
-  const createBusy = busyKey === `content:${codeKey}`;
-  const suggestedBusy = busyKey === `content-suggested:${codeKey}`;
-  const anyBusy = Boolean(busyKey);
-  const suggested = row.suggestedContent;
-  const hasPick = Boolean(pick);
-  const typeLabel = catalogContentTypeLabel(row);
+  const pickItem = (id) => {
+    onPickChange(String(id));
+    setShowBrowse(false);
+    setFilter('');
+  };
 
   return (
-    <Flex direction="column" alignItems="stretch" gap={3} className="more-lookup-venue-bundle-panel">
+    <Flex
+      direction="column"
+      alignItems="stretch"
+      gap={1}
+      className="more-lookup-venue-bundle-panel more-lookup-actions-compact"
+    >
       {suggested ? (
-        <Flex direction="column" alignItems="flex-start" gap={1}>
-          <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
-            Πρόταση ταύτισης
-          </Typography>
-          <Button
-            size="S"
-            variant="success"
-            loading={suggestedBusy}
-            disabled={anyBusy && !suggestedBusy}
-            onClick={() => onLinkSuggested(row, suggested)}
-            title={`Σύνδεση More κωδικού με την προτεινόμενη ${typeLabel} CMS`}
-          >
-            Σύνδεση με «{suggested.cmsTitle || suggested.title}»
-          </Button>
-          <Typography variant="pi" textColor="neutral500">
-            Score {Number(suggested.score || 0).toFixed(2)} · 1 κλικ
-          </Typography>
-        </Flex>
+        <Button
+          size="S"
+          variant="success"
+          loading={suggestedBusy}
+          disabled={anyBusy && !suggestedBusy}
+          onClick={() => onLinkSuggested(row, suggested)}
+          title={`Score ${Number(suggested.score || 0).toFixed(2)}`}
+        >
+          → {truncateLabel(suggested.cmsTitle || suggested.title)}
+          {suggested.score != null ? ` · ${Number(suggested.score).toFixed(2)}` : ''}
+        </Button>
       ) : null}
 
-      <Flex direction="column" alignItems="stretch" gap={2}>
-        <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
-          {suggested ? `Ή άλλη ${typeLabel}` : `Υπάρχουσα ${typeLabel} CMS`}
-        </Typography>
-        <CatalogContentPicker
-          row={row}
-          cmsContentChoices={cmsContentChoices}
-          value={pick}
-          onChange={onPickChange}
+      <div className="more-lookup-actions-row">
+        <Button
+          size="S"
+          variant="tertiary"
           disabled={anyBusy}
-          compact
-        />
+          onClick={() => setShowBrowse((open) => !open)}
+        >
+          {showBrowse ? 'Κλείσιμο' : 'CMS…'}
+        </Button>
         <Button
           size="S"
           variant="secondary"
           loading={linkBusy}
           disabled={!hasPick || (anyBusy && !linkBusy)}
           onClick={() => onLinkContent(row)}
+          title={hasPick ? `Σύνδεση με ${selectedTitle}` : `Επίλεξε ${typeLabel} από CMS…`}
         >
           Σύνδεση
         </Button>
-      </Flex>
-
-      <Flex direction="column" alignItems="stretch" gap={2}>
-        <Typography variant="pi" textColor="neutral600" fontWeight="semiBold">
-          Νέα {typeLabel}
-        </Typography>
-        <Typography variant="pi" textColor="neutral500">
-          Δημιουργεί unpublished {typeLabel} με όσα βρίσκει στο More (τίτλος, σύνοψη, διάρκεια,
-          κωδικός, αφίσα αν υπάρχει).
-        </Typography>
         <Button
           size="S"
           variant="default"
           loading={createBusy}
           disabled={anyBusy && !createBusy}
           onClick={() => onCreateContent(row)}
-          title="Έγκριση → draft unpublished στο CMS"
+          title={`Νέο draft ${typeLabel} από More`}
         >
-          Έγκριση → draft
+          Draft
         </Button>
-      </Flex>
+      </div>
+
+      {hasPick && !showBrowse ? (
+        <Flex gap={1} alignItems="center" wrap="wrap">
+          <Typography variant="pi" textColor="primary600" className="more-lookup-pick-label">
+            {truncateLabel(selectedTitle, 32)}
+          </Typography>
+          <Button size="S" variant="tertiary" disabled={anyBusy} onClick={() => onPickChange('')}>
+            ✕
+          </Button>
+        </Flex>
+      ) : null}
+
+      {showBrowse ? (
+        <Flex direction="column" alignItems="stretch" gap={1} className="more-lookup-venue-picker">
+          <input
+            className="more-lookup-catalog-venue-input"
+            type="search"
+            value={filter}
+            onChange={(event) => setFilter(event.target.value)}
+            disabled={anyBusy}
+            placeholder={`Αναζήτηση ${typeLabel}…`}
+            autoComplete="off"
+          />
+          <div
+            className="more-lookup-venue-picker-list more-lookup-venue-picker-list--compact"
+            role="listbox"
+            aria-label={`CMS ${typeLabel}`}
+          >
+            {browseOptions.length > 0 ? (
+              browseOptions.map((item) => {
+                const id = Number(item.id ?? item.cmsId);
+                const isSelected = selectedId === id;
+                return (
+                  <button
+                    key={id}
+                    type="button"
+                    className={[
+                      'more-lookup-venue-picker-option',
+                      isSelected ? 'more-lookup-venue-picker-option--selected' : '',
+                    ]
+                      .filter(Boolean)
+                      .join(' ')}
+                    disabled={anyBusy}
+                    onClick={() => pickItem(id)}
+                  >
+                    {item.title || item.cmsTitle || `#${id}`}
+                    {item.score != null ? ` · ${Number(item.score).toFixed(2)}` : ''}
+                  </button>
+                );
+              })
+            ) : (
+              <Typography variant="pi" textColor="neutral500" padding={2}>
+                Τίποτα
+              </Typography>
+            )}
+          </div>
+        </Flex>
+      ) : null}
     </Flex>
   );
 }
