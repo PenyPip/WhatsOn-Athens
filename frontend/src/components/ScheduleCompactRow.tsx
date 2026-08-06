@@ -23,7 +23,7 @@ export default function ScheduleCompactRow({
 }: ScheduleCompactRowProps) {
   const newMark = newlyAdded ? (
     <span
-      className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-[#F6E0DE] px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-[#9B2C2C] ring-1 ring-[#9B2C2C]/15"
+      className="inline-flex shrink-0 items-center gap-0.5 rounded-md bg-amber-400/90 px-1.5 py-0.5 text-[10px] font-semibold tracking-wide text-[#13143E] ring-1 ring-amber-600/25"
       title="Νέα παράσταση"
     >
       <span aria-hidden>✦</span>

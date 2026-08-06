@@ -177,7 +177,7 @@ export function performanceOverlapsDateRange(
   return t >= fromMs && t <= toMs;
 }
 
-/** Παραστάσεις που μπήκαν στο CMS τις τελευταίες N ημέρες → σήμανση «Νέο». */
+/** Παραστάσεις που μπήκαν στο CMS τις τελευταίες N ημέρες. */
 export const NEW_THEATER_PERFORMANCE_DAYS = 7;
 
 export function isTheaterPerformanceNewlyAdded(
@@ -193,15 +193,38 @@ export function isTheaterPerformanceNewlyAdded(
   return ageMs >= 0 && ageMs <= days * 24 * 60 * 60 * 1000;
 }
 
+/**
+ * «Νέες παραστάσεις» μόνο όταν προστέθηκαν ημερομηνίες σε έργο που είχε ήδη
+ * παλιότερες — όχι όταν όλο το πρόγραμμα μπήκε μαζί (πρώτη καταχώρηση / full sync).
+ */
 export function theaterShowHasNewlyAddedPerformances(
   performances: { createdAt?: string | null }[],
   now = new Date(),
   days = NEW_THEATER_PERFORMANCE_DAYS,
 ): boolean {
-  return (performances || []).some((p) => isTheaterPerformanceNewlyAdded(p, now, days));
+  const list = performances || [];
+  if (list.length < 2) return false;
+  let newly = 0;
+  let older = 0;
+  for (const p of list) {
+    if (isTheaterPerformanceNewlyAdded(p, now, days)) newly += 1;
+    else older += 1;
+  }
+  return newly > 0 && older > 0;
 }
 
-/** Badge κάρτας θεάτρου — προτεραιότητα: sold out → νέες παραστάσεις → πρεμιέρα → τελευταίες. */
+/** Σύμβολο ✦ Νέο σε μία εμφάνιση — μόνο αν το έργο έχει και παλιότερες ημερομηνίες. */
+export function isTheaterPerformanceNewlyAddedHighlight(
+  p: { createdAt?: string | null },
+  showPerformances: { createdAt?: string | null }[],
+  now = new Date(),
+  days = NEW_THEATER_PERFORMANCE_DAYS,
+): boolean {
+  if (!isTheaterPerformanceNewlyAdded(p, now, days)) return false;
+  return theaterShowHasNewlyAddedPerformances(showPerformances, now, days);
+}
+
+/** Badge κάρτας θεάτρου — προτεραιότητα: sold out → πρεμιέρα → νέες παραστάσεις → τελευταίες. */
 export function theaterShowListBadge(
   show: {
     soldOut?: boolean;
@@ -212,8 +235,8 @@ export function theaterShowListBadge(
   now = new Date(),
 ): string | undefined {
   if (show.soldOut) return "SOLD OUT";
-  if (theaterShowHasNewlyAddedPerformances(performances, now)) return "Νέες παραστάσεις";
   if (show.isPremiere) return "Πρεμιέρα";
+  if (theaterShowHasNewlyAddedPerformances(performances, now)) return "Νέες παραστάσεις";
   if (show.isLastShows) return "Τελευταίες";
   return undefined;
 }

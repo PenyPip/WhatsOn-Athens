@@ -4,7 +4,7 @@ import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import ScheduleCompactRow from "@/components/ScheduleCompactRow";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import type { StrapiTheaterPerformance, StrapiTheaterShow, StrapiVenue } from "@/lib/api";
-import { groupPerformancesByShowAtVenue, isTheaterPerformanceNewlyAdded, theaterShowHasNewlyAddedPerformances } from "@/lib/theaterPerformances";
+import { groupPerformancesByShowAtVenue, isTheaterPerformanceNewlyAddedHighlight, theaterShowHasNewlyAddedPerformances } from "@/lib/theaterPerformances";
 import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { isValidExternalUrl } from "@/lib/venueResolve";
@@ -110,7 +110,7 @@ export default function TheaterVenueProgramLayout({
                         Sold out
                       </p>
                     ) : theaterShowHasNewlyAddedPerformances(group.slots) ? (
-                      <p className="mt-2 text-xs font-semibold tracking-wide text-[#9B2C2C]">
+                      <p className="mt-2 text-xs font-semibold tracking-wide text-amber-800">
                         ✦ Νέες παραστάσεις
                       </p>
                     ) : null}
@@ -124,7 +124,7 @@ export default function TheaterVenueProgramLayout({
                       hallName={p.hallName}
                       priceLabel={performancePriceLabel(p, show)}
                       soldOut={Boolean(p.soldOut || soldOut)}
-                      newlyAdded={isTheaterPerformanceNewlyAdded(p)}
+                      newlyAdded={isTheaterPerformanceNewlyAddedHighlight(p, group.slots)}
                       emphasized
                     />
                   ))}
