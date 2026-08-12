@@ -6,7 +6,7 @@ import { heroMovieCta, resolveHeroScheduleDisplay } from "@/lib/heroScheduleLine
 import { movieTitleLines, posterAltForMovie } from "@/lib/movieTitles";
 import { synopsisExcerpt } from "@/lib/synopsisExcerpt";
 import { HOME_HERO_COMPACT_SECTION_CLASS } from "@/lib/homeHeroLayout";
-import { useHomeLcpLayoutDone, useHomeLcpOverlayDone } from "@/hooks/useHomeLcpDone";
+import { useHomeLcpLayoutDone, useHomeLcpFullyDone } from "@/hooks/useHomeLcpDone";
 import { useSiteNow } from "@/hooks/useSiteNow";
 import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
@@ -119,8 +119,8 @@ function heroMetaLine(movie: StrapiMovie): string {
 }
 
 const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: MostTalkedAboutHeroProps) => {
-  const markOverlayDone = useHomeLcpOverlayDone();
   const markLayoutDone = useHomeLcpLayoutDone();
+  const markFullyDone = useHomeLcpFullyDone();
   const siteNow = useSiteNow();
   const now = nowProp ?? siteNow;
   const staticLcpOnPage = useHomeStaticLcpOnPage();
@@ -150,6 +150,21 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
   }, [activeIndex, movies.length, goTo]);
 
   useEffect(() => {
+    setHeroPosterReady(false);
+    const frame = requestAnimationFrame(() => {
+      const img = document.querySelector("[data-home-hero-live] img");
+      if (img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0) {
+        setHeroPosterReady(true);
+      }
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [activeMovieId, activeIndex]);
+
+  const onHeroPosterLoad = useCallback(() => {
+    setHeroPosterReady(true);
+  }, []);
+
+  useEffect(() => {
     if (typeof document === "undefined") return;
 
     const staticEl = document.getElementById("home-static-lcp");
@@ -164,43 +179,40 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
     if (loading) return;
 
     if (movies.length === 0) {
-      markOverlayDone();
-      markLayoutDone();
+      markFullyDone();
       return;
     }
 
-    if (staticEl && activePosterUrl?.trim() && !heroPosterReady) return;
+    const needsPoster = Boolean(staticEl && activePosterUrl?.trim());
+    if (needsPoster && !heroPosterReady) return;
 
     if (!staticEl) {
-      const frame = requestAnimationFrame(() => {
-        markOverlayDone();
-        markLayoutDone();
-      });
+      const frame = requestAnimationFrame(() => markFullyDone());
       return () => cancelAnimationFrame(frame);
     }
 
-    /** Desktop: overlay + layout μαζί (αλλιώς static + live φαίνονται διπλά κάτω από το spacer). */
+    /** Desktop: CSS + DOM hide static, μετά δείξε live (ποτέ διπλό). */
     let cancelled = false;
     const frame = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (cancelled) return;
-        markOverlayDone();
-        markLayoutDone();
+        if (!cancelled) markFullyDone();
       });
     });
     return () => {
       cancelled = true;
       cancelAnimationFrame(frame);
     };
-  }, [loading, movies.length, activePosterUrl, heroPosterReady, markOverlayDone, markLayoutDone]);
+  }, [loading, movies.length, activePosterUrl, heroPosterReady, markFullyDone]);
 
+  /** Desktop failsafe: αν η αφίσα δεν πυροδοτήσει onLoad, κλείσε το handoff. */
   useEffect(() => {
-    setHeroPosterReady(false);
-  }, [activeMovieId, activeIndex]);
-
-  const onHeroPosterLoad = useCallback(() => {
-    setHeroPosterReady(true);
-  }, []);
+    if (typeof document === "undefined") return;
+    if (loading || movies.length === 0) return;
+    if (document.documentElement.classList.contains("spa-lcp-layout-done")) return;
+    if (window.matchMedia("(max-width: 767px)").matches) return;
+    const t = window.setTimeout(() => markFullyDone(), 1200);
+    return () => window.clearTimeout(t);
+  }, [loading, movies.length, markFullyDone]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
@@ -209,7 +221,6 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
     if (!document.documentElement.classList.contains("spa-lcp-done")) return;
 
     const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
-    /** Desktop ολοκληρώνει layout στο overlay effect· εδώ μόνο mobile (ή failsafe). */
     if (!isMobileViewport) {
       markLayoutDone();
       return;

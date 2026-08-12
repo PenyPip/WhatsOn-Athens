@@ -2,9 +2,8 @@ import { useEffect } from "react";
 import { useHomeLcpOverlayDone } from "@/hooks/useHomeLcpDone";
 
 /**
- * Mobile: κρύβει το static LCP overlay πριν το live hero ξεκλειδώσει queries.
- * Χωρίς αυτό → deadlock: hero loading περιμένει spa-lcp-done, και spa-lcp-done
- * περίμενε loading=false (HomeBody: isMobile && !deferSecondary).
+ * Mobile: κρύβει το static LCP overlay ώστε να ξεκλειδώσουν τα below-fold queries.
+ * Χωρίς αυτό → deadlock / αιώνια skeletons («Ταινίες σήμερα»).
  * Desktop: το handoff γίνεται στο MostTalkedAboutHero όταν έτοιμο το poster.
  */
 export default function HomeStaticLcpHandoff() {
@@ -18,32 +17,24 @@ export default function HomeStaticLcpHandoff() {
     if (document.documentElement.classList.contains("spa-lcp-done")) return;
 
     let cancelled = false;
-    let idleId: number | undefined;
     let timeoutId: number | undefined;
+
+    const finish = () => {
+      if (cancelled) return;
+      if (document.documentElement.classList.contains("spa-lcp-done")) return;
+      /** Μόνο overlay — το slot μένει μέχρι live hero + poster. */
+      markOverlayDone();
+    };
+
+    /** Άμεσο unlock μετά το πρώτο paint — μην περιμένεις idle (κολλάει σε busy main thread). */
     const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        if (cancelled) return;
-        const finish = () => {
-          if (!cancelled) {
-            /** Μόνο overlay — το slot (#home-hero-slot) μένει μέχρι live hero + poster. */
-            markOverlayDone();
-          }
-        };
-        if (typeof requestIdleCallback !== "undefined") {
-          idleId = requestIdleCallback(finish, { timeout: 1200 });
-        } else {
-          finish();
-        }
-        /** Failsafe αν idle δεν τρέξει (busy main thread). */
-        timeoutId = window.setTimeout(finish, 2000);
-      });
+      requestAnimationFrame(finish);
     });
+    timeoutId = window.setTimeout(finish, 800);
+
     return () => {
       cancelled = true;
       cancelAnimationFrame(frame);
-      if (idleId !== undefined && typeof cancelIdleCallback !== "undefined") {
-        cancelIdleCallback(idleId);
-      }
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
     };
   }, [markOverlayDone]);

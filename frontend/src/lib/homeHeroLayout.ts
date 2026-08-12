@@ -20,15 +20,13 @@ export const HOME_HERO_CRITICAL_CSS =
   "#home-static-lcp img.home-static-lcp__poster{display:block;width:100%;height:100%;object-fit:contain;object-position:center;border-radius:.75rem}" +
   "html.spa-lcp-layout-done #home-static-lcp{opacity:0;visibility:hidden}" +
   "html.spa-lcp-layout-done #home-hero-slot{display:none}" +
-  /** Desktop: μόλις φανεί το live hero, κρύψε αμέσως το static (αποφυγή διπλού «Πολυσυζητημένες»). */
-  "@media(min-width:768px){html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}html.spa-lcp-done #home-hero-slot{display:none}html.spa-lcp-done #home-hero-ssr-spacer{display:none;height:0;min-height:0;max-height:0;overflow:hidden}}" +
   "#home-hero-ssr-spacer{background:#13143e;flex-shrink:0}" +
   "@media(max-width:767px){#home-hero-ssr-spacer{height:380px;min-height:380px;max-height:380px}}" +
   "@media(min-width:768px){#home-hero-ssr-spacer{height:580px;min-height:580px}}" +
   "@media(max-width:767px){html:not(.spa-lcp-layout-done) [data-home-hero-live]{position:absolute;top:0;left:0;right:0;z-index:2;width:100%;opacity:0;pointer-events:none;height:380px;min-height:380px;max-height:380px;overflow:hidden}}" +
   "html:not(.spa-lcp-done) [data-home-hero-live]{pointer-events:none}" +
-  "@media(min-width:768px){html:not(.spa-lcp-done) [data-home-hero-live]{opacity:0}}" +
-  "@media(min-width:768px){html.spa-lcp-done [data-home-hero-live]{opacity:1;pointer-events:auto}}" +
+  /** Desktop: κρύψε static μόλις spa-lcp-done· δείξε live μόνο με layout-done (ποτέ διπλό). */
+  "@media(min-width:768px){html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}html.spa-lcp-done #home-hero-slot{display:none}html.spa-lcp-done #home-hero-ssr-spacer{display:none;height:0;min-height:0;max-height:0;overflow:hidden}html:not(.spa-lcp-layout-done) [data-home-hero-live]{opacity:0!important;pointer-events:none}html.spa-lcp-layout-done [data-home-hero-live]{opacity:1;pointer-events:auto}}" +
   "@media(max-width:767px){html.spa-lcp-layout-done [data-home-hero-live]{position:relative;opacity:1;pointer-events:auto;height:380px;min-height:380px;max-height:380px;overflow:hidden}}" +
   "html.spa-lcp-layout-done #home-hero-ssr-spacer{display:none;height:0;min-height:0;max-height:0;overflow:hidden}" +
   ".home-main-overlap{padding-top:3.5rem}" +

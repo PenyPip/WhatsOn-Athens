@@ -371,11 +371,13 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     needsShowtimes && deferProgramData,
     undefined,
   );
-  const awaitingMovies = deferProgramData && movies === undefined && moviesPending;
-  const awaitingShowtimes = deferProgramData && showtimes === undefined && showtimesPending;
-  /** Μην δείχνεις «κενό» όσο φορτώνουν προβολές (refetch μετά από SSR/bootstrap). */
+  const awaitingMovies = movies === undefined && (moviesPending || !deferProgramData);
+  const awaitingShowtimes = showtimes === undefined && (showtimesPending || !deferProgramData);
+  /**
+   * Μην κλειδώνεις αιώνια skeletons στο mobile επειδή περιμένουμε LCP.
+   * Αν υπάρχει bootstrap/cache, δείξε κάρτες αμέσως· loading μόνο όταν δεν έχουμε ακόμα data.
+   */
   const awaitingShowtimeProgram =
-    !deferProgramData ||
     awaitingShowtimes ||
     (showtimesFetching && (showtimes?.length ?? 0) === 0 && !showtimesError);
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenuesForProgram(
@@ -498,7 +500,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                   <MostTalkedAboutHero
                     movies={mostTalkedAboutList}
                     showtimes={stList}
-                    loading={awaitingMovies || (isMobile && !deferSecondary)}
+                    loading={awaitingMovies}
                     now={siteNow}
                   />,
                 )}

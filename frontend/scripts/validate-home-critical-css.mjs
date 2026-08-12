@@ -16,6 +16,7 @@ const REQUIRED_IF_LCP = [
   "html.spa-lcp-layout-done #home-hero-slot{display:none}",
   "#home-hero-ssr-spacer{background:#13143e",
   "html.spa-lcp-layout-done #home-hero-ssr-spacer{display:none",
+  "html.spa-lcp-done #home-hero-slot{display:none}",
   "contain:layout style paint",
 ];
 
