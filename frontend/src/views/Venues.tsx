@@ -8,6 +8,7 @@ import { useShowtimes, useTheaterPerformances, useVenues } from "@/hooks/useStra
 import { buildVenueShowtimeRangeMap, formatVenueShowtimeRangeLabel } from "@/lib/venueShowtimeRange";
 import {
   buildVenueTheaterPerformanceRangeMap,
+  buildVenueTheaterSoldOutMap,
   formatVenueTheaterPerformanceRangeLabel,
 } from "@/lib/venueTheaterPerformanceRange";
 import {
@@ -112,6 +113,10 @@ const Venues = () => {
   );
   const theaterRanges = useMemo(
     () => buildVenueTheaterPerformanceRangeMap(venues ?? [], theaterPerformances ?? []),
+    [venues, theaterPerformances],
+  );
+  const theaterSoldOut = useMemo(
+    () => buildVenueTheaterSoldOutMap(venues ?? [], theaterPerformances ?? []),
     [venues, theaterPerformances],
   );
 
@@ -227,6 +232,7 @@ const Venues = () => {
                   programEmptyLabel={
                     isTheaterVenue(venue) ? "Δεν υπάρχουν επερχόμενες εμφανίσεις" : undefined
                   }
+                  soldOut={isTheaterVenue(venue) ? Boolean(theaterSoldOut.get(venue.id)) : false}
                 />
               </div>
             ))}

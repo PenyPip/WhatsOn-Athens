@@ -6,6 +6,7 @@ import LoadingState from "@/components/LoadingState";
 import CinemaVenueProgramIntro from "@/components/CinemaVenueProgramIntro";
 import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import TheaterVenueProgramLayout from "@/components/TheaterVenueProgramLayout";
+import FavoriteButton from "@/components/FavoriteButton";
 import {
   useTheaterPerformances,
   useTheaterShows,
@@ -121,6 +122,15 @@ const TheaterVenueProgram = () => {
               </Link>
             </div>
             <h1 className={PAGE_LIST_TITLE_CLASS}>{listSeo.h1}</h1>
+            {venue && venue.id > 0 ? (
+              <div className="mt-3">
+                <FavoriteButton
+                  kind="venue"
+                  entityId={venue.id}
+                  className="border-white/20 bg-black/30 text-white hover:text-rose-300"
+                />
+              </div>
+            ) : null}
             {venue && "subtitle" in listSeo && listSeo.subtitle ? (
               <p className="mt-2 text-sm text-white/70 md:text-base">{listSeo.subtitle}</p>
             ) : null}

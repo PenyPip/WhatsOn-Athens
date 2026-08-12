@@ -45,6 +45,7 @@ import {
 } from "@/lib/eventLabels";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
 import HomePersonalizedSections from "@/components/HomePersonalizedSections";
+import FavoriteTheaterUpdatesBanner from "@/components/FavoriteTheaterUpdatesBanner";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
@@ -486,6 +487,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
           </div>
         </div>
       ) : null}
+      <FavoriteTheaterUpdatesBanner enabled={deferHomeExtra} />
       {sections.map((id) => {
         switch (id) {
           case "hero":

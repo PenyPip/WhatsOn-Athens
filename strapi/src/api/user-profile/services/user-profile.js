@@ -11,7 +11,7 @@ const PROFILE_POPULATE = {
     },
   },
   favorite_venues: {
-    fields: ['id', 'slug', 'name', 'summer_outdoor', 'venue_type', 'city'],
+    fields: ['id', 'slug', 'name', 'summer_outdoor', 'type', 'city'],
   },
   seen_movies: {
     fields: ['id', 'slug', 'title', 'original_title', 'is_dubbed', 'imdb_rating'],

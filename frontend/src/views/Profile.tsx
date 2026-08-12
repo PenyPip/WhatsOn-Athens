@@ -15,6 +15,8 @@ import { userHasReviewedContent } from "@/lib/seenContent";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchMyReviews } from "@/lib/userProfile";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
+import { programHrefForVenue } from "@/lib/venueType";
+import FavoriteTheaterUpdatesBanner from "@/components/FavoriteTheaterUpdatesBanner";
 
 const Profile = () => {
   usePageSeo(staticPageSeo.profile);
@@ -185,6 +187,8 @@ const Profile = () => {
           </Button>
         </div>
 
+        <FavoriteTheaterUpdatesBanner />
+
         <section>
           <div className="flex items-center gap-2 mb-4">
             <Heart className="w-5 h-5 text-rose-500" />
@@ -219,23 +223,40 @@ const Profile = () => {
         <section>
           <div className="flex items-center gap-2 mb-4">
             <Heart className="w-5 h-5 text-rose-500" />
-            <h2 className="font-display text-lg font-semibold">Αγαπημένοι κινηματογράφοι</h2>
+            <h2 className="font-display text-lg font-semibold">Αγαπημένοι χώροι</h2>
           </div>
           {(profile?.favoriteVenues ?? []).length === 0 ? (
-            <p className="text-sm text-muted-foreground">Δεν έχεις αποθηκεύσει κινηματογράφους ακόμα.</p>
+            <p className="text-sm text-muted-foreground">
+              Δεν έχεις αποθηκεύσει κινηματογράφους ή θέατρα ακόμα.
+            </p>
           ) : (
             <ul className="grid gap-3 sm:grid-cols-2">
-              {(profile?.favoriteVenues ?? []).map((venue) => (
-                <li key={venue.id}>
-                  <Link
-                    to={moviesVenueProgramPath(venue.slug)}
-                    className="card-elevated block p-4 hover:border-primary/30 transition-colors"
-                  >
-                    <p className="font-medium">{venue.name}</p>
-                    {venue.city ? <p className="text-xs text-muted-foreground mt-1">{venue.city}</p> : null}
-                  </Link>
-                </li>
-              ))}
+              {(profile?.favoriteVenues ?? []).map((venue) => {
+                const href =
+                  programHrefForVenue({
+                    slug: venue.slug,
+                    type: (venue.venueType as "cinema" | "theater" | "other") || "cinema",
+                  }) || moviesVenueProgramPath(venue.slug);
+                const kindLabel =
+                  venue.venueType === "theater"
+                    ? "Θέατρο"
+                    : venue.venueType === "cinema"
+                      ? "Σινεμά"
+                      : null;
+                return (
+                  <li key={venue.id}>
+                    <Link
+                      to={href}
+                      className="card-elevated block p-4 hover:border-primary/30 transition-colors"
+                    >
+                      <p className="font-medium">{venue.name}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {[kindLabel, venue.city].filter(Boolean).join(" · ")}
+                      </p>
+                    </Link>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>

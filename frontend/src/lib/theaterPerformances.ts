@@ -140,12 +140,15 @@ export function groupPerformancesByShowAtVenue(
         (a, b) => new Date(a.datetime).getTime() - new Date(b.datetime).getTime(),
       );
       const head = sorted[0];
+      const soldOut =
+        Boolean(head.theaterShowSoldOut) ||
+        sorted.every((p) => Boolean(p.soldOut || p.theaterShowSoldOut));
       return {
         key,
         theaterShowSlug: head.theaterShowSlug?.trim() || "",
         theaterShowTitle: head.theaterShowTitle?.trim() || "Παράσταση",
         posterUrl: head.theaterShowPosterUrl ?? null,
-        soldOut: head.theaterShowSoldOut,
+        soldOut,
         slots: sorted,
       };
     })

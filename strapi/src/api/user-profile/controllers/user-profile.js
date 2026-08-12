@@ -42,7 +42,7 @@ function mapVenue(row) {
     slug: row.slug,
     name: row.name,
     summerOutdoor: Boolean(row.summer_outdoor),
-    venueType: row.venue_type || null,
+    venueType: row.type || row.venue_type || null,
     city: row.city || null,
   };
 }

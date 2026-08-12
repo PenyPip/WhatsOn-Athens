@@ -17,7 +17,12 @@ export function useDeferUntilLcpDone(): boolean {
     sync();
     const obs = new MutationObserver(sync);
     obs.observe(document.documentElement, { attributes: true, attributeFilter: ["class"] });
-    return () => obs.disconnect();
+    /** Failsafe: μην κρατάς forever skeletons αν το handoff αποτύχει. */
+    const timeoutId = window.setTimeout(() => setReady(true), 4000);
+    return () => {
+      obs.disconnect();
+      window.clearTimeout(timeoutId);
+    };
   }, []);
 
   return ready;

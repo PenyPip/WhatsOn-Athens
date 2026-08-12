@@ -153,26 +153,39 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
     if (typeof document === "undefined") return;
 
     const staticEl = document.getElementById("home-static-lcp");
+    const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
+
+    /** Mobile: overlay από HomeStaticLcpHandoff — μην περιμένεις loading/poster εδώ. */
+    if (staticEl && isMobileViewport) {
+      if (document.documentElement.classList.contains("spa-lcp-done")) return;
+      return;
+    }
 
     if (loading) return;
 
     if (movies.length === 0) {
       markOverlayDone();
-      if (!staticEl) markLayoutDone();
+      markLayoutDone();
       return;
     }
 
     if (staticEl && activePosterUrl?.trim() && !heroPosterReady) return;
 
     if (!staticEl) {
-      const frame = requestAnimationFrame(() => markOverlayDone());
+      const frame = requestAnimationFrame(() => {
+        markOverlayDone();
+        markLayoutDone();
+      });
       return () => cancelAnimationFrame(frame);
     }
 
+    /** Desktop: overlay + layout μαζί (αλλιώς static + live φαίνονται διπλά κάτω από το spacer). */
     let cancelled = false;
     const frame = requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        if (!cancelled) markOverlayDone();
+        if (cancelled) return;
+        markOverlayDone();
+        markLayoutDone();
       });
     });
     return () => {
@@ -194,6 +207,14 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
     if (loading || movies.length === 0) return;
     if (document.documentElement.classList.contains("spa-lcp-layout-done")) return;
     if (!document.documentElement.classList.contains("spa-lcp-done")) return;
+
+    const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
+    /** Desktop ολοκληρώνει layout στο overlay effect· εδώ μόνο mobile (ή failsafe). */
+    if (!isMobileViewport) {
+      markLayoutDone();
+      return;
+    }
+
     const needsPoster = Boolean(activePosterUrl?.trim());
     if (needsPoster && !heroPosterReady) {
       const img = document.querySelector("[data-home-hero-live] img");

@@ -104,3 +104,32 @@ export function buildVenueTheaterPerformanceRangeMap(
   }
   return map;
 }
+
+export function isTheaterPerformanceSlotSoldOut(p: StrapiTheaterPerformance): boolean {
+  return Boolean(p.soldOut || p.theaterShowSoldOut);
+}
+
+/**
+ * Ο χώρος θεωρείται sold out όταν έχει επερχόμενες εμφανίσεις
+ * και όλες είναι sold out (slot ή έργο).
+ */
+export function venueUpcomingAllSoldOut(
+  venue: StrapiVenue,
+  performances: StrapiTheaterPerformance[],
+  venues: StrapiVenue[],
+): boolean {
+  const upcoming = performancesForVenue(venue, performances, venues);
+  if (!upcoming.length) return false;
+  return upcoming.every(isTheaterPerformanceSlotSoldOut);
+}
+
+export function buildVenueTheaterSoldOutMap(
+  venues: StrapiVenue[],
+  performances: StrapiTheaterPerformance[],
+): Map<number, boolean> {
+  const map = new Map<number, boolean>();
+  for (const venue of venues) {
+    map.set(venue.id, venueUpcomingAllSoldOut(venue, performances, venues));
+  }
+  return map;
+}

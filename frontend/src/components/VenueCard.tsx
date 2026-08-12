@@ -5,7 +5,7 @@ import type { StrapiVenue } from "@/lib/api";
 import { programHrefForVenue, venueKindLabel, venueOutdoorBadgeLabel } from "@/lib/venueType";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import FavoriteButton from "@/components/FavoriteButton";
-import { isCinemaVenue } from "@/lib/venueType";
+import { isCinemaVenue, isTheaterVenue } from "@/lib/venueType";
 import { isValidExternalUrl, resolveGoogleMapsHref } from "@/lib/venueResolve";
 import {
   POSTER_BADGE_CORNER_TOP_LEFT,
@@ -39,6 +39,8 @@ export interface VenueCardProps {
   programDatesLabel?: string | null;
   programDatesLoading?: boolean;
   programEmptyLabel?: string;
+  /** Όλες οι επερχόμενες παραστάσεις του χώρου είναι sold out. */
+  soldOut?: boolean;
   className?: string;
 }
 
@@ -52,6 +54,7 @@ const VenueCard = ({
   programDatesLabel,
   programDatesLoading = false,
   programEmptyLabel = "Δεν υπάρχουν επερχόμενες προβολές",
+  soldOut = false,
   className,
 }: VenueCardProps) => {
   const programHref = moviesHref ?? programHrefForVenue(venue);
@@ -81,7 +84,8 @@ const VenueCard = ({
   const hasActions = Boolean(programHref || venue.moreLink);
   const typeLabel = venueKindLabel(venue.type);
   const showSummerBadge = venue.summerOutdoor;
-  const badgeRow = Boolean(typeLabel || showSummerBadge);
+  const canFavorite = (isCinemaVenue(venue) || isTheaterVenue(venue)) && venue.id > 0;
+  const badgeRow = Boolean(typeLabel || showSummerBadge || soldOut);
 
   const cardMinH = compact ? "" : "min-h-[296px]";
   const spotlightShell = cn(
@@ -116,9 +120,21 @@ const VenueCard = ({
                 {typeLabel}
               </span>
             ) : null}
-            {showSummerBadge ? (
+            {showSummerBadge || soldOut ? (
               <div className={POSTER_BADGE_CORNER_TOP_RIGHT}>
-                <span className={POSTER_BADGE_TOP_RIGHT_AMBER}>{venueOutdoorBadgeLabel(venue)}</span>
+                {soldOut ? (
+                  <span
+                    className={cn(
+                      "rounded bg-[#C10022] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm",
+                      isSpotlight && "ring-1 ring-white/20",
+                    )}
+                  >
+                    SOLD OUT
+                  </span>
+                ) : null}
+                {showSummerBadge ? (
+                  <span className={POSTER_BADGE_TOP_RIGHT_AMBER}>{venueOutdoorBadgeLabel(venue)}</span>
+                ) : null}
               </div>
             ) : null}
           </>
@@ -126,7 +142,7 @@ const VenueCard = ({
         <div className={cn(badgeRow && (compact ? "pt-7" : "pt-8"), compact ? "mb-2" : "mb-3")}>
           <div className="flex items-start justify-between gap-2">
             <h3 className={headingClass}>{venue.name}</h3>
-            {isCinemaVenue(venue) && venue.id > 0 ? (
+            {canFavorite ? (
               <FavoriteButton kind="venue" entityId={venue.id} size="sm" />
             ) : null}
           </div>

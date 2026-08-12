@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import PosterPicture from "@/components/PosterPicture";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
@@ -8,7 +9,6 @@ import { groupPerformancesByShowAtVenue, isTheaterPerformanceNewlyAddedHighlight
 import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { isValidExternalUrl } from "@/lib/venueResolve";
-import { useMemo } from "react";
 
 function performancePriceLabel(
   p: StrapiTheaterPerformance,
@@ -34,6 +34,16 @@ export default function TheaterVenueProgramLayout({
 }) {
   const groups = useMemo(() => groupPerformancesByShowAtVenue(performances), [performances]);
 
+  const allSoldOut = useMemo(() => {
+    if (!groups.length) return false;
+    return groups.every((group) => {
+      const show = group.theaterShowSlug
+        ? showsBySlug?.get(group.theaterShowSlug)
+        : undefined;
+      return Boolean(show?.soldOut || group.soldOut);
+    });
+  }, [groups, showsBySlug]);
+
   if (!groups.length) {
     return (
       <p className="text-sm text-muted-foreground">
@@ -44,12 +54,20 @@ export default function TheaterVenueProgramLayout({
 
   return (
     <div className="space-y-6">
+      {allSoldOut ? (
+        <div className="rounded-xl border border-[#C10022]/25 bg-[#C10022]/[0.07] px-4 py-3 ring-1 ring-[#C10022]/15">
+          <p className="text-sm font-semibold uppercase tracking-wide text-[#C10022]">
+            Sold out — όλες οι παραστάσεις σε αυτόν τον χώρο
+          </p>
+        </div>
+      ) : null}
       <div className="rounded-xl border border-border/15 bg-muted/20 p-4 ring-1 ring-border/[0.06] md:p-5">
         <h2 className="font-display mb-1 text-lg font-semibold text-[#13143E] md:text-2xl">
           Τι παίζει
         </h2>
         <p className="mb-5 text-xs text-muted-foreground md:text-sm">
           {groups.length} {groups.length === 1 ? "παράσταση" : "παραστάσεις"} με επερχόμενες εμφανίσεις
+          {allSoldOut ? " · sold out" : ""}
         </p>
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           {groups.map((group) => {

@@ -20,6 +20,8 @@ export const HOME_HERO_CRITICAL_CSS =
   "#home-static-lcp img.home-static-lcp__poster{display:block;width:100%;height:100%;object-fit:contain;object-position:center;border-radius:.75rem}" +
   "html.spa-lcp-layout-done #home-static-lcp{opacity:0;visibility:hidden}" +
   "html.spa-lcp-layout-done #home-hero-slot{display:none}" +
+  /** Desktop: μόλις φανεί το live hero, κρύψε αμέσως το static (αποφυγή διπλού «Πολυσυζητημένες»). */
+  "@media(min-width:768px){html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}html.spa-lcp-done #home-hero-slot{display:none}html.spa-lcp-done #home-hero-ssr-spacer{display:none;height:0;min-height:0;max-height:0;overflow:hidden}}" +
   "#home-hero-ssr-spacer{background:#13143e;flex-shrink:0}" +
   "@media(max-width:767px){#home-hero-ssr-spacer{height:380px;min-height:380px;max-height:380px}}" +
   "@media(min-width:768px){#home-hero-ssr-spacer{height:580px;min-height:580px}}" +

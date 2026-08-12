@@ -1,4 +1,5 @@
 /* eslint-disable @next/next/no-img-element */
+import { useCallback } from "react";
 import { splitPosterSources } from "@/lib/posterPicture";
 import { cn } from "@/lib/utils";
 
@@ -42,6 +43,18 @@ export default function PosterPicture({
     contain ? "max-h-full max-w-full object-contain object-center" : "h-full w-full object-cover object-center",
     className,
   );
+
+  /** Cached images συχνά δεν ξαναπυροδοτούν onLoad — έλεγχος complete στο mount. */
+  const imgRef = useCallback(
+    (node: HTMLImageElement | null) => {
+      if (!node || !onLoad) return;
+      if (node.complete && node.naturalWidth > 0) {
+        onLoad();
+      }
+    },
+    [onLoad],
+  );
+
   const imgProps = {
     alt,
     width,
@@ -50,6 +63,7 @@ export default function PosterPicture({
     fetchPriority,
     decoding,
     onLoad,
+    ref: imgRef,
     className: imgClass,
     sizes,
     ...(ariaHidden ? { "aria-hidden": true as const } : {}),
