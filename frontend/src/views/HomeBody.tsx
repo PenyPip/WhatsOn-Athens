@@ -23,8 +23,12 @@ import {
   type HomeSectionId,
   type ResolvedHomepageLayout,
 } from "@/config/home";
-import type { StrapiMovie } from "@/lib/api";
+import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
+import {
+  formatNextShowtimeLabel,
+  nextShowtimeForMovie,
+} from "@/lib/personalizedShowtimes";
 import {
   moviesReleasedInLastDays,
   moviesComingAfterUpcomingCinemaWeek,
@@ -64,12 +68,21 @@ function movieRowShell(layout: "scroll" | "grid", spotlight: boolean | undefined
   return <div className={minH}>{children}</div>;
 }
 
-const summerStrip = [
-  "Θερινό σινεμά",
-  "Περιοδείες ανά την Ελλάδα",
-  "Θέατρο καλοκαιριού",
-  "Ξανά στη σκηνή",
+const summerStrip: { label: string; to: string }[] = [
+  { label: "Θερινό σινεμά", to: "/movies/summer" },
+  { label: "Ταινίες σήμερα", to: "/movies/today" },
+  { label: "Εβδομάδα σινεμά", to: "/movies/week" },
+  { label: "Θέατρο", to: "/theater" },
 ];
+
+function movieCardNextShowtimeLabel(
+  movie: StrapiMovie,
+  showtimes: StrapiShowtime[],
+  now: Date,
+): string {
+  const next = nextShowtimeForMovie(movie.id, showtimes, { now });
+  return next ? formatNextShowtimeLabel(next, now) : "";
+}
 
 const articleTypeLabel: Record<string, string> = {
   kritiki_parastasis: "Κριτική θεάτρου",
@@ -120,6 +133,9 @@ function MovieRowScroll({
   title,
   subtitle,
   moviesMoreHref,
+  moviesMoreLabel = "Δες όλες →",
+  showtimes = [],
+  now,
   layout = "scroll",
   summerScreeningOnPoster = false,
 }: {
@@ -134,10 +150,37 @@ function MovieRowScroll({
   title: string;
   subtitle?: string;
   moviesMoreHref?: string;
+  moviesMoreLabel?: string;
+  showtimes?: StrapiShowtime[];
+  now?: Date;
   layout?: "scroll" | "grid";
   /** Ετικέτα «Θερινό» πάνω δεξιά στην αφίσα (ενότητα θερινών προβολών). */
   summerScreeningOnPoster?: boolean;
 }) {
+  const clock = now ?? new Date();
+  const cardFor = (movie: StrapiMovie, i: number, className: string) => {
+    const tl = movieTitleLines(movie);
+    return (
+      <EventCard
+        slug={movie.slug}
+        title={tl.primary}
+        titleSecondary={tl.secondary}
+        subtitle={movieCardNextShowtimeLabel(movie, showtimes, clock)}
+        genre=""
+        duration={movie.duration}
+        imdbRating={resolveImdbRating(movie)}
+        posterUrl={movie.posterUrl}
+        posterSrcSet={movie.posterSrcSet}
+        type="movie"
+        isDubbed={movie.isDubbed}
+        summerScreening={summerScreeningOnPoster}
+        uniformMovieSizing
+        compactMovieMeta
+        index={i}
+        className={className}
+      />
+    );
+  };
   if (loading) {
     return movieRowShell(
       layout,
@@ -236,33 +279,13 @@ function MovieRowScroll({
               className="mt-6 grid list-none grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
               aria-label={title}
             >
-              {items.map((movie, i) => {
-                const tl = movieTitleLines(movie);
-                return (
+              {items.map((movie, i) => (
                   <li key={`${movie.id}-${movie.slug}`}>
                     <div className="h-full">
-                      <EventCard
-                        slug={movie.slug}
-                        title={tl.primary}
-                        titleSecondary={tl.secondary}
-                        subtitle=""
-                        genre=""
-                        duration={movie.duration}
-                        imdbRating={resolveImdbRating(movie)}
-                        posterUrl={movie.posterUrl}
-                        posterSrcSet={movie.posterSrcSet}
-                        type="movie"
-                        isDubbed={movie.isDubbed}
-                        summerScreening={summerScreeningOnPoster}
-                        uniformMovieSizing
-                        compactMovieMeta
-                        index={i}
-                        className="h-full w-full"
-                      />
+                      {cardFor(movie, i, "h-full w-full")}
                     </div>
                   </li>
-                );
-              })}
+                ))}
             </ul>
           </div>
         </section>
@@ -273,7 +296,7 @@ function MovieRowScroll({
                 to={moviesMoreHref}
                 className="inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
               >
-                Περισσότερα
+                {moviesMoreLabel}
               </Link>
             </div>
           </div>
@@ -285,34 +308,14 @@ function MovieRowScroll({
   return movieRowShell(layout, spotlight, (
     <>
       <HorizontalScroll spotlight={spotlight} muted={muted} eyebrow={eyebrow} title={title} subtitle={subtitle}>
-        {items.map((movie, i) => {
-          const tl = movieTitleLines(movie);
-          return (
+        {items.map((movie, i) => (
             <div
               key={`${movie.id}-${movie.slug}`}
               className="flex h-full min-h-0 w-[170px] max-w-[170px] flex-shrink-0 self-stretch md:w-[200px] md:max-w-[200px]"
             >
-              <EventCard
-                slug={movie.slug}
-                title={tl.primary}
-                titleSecondary={tl.secondary}
-                subtitle=""
-                genre=""
-                duration={movie.duration}
-                imdbRating={resolveImdbRating(movie)}
-                posterUrl={movie.posterUrl}
-                posterSrcSet={movie.posterSrcSet}
-                type="movie"
-                isDubbed={movie.isDubbed}
-                summerScreening={summerScreeningOnPoster}
-                uniformMovieSizing
-                compactMovieMeta
-                index={i}
-                className="h-full w-full min-h-0 flex-1"
-              />
+              {cardFor(movie, i, "h-full w-full min-h-0 flex-1")}
             </div>
-          );
-        })}
+          ))}
       </HorizontalScroll>
       {moviesMoreHref && items.length > 0 ? (
         <div
@@ -331,7 +334,7 @@ function MovieRowScroll({
                   : "inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
               }
             >
-              Περισσότερα
+              {moviesMoreLabel}
             </Link>
           </div>
         </div>
@@ -513,13 +516,14 @@ export default function HomeBody({ layout }: HomeBodyProps) {
               <div className="section-black py-3">
                 <div className="container max-w-7xl flex items-center gap-8 overflow-x-auto scrollbar-hide text-xs font-body uppercase tracking-[0.15em]">
                   <span className="text-amber-200/85 flex-shrink-0">Καλοκαίρι:</span>
-                  {summerStrip.map((t) => (
-                    <span
-                      key={t}
+                  {summerStrip.map((item) => (
+                    <Link
+                      key={item.to + item.label}
+                      to={item.to}
                       className="text-white/70 hover:text-white cursor-pointer transition-colors flex-shrink-0"
                     >
-                      {t}
-                    </span>
+                      {item.label}
+                    </Link>
                   ))}
                 </div>
               </div>,
@@ -538,6 +542,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 eyebrow="Σήμερα"
                 title="Ταινίες σήμερα"
                 moviesMoreHref={moviesSectionPath("today")}
+                moviesMoreLabel="Όλες οι ταινίες σήμερα →"
+                showtimes={stList}
+                now={siteNow}
               />,
             );
           case "summer_cinema":
@@ -555,6 +562,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 title="Θερινά σινεμά"
                 subtitle="Παίζουν τώρα"
                 moviesMoreHref={moviesSectionPath("summer")}
+                moviesMoreLabel="Όλα τα θερινά →"
+                showtimes={stList}
+                now={siteNow}
                 summerScreeningOnPoster
               />,
             );
@@ -739,6 +749,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 eyebrow="Τελευταίες κυκλοφορίες"
                 title="Νέες ταινίες"
                 moviesMoreHref={moviesSectionPath("new")}
+                moviesMoreLabel="Όλες οι νέες ταινίες →"
+                showtimes={stList}
+                now={siteNow}
               />,
             );
           case "new_articles":
@@ -826,7 +839,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                         to="/articles"
                         className="inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
                       >
-                        Περισσότερα
+                        Όλα τα άρθρα →
                       </Link>
                     </div>
                   </div>
@@ -942,6 +955,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 subtitle={upcomingWeekLabel}
                 layout="grid"
                 moviesMoreHref={moviesSectionPath("week")}
+                moviesMoreLabel="Όλο το πρόγραμμα εβδομάδας →"
+                showtimes={stList}
+                now={siteNow}
               />,
             );
           case "coming_soon":
@@ -957,6 +973,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 title="Προσεχώς"
                 emptyMessage="Δεν υπάρχουν ταινίες με κυκλοφορία μετά την επόμενη εβδομάδα κινηματογράφου."
                 moviesMoreHref={moviesSectionPath("soon")}
+                moviesMoreLabel="Όλες οι προσεχείς →"
+                showtimes={stList}
+                now={siteNow}
               />,
             );
           case "dining":

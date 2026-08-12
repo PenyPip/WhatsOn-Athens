@@ -27,12 +27,26 @@ export default function HomeSeoIntro() {
           >
             τι παίζεται σήμερα
           </Link>
+          , την{" "}
+          <Link
+            to={moviesSectionPath("week")}
+            className="text-amber-100/95 underline decoration-amber-100/35 underline-offset-2 hover:text-white hover:decoration-white/50"
+          >
+            εβδομάδα κινηματογράφου
+          </Link>
           , φίλτρα ανά{" "}
           <Link
             to="/venues"
             className="text-amber-100/95 underline decoration-amber-100/35 underline-offset-2 hover:text-white hover:decoration-white/50"
           >
             κινηματογράφο και χώρο
+          </Link>
+          ,{" "}
+          <Link
+            to="/theater"
+            className="text-amber-100/95 underline decoration-amber-100/35 underline-offset-2 hover:text-white hover:decoration-white/50"
+          >
+            θέατρο
           </Link>
           , ή τη{" "}
           <Link

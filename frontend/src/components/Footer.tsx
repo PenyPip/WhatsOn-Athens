@@ -19,9 +19,21 @@ const Footer = ({ className }: FooterProps) => {
           <div>
             <h4 className="text-xs uppercase tracking-[0.15em] text-white/50 mb-3">Εξερεύνηση</h4>
             <div className="space-y-2 text-sm">
-              <a href="/movies" className="block text-white/60 hover:text-white transition-colors">Ταινίες</a>
-              <a href="/theater" className="block text-white/60 hover:text-white transition-colors">Θέατρο</a>
-              <a href="/dining" className="block text-white/60 hover:text-white transition-colors">Φαγητό</a>
+              <a href="/movies/today" className="block text-white/60 hover:text-white transition-colors">
+                Ταινίες σήμερα
+              </a>
+              <a href="/movies/week" className="block text-white/60 hover:text-white transition-colors">
+                Εβδομάδα σινεμά
+              </a>
+              <a href="/movies" className="block text-white/60 hover:text-white transition-colors">
+                Όλες οι ταινίες
+              </a>
+              <a href="/theater" className="block text-white/60 hover:text-white transition-colors">
+                Θέατρο
+              </a>
+              <a href="/dining" className="block text-white/60 hover:text-white transition-colors">
+                Φαγητό
+              </a>
             </div>
           </div>
           <div>

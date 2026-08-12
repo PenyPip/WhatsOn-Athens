@@ -84,6 +84,7 @@ import GenreLinks from "@/components/GenreLinks";
 import CinemaVenueLinks from "@/components/CinemaVenueLinks";
 import VenueBookingLink from "@/components/VenueBookingLink";
 import TheaterShowMoreLink from "@/components/TheaterShowMoreLink";
+import MobileDetailStickyCta from "@/components/MobileDetailStickyCta";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { formatTheaterRunPeriod } from "@/lib/theaterRunDates";
 import { isTouringTheaterShow } from "@/lib/theaterTours";
@@ -862,7 +863,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   ) : null;
 
   return (
-    <div className="min-h-screen pb-20 md:pb-8">
+    <div className="min-h-screen pb-32 md:pb-8">
       {detailJsonLd ? <JsonLd data={detailJsonLd} /> : null}
       <section
         className={cn(
@@ -1060,7 +1061,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   href="#showtimes"
                   className="inline-flex items-center rounded bg-white px-5 py-2.5 text-sm font-semibold text-[#13143E] transition-colors hover:bg-white/90 md:text-base md:px-6 md:py-3"
                 >
-                  Προβολές & τιμές
+                  Δες ώρες & σινεμά
                 </a>
               ) : hasTheaterPerformances ? (
                 <a
@@ -1069,6 +1070,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 >
                   Εμφανίσεις & τιμές
                 </a>
+              ) : null}
+              {theaterShow ? (
+                <TheaterShowMoreLink show={theaterShow} variant="hero" label="Εισιτήρια" />
               ) : null}
               {isMovie && trailerEmbedUrl ? (
                 <a
@@ -1310,6 +1314,15 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           </div>
         </section>
       </div>
+
+      {(isMovie && hasMovieShowtimes) || (!isMovie && hasTheaterPerformances) ? (
+        <MobileDetailStickyCta
+          kind={isMovie ? "movie" : "theater"}
+          scheduleHref={isMovie ? "#showtimes" : "#theater-performances"}
+          scheduleLabel={isMovie ? "Δες ώρες & σινεμά" : "Εμφανίσεις & τιμές"}
+          theaterShow={theaterShow}
+        />
+      ) : null}
 
       <Footer />
     </div>

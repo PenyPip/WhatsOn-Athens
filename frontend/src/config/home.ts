@@ -30,6 +30,7 @@ export const FALLBACK_SECTIONS: HomeSectionId[] = [
   "movies_today",
   "summer_cinema",
   "summer_venues",
+  "movies_week",
   "tours",
   "new_articles",
   "events",

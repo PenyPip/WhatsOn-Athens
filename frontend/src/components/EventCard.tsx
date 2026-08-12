@@ -273,6 +273,11 @@ const EventCard = ({
             ) : titleSecondary ? (
               <p className={cn("mt-0.5 text-sm font-medium leading-snug line-clamp-2", metaClass)}>{titleSecondary}</p>
             ) : null}
+            {isMovie && movieListingMeta && subtitleLine !== "\u00a0" ? (
+              <p className="mt-0.5 line-clamp-1 text-xs font-semibold leading-snug text-[#13143E]/85">
+                {subtitleLine}
+              </p>
+            ) : null}
             {isMovie && !movieListingMeta ? (
               genreLinkItems?.length ? (
                 <div
