@@ -575,7 +575,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <div>
           <h2 className="font-display text-lg font-semibold text-foreground md:text-xl">Πού & πότε παίζεται</h2>
           {theaterShowHasNewlyAddedPerformances(eventPerformances) ? (
-            <p className="mt-0.5 text-sm font-medium text-amber-800">✦ Νέες παραστάσεις αυτή την εβδομάδα</p>
+            <p className="mt-0.5 text-sm font-medium text-amber-800">✦ Νέες παραστάσεις</p>
           ) : (
             <p className="mt-0.5 text-sm text-muted-foreground">Επερχόμενες εμφανίσεις ανά χώρο</p>
           )}
@@ -868,11 +868,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       <section
         className={cn(
           "relative overflow-hidden bg-[#13143E]",
-          isMovie
-            ? undefined
-            : theaterShow?.posterUrl
-              ? "md:min-h-[min(36vh,420px)]"
-              : "min-h-[40vh]",
+          isMovie ? undefined : theaterShow?.posterUrl ? undefined : "min-h-[36vh]",
         )}
       >
         {isMovie && movie?.posterUrl ? (
@@ -906,7 +902,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           className={
             isMovie
               ? PAGE_MOVIE_DETAIL_HERO_INNER_CLASS
-              : cn(PAGE_DETAIL_HERO_INNER_CLASS, "pb-4 md:pb-5")
+              : cn(PAGE_DETAIL_HERO_INNER_CLASS, "pb-3 md:pb-4")
           }
         >
           <div
@@ -917,7 +913,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     "flex flex-col md:flex-row md:justify-between",
                     isMovie
                       ? "md:items-end gap-4 md:gap-8 lg:gap-10"
-                      : "md:items-center gap-4 md:gap-8 lg:gap-10",
+                      : "md:items-center gap-3 md:gap-6 lg:gap-8",
                   )
                 : "flex h-full items-end",
             )}
@@ -936,7 +932,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </Link>
 
             {!isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto mb-3 w-full max-w-[min(100%,28rem)] shrink-0 sm:max-w-xl md:hidden">
+              <figure className="mx-auto mb-2 w-full max-w-[min(100%,22rem)] shrink-0 sm:max-w-md md:hidden">
                 <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -1008,7 +1004,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               <p className="font-display text-xl md:text-3xl font-medium text-white/85 mb-4">{headline.secondary}</p>
             ) : null}
 
-            <div className="flex flex-wrap items-center gap-3 text-white/60 mb-4 text-sm md:text-base">
+            <div
+              className={cn(
+                "flex flex-wrap items-center gap-3 text-white/60 text-sm md:text-base",
+                isMovie ? "mb-4" : "mb-2",
+              )}
+            >
               {hasDuration ? (
                 <span className="flex items-center gap-1">
                   <Clock className="w-4 h-4" /> {event.duration} λεπτά
@@ -1052,7 +1053,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             {theaterShow ? <TheaterTicketHeroPreview show={theaterShow} /> : null}
 
             <div
-              className={cn("flex flex-wrap gap-3", hasTheaterPerformances && !isMovie ? "mt-4" : hasTheaterPerformances ? "mt-6" : "mt-0")}
+              className={cn(
+                "flex flex-wrap gap-3",
+                hasTheaterPerformances && !isMovie ? "mt-3" : hasTheaterPerformances ? "mt-6" : "mt-0",
+              )}
             >
               {isMovie ? (
                 <a
@@ -1109,7 +1113,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </div>
               </figure>
             ) : !isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto hidden w-full max-w-xl shrink-0 md:mx-0 md:block md:max-w-2xl lg:max-w-[32rem]">
+              <figure className="mx-auto hidden w-full max-w-lg shrink-0 md:mx-0 md:block md:max-w-xl lg:max-w-[28rem]">
                 <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
