@@ -49,7 +49,7 @@ import {
   enrichMoviesWithShowtimeGenre,
   mergeMovieWithShowtimeFields,
 } from "@/lib/homeMovieFilters";
-import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
+import { pickRelatedSuggestions } from "@/lib/relatedSuggestions";
 import { sortVenueShowingsBlocks } from "@/lib/favoriteSort";
 import { useFavoriteIds } from "@/hooks/useFavoriteIds";
 import {
@@ -642,15 +642,39 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     </section>
   ) : null;
 
-  const related = isMovie
-    ? sortMoviesByCinemaCount(
-        (moviesEnriched ?? []).filter((m) => m.slug !== slug),
-        showtimes ?? [],
-        venues,
-        (st) => showtimeIsUpcoming(st),
-        favoriteIds,
-      ).slice(0, 4)
-    : (theaterShows ?? []).filter((s) => s.slug !== slug).slice(0, 4);
+  const relatedSeed = slug?.trim() || event.title;
+  const related = (() => {
+    if (isMovie && movie) {
+      const currentSlugs = new Set((movie.genreSlugs ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean));
+      const currentGenre = (movie.genre ?? "").trim().toLowerCase();
+      const candidates = (moviesEnriched ?? []).filter((m) => m.slug !== slug);
+      return pickRelatedSuggestions(candidates, {
+        seed: `movie:${relatedSeed}`,
+        limit: 4,
+        isRelated: (m) => {
+          if (currentSlugs.size > 0) {
+            return (m.genreSlugs ?? []).some((s) => currentSlugs.has(s.trim().toLowerCase()));
+          }
+          if (!currentGenre) return false;
+          const other = (m.genre ?? "").trim().toLowerCase();
+          return Boolean(other && (other.includes(currentGenre) || currentGenre.includes(other)));
+        },
+      });
+    }
+    if (theaterShow) {
+      const currentGenre = (theaterShow.genre ?? "").trim().toLowerCase();
+      const candidates = (theaterShows ?? []).filter((s) => s.slug !== slug);
+      return pickRelatedSuggestions(candidates, {
+        seed: `theater:${relatedSeed}`,
+        limit: 4,
+        isRelated: (s) => {
+          const g = (s.genre ?? "").trim().toLowerCase();
+          return Boolean(currentGenre && g && g === currentGenre);
+        },
+      });
+    }
+    return [];
+  })();
 
   const eventEditorialReviews = (editorialReviews ?? []).filter((r) =>
     isMovie && movie ? reviewContentMatchesMovie(r.contentTitle, movie) : r.contentTitle === event.title,
@@ -1217,21 +1241,30 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <Dialog open={theaterPosterOpen} onOpenChange={setTheaterPosterOpen}>
           <DialogContent
             className={cn(
-              "max-h-[92vh] w-[min(96vw,1100px)] max-w-none border-0 bg-transparent p-0 shadow-none",
-              "gap-0 overflow-visible",
-              "[&>button]:right-2 [&>button]:top-2 [&>button]:rounded-full [&>button]:bg-black/70 [&>button]:p-2 [&>button]:text-white [&>button]:opacity-100 [&>button]:ring-offset-0",
-              "[&>button]:hover:bg-black/90 [&>button]:hover:opacity-100",
+              "fixed inset-0 left-0 top-0 flex h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0",
+              "items-center justify-center gap-0 overflow-hidden border-0 bg-transparent p-3 shadow-none sm:rounded-none md:p-6",
+              "data-[state=open]:zoom-in-100 data-[state=closed]:zoom-out-100",
+              "[&>button]:right-3 [&>button]:top-3 [&>button]:z-20 [&>button]:rounded-full [&>button]:bg-black/70 [&>button]:p-2.5 [&>button]:text-white [&>button]:opacity-100 [&>button]:ring-offset-0",
+              "[&>button]:hover:bg-black/90 [&>button]:hover:opacity-100 md:[&>button]:right-5 md:[&>button]:top-5",
             )}
           >
             <DialogTitle className="sr-only">Αφίσα — {theaterShow.title}</DialogTitle>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={theaterShow.posterUrl}
+              alt=""
+              aria-hidden
+              className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-45 blur-2xl"
+            />
+            <div className="absolute inset-0 bg-black/45" aria-hidden />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={theaterShow.posterUrl}
               alt={posterAltForTheater(theaterShow.title)}
-              width={1600}
-              height={1000}
+              width={2000}
+              height={1250}
               decoding="async"
-              className="mx-auto max-h-[88vh] w-auto max-w-full rounded-lg object-contain shadow-2xl"
+              className="relative z-10 max-h-[min(94dvh,960px)] w-auto max-w-[min(96vw,1400px)] rounded-lg object-contain shadow-2xl"
             />
           </DialogContent>
         </Dialog>
