@@ -871,7 +871,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           isMovie
             ? undefined
             : theaterShow?.posterUrl
-              ? "md:min-h-[min(52vh,640px)]"
+              ? "md:min-h-[min(48vh,560px)]"
               : "min-h-[50vh]",
         )}
       >
@@ -888,20 +888,19 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-[0.22] blur-2xl"
           />
         ) : theaterShow?.posterUrl ? (
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={theaterShow.posterUrl}
-              alt={posterAltForTheater(theaterShow.title)}
-              width={1200}
-              height={1800}
-              fetchPriority="high"
-              decoding="async"
-              className="absolute inset-0 h-full w-full object-cover opacity-35"
-            />
-          </>
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={theaterShow.posterUrl}
+            alt=""
+            width={1200}
+            height={900}
+            fetchPriority="high"
+            decoding="async"
+            aria-hidden
+            className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-[0.2] blur-2xl"
+          />
         ) : null}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-[#13143E]/75 to-[#13143E]/35" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-[#13143E]/80 to-[#13143E]/45" />
 
         <div className={isMovie ? PAGE_MOVIE_DETAIL_HERO_INNER_CLASS : PAGE_DETAIL_HERO_INNER_CLASS}>
           <div
@@ -910,7 +909,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               (isMovie && movie?.posterUrl) || (!isMovie && theaterShow?.posterUrl)
                 ? cn(
                     "flex flex-col md:flex-row md:items-end md:justify-between",
-                    isMovie ? "gap-4 md:gap-8 lg:gap-10" : "gap-3 md:gap-10 lg:gap-14",
+                    isMovie ? "gap-4 md:gap-8 lg:gap-10" : "gap-5 md:gap-10 lg:gap-12",
                   )
                 : "flex h-full items-end",
             )}
@@ -932,14 +931,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </Link>
 
             {!isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto mb-2 w-full max-w-[min(100%,14rem)] shrink-0 md:hidden">
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
+              <figure className="mx-auto mb-4 w-full max-w-[min(100%,22rem)] shrink-0 sm:max-w-md md:hidden">
+                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={theaterShow.posterUrl}
                     alt={posterAltForTheater(theaterShow.title)}
                     width={1040}
-                    height={780}
+                    height={650}
                     fetchPriority="high"
                     loading="eager"
                     decoding="async"
@@ -1111,14 +1110,14 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </div>
               </figure>
             ) : !isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto hidden w-full max-w-[11rem] shrink-0 sm:max-w-[12rem] md:mx-0 md:block md:max-w-[14rem] lg:max-w-[15rem]">
-                <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
+              <figure className="mx-auto hidden w-full max-w-md shrink-0 md:mx-0 md:block md:max-w-lg lg:max-w-xl">
+                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={theaterShow.posterUrl}
                     alt={posterAltForTheater(theaterShow.title)}
                     width={1040}
-                    height={780}
+                    height={650}
                     fetchPriority="high"
                     loading="eager"
                     decoding="async"
@@ -1185,17 +1184,29 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           </>
         ) : (
           <>
-            <section className="max-w-2xl animate-fade-in-up">
-              <h2 className="font-display mb-3 text-xl font-semibold">Υπόθεση</h2>
-              <p className="text-base leading-relaxed text-muted-foreground">{event.synopsis}</p>
-              {theaterShow ? (
-                <div className="mt-5">
-                  <TheaterShowMoreLink show={theaterShow} />
+            <section className="animate-fade-in-up">
+              <div
+                className={cn(
+                  "flex flex-col gap-6",
+                  hasInfoBlock &&
+                    "md:grid md:grid-cols-[minmax(0,1fr)_minmax(320px,400px)] md:items-start md:gap-x-8 md:gap-y-5",
+                )}
+              >
+                {hasInfoBlock ? (
+                  <div className="order-1 md:col-start-2 md:row-start-1 md:self-start">{movieInfoAside}</div>
+                ) : null}
+                <div className="order-2 min-w-0 max-w-2xl md:col-start-1 md:row-start-1 md:max-w-none">
+                  <h2 className="font-display mb-3 text-xl font-semibold">Υπόθεση</h2>
+                  <p className="text-base leading-relaxed text-muted-foreground">{event.synopsis}</p>
+                  {theaterShow ? (
+                    <div className="mt-5">
+                      <TheaterShowMoreLink show={theaterShow} />
+                    </div>
+                  ) : null}
                 </div>
-              ) : null}
+              </div>
             </section>
             {theaterPerformancesSection}
-            {movieInfoAside}
           </>
         )}
 
