@@ -77,7 +77,6 @@ import { buildTheaterDetailJsonLd } from "@/lib/jsonLdTheaterDetail";
 import JsonLd from "@/components/JsonLd";
 import {
   PAGE_BELOW_NAV_CLASS,
-  PAGE_DETAIL_HERO_INNER_CLASS,
   PAGE_MOVIE_DETAIL_HERO_INNER_CLASS,
 } from "@/components/PageListHeader";
 import GenreLinks from "@/components/GenreLinks";
@@ -902,7 +901,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           className={
             isMovie
               ? PAGE_MOVIE_DETAIL_HERO_INNER_CLASS
-              : cn(PAGE_DETAIL_HERO_INNER_CLASS, "pb-3 md:pb-4")
+              : cn(
+                  "relative z-10 container",
+                  "pt-[max(calc(env(safe-area-inset-top,0px)+4.25rem),5rem)] md:pt-24",
+                  "pb-2.5 md:pb-3",
+                )
           }
         >
           <div
@@ -913,7 +916,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     "flex flex-col md:flex-row md:justify-between",
                     isMovie
                       ? "md:items-end gap-4 md:gap-8 lg:gap-10"
-                      : "md:items-center gap-3 md:gap-6 lg:gap-8",
+                      : "md:items-center gap-3 md:gap-5 lg:gap-6",
                   )
                 : "flex h-full items-end",
             )}
@@ -926,26 +929,24 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             >
             <Link
               to={isMovie ? "/movies" : "/theater"}
-              className="inline-flex items-center gap-1 text-sm text-white/50 transition-colors hover:text-white mb-2"
+              className="inline-flex items-center gap-1 text-sm text-white/50 transition-colors hover:text-white mb-1.5"
             >
               <ArrowLeft className="w-4 h-4" /> Πίσω στις {isMovie ? "Ταινίες" : "Παραστάσεις"}
             </Link>
 
             {!isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto mb-2 w-full max-w-[min(100%,22rem)] shrink-0 sm:max-w-md md:hidden">
-                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={theaterShow.posterUrl}
-                    alt={posterAltForTheater(theaterShow.title)}
-                    width={1040}
-                    height={650}
-                    fetchPriority="high"
-                    loading="eager"
-                    decoding="async"
-                    className="h-full w-full object-contain object-center"
-                  />
-                </div>
+              <figure className="mx-auto mb-2 w-full max-w-[min(100%,26rem)] shrink-0 sm:max-w-lg md:hidden">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={theaterShow.posterUrl}
+                  alt={posterAltForTheater(theaterShow.title)}
+                  width={1040}
+                  height={650}
+                  fetchPriority="high"
+                  loading="eager"
+                  decoding="async"
+                  className="h-auto w-full rounded-lg shadow-2xl shadow-black/45 ring-1 ring-white/20"
+                />
               </figure>
             ) : null}
 
@@ -1055,7 +1056,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             <div
               className={cn(
                 "flex flex-wrap gap-3",
-                hasTheaterPerformances && !isMovie ? "mt-3" : hasTheaterPerformances ? "mt-6" : "mt-0",
+                hasTheaterPerformances && !isMovie ? "mt-2" : hasTheaterPerformances ? "mt-6" : "mt-0",
               )}
             >
               {isMovie ? (
@@ -1113,20 +1114,18 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </div>
               </figure>
             ) : !isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto hidden w-full max-w-lg shrink-0 md:mx-0 md:block md:max-w-xl lg:max-w-[28rem]">
-                <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={theaterShow.posterUrl}
-                    alt={posterAltForTheater(theaterShow.title)}
-                    width={1040}
-                    height={650}
-                    fetchPriority="high"
-                    loading="eager"
-                    decoding="async"
-                    className="h-full w-full object-contain object-center"
-                  />
-                </div>
+              <figure className="mx-auto hidden w-full max-w-xl shrink-0 md:mx-0 md:block md:max-w-2xl lg:max-w-[36rem]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={theaterShow.posterUrl}
+                  alt={posterAltForTheater(theaterShow.title)}
+                  width={1040}
+                  height={650}
+                  fetchPriority="high"
+                  loading="eager"
+                  decoding="async"
+                  className="h-auto w-full rounded-lg shadow-2xl shadow-black/45 ring-1 ring-white/20"
+                />
               </figure>
             ) : null}
           </div>
