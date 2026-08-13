@@ -871,8 +871,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           isMovie
             ? undefined
             : theaterShow?.posterUrl
-              ? "md:min-h-[min(48vh,560px)]"
-              : "min-h-[50vh]",
+              ? "md:min-h-[min(36vh,420px)]"
+              : "min-h-[40vh]",
         )}
       >
         {isMovie && movie?.posterUrl ? (
@@ -902,14 +902,22 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         ) : null}
         <div className="absolute inset-0 bg-gradient-to-t from-[#13143E] via-[#13143E]/80 to-[#13143E]/45" />
 
-        <div className={isMovie ? PAGE_MOVIE_DETAIL_HERO_INNER_CLASS : PAGE_DETAIL_HERO_INNER_CLASS}>
+        <div
+          className={
+            isMovie
+              ? PAGE_MOVIE_DETAIL_HERO_INNER_CLASS
+              : cn(PAGE_DETAIL_HERO_INNER_CLASS, "pb-4 md:pb-5")
+          }
+        >
           <div
             className={cn(
               "animate-fade-in-up",
               (isMovie && movie?.posterUrl) || (!isMovie && theaterShow?.posterUrl)
                 ? cn(
-                    "flex flex-col md:flex-row md:items-end md:justify-between",
-                    isMovie ? "gap-4 md:gap-8 lg:gap-10" : "gap-5 md:gap-10 lg:gap-12",
+                    "flex flex-col md:flex-row md:justify-between",
+                    isMovie
+                      ? "md:items-end gap-4 md:gap-8 lg:gap-10"
+                      : "md:items-center gap-4 md:gap-8 lg:gap-10",
                   )
                 : "flex h-full items-end",
             )}
@@ -922,16 +930,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             >
             <Link
               to={isMovie ? "/movies" : "/theater"}
-              className={cn(
-                "inline-flex items-center gap-1 text-sm text-white/50 transition-colors hover:text-white",
-                isMovie ? "mb-2" : "mb-4",
-              )}
+              className="inline-flex items-center gap-1 text-sm text-white/50 transition-colors hover:text-white mb-2"
             >
               <ArrowLeft className="w-4 h-4" /> Πίσω στις {isMovie ? "Ταινίες" : "Παραστάσεις"}
             </Link>
 
             {!isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto mb-4 w-full max-w-[min(100%,22rem)] shrink-0 sm:max-w-md md:hidden">
+              <figure className="mx-auto mb-3 w-full max-w-[min(100%,28rem)] shrink-0 sm:max-w-xl md:hidden">
                 <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -961,8 +966,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             <div className="flex items-start justify-between gap-3">
             <h1
               className={cn(
-                "font-display font-bold text-white",
-                isMovie ? "text-2xl md:text-4xl" : "text-3xl md:text-5xl",
+                "font-display font-bold text-white text-2xl md:text-4xl",
                 isMovie && movieSeo
                   ? headline.secondary
                     ? "mb-2"
@@ -970,7 +974,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   : headline.secondary
                     ? "mb-2"
                     : theaterShow?.posterUrl && !isMovie
-                      ? "mb-2 md:mb-4"
+                      ? "mb-2"
                       : isMovie
                         ? "mb-3"
                         : "mb-4",
@@ -1004,12 +1008,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               <p className="font-display text-xl md:text-3xl font-medium text-white/85 mb-4">{headline.secondary}</p>
             ) : null}
 
-            <div
-              className={cn(
-                "flex flex-wrap items-center gap-3 text-white/60",
-                isMovie ? "mb-4 text-sm md:text-base" : "mb-6 text-base",
-              )}
-            >
+            <div className="flex flex-wrap items-center gap-3 text-white/60 mb-4 text-sm md:text-base">
               {hasDuration ? (
                 <span className="flex items-center gap-1">
                   <Clock className="w-4 h-4" /> {event.duration} λεπτά
@@ -1053,7 +1052,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             {theaterShow ? <TheaterTicketHeroPreview show={theaterShow} /> : null}
 
             <div
-              className={cn("flex flex-wrap gap-3", hasTheaterPerformances ? "mt-6" : "mt-0")}
+              className={cn("flex flex-wrap gap-3", hasTheaterPerformances && !isMovie ? "mt-4" : hasTheaterPerformances ? "mt-6" : "mt-0")}
             >
               {isMovie ? (
                 <a
@@ -1110,7 +1109,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </div>
               </figure>
             ) : !isMovie && theaterShow?.posterUrl ? (
-              <figure className="mx-auto hidden w-full max-w-md shrink-0 md:mx-0 md:block md:max-w-lg lg:max-w-xl">
+              <figure className="mx-auto hidden w-full max-w-xl shrink-0 md:mx-0 md:block md:max-w-2xl lg:max-w-[32rem]">
                 <div className="relative aspect-[16/10] w-full overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
