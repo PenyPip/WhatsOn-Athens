@@ -2,10 +2,16 @@ import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
-import { Clock, Globe, ArrowLeft, MapPin, Play } from "lucide-react";
+import { Clock, Globe, ArrowLeft, MapPin, Play, ChevronDown } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import SharePageButton from "@/components/SharePageButton";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   useMovies,
   useTheaterShows,
@@ -349,6 +355,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const [movieDayFilter, setMovieDayFilter] = useState<MovieDetailDayFilter>("all");
   const [movieAreaFilter, setMovieAreaFilter] = useState<VenueAreaKey | null>(null);
   const [movieDistrictFilter, setMovieDistrictFilter] = useState<AthensDistrictKey | null>(null);
+  const [theaterCastOpen, setTheaterCastOpen] = useState(false);
+  const [theaterPosterOpen, setTheaterPosterOpen] = useState(false);
 
   const movieShowtimeFilterOptions = useMemo(
     () => movieDetailShowtimeFilterOptions(eventShowtimes, venues ?? []),
@@ -716,7 +724,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     </div>
   );
 
-  const movieInfoAside = hasInfoBlock ? (
+  const movieInfoAside = hasInfoBlock && isMovie ? (
     <aside
       className={cn(
         "card-elevated h-fit w-full rounded-xl px-4 py-5",
@@ -728,20 +736,16 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       <h2 className="font-display mb-3 text-left text-base font-semibold md:mb-4 md:text-lg">Πληροφορίες</h2>
       <div className="grid grid-cols-2 gap-2 sm:gap-2.5 md:grid-cols-2 md:gap-x-4 md:gap-y-3 lg:grid-cols-3">
         {hasDirector ? infoField("Σκηνοθεσία", directorLabel) : null}
-        {isMovie ? (
-          infoField(
-            "Είδος",
-            genreLinkItems.length ? (
-              <GenreLinks items={genreLinkItems} />
-            ) : genreLabel ? (
-              <span className="line-clamp-3 text-sm leading-snug">{genreLabel}</span>
-            ) : (
-              <span className="text-muted-foreground">—</span>
-            ),
-          )
-        ) : genreLabel ? (
-          infoField("Είδος", genreLabel)
-        ) : null}
+        {infoField(
+          "Είδος",
+          genreLinkItems.length ? (
+            <GenreLinks items={genreLinkItems} />
+          ) : genreLabel ? (
+            <span className="line-clamp-3 text-sm leading-snug">{genreLabel}</span>
+          ) : (
+            <span className="text-muted-foreground">—</span>
+          ),
+        )}
         {hasDuration ? infoField("Διάρκεια", `${event.duration}′`) : null}
         {movie?.language?.trim() ? infoField("Γλώσσα", movie.language.trim()) : null}
         {movie?.isDubbed ? infoField("Ήχος", "Μεταγλωτ.") : null}
@@ -772,6 +776,69 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             ) : null}
           </ul>
         </div>
+      ) : null}
+    </aside>
+  ) : null;
+
+  const theaterCompactRow = (label: string, value: ReactNode) => (
+    <div className="flex items-baseline justify-between gap-3 border-b border-border/50 py-1.5 last:border-b-0">
+      <span className="shrink-0 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">{label}</span>
+      <div className="min-w-0 text-right text-sm font-medium leading-snug text-foreground">{value}</div>
+    </div>
+  );
+
+  const theaterInfoAside = hasInfoBlock && !isMovie ? (
+    <aside
+      className={cn(
+        "card-elevated h-fit w-full rounded-xl px-4 py-3.5",
+        "max-md:-mx-6 max-md:rounded-none max-md:border-x-0 max-md:px-6",
+        "md:rounded-xl md:p-4",
+      )}
+    >
+      <h2 className="font-display mb-2 text-left text-base font-semibold">Πληροφορίες</h2>
+      <div className="space-y-0">
+        {hasDirector ? theaterCompactRow("Σκηνοθεσία", directorLabel) : null}
+        {genreLabel ? theaterCompactRow("Είδος", genreLabel) : null}
+        {hasDuration ? theaterCompactRow("Διάρκεια", `${event.duration}′`) : null}
+      </div>
+      {hasCast ? (
+        <Collapsible open={theaterCastOpen} onOpenChange={setTheaterCastOpen} className="mt-2 border-t border-border/70 pt-2">
+          <CollapsibleTrigger
+            type="button"
+            className="flex w-full items-center justify-between gap-2 rounded-md py-1 text-left transition-colors hover:bg-muted/40"
+            aria-expanded={theaterCastOpen}
+          >
+            <span className="min-w-0">
+              <span className="block text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Ηθοποιοί</span>
+              {!theaterCastOpen ? (
+                <span className="mt-0.5 block truncate text-sm text-muted-foreground">
+                  {castList.slice(0, 3).join(", ")}
+                  {castList.length > 3 ? ` +${castList.length - 3}` : ""}
+                </span>
+              ) : (
+                <span className="mt-0.5 block text-sm font-medium text-foreground">Όλοι οι ηθοποιοί ({castList.length})</span>
+              )}
+            </span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200",
+                theaterCastOpen && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </CollapsibleTrigger>
+          <CollapsibleContent className="overflow-hidden data-[state=closed]:animate-accordion-up data-[state=open]:animate-accordion-down">
+            <ul className="mt-2 flex flex-wrap gap-1.5" role="list">
+              {castList.map((name, i) => (
+                <li key={`${name}-${i}`}>
+                  <span className="inline-flex rounded-md border border-border/60 bg-muted/35 px-2 py-1 text-xs font-medium leading-snug text-foreground">
+                    {name}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          </CollapsibleContent>
+        </Collapsible>
       ) : null}
     </aside>
   ) : null;
@@ -936,17 +1003,24 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
             {!isMovie && theaterShow?.posterUrl ? (
               <figure className="mx-auto mb-2 w-full max-w-[min(100%,26rem)] shrink-0 sm:max-w-lg md:hidden">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={theaterShow.posterUrl}
-                  alt={posterAltForTheater(theaterShow.title)}
-                  width={1040}
-                  height={650}
-                  fetchPriority="high"
-                  loading="eager"
-                  decoding="async"
-                  className="h-auto w-full rounded-lg shadow-2xl shadow-black/45 ring-1 ring-white/20"
-                />
+                <button
+                  type="button"
+                  onClick={() => setTheaterPosterOpen(true)}
+                  className="block w-full cursor-zoom-in rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                  aria-label={`Μεγέθυνση αφίσας — ${theaterShow.title}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={theaterShow.posterUrl}
+                    alt={posterAltForTheater(theaterShow.title)}
+                    width={1040}
+                    height={650}
+                    fetchPriority="high"
+                    loading="eager"
+                    decoding="async"
+                    className="h-auto w-full rounded-lg shadow-2xl shadow-black/45 ring-1 ring-white/20"
+                  />
+                </button>
               </figure>
             ) : null}
 
@@ -1115,22 +1189,53 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               </figure>
             ) : !isMovie && theaterShow?.posterUrl ? (
               <figure className="mx-auto hidden w-full max-w-xl shrink-0 md:mx-0 md:block md:max-w-2xl lg:max-w-[36rem]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={theaterShow.posterUrl}
-                  alt={posterAltForTheater(theaterShow.title)}
-                  width={1040}
-                  height={650}
-                  fetchPriority="high"
-                  loading="eager"
-                  decoding="async"
-                  className="h-auto w-full rounded-lg shadow-2xl shadow-black/45 ring-1 ring-white/20"
-                />
+                <button
+                  type="button"
+                  onClick={() => setTheaterPosterOpen(true)}
+                  className="block w-full cursor-zoom-in rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                  aria-label={`Μεγέθυνση αφίσας — ${theaterShow.title}`}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={theaterShow.posterUrl}
+                    alt={posterAltForTheater(theaterShow.title)}
+                    width={1040}
+                    height={650}
+                    fetchPriority="high"
+                    loading="eager"
+                    decoding="async"
+                    className="h-auto w-full rounded-lg shadow-2xl shadow-black/45 ring-1 ring-white/20"
+                  />
+                </button>
               </figure>
             ) : null}
           </div>
         </div>
       </section>
+
+      {!isMovie && theaterShow?.posterUrl ? (
+        <Dialog open={theaterPosterOpen} onOpenChange={setTheaterPosterOpen}>
+          <DialogContent
+            className={cn(
+              "max-h-[92vh] w-[min(96vw,1100px)] max-w-none border-0 bg-transparent p-0 shadow-none",
+              "gap-0 overflow-visible",
+              "[&>button]:right-2 [&>button]:top-2 [&>button]:rounded-full [&>button]:bg-black/70 [&>button]:p-2 [&>button]:text-white [&>button]:opacity-100 [&>button]:ring-offset-0",
+              "[&>button]:hover:bg-black/90 [&>button]:hover:opacity-100",
+            )}
+          >
+            <DialogTitle className="sr-only">Αφίσα — {theaterShow.title}</DialogTitle>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={theaterShow.posterUrl}
+              alt={posterAltForTheater(theaterShow.title)}
+              width={1600}
+              height={1000}
+              decoding="async"
+              className="mx-auto max-h-[88vh] w-auto max-w-full rounded-lg object-contain shadow-2xl"
+            />
+          </DialogContent>
+        </Dialog>
+      ) : null}
 
       {isMovie && movieSeo ? (
         <MovieDetailIntro movieName={headline.primary} intro={movieSeo.intro} />
@@ -1195,7 +1300,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 )}
               >
                 {hasInfoBlock ? (
-                  <div className="order-1 md:col-start-2 md:row-start-1 md:self-start">{movieInfoAside}</div>
+                  <div className="order-1 md:col-start-2 md:row-start-1 md:self-start">{theaterInfoAside}</div>
                 ) : null}
                 <div className="order-2 min-w-0 max-w-2xl md:col-start-1 md:row-start-1 md:max-w-none">
                   <h2 className="font-display mb-3 text-xl font-semibold">Υπόθεση</h2>
