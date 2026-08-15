@@ -6,7 +6,7 @@ export const HOME_HERO_CRITICAL_CSS =
   "#home-static-lcp{position:absolute;inset:0;z-index:1;width:100%;height:100%;overflow:hidden;pointer-events:none;background:linear-gradient(135deg,#1c1a52,#13143e 50%,#0d0c24)}" +
   "#home-static-lcp .home-static-lcp__inner{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;max-width:80rem;height:100%;margin:0 auto;padding:1.25rem 1rem 1.5rem;box-sizing:border-box;gap:1rem}" +
   "@media(min-width:768px){#home-static-lcp .home-static-lcp__inner{flex-direction:row;padding:2.5rem 4rem;justify-content:space-between;align-items:center;gap:2.5rem}}" +
-  "#home-static-lcp .home-static-lcp__poster-wrap{order:-1;width:9.5rem}" +
+  "#home-static-lcp .home-static-lcp__poster-wrap{order:-1;width:11rem}" +
   "@media(min-width:768px){#home-static-lcp .home-static-lcp__poster-wrap{order:0;width:15.5rem}}" +
   "#home-static-lcp .home-static-lcp__copy{flex:1;min-width:0;max-width:36rem;width:100%;align-self:center;text-align:center}" +
   "@media(min-width:768px){#home-static-lcp .home-static-lcp__copy{text-align:left}}" +
@@ -30,7 +30,8 @@ export const HOME_HERO_CRITICAL_CSS =
   "@media(max-width:767px){html.spa-lcp-layout-done [data-home-hero-live]{position:relative;opacity:1;pointer-events:auto;height:380px;min-height:380px;max-height:380px;overflow:hidden}}" +
   "html.spa-lcp-layout-done #home-hero-ssr-spacer{display:none;height:0;min-height:0;max-height:0;overflow:hidden}" +
   ".home-main-overlap{padding-top:3.5rem}" +
-  "@media(min-width:768px){.home-main-overlap{padding-top:4rem}}";
+  "@media(min-width:768px){.home-main-overlap{padding-top:4rem}}" +
+  ".home-below-fold{content-visibility:auto;contain-intrinsic-size:auto 20rem}";
 
 /** Πριν το async index.css — αποφυγή FOUC/CLS στο sr-only H1 και crawl shell. */
 export { ROOT_CRITICAL_CSS as HOME_PAGE_CRITICAL_CSS } from "@/lib/rootCriticalCss";

@@ -15,15 +15,33 @@ function todayAthensKey(now = new Date()) {
   return `${y}-${m}-${d}`;
 }
 
-/** Επερχόμενες προβολές — χωρίς ανώτατο όριο ημερομηνίας. */
-function upcomingShowtimeFilters(now = new Date()) {
+/** Επερχόμενες προβολές — optional horizon σε ημέρες (home-calendar). */
+function upcomingShowtimeFilters(now = new Date(), horizonDays) {
   const todayKey = todayAthensKey(now);
-  return {
+  const upcoming = {
     $or: [
       { datetime: { $gte: now.toISOString() } },
       {
         schedule_kind: 'week_block',
         week_end: { $gte: todayKey },
+      },
+    ],
+  };
+  if (horizonDays == null || !Number.isFinite(horizonDays) || horizonDays <= 0) {
+    return upcoming;
+  }
+  const horizon = new Date(now.getTime() + horizonDays * 24 * 60 * 60 * 1000);
+  return {
+    $and: [
+      upcoming,
+      {
+        $or: [
+          { datetime: { $lte: horizon.toISOString() } },
+          {
+            schedule_kind: 'week_block',
+            week_end: { $gte: todayKey },
+          },
+        ],
       },
     ],
   };
@@ -63,6 +81,32 @@ const SHOWTIME_FIELDS = [
   'summer_screening',
 ];
 
+/** Κράτα μόνο μικρά formats — κόβει MB από το home-calendar JSON. */
+function slimHomeCalendarPoster(poster) {
+  if (!poster || typeof poster !== 'object') return poster;
+  const formats = poster.formats && typeof poster.formats === 'object' ? poster.formats : null;
+  if (!formats) return poster;
+  const next = { ...poster, formats: {} };
+  if (formats.thumbnail) next.formats.thumbnail = formats.thumbnail;
+  if (formats.small) next.formats.small = formats.small;
+  return next;
+}
+
+function slimHomeCalendarRows(rows) {
+  if (!Array.isArray(rows)) return rows;
+  return rows.map((row) => {
+    const movie = row?.movie;
+    if (!movie?.poster) return row;
+    return {
+      ...row,
+      movie: {
+        ...movie,
+        poster: slimHomeCalendarPoster(movie.poster),
+      },
+    };
+  });
+}
+
 module.exports = createCoreController('api::showtime.showtime', ({ strapi }) => ({
   async venueCalendar(ctx) {
     const venueSlug = String(ctx.query?.venue ?? '').trim().toLowerCase();
@@ -84,11 +128,13 @@ module.exports = createCoreController('api::showtime.showtime', ({ strapi }) => 
     ctx.body = { data: rows };
   },
 
-  /** Ελαφρύ πρόγραμμα για αρχική / ταινίες — όλες οι επερχόμενες προβολές. */
+  /** Ελαφρύ πρόγραμμα για αρχική / ταινίες — horizon 5 εβδομάδες by default. */
   async homeCalendar(ctx) {
     const now = new Date();
+    const weeksRaw = Number(ctx.query?.weeks);
+    const weeks = Number.isFinite(weeksRaw) && weeksRaw > 0 ? Math.min(weeksRaw, 12) : 5;
     const rows = await strapi.entityService.findMany('api::showtime.showtime', {
-      filters: upcomingShowtimeFilters(now),
+      filters: upcomingShowtimeFilters(now, weeks * 7),
       fields: SHOWTIME_FIELDS,
       populate: HOME_SHOWTIME_POPULATE,
       sort: ['datetime:asc'],
@@ -96,6 +142,6 @@ module.exports = createCoreController('api::showtime.showtime', ({ strapi }) => 
       limit: 5000,
     });
 
-    ctx.body = { data: rows };
+    ctx.body = { data: slimHomeCalendarRows(rows) };
   },
 }));

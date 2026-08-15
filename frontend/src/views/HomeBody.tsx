@@ -9,6 +9,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { prefetchArticleBySlug, prefetchArticleDetailChunk } from "@/lib/articlePrefetch";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { useDeferUntilIdleAfterLcp } from "@/hooks/useDeferUntilIdleAfterLcp";
+import { useSpaLcpLayoutDone } from "@/hooks/useSpaLcpLayoutDone";
 import { useSiteNow } from "@/hooks/useSiteNow";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMovies, useShowtimes, useRestaurants, useVenuesForProgram, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
@@ -131,6 +132,7 @@ function MovieRowScroll({
   moviesMoreHref,
   moviesMoreLabel = "Δες όλες →",
   nextShowtimeLabels,
+  allowPosterNetwork = true,
   layout = "scroll",
   summerScreeningOnPoster = false,
 }: {
@@ -147,6 +149,8 @@ function MovieRowScroll({
   moviesMoreHref?: string;
   moviesMoreLabel?: string;
   nextShowtimeLabels?: Map<number, string>;
+  /** Mobile: καθυστέρηση poster src μέχρι spa-lcp-layout-done — αποφεύγει LCP steal. */
+  allowPosterNetwork?: boolean;
   layout?: "scroll" | "grid";
   /** Ετικέτα «Θερινό» πάνω δεξιά στην αφίσα (ενότητα θερινών προβολών). */
   summerScreeningOnPoster?: boolean;
@@ -162,8 +166,8 @@ function MovieRowScroll({
         genre=""
         duration={movie.duration}
         imdbRating={resolveImdbRating(movie)}
-        posterUrl={movie.posterUrl}
-        posterSrcSet={movie.posterSrcSet}
+        posterUrl={allowPosterNetwork ? movie.posterUrl : undefined}
+        posterSrcSet={allowPosterNetwork ? movie.posterSrcSet : undefined}
         type="movie"
         isDubbed={movie.isDubbed}
         summerScreening={summerScreeningOnPoster}
@@ -358,6 +362,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const deferHomeExtra = isMobile ? deferSecondary : idleAfterLcp;
   /** Mobile: αναβολή catalog/API μέχρι το static LCP — λιγότερο TBT στο πρώτο paint. */
   const deferProgramData = !isMobile || deferSecondary;
+  /** Mobile: posters καρτών μετά το layout handoff — κρατάει LCP στο static hero. */
+  const spaLayoutDone = useSpaLcpLayoutDone();
+  const allowHomePosterNetwork = !isMobile || spaLayoutDone;
   const favoriteIds = useFavoriteIds();
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies(deferProgramData, {
@@ -541,6 +548,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 moviesMoreHref={moviesSectionPath("today")}
                 moviesMoreLabel="Όλες οι ταινίες σήμερα →"
                 nextShowtimeLabels={nextShowtimeLabels}
+                allowPosterNetwork={allowHomePosterNetwork}
               />,
             );
           case "summer_cinema":
@@ -560,6 +568,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 moviesMoreHref={moviesSectionPath("summer")}
                 moviesMoreLabel="Όλα τα θερινά →"
                 nextShowtimeLabels={nextShowtimeLabels}
+                allowPosterNetwork={allowHomePosterNetwork}
                 summerScreeningOnPoster
               />,
             );
@@ -746,6 +755,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 moviesMoreHref={moviesSectionPath("new")}
                 moviesMoreLabel="Όλες οι νέες ταινίες →"
                 nextShowtimeLabels={nextShowtimeLabels}
+                allowPosterNetwork={allowHomePosterNetwork}
               />,
             );
           case "new_articles":
@@ -951,6 +961,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 moviesMoreHref={moviesSectionPath("week")}
                 moviesMoreLabel="Όλο το πρόγραμμα εβδομάδας →"
                 nextShowtimeLabels={nextShowtimeLabels}
+                allowPosterNetwork={allowHomePosterNetwork}
               />,
             );
           case "coming_soon":
@@ -968,6 +979,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 moviesMoreHref={moviesSectionPath("soon")}
                 moviesMoreLabel="Όλες οι προσεχείς →"
                 nextShowtimeLabels={nextShowtimeLabels}
+                allowPosterNetwork={allowHomePosterNetwork}
               />,
             );
           case "dining":

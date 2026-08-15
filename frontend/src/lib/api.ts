@@ -64,7 +64,7 @@ function strapiCollectionFirst(data: unknown): unknown {
 async function fetchAPIPagedEntries(
   endpoint: string,
   params: Record<string, string>,
-  options?: { noStore?: boolean },
+  options?: { noStore?: boolean; noPopulate?: boolean },
 ): Promise<any[]> {
   const pageSize = 100;
   const aggregated: any[] = [];
@@ -1873,9 +1873,11 @@ export const api = {
   getVenues: () =>
     fetchAPIPagedEntries("/venues", VENUE_PUBLIC_QUERY).then((rows) => rows.map((x) => mapVenue(x))),
 
-  /** Χώροι για λίστα προβολών — χωρίς day_prices (μικρότερο payload). */
+  /** Χώροι για λίστα προβολών — χωρίς day_prices και χωρίς populate=* (μικρότερο payload). */
   getVenuesForProgram: () =>
-    fetchAPIPagedEntries("/venues", VENUE_PROGRAM_QUERY).then((rows) => rows.map((x) => mapVenue(x))),
+    fetchAPIPagedEntries("/venues", VENUE_PROGRAM_QUERY, { noPopulate: true }).then((rows) =>
+      rows.map((x) => mapVenue(x)),
+    ),
 
   getVenueBySlug: async (slug: string) => {
     const s = slug.trim();

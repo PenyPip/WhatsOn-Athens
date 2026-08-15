@@ -6,9 +6,9 @@ export function posterLcpSrc(posterUrl?: string | null, posterSrcSet?: string | 
   const set = typeof posterSrcSet === "string" ? posterSrcSet.trim() : "";
   if (!set) return direct;
 
-  // Για LCP επιλέγουμε μικρό αλλά όχι "thumbnail": κοντά στα 320w (hero αφίσα mobile).
+  // Για LCP επιλέγουμε μικρό αλλά αρκετά μεγάλο ώστε να μην το «κλέβουν» οι κάρτες (~170px).
   let best: { url: string; w: number } | null = null;
-  const target = 320;
+  const target = 480;
   for (const part of set.split(",")) {
     const bit = part.trim();
     const m = bit.match(/^(\S+)\s+(\d+)w$/);

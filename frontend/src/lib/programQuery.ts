@@ -1,6 +1,6 @@
-/** React Query — πρόγραμμα/προβολές: πάντα φρέσκα μετά από αλλαγές στο CMS. */
+/** React Query — πρόγραμμα/προβολές: χρησιμοποίησε bootstrap/cache στο critical path. */
 export const PROGRAM_QUERY_OPTIONS = {
-  staleTime: 30_000,
+  staleTime: 300_000,
   refetchOnMount: false,
   refetchOnWindowFocus: false,
 } as const;

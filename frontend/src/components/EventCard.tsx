@@ -176,7 +176,9 @@ const EventCard = ({
               sizes={
                 landscapePoster
                   ? "(max-width: 640px) 82vw, (max-width: 1024px) 42vw, 360px"
-                  : "(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 200px"
+                  : uniformMovieSizing || compactMovieMeta
+                    ? "(max-width: 768px) 170px, 200px"
+                    : "(max-width: 640px) 45vw, (max-width: 1024px) 28vw, 200px"
               }
               className={landscapePoster ? undefined : "transition-transform duration-500 group-hover:scale-105"}
             />
