@@ -23,12 +23,9 @@ import {
   type HomeSectionId,
   type ResolvedHomepageLayout,
 } from "@/config/home";
-import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
+import type { StrapiMovie } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
-import {
-  formatNextShowtimeLabel,
-  nextShowtimeForMovie,
-} from "@/lib/personalizedShowtimes";
+import { buildNextShowtimeLabelByMovieId } from "@/lib/personalizedShowtimes";
 import {
   moviesReleasedInLastDays,
   moviesComingAfterUpcomingCinemaWeek,
@@ -77,11 +74,10 @@ const summerStrip: { label: string; to: string }[] = [
 
 function movieCardNextShowtimeLabel(
   movie: StrapiMovie,
-  showtimes: StrapiShowtime[],
-  now: Date,
+  nextLabels: Map<number, string> | undefined,
 ): string {
-  const next = nextShowtimeForMovie(movie.id, showtimes, { now });
-  return next ? formatNextShowtimeLabel(next, now) : "";
+  if (!nextLabels?.size) return "";
+  return nextLabels.get(movie.id) ?? "";
 }
 
 const articleTypeLabel: Record<string, string> = {
@@ -134,8 +130,7 @@ function MovieRowScroll({
   subtitle,
   moviesMoreHref,
   moviesMoreLabel = "Δες όλες →",
-  showtimes = [],
-  now,
+  nextShowtimeLabels,
   layout = "scroll",
   summerScreeningOnPoster = false,
 }: {
@@ -151,13 +146,11 @@ function MovieRowScroll({
   subtitle?: string;
   moviesMoreHref?: string;
   moviesMoreLabel?: string;
-  showtimes?: StrapiShowtime[];
-  now?: Date;
+  nextShowtimeLabels?: Map<number, string>;
   layout?: "scroll" | "grid";
   /** Ετικέτα «Θερινό» πάνω δεξιά στην αφίσα (ενότητα θερινών προβολών). */
   summerScreeningOnPoster?: boolean;
 }) {
-  const clock = now ?? new Date();
   const cardFor = (movie: StrapiMovie, i: number, className: string) => {
     const tl = movieTitleLines(movie);
     return (
@@ -165,7 +158,7 @@ function MovieRowScroll({
         slug={movie.slug}
         title={tl.primary}
         titleSecondary={tl.secondary}
-        subtitle={movieCardNextShowtimeLabel(movie, showtimes, clock)}
+        subtitle={movieCardNextShowtimeLabel(movie, nextShowtimeLabels)}
         genre=""
         duration={movie.duration}
         imdbRating={resolveImdbRating(movie)}
@@ -412,6 +405,10 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const apiSectionFailed = moviesError || showtimesError || venuesError || restaurantsError;
 
   const stList = useMemo(() => showtimes ?? [], [showtimes]);
+  const nextShowtimeLabels = useMemo(
+    () => buildNextShowtimeLabelByMovieId(stList, { now: siteNow }),
+    [stList, siteNow],
+  );
   const movieList = useMemo(() => {
     const cat = movies ?? [];
     if (cat.length) return enrichMoviesWithShowtimeGenre(cat, stList);
@@ -543,8 +540,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 title="Ταινίες σήμερα"
                 moviesMoreHref={moviesSectionPath("today")}
                 moviesMoreLabel="Όλες οι ταινίες σήμερα →"
-                showtimes={stList}
-                now={siteNow}
+                nextShowtimeLabels={nextShowtimeLabels}
               />,
             );
           case "summer_cinema":
@@ -563,8 +559,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 subtitle="Παίζουν τώρα"
                 moviesMoreHref={moviesSectionPath("summer")}
                 moviesMoreLabel="Όλα τα θερινά →"
-                showtimes={stList}
-                now={siteNow}
+                nextShowtimeLabels={nextShowtimeLabels}
                 summerScreeningOnPoster
               />,
             );
@@ -750,8 +745,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 title="Νέες ταινίες"
                 moviesMoreHref={moviesSectionPath("new")}
                 moviesMoreLabel="Όλες οι νέες ταινίες →"
-                showtimes={stList}
-                now={siteNow}
+                nextShowtimeLabels={nextShowtimeLabels}
               />,
             );
           case "new_articles":
@@ -956,8 +950,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 layout="grid"
                 moviesMoreHref={moviesSectionPath("week")}
                 moviesMoreLabel="Όλο το πρόγραμμα εβδομάδας →"
-                showtimes={stList}
-                now={siteNow}
+                nextShowtimeLabels={nextShowtimeLabels}
               />,
             );
           case "coming_soon":
@@ -974,8 +967,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 emptyMessage="Δεν υπάρχουν ταινίες με κυκλοφορία μετά την επόμενη εβδομάδα κινηματογράφου."
                 moviesMoreHref={moviesSectionPath("soon")}
                 moviesMoreLabel="Όλες οι προσεχείς →"
-                showtimes={stList}
-                now={siteNow}
+                nextShowtimeLabels={nextShowtimeLabels}
               />,
             );
           case "dining":

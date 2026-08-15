@@ -18,6 +18,7 @@ export default function HomeStaticLcpHandoff() {
 
     let cancelled = false;
     let timeoutId: number | undefined;
+    let idleId: number | undefined;
 
     const finish = () => {
       if (cancelled) return;
@@ -26,15 +27,45 @@ export default function HomeStaticLcpHandoff() {
       markOverlayDone();
     };
 
-    /** Άμεσο unlock μετά το πρώτο paint — μην περιμένεις idle (κολλάει σε busy main thread). */
+    /**
+     * Περίμενε το static LCP img (ή σύντομο idle) πριν unlock —
+     * άμεσο rAF έκλεβε bandwidth/CPU από το LCP element.
+     */
+    const scheduleUnlock = () => {
+      if (cancelled) return;
+      const img = staticEl.querySelector("img");
+      if (img instanceof HTMLImageElement && !img.complete) {
+        const onReady = () => {
+          img.removeEventListener("load", onReady);
+          img.removeEventListener("error", onReady);
+          if (typeof requestIdleCallback !== "undefined") {
+            idleId = requestIdleCallback(finish, { timeout: 400 });
+          } else {
+            finish();
+          }
+        };
+        img.addEventListener("load", onReady, { once: true });
+        img.addEventListener("error", onReady, { once: true });
+        return;
+      }
+      if (typeof requestIdleCallback !== "undefined") {
+        idleId = requestIdleCallback(finish, { timeout: 400 });
+      } else {
+        finish();
+      }
+    };
+
     const frame = requestAnimationFrame(() => {
-      requestAnimationFrame(finish);
+      requestAnimationFrame(scheduleUnlock);
     });
-    timeoutId = window.setTimeout(finish, 800);
+    timeoutId = window.setTimeout(finish, 1500);
 
     return () => {
       cancelled = true;
       cancelAnimationFrame(frame);
+      if (idleId !== undefined && typeof cancelIdleCallback !== "undefined") {
+        cancelIdleCallback(idleId);
+      }
       if (timeoutId !== undefined) window.clearTimeout(timeoutId);
     };
   }, [markOverlayDone]);

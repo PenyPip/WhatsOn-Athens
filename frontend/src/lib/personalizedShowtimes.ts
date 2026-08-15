@@ -52,6 +52,43 @@ export function nextShowtimeForMovie(
   )[0];
 }
 
+/**
+ * Μία σάρωση του calendar → επόμενη προβολή ανά movieId.
+ * Για homepage rows: απόφυγε O(cards × showtimes) ανά render.
+ */
+export function buildNextShowtimeByMovieId(
+  showtimes: StrapiShowtime[],
+  options?: { favoriteVenueIds?: ReadonlySet<number>; now?: Date },
+): Map<number, StrapiShowtime> {
+  const now = options?.now ?? new Date();
+  const best = new Map<number, StrapiShowtime>();
+  for (const st of showtimes) {
+    if (st.movieId == null) continue;
+    if (!showtimeIsUpcoming(st, now)) continue;
+    const id = Number(st.movieId);
+    if (!Number.isFinite(id)) continue;
+    const prev = best.get(id);
+    if (!prev || compareShowtimesByFavoriteVenueThenTime(st, prev, options?.favoriteVenueIds) < 0) {
+      best.set(id, st);
+    }
+  }
+  return best;
+}
+
+/** Labels «Σήμερα 20:30 · …» ανά movieId — μία φορά για όλες τις κάρτες της αρχικής. */
+export function buildNextShowtimeLabelByMovieId(
+  showtimes: StrapiShowtime[],
+  options?: { favoriteVenueIds?: ReadonlySet<number>; now?: Date; omitVenue?: boolean },
+): Map<number, string> {
+  const byId = buildNextShowtimeByMovieId(showtimes, options);
+  const now = options?.now ?? new Date();
+  const labels = new Map<number, string>();
+  for (const [id, st] of byId) {
+    labels.set(id, formatNextShowtimeLabel(st, now, { omitVenue: options?.omitVenue }));
+  }
+  return labels;
+}
+
 export type PersonalizedVenueProgram = {
   venueId: number;
   venueName: string;

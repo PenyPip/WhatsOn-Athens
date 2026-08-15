@@ -242,7 +242,7 @@ const EventCard = ({
                 ? "min-h-[7.25rem]"
                 : isMovie
                   ? movieListingMeta
-                    ? "min-h-[3.75rem]"
+                    ? "min-h-[4.875rem]"
                     : "min-h-[5.5rem]"
                   : theaterHomeCompact
                     ? "min-h-[2.5rem]"
@@ -273,8 +273,11 @@ const EventCard = ({
             ) : titleSecondary ? (
               <p className={cn("mt-0.5 text-sm font-medium leading-snug line-clamp-2", metaClass)}>{titleSecondary}</p>
             ) : null}
-            {isMovie && movieListingMeta && subtitleLine !== "\u00a0" ? (
-              <p className="mt-0.5 line-clamp-1 text-xs font-semibold leading-snug text-[#13143E]/85">
+            {isMovie && movieListingMeta ? (
+              <p
+                className="mt-0.5 line-clamp-1 min-h-[1.125rem] text-xs font-semibold leading-snug text-[#13143E]/85"
+                {...(subtitleLine === "\u00a0" ? { "aria-hidden": true as const } : {})}
+              >
                 {subtitleLine}
               </p>
             ) : null}
