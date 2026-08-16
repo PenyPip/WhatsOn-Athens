@@ -20,19 +20,19 @@ export const HOME_HERO_CRITICAL_CSS =
   "#home-static-lcp img.home-static-lcp__poster{display:block;width:100%;height:100%;object-fit:contain;object-position:center;border-radius:.75rem}" +
   "html.spa-lcp-layout-done #home-static-lcp{opacity:0;visibility:hidden}" +
   "html.spa-lcp-layout-done #home-hero-slot{display:none}" +
+  /**
+   * Το spacer μένει ΠΑΝΤΑ στο flow (ίδιο ύψος πριν/μετά handoff) → χωρίς CLS.
+   * Static + live είναι absolute overlays πάνω από το spacer.
+   */
   "#home-hero-ssr-spacer{background:#13143e;flex-shrink:0}" +
   "@media(max-width:767px){#home-hero-ssr-spacer{height:380px;min-height:380px;max-height:380px}}" +
-  "@media(max-width:767px){html:not(.spa-lcp-layout-done) [data-home-hero-live]{position:absolute;top:0;left:0;right:0;z-index:2;width:100%;opacity:0;pointer-events:none;height:380px;min-height:380px;max-height:380px;overflow:hidden}}" +
-  "html:not(.spa-lcp-done) [data-home-hero-live]{pointer-events:none}" +
-  /**
-   * Desktop: το live hero μένει absolute (εκτός flow) μέχρι layout-done,
-   * αλλιώς spacer+live = διπλό ύψος → CLS ~0.7. Το spacer κρύβεται μόνο στο layout-done.
-   * Ύψος spacer = live min-h(580) − md:-mt-28(7rem) ώστε το handoff να μην μετακινεί το κάτω περιεχόμενο.
-   */
-  "@media(min-width:768px){#home-hero-ssr-spacer{height:calc(580px - 7rem);min-height:calc(580px - 7rem);max-height:calc(580px - 7rem)}}" +
-  "@media(min-width:768px){html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}html.spa-lcp-done #home-hero-slot{display:none}html:not(.spa-lcp-layout-done) [data-home-hero-live]{position:absolute;top:0;left:0;right:0;z-index:2;width:100%;opacity:0!important;pointer-events:none;height:580px;min-height:580px;max-height:580px;overflow:hidden;margin-top:0!important}html.spa-lcp-layout-done [data-home-hero-live]{position:relative;opacity:1;pointer-events:auto;height:auto;max-height:none}}" +
-  "@media(max-width:767px){html.spa-lcp-layout-done [data-home-hero-live]{position:relative;opacity:1;pointer-events:auto;height:380px;min-height:380px;max-height:380px;overflow:hidden}}" +
-  "html.spa-lcp-layout-done #home-hero-ssr-spacer{display:none;height:0;min-height:0;max-height:0;overflow:hidden}" +
+  "@media(min-width:768px){#home-hero-ssr-spacer{height:580px;min-height:580px;max-height:580px}}" +
+  "[data-home-hero-live]{position:absolute;top:0;left:0;right:0;z-index:2;width:100%;overflow:hidden;pointer-events:none}" +
+  "@media(max-width:767px){[data-home-hero-live]{height:380px;min-height:380px;max-height:380px}}" +
+  "@media(min-width:768px){[data-home-hero-live]{height:580px;min-height:580px;max-height:580px;margin-top:0!important}}" +
+  "html:not(.spa-lcp-done) [data-home-hero-live],html:not(.spa-lcp-layout-done) [data-home-hero-live]{opacity:0!important;pointer-events:none}" +
+  "html.spa-lcp-done.spa-lcp-layout-done [data-home-hero-live]{opacity:1;pointer-events:auto}" +
+  "@media(min-width:768px){html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}html.spa-lcp-done #home-hero-slot{display:none}}" +
   ".home-main-overlap{padding-top:3.5rem}" +
   "@media(min-width:768px){.home-main-overlap{padding-top:4rem}}" +
   ".home-below-fold{content-visibility:auto;contain-intrinsic-size:auto 20rem}";
@@ -40,6 +40,9 @@ export const HOME_HERO_CRITICAL_CSS =
 /** Πριν το async index.css — αποφυγή FOUC/CLS στο sr-only H1 και crawl shell. */
 export { ROOT_CRITICAL_CSS as HOME_PAGE_CRITICAL_CSS } from "@/lib/rootCriticalCss";
 
-/** Compact hero — ίδιο ύψος με #home-hero-slot στο mobile (χωρίς CLS στο handoff). */
+/**
+ * Compact hero — absolute overlay (ύψος από critical CSS / spacer).
+ * Χωρίς negative margin στο desktop: το spacer κρατάει σταθερό χώρο.
+ */
 export const HOME_HERO_COMPACT_SECTION_CLASS =
-  "relative overflow-hidden bg-[#13143E] max-md:h-[380px] max-md:min-h-[380px] max-md:max-h-[380px] md:-mt-28 md:pt-28 md:min-h-[580px]";
+  "overflow-hidden bg-[#13143E] max-md:h-[380px] max-md:min-h-[380px] max-md:max-h-[380px] md:h-[580px] md:min-h-[580px] md:max-h-[580px] md:pt-28";

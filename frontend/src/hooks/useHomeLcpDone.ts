@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 
+/** Κρύβει μόνο το static overlay/slot — ΟΧΙ το spacer (κρατάει ύψος → χωρίς CLS). */
 function hideHomeStaticLcpDom() {
   if (typeof document === "undefined") return;
   const slot = document.getElementById("home-hero-slot");
@@ -12,14 +13,6 @@ function hideHomeStaticLcpDom() {
     staticLcp.style.setProperty("opacity", "0", "important");
     staticLcp.style.setProperty("visibility", "hidden", "important");
   }
-  const spacer = document.getElementById("home-hero-ssr-spacer");
-  if (spacer) {
-    spacer.style.setProperty("display", "none", "important");
-    spacer.style.setProperty("height", "0", "important");
-    spacer.style.setProperty("min-height", "0", "important");
-    spacer.style.setProperty("max-height", "0", "important");
-    spacer.style.setProperty("overflow", "hidden", "important");
-  }
 }
 
 /** Κρύβει μόνο το static overlay — χωρίς layout shift (margin / slot). */
@@ -29,7 +22,7 @@ export function useHomeLcpOverlayDone(): () => void {
   }, []);
 }
 
-/** Ολοκληρώνει handoff: κρύβει slot + spacer (CSS + DOM fallback για διπλό hero). */
+/** Ολοκληρώνει handoff: κρύβει static slot — το spacer μένει για σταθερό ύψος. */
 export function useHomeLcpLayoutDone(): () => void {
   return useCallback(() => {
     document.documentElement.classList.add("spa-lcp-layout-done");

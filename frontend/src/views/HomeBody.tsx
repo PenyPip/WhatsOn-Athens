@@ -27,7 +27,6 @@ import {
 import type { StrapiMovie } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { buildNextShowtimeLabelByMovieId } from "@/lib/personalizedShowtimes";
-import { SHOWTIMES_CALENDAR_QUERY_KEY } from "@/lib/programQuery";
 import {
   moviesReleasedInLastDays,
   moviesComingAfterUpcomingCinemaWeek,
@@ -400,32 +399,6 @@ export default function HomeBody({ layout }: HomeBodyProps) {
       void prefetchArticleDetailChunk();
     }
   }, [needsArticles, deferHomeExtra]);
-
-  useEffect(() => {
-    if (!deferHomeExtra) return;
-    let cancelled = false;
-    const run = () => {
-      if (cancelled) return;
-      if (needsShowtimes) {
-        void queryClient.invalidateQueries({ queryKey: SHOWTIMES_CALENDAR_QUERY_KEY });
-      }
-      void queryClient.invalidateQueries({ queryKey: ["movies"] });
-    };
-    let idleId: number | undefined;
-    let timeoutId: number | undefined;
-    if (typeof requestIdleCallback !== "undefined") {
-      idleId = requestIdleCallback(run, { timeout: 4000 });
-    } else {
-      timeoutId = window.setTimeout(run, 1200);
-    }
-    return () => {
-      cancelled = true;
-      if (idleId !== undefined && typeof cancelIdleCallback !== "undefined") {
-        cancelIdleCallback(idleId);
-      }
-      if (timeoutId !== undefined) window.clearTimeout(timeoutId);
-    };
-  }, [needsShowtimes, deferHomeExtra, queryClient]);
 
   const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(needsEvents && deferHomeExtra, 6);
   const {
