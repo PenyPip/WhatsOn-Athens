@@ -355,20 +355,29 @@ export function formatMovieReleaseDateLabel(movie: StrapiMovie, now = new Date()
 
 export function enrichMoviesWithShowtimeGenre(movies: StrapiMovie[], showtimes: StrapiShowtime[]): StrapiMovie[] {
   if (!movies.length || !showtimes.length) return movies;
+  const byId = new Map<number, StrapiShowtime>();
+  const bySlug = new Map<string, StrapiShowtime>();
+  for (const s of showtimes) {
+    const genre = (s.movieGenre ?? "").trim();
+    if (!genre) continue;
+    if (s.movieId != null) {
+      const id = Number(s.movieId);
+      if (Number.isFinite(id) && !byId.has(id)) byId.set(id, s);
+    }
+    const slug = typeof s.movieSlug === "string" ? s.movieSlug.trim() : "";
+    if (slug && !bySlug.has(slug)) bySlug.set(slug, s);
+  }
+  if (!byId.size && !bySlug.size) return movies;
   return movies.map((m) => {
     const g = (m.genre ?? "").trim();
     if (g) return m;
     const mid = m.id;
     const slug = typeof m.slug === "string" ? m.slug.trim() : "";
-    const st =
-      Number.isFinite(mid) && mid > 0
-        ? showtimes.find((s) => s.movieId != null && Number(s.movieId) === Number(mid) && (s.movieGenre ?? "").trim())
-        : undefined;
-    const bySlug =
-      !st && slug ? showtimes.find((s) => s.movieSlug === slug && (s.movieGenre ?? "").trim()) : undefined;
-    const pick = st ?? bySlug;
+    const pick =
+      (Number.isFinite(mid) && mid > 0 ? byId.get(Number(mid)) : undefined) ??
+      (slug ? bySlug.get(slug) : undefined);
     const fromSt = pick?.movieGenre?.trim();
-    if (!fromSt) return m;
+    if (!fromSt || !pick) return m;
     return {
       ...m,
       genre: fromSt,

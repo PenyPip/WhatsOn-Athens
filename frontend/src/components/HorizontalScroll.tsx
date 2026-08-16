@@ -1,4 +1,4 @@
-import { ReactNode, useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { ReactNode, useCallback, useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -44,11 +44,8 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
     rafRef.current = requestAnimationFrame(syncScrollEdges);
   }, [syncScrollEdges]);
 
-  useLayoutEffect(() => {
-    scheduleSync();
-  }, [scheduleSync]);
-
   useEffect(() => {
+    scheduleSync();
     const el = scrollRef.current;
     if (!el) return undefined;
 

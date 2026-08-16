@@ -35,7 +35,7 @@ export const HOME_HERO_CRITICAL_CSS =
   "@media(min-width:768px){html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}html.spa-lcp-done #home-hero-slot{display:none}}" +
   ".home-main-overlap{padding-top:3.5rem}" +
   "@media(min-width:768px){.home-main-overlap{padding-top:4rem}}" +
-  ".home-below-fold{content-visibility:auto;contain-intrinsic-size:auto 20rem}";
+  ".home-below-fold{content-visibility:auto;contain-intrinsic-size:auto 32rem}";
 
 /** Πριν το async index.css — αποφυγή FOUC/CLS στο sr-only H1 και crawl shell. */
 export { ROOT_CRITICAL_CSS as HOME_PAGE_CRITICAL_CSS } from "@/lib/rootCriticalCss";

@@ -56,9 +56,13 @@ import { filterTouringShowsForHome } from "@/lib/theaterTours";
 import { useFavoriteIds } from "@/hooks/useFavoriteIds";
 import { sortMoviesPrioritizingFavorites } from "@/lib/favoriteSort";
 
-const MOVIE_ROW_MIN_H = "min-h-[20rem] md:min-h-[22rem]";
-const MOVIE_ROW_SPOTLIGHT_MIN_H = "min-h-[26rem] md:min-h-[28rem]";
-const MOVIE_ROW_GRID_MIN_H = "min-h-[14rem] md:min-h-[16rem]";
+/** Ίδια τάξη μεγέθους με HomeSectionsPlaceholder — αποφυγή CLS στο mount. */
+const MOVIE_ROW_MIN_H = "min-h-[32rem] md:min-h-[36rem]";
+const MOVIE_ROW_SPOTLIGHT_MIN_H = "min-h-[38rem] md:min-h-[42rem]";
+const MOVIE_ROW_GRID_MIN_H = "min-h-[26rem] md:min-h-[28rem]";
+/** Όριο καρτών στην αρχική — «Δες όλες» καλύπτει το υπόλοιπο. */
+const HOME_MOVIE_SCROLL_CAP = 10;
+const HOME_MOVIE_GRID_CAP = 12;
 
 function movieRowShell(layout: "scroll" | "grid", spotlight: boolean | undefined, children: ReactNode) {
   const minH =
@@ -234,7 +238,9 @@ function MovieRowScroll({
     );
   }
   if (fetchErrorMessage) {
-    return (
+    return movieRowShell(
+      layout,
+      spotlight,
       <section className="relative section-black border-y border-white/[0.07] py-12 md:py-16">
         <div className="container max-w-7xl">
           <div className="max-w-xl rounded-xl border border-amber-500/25 bg-amber-950/20 px-5 py-5 md:px-6 md:py-6">
@@ -242,11 +248,13 @@ function MovieRowScroll({
             <p className="mt-3 text-sm leading-relaxed text-amber-100/80 font-body">{fetchErrorMessage}</p>
           </div>
         </div>
-      </section>
+      </section>,
     );
   }
   if (items.length === 0) {
-    return (
+    return movieRowShell(
+      layout,
+      spotlight,
       <section className="relative section-black border-y border-white/[0.07] py-12 md:py-16">
         <div className="container max-w-7xl">
           <div className="max-w-xl rounded-xl border border-white/10 bg-black/35 px-5 py-5 md:px-6 md:py-6">
@@ -256,9 +264,12 @@ function MovieRowScroll({
             ) : null}
           </div>
         </div>
-      </section>
+      </section>,
     );
   }
+
+  const cap = layout === "grid" ? HOME_MOVIE_GRID_CAP : HOME_MOVIE_SCROLL_CAP;
+  const visibleItems = items.length > cap ? items.slice(0, cap) : items;
 
   if (layout === "grid") {
     return movieRowShell(layout, spotlight, (
@@ -276,7 +287,7 @@ function MovieRowScroll({
               className="mt-6 grid list-none grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6"
               aria-label={title}
             >
-              {items.map((movie, i) => (
+              {visibleItems.map((movie, i) => (
                   <li key={`${movie.id}-${movie.slug}`}>
                     <div className="h-full">
                       {cardFor(movie, i, "h-full w-full")}
@@ -305,7 +316,7 @@ function MovieRowScroll({
   return movieRowShell(layout, spotlight, (
     <>
       <HorizontalScroll spotlight={spotlight} muted={muted} eyebrow={eyebrow} title={title} subtitle={subtitle}>
-        {items.map((movie, i) => (
+        {visibleItems.map((movie, i) => (
             <div
               key={`${movie.id}-${movie.slug}`}
               className="flex h-full min-h-0 w-[170px] max-w-[170px] flex-shrink-0 self-stretch md:w-[200px] md:max-w-[200px]"
@@ -357,9 +368,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsShowtimes = homeNeedsShowtimes(sections);
   const needsFullMovieCatalog = homeNeedsFullMovieCatalog(sections);
   const deferSecondary = useDeferUntilLcpDone();
-  /** Desktop: below-fold queries/DOM μετά idle — μικρότερο TBT στο lab. Mobile: ίδιο με deferSecondary. */
+  /** Below-fold (venues/theater/articles/…) μετά idle — μικρότερο TBT· δεν αγγίζει movies/showtimes. */
   const idleAfterLcp = useDeferUntilIdleAfterLcp(deferSecondary);
-  const deferHomeExtra = isMobile ? deferSecondary : idleAfterLcp;
+  const deferHomeExtra = idleAfterLcp;
   /** Mobile: αναβολή catalog/API μέχρι το static LCP — λιγότερο TBT στο πρώτο paint. */
   const deferProgramData = !isMobile || deferSecondary;
   /** Mobile: posters καρτών μετά το layout handoff — κρατάει LCP στο static hero. */
@@ -629,7 +640,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                         className="mt-8 grid list-none grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 xl:grid-cols-3"
                         aria-label="Λίστα θερινών σινεμά"
                       >
-                        {summerVenuesForHome.map((venue) => (
+                        {summerVenuesForHome.slice(0, 6).map((venue) => (
                           <li key={venue.id}>
                             <div className="h-full">
                               <VenueCard
