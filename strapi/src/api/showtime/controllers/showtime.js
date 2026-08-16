@@ -60,11 +60,9 @@ const SHOWTIME_POPULATE = {
 
 const HOME_SHOWTIME_POPULATE = {
   movie: {
-    fields: ['id', 'slug', 'title', 'original_title', 'duration', 'imdb_rating', 'critic_score', 'is_dubbed', 'language'],
-    populate: {
-      movie_genres: { fields: ['slug', 'label', 'sort_order'] },
-      poster: { fields: ['url', 'formats'] },
-    },
+    // Χωρίς poster/formats — αλλιώς ~2MB JSON (ίδια αφίσα × χιλιάδες προβολές).
+    // Αφίσες/είδη έρχονται από /movies στο frontend.
+    fields: ['id', 'slug', 'title', 'original_title', 'duration', 'imdb_rating', 'is_dubbed'],
   },
   venue: {
     fields: ['id', 'slug', 'name', 'summer_outdoor'],
@@ -81,29 +79,12 @@ const SHOWTIME_FIELDS = [
   'summer_screening',
 ];
 
-/** Κράτα μόνο μικρά formats — κόβει MB από το home-calendar JSON. */
-function slimHomeCalendarPoster(poster) {
-  if (!poster || typeof poster !== 'object') return poster;
-  const formats = poster.formats && typeof poster.formats === 'object' ? poster.formats : null;
-  if (!formats) return poster;
-  const next = { ...poster, formats: {} };
-  if (formats.thumbnail) next.formats.thumbnail = formats.thumbnail;
-  if (formats.small) next.formats.small = formats.small;
-  return next;
-}
-
 function slimHomeCalendarRows(rows) {
   if (!Array.isArray(rows)) return rows;
   return rows.map((row) => {
-    const movie = row?.movie;
-    if (!movie?.poster) return row;
-    return {
-      ...row,
-      movie: {
-        ...movie,
-        poster: slimHomeCalendarPoster(movie.poster),
-      },
-    };
+    if (!row?.movie) return row;
+    const { poster: _p, movie_genres: _g, critic_score: _c, language: _l, ...movie } = row.movie;
+    return { ...row, movie };
   });
 }
 
@@ -128,11 +109,11 @@ module.exports = createCoreController('api::showtime.showtime', ({ strapi }) => 
     ctx.body = { data: rows };
   },
 
-  /** Ελαφρύ πρόγραμμα για αρχική / ταινίες — horizon 5 εβδομάδες by default. */
+  /** Ελαφρύ πρόγραμμα για αρχική / ταινίες — horizon 3 εβδομάδες by default. */
   async homeCalendar(ctx) {
     const now = new Date();
     const weeksRaw = Number(ctx.query?.weeks);
-    const weeks = Number.isFinite(weeksRaw) && weeksRaw > 0 ? Math.min(weeksRaw, 12) : 5;
+    const weeks = Number.isFinite(weeksRaw) && weeksRaw > 0 ? Math.min(weeksRaw, 12) : 3;
     const rows = await strapi.entityService.findMany('api::showtime.showtime', {
       filters: upcomingShowtimeFilters(now, weeks * 7),
       fields: SHOWTIME_FIELDS,

@@ -1,6 +1,11 @@
-/** React Query — πρόγραμμα/προβολές: χρησιμοποίησε bootstrap/cache στο critical path. */
+/**
+ * React Query — πρόγραμμα/προβολές.
+ * Μεγάλο staleTime: το build bootstrap μένει «φρέσκο» στο πρώτο paint
+ * (αλλιώς refetch ~2MB home-calendar μέσα στο TBT/LCP window).
+ * Soft refresh γίνεται μετά το LCP (βλ. HomeBody).
+ */
 export const PROGRAM_QUERY_OPTIONS = {
-  staleTime: 300_000,
+  staleTime: 6 * 60 * 60 * 1000,
   refetchOnMount: false,
   refetchOnWindowFocus: false,
 } as const;
