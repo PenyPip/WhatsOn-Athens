@@ -74,17 +74,19 @@ export const useMovieBySlug = (slug: string) =>
     enabled: !!slug,
   });
 
-export const useTheaterShows = (enabled = true) =>
+export const useTheaterShows = (enabled = true, options?: { home?: boolean }) =>
   useQuery({
-    queryKey: ["theaterShows"],
-    queryFn: api.getTheaterShows,
+    queryKey: options?.home ? (["theaterShows", "home"] as const) : (["theaterShows"] as const),
+    queryFn: () => (options?.home ? api.getTheaterShowsForHome() : api.getTheaterShows()),
     ...PROGRAM_QUERY_OPTIONS,
     throwOnError: false,
     retry: 2,
     enabled,
     placeholderData: keepPreviousData,
-    refetchOnMount: true,
-    refetchOnWindowFocus: true,
+    // Home: μην ξανατραβάς μετά το LCP (TBT). Άλλες σελίδες: επιτρέπεται remount refresh.
+    ...(options?.home
+      ? {}
+      : { refetchOnMount: true as const, refetchOnWindowFocus: true as const }),
   });
 
 export const useTheaterShowBySlug = (slug: string) =>

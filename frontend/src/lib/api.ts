@@ -1089,6 +1089,55 @@ function mapShowtime(
   return s.datetime ? [toRow(s.datetime, 0)] : [];
 }
 
+/**
+ * Γρήγορο map για home-calendar (χωρίς genres/poster/pricing) — λιγότερο TBT στο parse.
+ */
+function mapHomeCalendarShowtime(rawS: any): StrapiShowtime[] {
+  const s = unwrapStrapiEntry(rawS);
+  if (!s?.datetime) return [];
+  const movie = s.movie && typeof s.movie === "object" ? s.movie : null;
+  const venue = s.venue && typeof s.venue === "object" ? s.venue : null;
+  const movieId =
+    movie && typeof (movie as { id?: unknown }).id === "number"
+      ? (movie as { id: number }).id
+      : strapiRelationNumericId(s.movie as unknown);
+  const venueId =
+    venue && typeof (venue as { id?: unknown }).id === "number"
+      ? (venue as { id: number }).id
+      : strapiRelationNumericId(s.venue as unknown);
+  const scheduleKind = s.schedule_kind === "week_block" ? ("week_block" as const) : ("exact" as const);
+  const weekEnd =
+    typeof s.week_end === "string" && s.week_end.trim() ? s.week_end.trim().slice(0, 10) : undefined;
+  const summerScreening = s.summer_screening === true || s.summer_screening === "true";
+  return [
+    {
+      id: String(s.id ?? ""),
+      documentId: typeof s.documentId === "string" ? s.documentId : String(s.id ?? ""),
+      datetime: String(s.datetime),
+      scheduleKind,
+      weekEnd,
+      venue: "",
+      venueId: venueId ?? undefined,
+      venueSlug:
+        typeof (venue as { slug?: string } | null)?.slug === "string"
+          ? (venue as { slug: string }).slug
+          : undefined,
+      summerScreening,
+      venueSummerOutdoor: Boolean((venue as { summer_outdoor?: boolean } | null)?.summer_outdoor),
+      availableSeats: 0,
+      movieId: movieId ?? undefined,
+      movieSlug:
+        typeof (movie as { slug?: string } | null)?.slug === "string"
+          ? (movie as { slug: string }).slug
+          : undefined,
+      movieTitle:
+        typeof (movie as { title?: string } | null)?.title === "string"
+          ? (movie as { title: string }).title
+          : undefined,
+    },
+  ];
+}
+
 function mapTheaterPerformance(raw: unknown): StrapiTheaterPerformance[] {
   const s = unwrapStrapiEntry(raw);
   const venueId = strapiRelationNumericId(s.venue as unknown);
@@ -1542,6 +1591,11 @@ const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
   "populate[cast]": "*",
 };
 
+/** Αρχική / λίστες — χωρίς cast (μικρότερο TBT). */
+const THEATER_SHOW_HOME_QUERY: Record<string, string> = {
+  "populate[poster]": "*",
+};
+
 /** Χωρίς fields[] — μόνο έγκυρα πεδία schema (όχι editorial_review/author: δεν υπάρχουν στο Restaurant). */
 const RESTAURANT_PUBLIC_QUERY: Record<string, string> = {
   "populate[poster][fields][0]": "url",
@@ -1687,10 +1741,10 @@ function upcomingShowtimeFilters(now = new Date()): Record<string, string> {
 async function fetchShowtimesCalendar(): Promise<StrapiShowtime[]> {
   const rows = await fetchAPI<any[]>(
     "/showtimes/home-calendar",
-    {},
+    { weeks: "1" },
     { noPopulate: true, noStore: true },
   );
-  return (Array.isArray(rows) ? rows : []).flatMap((x) => mapShowtime(x));
+  return (Array.isArray(rows) ? rows : []).flatMap((x) => mapHomeCalendarShowtime(x));
 }
 
 async function fetchShowtimesVenueCalendar(venueSlug: string): Promise<StrapiShowtime[]> {
@@ -1844,6 +1898,21 @@ export const api = {
       }
       return out;
     }),
+
+  /** Αρχική — χωρίς cast populate. */
+  getTheaterShowsForHome: () =>
+    fetchAPIPagedEntries("/theater-shows", THEATER_SHOW_HOME_QUERY).then((rows) => {
+      const out: StrapiTheaterShow[] = [];
+      for (const row of rows) {
+        try {
+          out.push(mapTheaterShow(row));
+        } catch {
+          /* skip malformed CMS row */
+        }
+      }
+      return out;
+    }),
+
   getTheaterShowBySlug: (slug: string) =>
     fetchAPI<any[]>(`/theater-shows`, { ...THEATER_SHOW_PUBLIC_QUERY, "filters[slug][$eq]": slug }).then((d) => {
       const row = strapiCollectionFirst(d);

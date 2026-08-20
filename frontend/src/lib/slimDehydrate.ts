@@ -164,8 +164,8 @@ export function slimListQueryCache(qc: QueryClient): void {
   slimMoviesShowtimes(qc);
 }
 
-/** Bootstrap αρχικής: προβολές επόμενων 14 ημερών (αρκετό για SEO bootstrap + client). */
-const HOME_SHOWTIME_HORIZON_MS = 14 * 24 * 60 * 60 * 1000;
+/** Bootstrap αρχικής: προβολές επόμενων 10 ημερών (αρκετό για home sections + μικρότερο HTML). */
+const HOME_SHOWTIME_HORIZON_MS = 10 * 24 * 60 * 60 * 1000;
 
 /** Μικρότερο `#__RQ_STATE__` — λιγότερο JSON.parse στην αρχική (TBT). */
 export function minifyDehydratedState(state: DehydratedState): DehydratedState {

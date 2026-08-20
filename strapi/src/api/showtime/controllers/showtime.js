@@ -97,8 +97,10 @@ function slimHomeCalendarRows(rows) {
     const out = {
       id: row.id,
       datetime: row.datetime,
-      schedule_kind: row.schedule_kind,
     };
+    if (row.schedule_kind && row.schedule_kind !== 'exact') {
+      out.schedule_kind = row.schedule_kind;
+    }
     if (row.week_end) out.week_end = row.week_end;
     if (row.summer_screening) out.summer_screening = true;
     if (m) {
@@ -137,11 +139,11 @@ module.exports = createCoreController('api::showtime.showtime', ({ strapi }) => 
     ctx.body = { data: rows };
   },
 
-  /** Ελαφρύ πρόγραμμα για αρχική / ταινίες — horizon 2 εβδομάδες by default. */
+  /** Ελαφρύ πρόγραμμα για αρχική / ταινίες — default 1 εβδομάδα (TBT / bootstrap). */
   async homeCalendar(ctx) {
     const now = new Date();
     const weeksRaw = Number(ctx.query?.weeks);
-    const weeks = Number.isFinite(weeksRaw) && weeksRaw > 0 ? Math.min(weeksRaw, 12) : 2;
+    const weeks = Number.isFinite(weeksRaw) && weeksRaw > 0 ? Math.min(weeksRaw, 12) : 1;
     const horizonDays = weeks * 7;
     const rows = await strapi.entityService.findMany('api::showtime.showtime', {
       filters: upcomingShowtimeFilters(now, horizonDays),
@@ -149,7 +151,7 @@ module.exports = createCoreController('api::showtime.showtime', ({ strapi }) => 
       populate: HOME_SHOWTIME_POPULATE,
       sort: ['datetime:asc'],
       publicationState: 'preview',
-      limit: 5000,
+      limit: 1000,
     });
 
     ctx.body = { data: slimHomeCalendarRows(rows) };
