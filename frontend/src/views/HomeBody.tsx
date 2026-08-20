@@ -9,7 +9,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { prefetchArticleBySlug, prefetchArticleDetailChunk } from "@/lib/articlePrefetch";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { useDeferUntilIdleAfterLcp } from "@/hooks/useDeferUntilIdleAfterLcp";
-import { useSpaLcpLayoutDone } from "@/hooks/useSpaLcpLayoutDone";
 import { useSiteNow } from "@/hooks/useSiteNow";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useMovies, useShowtimes, useRestaurants, useVenuesForProgram, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
@@ -152,7 +151,7 @@ function MovieRowScroll({
   moviesMoreHref?: string;
   moviesMoreLabel?: string;
   nextShowtimeLabels?: Map<number, string>;
-  /** Mobile: καθυστέρηση poster src μέχρι spa-lcp-layout-done — αποφεύγει LCP steal. */
+  /** Mobile: καθυστέρηση poster src μέχρι spa-lcp-done — αποφεύγει LCP steal, όχι αιώνια κενά. */
   allowPosterNetwork?: boolean;
   layout?: "scroll" | "grid";
   /** Ετικέτα «Θερινό» πάνω δεξιά στην αφίσα (ενότητα θερινών προβολών). */
@@ -177,6 +176,7 @@ function MovieRowScroll({
         uniformMovieSizing
         compactMovieMeta
         index={i}
+        posterPriority={allowPosterNetwork && i < 4}
         className={className}
       />
     );
@@ -371,9 +371,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const deferHomeExtra = idleAfterLcp;
   /** Mobile: αναβολή catalog/API μέχρι το static LCP — λιγότερο TBT στο πρώτο paint. */
   const deferProgramData = !isMobile || deferSecondary;
-  /** Mobile: posters καρτών μετά το layout handoff — κρατάει LCP στο static hero. */
-  const spaLayoutDone = useSpaLcpLayoutDone();
-  const allowHomePosterNetwork = !isMobile || spaLayoutDone;
+  /** Mobile: posters μετά spa-lcp-done (όχι layout-done) — αλλιώς μένουν κενές πολύ ώρα. */
+  const allowHomePosterNetwork = !isMobile || deferSecondary;
   const favoriteIds = useFavoriteIds();
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies(deferProgramData, {
@@ -393,6 +392,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const awaitingShowtimeProgram =
     awaitingShowtimes ||
     (showtimesFetching && (showtimes?.length ?? 0) === 0 && !showtimesError);
+  /** Κάρτες ταινιών χρειάζονται catalog (αφίσες) — όχι μόνο showtimes. */
+  const awaitingMovieCards = awaitingShowtimeProgram || awaitingMovies;
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenuesForProgram(
     needsVenues && deferHomeExtra,
   );
@@ -430,6 +431,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const movieList = useMemo(() => {
     const cat = movies ?? [];
     if (cat.length) return enrichMoviesWithShowtimeGenre(cat, stList);
+    // Stubs από home-calendar δεν έχουν poster — μην τα δείχνεις όσο φορτώνει το catalog.
+    if (movies === undefined) return [];
     if (stList.length) return moviesFromUpcomingShowtimes([], stList);
     return [];
   }, [movies, stList]);
@@ -448,7 +451,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     });
   }, [events]);
   const summerVenuesAwaiting = needsVenues && deferHomeExtra && venues === undefined && venuesLoading;
-  const awaitingSummerMovies = awaitingShowtimeProgram || summerVenuesAwaiting;
+  const awaitingSummerMovies = awaitingMovieCards || summerVenuesAwaiting;
   const summerVenuesForHome = useMemo(
     () => summerVenuesWithShowtimesOrAll(venueList, stList),
     [venueList, stList],
@@ -547,7 +550,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "movies_today",
               <MovieRowScroll
-                loading={awaitingShowtimeProgram}
+                loading={awaitingMovieCards}
                 loadingMessage="Φόρτωση προβολών της ημέρας..."
                 fetchErrorMessage={
                   moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
@@ -732,6 +735,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               darkSectionCard
                               className="w-[15rem] md:w-[17rem]"
                               index={i}
+                              posterPriority={i < 3}
                             />
                           </li>
                         ))}
@@ -960,7 +964,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
             return sectionEl(
               "movies_week",
               <MovieRowScroll
-                loading={awaitingShowtimeProgram}
+                loading={awaitingMovieCards}
                 loadingMessage="Φόρτωση ταινιών εβδομάδας..."
                 fetchErrorMessage={moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined}
                 items={weekMovies}
