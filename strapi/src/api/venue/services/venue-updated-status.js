@@ -62,6 +62,8 @@ function explainVenueSyncStatusReason(stats, { reason, next } = {}) {
         `καμία προβολή εβδομάδας-στόχου (${getVenueStatusWeekPhaseLabel()}) στο More/CMS`,
       );
     } else parts.push(`προβολές εβδομάδας: ${weekSynced}/${weekExpected}`);
+  } else if (reason === 'athinorama_owned_status') {
+    parts.push('Athinorama link — status μόνο από Athinorama sync');
   } else if (stats.cmsWeekFallback && weekExpected > 0) {
     parts.push(`CMS εβδομάδας-στόχου: ${weekSynced} προβολές (χωρίς More week count)`);
   } else if (weekExpected > 0) {
@@ -282,7 +284,24 @@ async function enrichTrackerWeekStatsFromCmsShowtimes(strapi, tracker, now = new
   const rangeStart = new Date(Math.max(start.getTime(), now.getTime()));
   let enriched = 0;
 
+  const venueIds = tracker.entries().map(([id]) => id);
+  const athinoramaRows =
+    venueIds.length > 0
+      ? await strapi.entityService.findMany('api::venue.venue', {
+          filters: { id: { $in: venueIds } },
+          fields: ['id', 'athinorama_link'],
+          publicationState: 'preview',
+          pagination: { pageSize: Math.max(venueIds.length, 1) },
+        })
+      : [];
+  const athinoramaIds = new Set(
+    (Array.isArray(athinoramaRows) ? athinoramaRows : [])
+      .filter((row) => Boolean(String(row.athinorama_link || '').trim()))
+      .map((row) => row.id),
+  );
+
   for (const [venueId, stats] of tracker.entries()) {
+    if (athinoramaIds.has(venueId)) continue;
     if ((stats.weekExpected || 0) > 0) continue;
 
     const rows = await strapi.entityService.findMany('api::showtime.showtime', {
@@ -358,6 +377,7 @@ async function applyCinemaVenueUpdatedStatuses(
     became_manual: 0,
     no_new_to_manual: 0,
     complete_to_manual: 0,
+    skipped_athinorama: 0,
     updated: 0,
     cmsWeekEnriched: cmsEnrich.enriched || 0,
     weekPhase: cmsEnrich.weekPhase || getVenueStatusWeekPhaseLabel(now),
@@ -370,7 +390,7 @@ async function applyCinemaVenueUpdatedStatuses(
   const venueIds = entries.map(([venueId]) => venueId);
   const existingRows = await strapi.entityService.findMany('api::venue.venue', {
     filters: { id: { $in: venueIds } },
-    fields: ['id', 'name', 'updated'],
+    fields: ['id', 'name', 'updated', 'athinorama_link'],
     publicationState: 'preview',
     pagination: { pageSize: Math.max(venueIds.length, 1) },
   });
@@ -379,6 +399,12 @@ async function applyCinemaVenueUpdatedStatuses(
   );
   const nameById = new Map(
     (Array.isArray(existingRows) ? existingRows : []).map((row) => [row.id, row.name]),
+  );
+  const athinoramaById = new Map(
+    (Array.isArray(existingRows) ? existingRows : []).map((row) => [
+      row.id,
+      Boolean(String(row.athinorama_link || '').trim()),
+    ]),
   );
 
   const pushVenue = (entry) => {
@@ -396,6 +422,25 @@ async function applyCinemaVenueUpdatedStatuses(
     const normalizedCurrent = isVenueUpdatedStatus(current)
       ? current
       : VENUE_UPDATED_STATUS.NO_NEW;
+
+    // Athinorama: το More / CMS fallback δεν αγγίζει updated — complete μόνο από Athinorama Πέμπτη.
+    if (athinoramaById.get(venueId)) {
+      summary.skipped_athinorama = (summary.skipped_athinorama || 0) + 1;
+      pushVenue(
+        buildVenueStatusEntry({
+          venueId,
+          venueName: nameById.get(venueId),
+          previousStatus: current,
+          status: normalizedCurrent,
+          preserved: true,
+          stats,
+          reason: 'athinorama_owned_status',
+        }),
+      );
+      summary[normalizedCurrent] = (summary[normalizedCurrent] || 0) + 1;
+      continue;
+    }
+
     const next = computeVenueUpdatedStatus(stats, now);
 
     // Καμία προβολή εβδομάδας στο More αυτό το run — μην κρατάς «complete» από παλιό sync.
@@ -519,16 +564,33 @@ async function applyVenueUpdatedStatusFromProgramImport(
   strapi,
   venueId,
   stats,
-  { importMeta = {}, now = new Date() } = {},
+  { importMeta = {}, now = new Date(), allowAthinoramaComplete = false } = {},
 ) {
   const id = Number(venueId);
   if (!Number.isFinite(id)) return null;
 
   const venue = await strapi.entityService.findOne('api::venue.venue', id, {
-    fields: ['id', 'name', 'type', 'updated'],
+    fields: ['id', 'name', 'type', 'updated', 'athinorama_link'],
     publicationState: 'preview',
   });
   if (!venue || venue.type !== 'cinema') return null;
+
+  const hasAthinorama = Boolean(String(venue.athinorama_link || '').trim());
+  // Σινεμά Athinorama: complete μόνο από Athinorama sync (Πέμπτη) — όχι free-text / More.
+  if (hasAthinorama && !allowAthinoramaComplete) {
+    const current = isVenueUpdatedStatus(venue.updated) ? venue.updated : VENUE_UPDATED_STATUS.NO_NEW;
+    return {
+      venueId: id,
+      venueName: venue.name,
+      previousStatus: current,
+      status: current,
+      updated: false,
+      preserved: true,
+      reason: 'athinorama_owned_status',
+      reasonDetail:
+        'Χώρος με Athinorama link — το updated αλλάζει μόνο από Athinorama sync (Πέμπτη)',
+    };
+  }
 
   const mergedStats = {
     ...stats,

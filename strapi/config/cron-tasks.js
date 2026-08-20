@@ -23,8 +23,8 @@ async function runMoreCinemaShowtimeCron(strapi) {
 }
 
 /**
- * Κάθε Σάββατο 06:00 (ώρα server) — `venue.updated` → no_new για όλα τα σινεμά.
- * Μέχρι Κυριακή: στόχος = τρέχουσα εβδομάδα κινηματογράφου · Δευτέρα+: επόμενη.
+ * Σάββατο 06:00 — `venue.updated` → no_new για σινεμά ΧΩΡΙΣ athinorama_link.
+ * Δευτέρα 06:00 — Athinorama σινεμά → no_new (complete μόνο από Athinorama Πέμπτη).
  *
  * More σινεμά (ταινίες):
  * - Κυριακή–Τρίτη: 3×/ημέρα
@@ -34,7 +34,7 @@ async function runMoreCinemaShowtimeCron(strapi) {
  * Athinorama (τρέχουσα εβδομάδα μόνο): Πέμπτη 3× — το Athinorama δεν έχει μελλοντικές προβολές.
  */
 module.exports = {
-  resetCinemaVenueUpdatedMonday: {
+  resetCinemaVenueUpdatedSaturday: {
     task: async ({ strapi }) => {
       try {
         const { resetCinemaManualCompleted } = require('../src/api/venue/services/program-status');
@@ -45,6 +45,22 @@ module.exports = {
     },
     options: {
       rule: '0 6 * * 6',
+    },
+  },
+  /** Δευτέρα 06:00 — μόνο σινεμά με Athinorama link → no_new. */
+  resetAthinoramaVenueUpdatedMonday: {
+    task: async ({ strapi }) => {
+      try {
+        const {
+          resetAthinoramaCinemaUpdatedToNoNew,
+        } = require('../src/api/venue/services/program-status');
+        await resetAthinoramaCinemaUpdatedToNoNew(strapi);
+      } catch (e) {
+        strapi.log.error('[cron] resetAthinoramaVenueUpdatedMonday', e);
+      }
+    },
+    options: {
+      rule: '0 6 * * 1',
     },
   },
   /** Κυρ–Τρ 10:00 / 14:00 / 18:00 Αθήνα. */

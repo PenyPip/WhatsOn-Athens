@@ -30,7 +30,9 @@ function upcomingShowtimeFilters(now = new Date(), horizonDays) {
   if (horizonDays == null || !Number.isFinite(horizonDays) || horizonDays <= 0) {
     return upcoming;
   }
+  // Με horizon: week_block μόνο αν το block αγγίζει το παράθυρο (όχι όλα τα ανοιχτά blocks).
   const horizon = new Date(now.getTime() + horizonDays * 24 * 60 * 60 * 1000);
+  const horizonKey = todayAthensKey(horizon);
   return {
     $and: [
       upcoming,
@@ -39,7 +41,7 @@ function upcomingShowtimeFilters(now = new Date(), horizonDays) {
           { datetime: { $lte: horizon.toISOString() } },
           {
             schedule_kind: 'week_block',
-            week_end: { $gte: todayKey },
+            week_end: { $gte: todayKey, $lte: horizonKey },
           },
         ],
       },
@@ -60,15 +62,19 @@ const SHOWTIME_POPULATE = {
 
 const HOME_SHOWTIME_POPULATE = {
   movie: {
-    // Χωρίς poster/formats — αλλιώς ~2MB JSON (ίδια αφίσα × χιλιάδες προβολές).
-    // Αφίσες/είδη έρχονται από /movies στο frontend.
-    fields: ['id', 'slug', 'title', 'original_title', 'duration', 'imdb_rating', 'is_dubbed'],
+    fields: ['id', 'slug', 'title'],
   },
   venue: {
-    fields: ['id', 'slug', 'name', 'summer_outdoor'],
+    fields: ['id', 'slug', 'summer_outdoor'],
   },
-  hall: { fields: ['id', 'name'] },
 };
+
+const HOME_SHOWTIME_FIELDS = [
+  'datetime',
+  'week_end',
+  'schedule_kind',
+  'summer_screening',
+];
 
 const SHOWTIME_FIELDS = [
   'datetime',
@@ -79,12 +85,34 @@ const SHOWTIME_FIELDS = [
   'summer_screening',
 ];
 
+/**
+ * Flat-ish slim: κόβει hall/price/seats και περιττά nested keys.
+ * Στόχος: <~400KB JSON αντί ~1MB (TBT από JSON.parse + mapShowtime).
+ */
 function slimHomeCalendarRows(rows) {
   if (!Array.isArray(rows)) return rows;
   return rows.map((row) => {
-    if (!row?.movie) return row;
-    const { poster: _p, movie_genres: _g, critic_score: _c, language: _l, ...movie } = row.movie;
-    return { ...row, movie };
+    const m = row.movie && typeof row.movie === 'object' ? row.movie : null;
+    const v = row.venue && typeof row.venue === 'object' ? row.venue : null;
+    const out = {
+      id: row.id,
+      datetime: row.datetime,
+      schedule_kind: row.schedule_kind,
+    };
+    if (row.week_end) out.week_end = row.week_end;
+    if (row.summer_screening) out.summer_screening = true;
+    if (m) {
+      out.movie = {
+        id: m.id,
+        slug: m.slug,
+        title: m.title,
+      };
+    }
+    if (v) {
+      out.venue = { id: v.id, slug: v.slug };
+      if (v.summer_outdoor) out.venue.summer_outdoor = true;
+    }
+    return out;
   });
 }
 
@@ -109,14 +137,15 @@ module.exports = createCoreController('api::showtime.showtime', ({ strapi }) => 
     ctx.body = { data: rows };
   },
 
-  /** Ελαφρύ πρόγραμμα για αρχική / ταινίες — horizon 3 εβδομάδες by default. */
+  /** Ελαφρύ πρόγραμμα για αρχική / ταινίες — horizon 2 εβδομάδες by default. */
   async homeCalendar(ctx) {
     const now = new Date();
     const weeksRaw = Number(ctx.query?.weeks);
-    const weeks = Number.isFinite(weeksRaw) && weeksRaw > 0 ? Math.min(weeksRaw, 12) : 3;
+    const weeks = Number.isFinite(weeksRaw) && weeksRaw > 0 ? Math.min(weeksRaw, 12) : 2;
+    const horizonDays = weeks * 7;
     const rows = await strapi.entityService.findMany('api::showtime.showtime', {
-      filters: upcomingShowtimeFilters(now, weeks * 7),
-      fields: SHOWTIME_FIELDS,
+      filters: upcomingShowtimeFilters(now, horizonDays),
+      fields: HOME_SHOWTIME_FIELDS,
       populate: HOME_SHOWTIME_POPULATE,
       sort: ['datetime:asc'],
       publicationState: 'preview',

@@ -198,6 +198,7 @@ async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new 
     weekMode: 'current',
     importTracePrefix: `Athinorama sync · ${link}`,
     applyVenueStatus,
+    allowAthinoramaComplete: true,
   });
 
   if (!created.ok) {

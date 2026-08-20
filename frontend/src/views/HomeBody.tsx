@@ -17,7 +17,6 @@ import {
   homeNeedsArticles,
   homeNeedsDining,
   homeNeedsEvents,
-  homeNeedsFullMovieCatalog,
   homeNeedsShowtimes,
   homeNeedsTheater,
   homeNeedsVenues,
@@ -366,7 +365,6 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsArticles = homeNeedsArticles(sections);
   const needsEvents = homeNeedsEvents(sections);
   const needsShowtimes = homeNeedsShowtimes(sections);
-  const needsFullMovieCatalog = homeNeedsFullMovieCatalog(sections);
   const deferSecondary = useDeferUntilLcpDone();
   /** Below-fold (venues/theater/articles/…) μετά idle — μικρότερο TBT· δεν αγγίζει movies/showtimes. */
   const idleAfterLcp = useDeferUntilIdleAfterLcp(deferSecondary);
@@ -379,7 +377,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const favoriteIds = useFavoriteIds();
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies(deferProgramData, {
-    fullCatalog: needsFullMovieCatalog,
+    /** Αρχική: πάντα lean catalog — όχι full populate (cast κ.λπ.) που φουσκώνει TBT. */
+    fullCatalog: false,
   });
   const { data: showtimes, isPending: showtimesPending, isFetching: showtimesFetching, isError: showtimesError } = useShowtimes(
     needsShowtimes && deferProgramData,

@@ -539,6 +539,8 @@ async function createProgramTextShowtimes(
     weekMode = 'target',
     importTracePrefix = 'Εισαγωγή προγράμματος (admin)',
     applyVenueStatus = true,
+    /** Μόνο Athinorama sync επιτρέπεται να βάλει complete σε χώρους με athinorama_link. */
+    allowAthinoramaComplete = false,
   } = {},
 ) {
   const venue = await loadVenue(strapi, venueId);
@@ -740,7 +742,7 @@ async function createProgramTextShowtimes(
         weekFailed: summary.weekFailed,
         unmatchedMovies: meta.unmatchedMovies,
       },
-      { importMeta: meta, now },
+      { importMeta: meta, now, allowAthinoramaComplete },
     );
   }
 

@@ -1800,12 +1800,11 @@ export const api = {
       fetchAPIPagedEntries("/movies", { ...MOVIE_PUBLIC_POPULATE }),
     ]).then(([catalog, rows]) => rows.map((x) => mapMovie(x, catalog.hydrate, catalog.linkIndex))),
 
-  /** Ελαφρύτερο payload για αρχική όταν δεν χρειάζονται new/soon/week sections. */
+  /** Ελαφρύτερο payload για αρχική — χωρίς cast · χωρίς ξεχωριστό /movie-genres (είδη από populate). */
   getMoviesForHome: () =>
-    Promise.all([
-      fetchMovieGenreCatalog(),
-      fetchAPIPagedEntries("/movies", { ...MOVIE_HOME_LIST_POPULATE }),
-    ]).then(([catalog, rows]) => rows.map((x) => mapMovie(x, catalog.hydrate, catalog.linkIndex))),
+    fetchAPIPagedEntries("/movies", { ...MOVIE_HOME_LIST_POPULATE }).then((rows) =>
+      rows.map((x) => mapMovie(x)),
+    ),
 
   getMovieBySlug: (slug: string) =>
     Promise.all([
