@@ -44,6 +44,8 @@ interface EventCardProps {
   darkSectionCard?: boolean;
   /** Πρώτες ορατές αφίσες — LCP / image delivery */
   posterPriority?: boolean;
+  /** Eager χωρίς high priority — horizontal scroll όπου το native lazy συχνά δεν φορτώνει */
+  posterEager?: boolean;
   /** Θέατρο: εύρος τιμών (π.χ. «12 – 18 €»). */
   theaterPriceLine?: string;
   /** Θέατρο: σύντομο πρόγραμμα (π.χ. «Τετ 19:00 · Πέμ 20:30»). */
@@ -78,6 +80,7 @@ const EventCard = ({
   compactMovieMeta = false,
   darkSectionCard = false,
   posterPriority = false,
+  posterEager = false,
   theaterPriceLine,
   theaterScheduleLine,
   seen = false,
@@ -171,7 +174,7 @@ const EventCard = ({
               width={landscapePoster ? 520 : 400}
               height={landscapePoster ? 390 : 600}
               fit={landscapePoster ? "contain" : "cover"}
-              loading={posterPriority ? "eager" : "lazy"}
+              loading={posterPriority || posterEager ? "eager" : "lazy"}
               fetchPriority={posterPriority ? "high" : undefined}
               sizes={
                 landscapePoster

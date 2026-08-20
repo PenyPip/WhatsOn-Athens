@@ -134,7 +134,6 @@ function MovieRowScroll({
   moviesMoreHref,
   moviesMoreLabel = "Δες όλες →",
   nextShowtimeLabels,
-  allowPosterNetwork = true,
   layout = "scroll",
   summerScreeningOnPoster = false,
 }: {
@@ -151,14 +150,18 @@ function MovieRowScroll({
   moviesMoreHref?: string;
   moviesMoreLabel?: string;
   nextShowtimeLabels?: Map<number, string>;
-  /** Mobile: καθυστέρηση poster src μέχρι spa-lcp-done — αποφεύγει LCP steal, όχι αιώνια κενά. */
-  allowPosterNetwork?: boolean;
   layout?: "scroll" | "grid";
   /** Ετικέτα «Θερινό» πάνω δεξιά στην αφίσα (ενότητα θερινών προβολών). */
   summerScreeningOnPoster?: boolean;
 }) {
   const cardFor = (movie: StrapiMovie, i: number, className: string) => {
     const tl = movieTitleLines(movie);
+    /**
+     * Horizontal scroll + loading=lazy συχνά δεν φορτώνει αφίσες (IO root = viewport).
+     * Cap ≤10/12 — eager για ορατές· high μόνο στις 2 πρώτες (LCP).
+     */
+    const posterPriority = i < 2;
+    const posterEager = layout === "scroll" || i < 6;
     return (
       <EventCard
         slug={movie.slug}
@@ -168,15 +171,16 @@ function MovieRowScroll({
         genre=""
         duration={movie.duration}
         imdbRating={resolveImdbRating(movie)}
-        posterUrl={allowPosterNetwork ? movie.posterUrl : undefined}
-        posterSrcSet={allowPosterNetwork ? movie.posterSrcSet : undefined}
+        posterUrl={movie.posterUrl}
+        posterSrcSet={movie.posterSrcSet}
         type="movie"
         isDubbed={movie.isDubbed}
         summerScreening={summerScreeningOnPoster}
         uniformMovieSizing
         compactMovieMeta
         index={i}
-        posterPriority={allowPosterNetwork && i < 4}
+        posterPriority={posterPriority}
+        posterEager={posterEager}
         className={className}
       />
     );
@@ -371,8 +375,6 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const deferHomeExtra = idleAfterLcp;
   /** Mobile: αναβολή catalog/API μέχρι το static LCP — λιγότερο TBT στο πρώτο paint. */
   const deferProgramData = !isMobile || deferSecondary;
-  /** Mobile: posters μετά spa-lcp-done (όχι layout-done) — αλλιώς μένουν κενές πολύ ώρα. */
-  const allowHomePosterNetwork = !isMobile || deferSecondary;
   const favoriteIds = useFavoriteIds();
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies(deferProgramData, {
@@ -562,7 +564,6 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 moviesMoreHref={moviesSectionPath("today")}
                 moviesMoreLabel="Όλες οι ταινίες σήμερα →"
                 nextShowtimeLabels={nextShowtimeLabels}
-                allowPosterNetwork={allowHomePosterNetwork}
               />,
             );
           case "summer_cinema":
@@ -582,7 +583,6 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 moviesMoreHref={moviesSectionPath("summer")}
                 moviesMoreLabel="Όλα τα θερινά →"
                 nextShowtimeLabels={nextShowtimeLabels}
-                allowPosterNetwork={allowHomePosterNetwork}
                 summerScreeningOnPoster
               />,
             );
@@ -735,7 +735,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               darkSectionCard
                               className="w-[15rem] md:w-[17rem]"
                               index={i}
-                              posterPriority={i < 3}
+                              posterPriority={i < 2}
+                              posterEager
                             />
                           </li>
                         ))}
@@ -770,7 +771,6 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 moviesMoreHref={moviesSectionPath("new")}
                 moviesMoreLabel="Όλες οι νέες ταινίες →"
                 nextShowtimeLabels={nextShowtimeLabels}
-                allowPosterNetwork={allowHomePosterNetwork}
               />,
             );
           case "new_articles":
@@ -976,7 +976,6 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 moviesMoreHref={moviesSectionPath("week")}
                 moviesMoreLabel="Όλο το πρόγραμμα εβδομάδας →"
                 nextShowtimeLabels={nextShowtimeLabels}
-                allowPosterNetwork={allowHomePosterNetwork}
               />,
             );
           case "coming_soon":
@@ -994,7 +993,6 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 moviesMoreHref={moviesSectionPath("soon")}
                 moviesMoreLabel="Όλες οι προσεχείς →"
                 nextShowtimeLabels={nextShowtimeLabels}
-                allowPosterNetwork={allowHomePosterNetwork}
               />,
             );
           case "dining":
