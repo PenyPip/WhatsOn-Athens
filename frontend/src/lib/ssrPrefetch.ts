@@ -81,8 +81,9 @@ async function prefetchHomeBundle(qc: QueryClient) {
   }
   await Promise.all(tasks);
   finalizeBootstrapCache(qc, {
+    /** Μην κόβεις movies στο home — αλλιώς stubs χωρίς posterUrl (κενές αφίσες). */
     trimHomeShowtimes: true,
-    trimHomeMovies: true,
+    trimHomeMovies: false,
     slimHomepage: true,
   });
 }

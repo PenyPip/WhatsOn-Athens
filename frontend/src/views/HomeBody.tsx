@@ -385,6 +385,15 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     needsShowtimes && deferProgramData,
     undefined,
   );
+
+  /**
+   * Παλιά builds έκοβαν το movies bootstrap σε ~5 εγγραφές· με staleTime 6h δεν ξαναφορτώνει.
+   * Μετά LCP: πλήρες getMoviesForHome ώστε όλες οι κάρτες να έχουν posterUrl.
+   */
+  useEffect(() => {
+    if (!deferProgramData) return;
+    void queryClient.refetchQueries({ queryKey: ["movies"] });
+  }, [deferProgramData, queryClient]);
   const awaitingMovies = movies === undefined && (moviesPending || !deferProgramData);
   const awaitingShowtimes = showtimes === undefined && (showtimesPending || !deferProgramData);
   /**

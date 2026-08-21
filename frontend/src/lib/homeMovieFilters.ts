@@ -259,9 +259,16 @@ function moviesFromShowtimesOrdered(
               st.movieGenreSlugs && st.movieGenreSlugs.length > 0 ? st.movieGenreSlugs : merged.genreSlugs,
           };
         }
+        if (!merged.posterUrl?.trim() && st.moviePosterUrl?.trim()) {
+          merged = { ...merged, posterUrl: st.moviePosterUrl.trim() };
+        }
+        if (!merged.posterUrl?.trim()) return null;
         return merged;
       }
-      return movieStubFromShowtime(slug, st);
+      const stub = movieStubFromShowtime(slug, st);
+      // Χωρίς αφίσα στο catalog/stub → κενό κουτί στην αρχική· παράλειψε μέχρι να φορτώσει catalog.
+      if (!stub?.posterUrl?.trim()) return null;
+      return stub;
     })
     .filter((m): m is StrapiMovie => Boolean(m));
 

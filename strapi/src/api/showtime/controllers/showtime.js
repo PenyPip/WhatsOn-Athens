@@ -63,6 +63,7 @@ const SHOWTIME_POPULATE = {
 const HOME_SHOWTIME_POPULATE = {
   movie: {
     fields: ['id', 'slug', 'title'],
+    populate: { poster: { fields: ['url', 'formats'] } },
   },
   venue: {
     fields: ['id', 'slug', 'summer_outdoor'],
@@ -104,11 +105,23 @@ function slimHomeCalendarRows(rows) {
     if (row.week_end) out.week_end = row.week_end;
     if (row.summer_screening) out.summer_screening = true;
     if (m) {
-      out.movie = {
+      const movie = {
         id: m.id,
         slug: m.slug,
         title: m.title,
       };
+      const poster = m.poster && typeof m.poster === 'object' ? m.poster : null;
+      if (poster) {
+        const formats = poster.formats && typeof poster.formats === 'object' ? poster.formats : null;
+        const small =
+          (formats?.small && formats.small.url) ||
+          (formats?.thumbnail && formats.thumbnail.url) ||
+          poster.url;
+        if (typeof small === 'string' && small.trim()) {
+          movie.poster = { url: small.trim() };
+        }
+      }
+      out.movie = movie;
     }
     if (v) {
       out.venue = { id: v.id, slug: v.slug };
