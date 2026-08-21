@@ -157,11 +157,11 @@ function MovieRowScroll({
   const cardFor = (movie: StrapiMovie, i: number, className: string) => {
     const tl = movieTitleLines(movie);
     /**
-     * Horizontal scroll + loading=lazy συχνά δεν φορτώνει αφίσες (IO root = viewport).
-     * Cap ≤10/12 — eager για ορατές· high μόνο στις 2 πρώτες (LCP).
+     * Όλες οι ορατές κάρτες αρχικής: eager (cap ≤10/12).
+     * Native lazy μέσα σε overflow-x / κάτω από fold συχνά δεν φορτώνει ποτέ.
+     * high μόνο στις 2 πρώτες — χωρίς LCP steal από δεκάδες high.
      */
     const posterPriority = i < 2;
-    const posterEager = layout === "scroll" || i < 6;
     return (
       <EventCard
         slug={movie.slug}
@@ -180,7 +180,7 @@ function MovieRowScroll({
         compactMovieMeta
         index={i}
         posterPriority={posterPriority}
-        posterEager={posterEager}
+        posterEager
         className={className}
       />
     );
@@ -814,7 +814,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                     </span>
                     <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Νέα άρθρα</h2>
                     <ul className="mt-6 grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Νέα άρθρα">
-                      {latestArticles.map((article) => (
+                      {latestArticles.map((article, i) => (
                         <li key={`${article.id}-${article.slug}`}>
                           <Link
                             to={`/articles/${article.slug}`}
@@ -831,7 +831,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                                 src={article.featuredImageUrl}
                                 alt={article.featuredImageAlt || article.title}
                                 className="h-16 w-16 shrink-0 rounded-lg object-cover md:h-[4.5rem] md:w-[4.5rem]"
-                                loading="lazy"
+                                loading={i < 6 ? "eager" : "lazy"}
                                 width={72}
                                 height={72}
                               />
@@ -906,7 +906,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                     </span>
                     <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Events</h2>
                     <ul className="mt-6 grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Events">
-                      {latestEvents.map((event) => (
+                      {latestEvents.map((event, i) => (
                         <li key={`${event.id}-${event.slug}`}>
                           <Link
                             to={eventPath(event.slug)}
@@ -917,7 +917,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                                 src={event.posterUrl}
                                 alt={eventDisplayTitle(event)}
                                 className="h-24 w-16 shrink-0 rounded-md object-cover ring-1 ring-border/40"
-                                loading="lazy"
+                                loading={i < 6 ? "eager" : "lazy"}
                               />
                             ) : null}
                             <div className="min-w-0 flex-1">
@@ -1026,7 +1026,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                       key={r.id}
                       className="min-w-[220px] max-w-[220px] md:min-w-[260px] md:max-w-[260px] flex-shrink-0"
                     >
-                      <RestaurantCard restaurant={r} index={i} />
+                      <RestaurantCard restaurant={r} index={i} eager />
                     </div>
                   ))}
                 </HorizontalScroll>

@@ -6,7 +6,15 @@ import type { StrapiRestaurant } from "@/lib/api";
 import { restaurantAreaLine } from "@/lib/restaurantLinks";
 import { POSTER_BADGE_CORNER_TOP_LEFT, POSTER_BADGE_TOP_LEFT } from "@/lib/posterBadges";
 
-const RestaurantCard = ({ restaurant }: { restaurant: StrapiRestaurant; index?: number }) => {
+const RestaurantCard = ({
+  restaurant,
+  eager = false,
+}: {
+  restaurant: StrapiRestaurant;
+  index?: number;
+  /** Αρχική horizontal scroll — native lazy συχνά δεν φορτώνει. */
+  eager?: boolean;
+}) => {
   const isNew = restaurant.isNew;
 
   return (
@@ -27,7 +35,8 @@ const RestaurantCard = ({ restaurant }: { restaurant: StrapiRestaurant; index?: 
               alt={restaurant.name}
               width={640}
               height={480}
-              loading="lazy"
+              loading={eager ? "eager" : "lazy"}
+              fetchPriority={eager ? "auto" : undefined}
               sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 320px"
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
             />

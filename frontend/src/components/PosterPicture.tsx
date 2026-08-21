@@ -73,10 +73,22 @@ export default function PosterPicture({
     return (
       <picture className={pictureClass}>
         <source type="image/webp" srcSet={webpSrcSet ?? webpSrc} sizes={sizes} />
-        <img alt={alt} src={fallbackSrc} srcSet={fallbackSrcSet} {...imgProps} />
+        <img
+          {...imgProps}
+          alt={alt}
+          src={fallbackSrc}
+          {...(fallbackSrcSet ? { srcSet: fallbackSrcSet } : {})}
+        />
       </picture>
     );
   }
 
-  return <img alt={alt} src={fallbackSrc} srcSet={fallbackSrcSet ?? srcSet ?? undefined} {...imgProps} />;
+  return (
+    <img
+      {...imgProps}
+      alt={alt}
+      src={fallbackSrc}
+      {...(fallbackSrcSet || srcSet ? { srcSet: fallbackSrcSet ?? srcSet ?? undefined } : {})}
+    />
+  );
 }

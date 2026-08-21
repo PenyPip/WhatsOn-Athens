@@ -144,6 +144,8 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
                           posterSrcSet={catalog?.posterSrcSet}
                           isDubbed={catalog?.isDubbed ?? pm.isDubbed}
                           type="movie"
+                          compactMovieMeta
+                          posterEager
                           seen={seenMovieIds.has(pm.id)}
                         />
                       </div>

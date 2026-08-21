@@ -101,6 +101,8 @@ const EventCard = ({
   const genreTrimmed = typeof genre === "string" ? genre.trim() : "";
   const isMovie = type === "movie";
   const isTheater = type === "theater";
+  /** Αρχική (compact) + horizontal scroll: ποτέ native lazy — αλλιώς μένουν κενές αφίσες. */
+  const useEagerPoster = posterPriority || posterEager || compactMovieMeta;
   const soldOutBadge = typeof badge === "string" && badge.trim().toUpperCase() === "SOLD OUT";
   const newPerformancesBadge =
     typeof badge === "string" && badge.trim().toLocaleLowerCase("el") === "νέες παραστάσεις";
@@ -174,8 +176,8 @@ const EventCard = ({
               width={landscapePoster ? 520 : 400}
               height={landscapePoster ? 390 : 600}
               fit={landscapePoster ? "contain" : "cover"}
-              loading={posterPriority || posterEager ? "eager" : "lazy"}
-              fetchPriority={posterPriority ? "high" : undefined}
+              loading={useEagerPoster ? "eager" : "lazy"}
+              fetchPriority={posterPriority ? "high" : useEagerPoster ? "auto" : undefined}
               sizes={
                 landscapePoster
                   ? "(max-width: 640px) 82vw, (max-width: 1024px) 42vw, 360px"
