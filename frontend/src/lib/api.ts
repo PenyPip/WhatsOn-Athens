@@ -1109,33 +1109,39 @@ function mapHomeCalendarShowtime(rawS: any): StrapiShowtime[] {
   const weekEnd =
     typeof s.week_end === "string" && s.week_end.trim() ? s.week_end.trim().slice(0, 10) : undefined;
   const summerScreening = s.summer_screening === true || s.summer_screening === "true";
-  return [
-    {
-      id: String(s.id ?? ""),
-      documentId: typeof s.documentId === "string" ? s.documentId : String(s.id ?? ""),
-      datetime: String(s.datetime),
-      scheduleKind,
-      weekEnd,
-      venue: "",
-      venueId: venueId ?? undefined,
-      venueSlug:
-        typeof (venue as { slug?: string } | null)?.slug === "string"
-          ? (venue as { slug: string }).slug
-          : undefined,
-      summerScreening,
-      venueSummerOutdoor: Boolean((venue as { summer_outdoor?: boolean } | null)?.summer_outdoor),
-      availableSeats: 0,
-      movieId: movieId ?? undefined,
-      movieSlug:
-        typeof (movie as { slug?: string } | null)?.slug === "string"
-          ? (movie as { slug: string }).slug
-          : undefined,
-      movieTitle:
-        typeof (movie as { title?: string } | null)?.title === "string"
-          ? (movie as { title: string }).title
-          : undefined,
-    },
-  ];
+  const venueSummerOutdoor = Boolean((venue as { summer_outdoor?: boolean } | null)?.summer_outdoor);
+  const movieSlug =
+    typeof (movie as { slug?: string } | null)?.slug === "string"
+      ? (movie as { slug: string }).slug
+      : undefined;
+  const movieTitle =
+    typeof (movie as { title?: string } | null)?.title === "string"
+      ? (movie as { title: string }).title
+      : undefined;
+  const venueSlug =
+    typeof (venue as { slug?: string } | null)?.slug === "string"
+      ? (venue as { slug: string }).slug
+      : undefined;
+
+  const row: StrapiShowtime = {
+    id: String(s.id ?? ""),
+    documentId: "",
+    datetime: String(s.datetime),
+    venue: "",
+    availableSeats: 0,
+    summerScreening,
+    venueSummerOutdoor,
+  };
+  if (scheduleKind === "week_block") {
+    row.scheduleKind = "week_block";
+    if (weekEnd) row.weekEnd = weekEnd;
+  }
+  if (venueId != null) row.venueId = venueId;
+  if (venueSlug) row.venueSlug = venueSlug;
+  if (movieId != null) row.movieId = movieId;
+  if (movieSlug) row.movieSlug = movieSlug;
+  if (movieTitle) row.movieTitle = movieTitle;
+  return [row];
 }
 
 function mapTheaterPerformance(raw: unknown): StrapiTheaterPerformance[] {
@@ -1741,7 +1747,8 @@ function upcomingShowtimeFilters(now = new Date()): Record<string, string> {
 async function fetchShowtimesCalendar(): Promise<StrapiShowtime[]> {
   const rows = await fetchAPI<any[]>(
     "/showtimes/home-calendar",
-    { weeks: "1" },
+    /** Χωρίς weeks → όλες οι επερχόμενες προβολές από το CMS. */
+    {},
     { noPopulate: true, noStore: true },
   );
   return (Array.isArray(rows) ? rows : []).flatMap((x) => mapHomeCalendarShowtime(x));

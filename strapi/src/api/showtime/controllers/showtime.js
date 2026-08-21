@@ -30,9 +30,8 @@ function upcomingShowtimeFilters(now = new Date(), horizonDays) {
   if (horizonDays == null || !Number.isFinite(horizonDays) || horizonDays <= 0) {
     return upcoming;
   }
-  // Με horizon: week_block μόνο αν το block αγγίζει το παράθυρο (όχι όλα τα ανοιχτά blocks).
+  // Με horizon: week_block αν επικαλύπτει το παράθυρο (όχι μόνο αν τελειώνει μέσα σε αυτό).
   const horizon = new Date(now.getTime() + horizonDays * 24 * 60 * 60 * 1000);
-  const horizonKey = todayAthensKey(horizon);
   return {
     $and: [
       upcoming,
@@ -41,7 +40,8 @@ function upcomingShowtimeFilters(now = new Date(), horizonDays) {
           { datetime: { $lte: horizon.toISOString() } },
           {
             schedule_kind: 'week_block',
-            week_end: { $gte: todayKey, $lte: horizonKey },
+            week_end: { $gte: todayKey },
+            datetime: { $lte: horizon.toISOString() },
           },
         ],
       },
@@ -139,19 +139,21 @@ module.exports = createCoreController('api::showtime.showtime', ({ strapi }) => 
     ctx.body = { data: rows };
   },
 
-  /** Ελαφρύ πρόγραμμα για αρχική / ταινίες — default 1 εβδομάδα (TBT / bootstrap). */
+  /** Ελαφρύ πρόγραμμα για αρχική / ταινίες — όλες οι επερχόμενες (χωρίς κόψιμο εβδομάδων). */
   async homeCalendar(ctx) {
     const now = new Date();
     const weeksRaw = Number(ctx.query?.weeks);
-    const weeks = Number.isFinite(weeksRaw) && weeksRaw > 0 ? Math.min(weeksRaw, 12) : 1;
-    const horizonDays = weeks * 7;
+    /** Optional: ?weeks=N για προσωρινό horizon· χωρίς / ≤0 → όλες οι επερχόμενες. */
+    const weeks =
+      Number.isFinite(weeksRaw) && weeksRaw > 0 ? Math.min(weeksRaw, 52) : null;
+    const horizonDays = weeks != null ? weeks * 7 : null;
     const rows = await strapi.entityService.findMany('api::showtime.showtime', {
       filters: upcomingShowtimeFilters(now, horizonDays),
       fields: HOME_SHOWTIME_FIELDS,
       populate: HOME_SHOWTIME_POPULATE,
       sort: ['datetime:asc'],
       publicationState: 'preview',
-      limit: 1000,
+      limit: 5000,
     });
 
     ctx.body = { data: slimHomeCalendarRows(rows) };

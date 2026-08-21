@@ -9,7 +9,6 @@ import type {
   StrapiVenue,
 } from "@/lib/api";
 import { SHOWTIMES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
-import { showtimeIsUpcoming } from "@/lib/homeMovieFilters";
 
 const SHOWTIME_CACHE_KEYS: readonly (readonly [string, ...string[]])[] = [
   SHOWTIMES_CALENDAR_QUERY_KEY,
@@ -27,30 +26,38 @@ function readShowtimesCaches(qc: QueryClient): { key: readonly [string, ...strin
 }
 
 function slimShowtimeRows(rows: StrapiShowtime[]): StrapiShowtime[] {
-  return rows.map((st) => ({
-    id: st.id,
-    datetime: st.datetime,
-    scheduleKind: st.scheduleKind,
-    weekEnd: st.weekEnd,
-    venueId: st.venueId,
-    venueSlug: st.venueSlug,
-    venue: st.venue,
-    hallId: st.hallId,
-    hallName: st.hallName,
-    movieId: st.movieId,
-    movieSlug: st.movieSlug,
-    movieTitle: st.movieTitle,
-    movieGenre: st.movieGenre,
-    movieGenreSlugs: st.movieGenreSlugs,
-    moviePosterUrl: st.moviePosterUrl,
-    movieDuration: st.movieDuration,
-    movieImdbRating: st.movieImdbRating,
-    movieIsDubbed: st.movieIsDubbed,
-    summerScreening: st.summerScreening,
-    venueSummerOutdoor: st.venueSummerOutdoor,
-    price: st.price,
-    priceStudent: st.priceStudent,
-  })) as StrapiShowtime[];
+  return rows.map((st) => {
+    const row: StrapiShowtime = {
+      id: st.id,
+      documentId: st.documentId ?? "",
+      datetime: st.datetime,
+      venue: st.venue ?? "",
+      availableSeats: st.availableSeats ?? 0,
+      summerScreening: Boolean(st.summerScreening),
+      venueSummerOutdoor: Boolean(st.venueSummerOutdoor),
+    };
+    if (st.scheduleKind && st.scheduleKind !== "exact") {
+      row.scheduleKind = st.scheduleKind;
+      if (st.weekEnd) row.weekEnd = st.weekEnd;
+    }
+    if (st.venueId != null) row.venueId = st.venueId;
+    if (st.venueSlug) row.venueSlug = st.venueSlug;
+    if (st.movieId != null) row.movieId = st.movieId;
+    if (st.movieSlug) row.movieSlug = st.movieSlug;
+    if (st.movieTitle) row.movieTitle = st.movieTitle;
+    if (st.movieGenre) row.movieGenre = st.movieGenre;
+    if (st.movieGenreSlugs?.length) row.movieGenreSlugs = st.movieGenreSlugs;
+    if (st.hallId != null) row.hallId = st.hallId;
+    if (st.hallName) row.hallName = st.hallName;
+    if (st.moviePosterUrl) row.moviePosterUrl = st.moviePosterUrl;
+    if (st.moviePosterSrcSet) row.moviePosterSrcSet = st.moviePosterSrcSet;
+    if (st.movieDuration != null) row.movieDuration = st.movieDuration;
+    if (st.movieImdbRating != null) row.movieImdbRating = st.movieImdbRating;
+    if (st.movieIsDubbed) row.movieIsDubbed = true;
+    if (st.price != null) row.price = st.price;
+    if (st.priceStudent != null) row.priceStudent = st.priceStudent;
+    return row;
+  });
 }
 
 function slimMoviesShowtimes(qc: QueryClient): void {
@@ -164,9 +171,6 @@ export function slimListQueryCache(qc: QueryClient): void {
   slimMoviesShowtimes(qc);
 }
 
-/** Bootstrap αρχικής: προβολές επόμενων 10 ημερών (αρκετό για home sections + μικρότερο HTML). */
-const HOME_SHOWTIME_HORIZON_MS = 10 * 24 * 60 * 60 * 1000;
-
 /** Μικρότερο `#__RQ_STATE__` — λιγότερο JSON.parse στην αρχική (TBT). */
 export function minifyDehydratedState(state: DehydratedState): DehydratedState {
   return {
@@ -225,21 +229,9 @@ export function trimMovieSynopsesForHomeBootstrap(qc: QueryClient): void {
   );
 }
 
-/** Λιγότερες εγγραφές showtimes στο bootstrap αρχικής. */
-export function trimHomeShowtimesDehydrate(qc: QueryClient): void {
-  const showtimes =
-    qc.getQueryData<StrapiShowtime[]>(SHOWTIMES_CALENDAR_QUERY_KEY) ??
-    qc.getQueryData<StrapiShowtime[]>(["showtimes", "home"]);
-  if (!showtimes?.length) return;
-  const now = Date.now();
-  const until = now + HOME_SHOWTIME_HORIZON_MS;
-  const trimmed = showtimes.filter((st) => {
-    if (!showtimeIsUpcoming(st, new Date(now))) return false;
-    const t = Date.parse(st.datetime);
-    return !Number.isFinite(t) || t <= until;
-  });
-  qc.setQueryData(SHOWTIMES_CALENDAR_QUERY_KEY, trimmed);
-  qc.setQueryData(["showtimes", "home"], trimmed);
+/** Bootstrap: ΜΗΝ κόβεις showtimes με date horizon — staleTime 6h + refetchOnMount:false κρύβει προβολές. */
+export function trimHomeShowtimesDehydrate(_qc: QueryClient): void {
+  /* no-op — πλήρες slim calendar· PageSpeed μέσω slim rows + home χωρίς showtimes στο RQ HTML */
 }
 
 /** Μόνο προβολές μίας ταινίας στο bootstrap σελίδας λεπτομέρειας. */
