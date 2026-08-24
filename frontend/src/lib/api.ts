@@ -783,6 +783,7 @@ function mapArticle(raw: unknown): StrapiArticle {
     articleType,
     featuredImageAlt: typeof r.featured_image_alt === "string" ? r.featured_image_alt : "",
     featuredImageUrl: strapiMediaUrl(r.featured_image, "medium") ?? undefined,
+    featuredImageThumbUrl: strapiMediaUrl(r.featured_image, "small") ?? undefined,
     relatedMovie: mapArticleTitleSlugRef(r.related_movie, "title"),
     relatedTheaterShow: mapArticleTitleSlugRef(r.related_theater_show, "title"),
     relatedEvent: unwrapStrapiRelationNode(r.related_event)
@@ -832,6 +833,7 @@ function mapEvent(raw: unknown): StrapiEvent {
     editorialNoteEl: typeof r.editorial_note_el === "string" ? r.editorial_note_el.trim() : "",
     editorialNoteEn: typeof r.editorial_note_en === "string" ? r.editorial_note_en.trim() : "",
     posterUrl,
+    posterThumbUrl: strapiMediaUrl(r.poster, "small") ?? posterUrl,
     posterSrcSet: posterVariants?.srcSet,
     startDate: typeof r.start_date === "string" ? r.start_date : "",
     endDate: typeof r.end_date === "string" ? r.end_date : "",
@@ -1449,6 +1451,7 @@ export interface StrapiArticle {
     | "politistiko_keimeno";
   featuredImageAlt: string;
   featuredImageUrl?: string;
+  featuredImageThumbUrl?: string;
   relatedMovie?: {
     title: string;
     slug: string;
@@ -1545,6 +1548,7 @@ export interface StrapiEvent {
   editorialNoteEl: string;
   editorialNoteEn: string;
   posterUrl?: string;
+  posterThumbUrl?: string;
   posterSrcSet?: string;
   startDate: string;
   endDate: string;

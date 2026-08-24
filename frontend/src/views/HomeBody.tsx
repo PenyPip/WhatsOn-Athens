@@ -387,13 +387,15 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   );
 
   /**
-   * Παλιά builds έκοβαν το movies bootstrap σε ~5 εγγραφές· με staleTime 6h δεν ξαναφορτώνει.
-   * Μετά LCP: πλήρες getMoviesForHome ώστε όλες οι κάρτες να έχουν posterUrl.
+   * Healing μόνο για παλιά broken bootstraps (~5 ταινίες χωρίς αρκετές αφίσες).
+   * Μην κάνεις refetch σε κάθε load: χτυπάει TBT/CLS και διπλασιάζει το `/api/movies`.
    */
   useEffect(() => {
     if (!deferProgramData) return;
+    const currentCount = movies?.length ?? 0;
+    if (currentCount >= 12) return;
     void queryClient.refetchQueries({ queryKey: ["movies"] });
-  }, [deferProgramData, queryClient]);
+  }, [deferProgramData, movies?.length, queryClient]);
   const awaitingMovies = movies === undefined && (moviesPending || !deferProgramData);
   const awaitingShowtimes = showtimes === undefined && (showtimesPending || !deferProgramData);
   /**
@@ -837,7 +839,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                           >
                             {article.featuredImageUrl ? (
                               <img
-                                src={article.featuredImageUrl}
+                                src={article.featuredImageThumbUrl || article.featuredImageUrl}
                                 alt={article.featuredImageAlt || article.title}
                                 className="h-16 w-16 shrink-0 rounded-lg object-cover md:h-[4.5rem] md:w-[4.5rem]"
                                 loading={i < 6 ? "eager" : "lazy"}
@@ -923,7 +925,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                           >
                             {event.posterUrl ? (
                               <img
-                                src={event.posterUrl}
+                                src={event.posterThumbUrl || event.posterUrl}
                                 alt={eventDisplayTitle(event)}
                                 className="h-24 w-16 shrink-0 rounded-md object-cover ring-1 ring-border/40"
                                 loading={i < 6 ? "eager" : "lazy"}
