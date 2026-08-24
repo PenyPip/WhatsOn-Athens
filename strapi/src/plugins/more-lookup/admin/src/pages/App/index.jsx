@@ -1157,7 +1157,8 @@ function UnmatchedTitlesPanel({
       </Typography>
       <Typography variant="pi" textColor="neutral700" paddingTop={2} paddingBottom={3}>
         Ίδια λογική με την ταύτιση: πρόταση με score, ή διάλεξε από CMS και πάτα «Σύνδεση».
-        Γράφει το More eventId στην ταινία· ξανατρέξε sync για να μπουν οι προβολές.
+        Αποθηκεύει alias τίτλου (+ eventId) στην ταινία· στο επόμενο sync μπαίνουν και νέες
+        προβολές του ίδιου έργου, όχι μόνο τα συγκεκριμένα eventId.
       </Typography>
       <Flex direction="column" gap={3} alignItems="stretch">
         {rows.slice(0, 40).map((raw) => {
@@ -1175,7 +1176,7 @@ function UnmatchedTitlesPanel({
               ? [row.eventId]
               : [];
           const playId = row.playId || row.playIds?.[0] || null;
-          const canLink = eventIds.length > 0 || Boolean(playId);
+          const canLink = eventIds.length > 0 || Boolean(playId) || Boolean(title);
           const suggestions = row.suggestions || [];
           const suggested = row.suggestedContent || suggestions[0] || null;
           const pick = picks[key] || '';
@@ -2019,10 +2020,10 @@ const App = () => {
           ? [row.eventId]
           : [];
       const playId = row.playId || row.playIds?.[0] || null;
-      if (!eventIds.length && !playId) {
+      if (!eventIds.length && !playId && !(row.playTitle || '').trim()) {
         toggleNotification({
           type: 'warning',
-          message: 'Χωρίς More eventId/playId — δεν γίνεται σύνδεση από εδώ.',
+          message: 'Χωρίς More eventId/playId/τίτλο — δεν γίνεται σύνδεση από εδώ.',
         });
         return;
       }

@@ -3,8 +3,61 @@
 const MAX_EVENT_IDS_PER_ENTRY = Number(process.env.MORE_EVENT_ID_CACHE_MAX || 120);
 const MIN_SCORE_TO_PERSIST = Number(process.env.MORE_EVENT_ID_PERSIST_MIN_SCORE || 0.85);
 
+/** Synthetic keys στο eventId index — όχι πραγματικά More eventIds. */
+const PLAY_ID_EVENT_PREFIX = 'play:';
+const TITLE_ALIAS_EVENT_PREFIX = '__title:';
+
 function normalizeEventId(raw) {
   return String(raw ?? '').trim();
+}
+
+function unmatchedTitleKey(title) {
+  return String(title || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function playIdEventKey(playId) {
+  const id = normalizeEventId(playId);
+  if (!id || id.startsWith(PLAY_ID_EVENT_PREFIX)) return id || '';
+  return `${PLAY_ID_EVENT_PREFIX}${id}`;
+}
+
+function titleAliasEventKey(playTitle) {
+  const key = unmatchedTitleKey(playTitle);
+  return key ? `${TITLE_ALIAS_EVENT_PREFIX}${key}` : '';
+}
+
+function isSyntheticEventIdKey(eventId) {
+  const key = normalizeEventId(eventId);
+  return (
+    key.startsWith(PLAY_ID_EVENT_PREFIX) || key.startsWith(TITLE_ALIAS_EVENT_PREFIX)
+  );
+}
+
+/**
+ * Χειροκίνητη / cached ταύτιση τίτλου ή playId → CMS (όταν το auto title-match αποτυγχάνει).
+ */
+function lookupPersistedPlayAlias(eventIdIndex, { playTitle, playId } = {}) {
+  if (!eventIdIndex) return null;
+  const playKey = playIdEventKey(playId);
+  if (playKey) {
+    const byPlay = eventIdIndex.get(playKey);
+    if (byPlay) return byPlay;
+  }
+  const titleKey = titleAliasEventKey(playTitle);
+  if (titleKey) {
+    const byTitle = eventIdIndex.get(titleKey);
+    if (byTitle) return byTitle;
+  }
+  return null;
+}
+
+function registerTitleAlias(index, playTitle, mapping) {
+  const key = titleAliasEventKey(playTitle);
+  if (!key || !index || !mapping || index.has(key)) return;
+  index.set(key, { ...mapping, viaTitleAlias: true });
 }
 
 function createEventIdPersistQueue() {
@@ -46,15 +99,20 @@ function mergePersistedMovieRowsIntoIndex(rows, index) {
   let added = 0;
   for (const movie of rows || []) {
     const cached = movie.more_event_ids ?? movie.moreEventIds ?? [];
+    const mapping = {
+      movieId: movie.id,
+      movieTitle: movie.title,
+      viaPersisted: true,
+    };
     for (const row of cached) {
       const eventId = normalizeEventId(row.event_id ?? row.eventId);
-      if (!eventId || index.has(eventId)) continue;
-      index.set(eventId, {
-        movieId: movie.id,
-        movieTitle: movie.title,
-        viaPersisted: true,
-      });
-      added += 1;
+      const playTitle = String(row.play_title ?? row.playTitle ?? '').trim();
+      if (eventId && !index.has(eventId)) {
+        index.set(eventId, mapping);
+        added += 1;
+      }
+      // Σταθερό alias: νέα eventIds ίδιου τίτλου/play στο επόμενο sync → ίδια ταινία.
+      if (playTitle) registerTitleAlias(index, playTitle, mapping);
     }
   }
   return added;
@@ -64,15 +122,19 @@ function mergePersistedTheaterRowsIntoIndex(rows, index) {
   let added = 0;
   for (const show of rows || []) {
     const cached = show.more_event_ids ?? show.moreEventIds ?? [];
+    const mapping = {
+      theaterShowId: show.id,
+      showTitle: show.title,
+      viaPersisted: true,
+    };
     for (const row of cached) {
       const eventId = normalizeEventId(row.event_id ?? row.eventId);
-      if (!eventId || index.has(eventId)) continue;
-      index.set(eventId, {
-        theaterShowId: show.id,
-        showTitle: show.title,
-        viaPersisted: true,
-      });
-      added += 1;
+      const playTitle = String(row.play_title ?? row.playTitle ?? '').trim();
+      if (eventId && !index.has(eventId)) {
+        index.set(eventId, mapping);
+        added += 1;
+      }
+      if (playTitle) registerTitleAlias(index, playTitle, mapping);
     }
   }
   return added;
@@ -246,13 +308,15 @@ async function flushEventIdPersistQueue(strapi, queue, { onProgress } = {}) {
 }
 
 /**
- * Χειροκίνητη ταύτιση από sync report: γράφει eventIds στο more_event_ids
- * (χωρίς min score) ώστε το επόμενο sync να τα αναγνωρίζει.
+ * Χειροκίνητη ταύτιση από sync report: γράφει eventIds (+ προαιρετικά play:id)
+ * και play_title στο more_event_ids ώστε το επόμενο sync να αναγνωρίζει
+ * και νέα eventIds του ίδιου τίτλου/έργου.
  */
 async function linkEventIdsManually(strapi, {
   contentType = 'movie',
   cmsId,
   eventIds = [],
+  playId = '',
   playTitle = '',
 } = {}) {
   const id = Number(cmsId);
@@ -261,9 +325,17 @@ async function linkEventIdsManually(strapi, {
   if (!Number.isFinite(id)) {
     return { ok: false, error: 'Απαιτείται cmsId' };
   }
+
+  const title = String(playTitle || '').trim();
   const ids = [...new Set((eventIds || []).map((e) => normalizeEventId(e)).filter(Boolean))];
+  const syntheticPlay = playIdEventKey(playId);
+  if (syntheticPlay) ids.push(syntheticPlay);
+  // Χωρίς eventId/playId: σταθερό title-alias key ώστε να μείνει η χειροκίνητη ταύτιση.
+  if (!ids.length && title) {
+    ids.push(titleAliasEventKey(title));
+  }
   if (!ids.length) {
-    return { ok: false, error: 'Απαιτείται τουλάχιστον ένα eventId' };
+    return { ok: false, error: 'Απαιτείται τουλάχιστον ένα eventId, playId ή playTitle' };
   }
 
   const row = await strapi.entityService.findOne(uid, id, {
@@ -278,7 +350,7 @@ async function linkEventIdsManually(strapi, {
   const incoming = ids.map((eventId) => ({
     eventId,
     moreVenueId: '',
-    playTitle: String(playTitle || '').trim(),
+    playTitle: title,
   }));
   const next = mergeEventIdRows(existing, incoming);
   const already = ids.every((eventId) =>
@@ -292,6 +364,7 @@ async function linkEventIdsManually(strapi, {
   }
 
   const cmsTitle = row.title || row.name || `#${id}`;
+  const realEventCount = ids.filter((e) => !isSyntheticEventIdKey(e)).length;
   return {
     ok: true,
     alreadyLinked: already,
@@ -299,15 +372,26 @@ async function linkEventIdsManually(strapi, {
     cmsId: id,
     cmsTitle,
     eventIds: ids,
+    playId: syntheticPlay || null,
+    playTitle: title || null,
     message: already
-      ? `Τα eventId υπάρχουν ήδη στο «${cmsTitle}»`
-      : `Συνδέθηκαν ${ids.length} eventId → «${cmsTitle}». Ξανατρέξε sync για να μπουν οι προβολές.`,
+      ? `Η ταύτιση υπάρχει ήδη στο «${cmsTitle}»`
+      : `Συνδέθηκε «${title || ids[0]}» → «${cmsTitle}»` +
+        (realEventCount ? ` (${realEventCount} eventId)` : '') +
+        (title ? ' · alias τίτλου για επόμενα sync' : '') +
+        '. Ξανατρέξε sync για να μπουν οι προβολές.',
   };
 }
 
 module.exports = {
   MAX_EVENT_IDS_PER_ENTRY,
   MIN_SCORE_TO_PERSIST,
+  PLAY_ID_EVENT_PREFIX,
+  TITLE_ALIAS_EVENT_PREFIX,
+  playIdEventKey,
+  titleAliasEventKey,
+  isSyntheticEventIdKey,
+  lookupPersistedPlayAlias,
   createEventIdPersistQueue,
   loadPersistedCinemaEventIdsIntoIndex,
   loadPersistedTheaterEventIdsIntoIndex,

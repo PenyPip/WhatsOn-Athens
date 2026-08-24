@@ -317,8 +317,8 @@ module.exports = {
 
   /**
    * Χειροκίνητη ταύτιση τίτλου από sync report:
-   * - eventIds → more_event_ids (για το επόμενο sync προβολών)
-   * - προαιρετικά playId → more_event_groups (μόνιμος κωδικός όπως «Σύνδ.»)
+   * - eventIds + playTitle (+ play:id) → more_event_ids (alias για επόμενα sync)
+   * - μόνο πραγματικός evg_* playId → more_event_groups
    */
   async linkUnmatched(ctx) {
     const body = ctx.request.body ?? {};
@@ -332,15 +332,18 @@ module.exports = {
         ? [body.eventId]
         : [];
     const playId = String(body.playId || body.eventGroupCode || '').trim();
+    const isEventGroupCode = /^evg_/i.test(playId);
 
     try {
       const parts = [];
       let eventLink = null;
-      if (eventIds.length) {
+      // Πάντα more_event_ids όταν έχουμε eventIds / μη-evg playId / τίτλο (σταθερό alias).
+      if (eventIds.length || (playId && !isEventGroupCode) || playTitle) {
         eventLink = await linkEventIdsManually(strapi, {
           contentType,
           cmsId,
           eventIds,
+          playId: isEventGroupCode ? '' : playId,
           playTitle,
         });
         if (!eventLink.ok) {
@@ -352,7 +355,7 @@ module.exports = {
       }
 
       let groupLink = null;
-      if (playId) {
+      if (isEventGroupCode) {
         groupLink = await linkMoreCodeToCms(strapi, {
           contentType,
           cmsId,
@@ -369,14 +372,15 @@ module.exports = {
         ctx.status = 400;
         ctx.body = {
           ok: false,
-          error: { message: 'Απαιτείται eventId ή playId για σύνδεση' },
+          error: { message: 'Απαιτείται eventId, playId ή playTitle για σύνδεση' },
         };
         return;
       }
 
       strapi.log.info(
         `[more-lookup] link-unmatched by ${adminEmail} ${contentType} #${cmsId}` +
-          ` eventIds=${eventIds.join(',') || '—'} playId=${playId || '—'}`,
+          ` eventIds=${eventIds.join(',') || '—'} playId=${playId || '—'}` +
+          (isEventGroupCode ? ' (evg→more_event_groups)' : ' (alias→more_event_ids)'),
       );
 
       ctx.body = {

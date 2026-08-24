@@ -174,7 +174,8 @@ function collectEventGroupCodes(movie) {
 
   const add = (raw) => {
     const code = String(raw || '').trim();
-    if (!code || isVenueBundleCode(code) || seen.has(code)) return;
+    // Μόνο πραγματικοί More event-group κωδικοί — όχι scrape playId (αριθμός).
+    if (!code || !/^evg_/i.test(code) || isVenueBundleCode(code) || seen.has(code)) return;
     seen.add(code);
     codes.push(code);
   };

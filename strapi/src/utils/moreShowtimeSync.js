@@ -152,6 +152,7 @@ const {
   loadPersistedTheaterEventIdsIntoIndex,
   queueScrapeMappingForPersist,
   flushEventIdPersistQueue,
+  lookupPersistedPlayAlias,
 } = require('./moreEventIdPersist');
 const {
   createVenueSyncStatsTracker,
@@ -337,6 +338,7 @@ async function preloadCinemaBundleScrapeMappings({
     moviesForTitle,
     report,
     persistQueue,
+    eventIdIndex,
   );
   mergeSupplementalIntoEventIdIndex(supplementalIndex, eventIdIndex);
   if (venueStats) {
@@ -2079,7 +2081,7 @@ async function runBundleVenueScrapeRetry({
   }
 
   venueStats.scrapeEventCount = scrape.eventCount || 0;
-  indexMappingsFromScrape(scrape, supplementalIndex, titlePool, report, persistQueue);
+  indexMappingsFromScrape(scrape, supplementalIndex, titlePool, report, persistQueue, eventIdIndex);
   mergeSupplementalIntoEventIdIndex(supplementalIndex, eventIdIndex);
 
   for (const item of pending) {
@@ -2245,7 +2247,22 @@ async function resolveCinemaMovieFromEventId({
     return null;
   }
 
-  const match = findBestCmsMatchByPlayTitle(row.playTitle, moviesForTitle);
+  let match = findBestCmsMatchByPlayTitle(row.playTitle, moviesForTitle);
+  let viaManualAlias = false;
+  if (!match) {
+    const alias = lookupPersistedPlayAlias(eventIdIndex, {
+      playTitle: row.playTitle,
+      playId: row.playId,
+    });
+    if (alias?.movieId) {
+      match = {
+        cmsId: alias.movieId,
+        cmsTitle: alias.movieTitle,
+        score: 1,
+      };
+      viaManualAlias = true;
+    }
+  }
   if (!match) {
     recordUnmatchedPlayTitle(report, {
       playTitle: row.playTitle,
@@ -2262,12 +2279,16 @@ async function resolveCinemaMovieFromEventId({
     movieId: match.cmsId,
     movieTitle: match.cmsTitle,
     viaScrape: true,
+    viaManualAlias,
     playTitle: row.playTitle,
     matchScore: match.score,
   };
   supplementalIndex.set(key, mapped);
   queueScrapeMappingForPersist(persistQueue, 'movie', match.cmsId, key, mapped, null);
   report.resolvedViaVenueScrape = (report.resolvedViaVenueScrape || 0) + 1;
+  if (viaManualAlias) {
+    report.resolvedViaManualAlias = (report.resolvedViaManualAlias || 0) + 1;
+  }
   return mapped;
 }
 
@@ -2277,6 +2298,7 @@ function indexCinemaMappingsFromVenueScrape(
   moviesForTitle,
   report,
   persistQueue,
+  eventIdIndex = null,
 ) {
   if (!scrape?.ok || !scrape.byEventId?.size || !moviesForTitle?.length) return 0;
 
@@ -2286,8 +2308,25 @@ function indexCinemaMappingsFromVenueScrape(
   for (const [eventId, row] of scrape.byEventId) {
     const key = String(eventId ?? '').trim();
     if (!key || supplementalIndex.has(key) || !row?.playTitle) continue;
+    // Ήδη στο cache (χειροκίνητη σύνδεση / προηγούμενο sync) — μην το ξαναγράφεις ως unmatched.
+    if (eventIdIndex?.has(key)) continue;
 
-    const match = findBestCmsMatchByPlayTitle(row.playTitle, pool);
+    let match = findBestCmsMatchByPlayTitle(row.playTitle, pool);
+    let viaManualAlias = false;
+    if (!match) {
+      const alias = lookupPersistedPlayAlias(eventIdIndex, {
+        playTitle: row.playTitle,
+        playId: row.playId,
+      });
+      if (alias?.movieId) {
+        match = {
+          cmsId: alias.movieId,
+          cmsTitle: alias.movieTitle,
+          score: 1,
+        };
+        viaManualAlias = true;
+      }
+    }
     if (!match) {
       recordUnmatchedPlayTitle(report, {
         playTitle: row.playTitle,
@@ -2302,12 +2341,16 @@ function indexCinemaMappingsFromVenueScrape(
       movieId: match.cmsId,
       movieTitle: match.cmsTitle,
       viaScrape: true,
+      viaManualAlias,
       playTitle: row.playTitle,
       matchScore: match.score,
     };
     supplementalIndex.set(key, mapped);
     queueScrapeMappingForPersist(persistQueue, 'movie', match.cmsId, key, mapped, null);
     added += 1;
+    if (viaManualAlias && report) {
+      report.resolvedViaManualAlias = (report.resolvedViaManualAlias || 0) + 1;
+    }
   }
 
   if (added > 0 && report) {
@@ -2322,6 +2365,7 @@ function indexTheaterMappingsFromVenueScrape(
   showsForTitle,
   report,
   persistQueue,
+  eventIdIndex = null,
 ) {
   if (!scrape?.ok || !scrape.byEventId?.size || !showsForTitle?.length) return 0;
 
@@ -2331,8 +2375,24 @@ function indexTheaterMappingsFromVenueScrape(
   for (const [eventId, row] of scrape.byEventId) {
     const key = String(eventId ?? '').trim();
     if (!key || supplementalIndex.has(key) || !row?.playTitle) continue;
+    if (eventIdIndex?.has(key)) continue;
 
-    const match = findBestCmsMatchByPlayTitle(row.playTitle, pool);
+    let match = findBestCmsMatchByPlayTitle(row.playTitle, pool);
+    let viaManualAlias = false;
+    if (!match) {
+      const alias = lookupPersistedPlayAlias(eventIdIndex, {
+        playTitle: row.playTitle,
+        playId: row.playId,
+      });
+      if (alias?.theaterShowId) {
+        match = {
+          cmsId: alias.theaterShowId,
+          cmsTitle: alias.showTitle,
+          score: 1,
+        };
+        viaManualAlias = true;
+      }
+    }
     if (!match) {
       recordUnmatchedPlayTitle(report, {
         playTitle: row.playTitle,
@@ -2347,12 +2407,16 @@ function indexTheaterMappingsFromVenueScrape(
       theaterShowId: match.cmsId,
       showTitle: match.cmsTitle,
       viaScrape: true,
+      viaManualAlias,
       playTitle: row.playTitle,
       matchScore: match.score,
     };
     supplementalIndex.set(key, mapped);
     queueScrapeMappingForPersist(persistQueue, 'theater_show', match.cmsId, key, mapped, null);
     added += 1;
+    if (viaManualAlias && report) {
+      report.resolvedViaManualAlias = (report.resolvedViaManualAlias || 0) + 1;
+    }
   }
 
   if (added > 0 && report) {
@@ -2803,19 +2867,48 @@ async function resolveTheaterShowFromEventId({
   const row = lookupScrapedEventRow(scrape?.byEventId, key);
   if (!row?.playTitle) return null;
 
-  const match = findBestCmsMatchByPlayTitle(row.playTitle, showsForTitle);
-  if (!match) return null;
+  let match = findBestCmsMatchByPlayTitle(row.playTitle, showsForTitle);
+  let viaManualAlias = false;
+  if (!match) {
+    const alias = lookupPersistedPlayAlias(eventIdIndex, {
+      playTitle: row.playTitle,
+      playId: row.playId,
+    });
+    if (alias?.theaterShowId) {
+      match = {
+        cmsId: alias.theaterShowId,
+        cmsTitle: alias.showTitle,
+        score: 1,
+      };
+      viaManualAlias = true;
+    }
+  }
+  if (!match) {
+    recordUnmatchedPlayTitle(report, {
+      playTitle: row.playTitle,
+      venueName: venue?.name,
+      venueId: venue?.id,
+      eventId: key,
+      playId: row.playId,
+      kind: 'theater_show',
+    });
+    return null;
+  }
 
   const mapped = {
     theaterShowId: match.cmsId,
     showTitle: match.cmsTitle,
     viaScrape: true,
+    viaManualAlias,
     playTitle: row.playTitle,
     matchScore: match.score,
   };
   supplementalIndex.set(key, mapped);
   queueScrapeMappingForPersist(persistQueue, 'theater_show', match.cmsId, key, mapped, null);
   report.resolvedViaVenueScrape = (report.resolvedViaVenueScrape || 0) + 1;
+  if (viaManualAlias) {
+    report.resolvedViaManualAlias = (report.resolvedViaManualAlias || 0) + 1;
+  }
   return mapped;
 }
 
