@@ -517,6 +517,13 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     </Fragment>
   );
 
+  const primaryMovieSections = (["movies_today", "summer_cinema"] as const).filter((id) =>
+    sections.includes(id),
+  );
+  const lastPrimaryMovieSection = primaryMovieSections[primaryMovieSections.length - 1];
+  const personalizedAfterHero = lastPrimaryMovieSection == null;
+  const personalizedBlock = <HomePersonalizedSections movies={movieList} showtimes={stList} />;
+
   return (
     <>
       {apiSectionFailed ? (
@@ -541,7 +548,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                     now={siteNow}
                   />,
                 )}
-                <HomePersonalizedSections movies={movieList} showtimes={stList} />
+                {personalizedAfterHero ? personalizedBlock : null}
               </Fragment>
             );
           case "strip":
@@ -563,42 +570,53 @@ export default function HomeBody({ layout }: HomeBodyProps) {
               </div>,
             );
           case "movies_today":
-            return sectionEl(
-              "movies_today",
-              <MovieRowScroll
-                loading={awaitingMovieCards}
-                loadingMessage="Φόρτωση προβολών της ημέρας..."
-                fetchErrorMessage={
-                  moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
-                }
-                items={todayMovies}
-                muted
-                eyebrow="Σήμερα"
-                title="Ταινίες σήμερα"
-                moviesMoreHref={moviesSectionPath("today")}
-                moviesMoreLabel="Όλες οι ταινίες σήμερα →"
-                nextShowtimeLabels={nextShowtimeLabels}
-              />,
+            return (
+              <Fragment key="movies_today">
+                {sectionEl(
+                  "movies_today",
+                  <MovieRowScroll
+                    loading={awaitingMovieCards}
+                    loadingMessage="Φόρτωση προβολών της ημέρας..."
+                    fetchErrorMessage={
+                      moviesError || showtimesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
+                    }
+                    items={todayMovies}
+                    spotlight
+                    eyebrow="Απόψε"
+                    title="Τι παίζει σήμερα"
+                    subtitle="Προβολές που μπορείς να προλάβεις σήμερα"
+                    moviesMoreHref={moviesSectionPath("today")}
+                    moviesMoreLabel="Όλες οι ταινίες σήμερα →"
+                    nextShowtimeLabels={nextShowtimeLabels}
+                  />,
+                )}
+                {lastPrimaryMovieSection === "movies_today" ? personalizedBlock : null}
+              </Fragment>
             );
           case "summer_cinema":
-            return sectionEl(
-              "summer_cinema",
-              <MovieRowScroll
-                loading={awaitingSummerMovies}
-                loadingMessage="Φόρτωση θερινών προβολών..."
-                fetchErrorMessage={
-                  moviesError || showtimesError || venuesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
-                }
-                items={summerMoviesForHome}
-                spotlight
-                eyebrow="Καλοκαίρι · θερινές προβολές"
-                title="Θερινά σινεμά"
-                subtitle="Παίζουν τώρα"
-                moviesMoreHref={moviesSectionPath("summer")}
-                moviesMoreLabel="Όλα τα θερινά →"
-                nextShowtimeLabels={nextShowtimeLabels}
-                summerScreeningOnPoster
-              />,
+            return (
+              <Fragment key="summer_cinema">
+                {sectionEl(
+                  "summer_cinema",
+                  <MovieRowScroll
+                    loading={awaitingSummerMovies}
+                    loadingMessage="Φόρτωση θερινών προβολών..."
+                    fetchErrorMessage={
+                      moviesError || showtimesError || venuesError ? "Δεν ήταν δυνατή η φόρτωση." : undefined
+                    }
+                    items={summerMoviesForHome}
+                    muted
+                    eyebrow="Θερινά"
+                    title="Θερινά σινεμά αυτή την εβδομάδα"
+                    subtitle="Υπαίθριες προβολές — δες όλες για πλήρες πρόγραμμα"
+                    moviesMoreHref={moviesSectionPath("summer")}
+                    moviesMoreLabel="Όλα τα θερινά →"
+                    nextShowtimeLabels={nextShowtimeLabels}
+                    summerScreeningOnPoster
+                  />,
+                )}
+                {lastPrimaryMovieSection === "summer_cinema" ? personalizedBlock : null}
+              </Fragment>
             );
           case "summer_venues":
             return sectionEl(

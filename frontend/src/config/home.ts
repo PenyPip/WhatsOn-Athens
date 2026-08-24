@@ -23,7 +23,18 @@ export const HOME_SECTION_IDS = [
 
 export type HomeSectionId = (typeof HOME_SECTION_IDS)[number];
 
-/** Προεπιλογή όταν δεν υπάρχει εγγραφή CMS (χωρίς new_movies/movies_week για ελαφρύτερη αρχική) */
+/**
+ * Πρώτο βλέμμα αρχικής: hero → shortcuts → «απόψε» → θερινά.
+ * Τα υπόλοιπα (εβδομάδα, χώροι, περιοδείες…) μένουν στη σχετική σειρά του CMS, πιο κάτω.
+ */
+export const HOME_FIRST_LOOK_SECTIONS: readonly HomeSectionId[] = [
+  "hero",
+  "strip",
+  "movies_today",
+  "summer_cinema",
+];
+
+/** Προεπιλογή όταν δεν υπάρχει εγγραφή CMS (χωρίς new_movies για ελαφρύτερη αρχική) */
 export const FALLBACK_SECTIONS: HomeSectionId[] = [
   "hero",
   "strip",
@@ -37,6 +48,20 @@ export const FALLBACK_SECTIONS: HomeSectionId[] = [
   "dining",
   "newsletter",
 ];
+
+/** Βάζει τα 1–2 ισχυρά movie blocks αμέσως μετά hero/strip — λιγότερος θόρυβος στο fold. */
+export function orderHomeSectionsForFirstLook(sections: HomeSectionId[]): HomeSectionId[] {
+  const present = new Set(sections);
+  const out: HomeSectionId[] = [];
+  for (const id of HOME_FIRST_LOOK_SECTIONS) {
+    if (present.has(id)) out.push(id);
+  }
+  const placed = new Set(out);
+  for (const id of sections) {
+    if (!placed.has(id)) out.push(id);
+  }
+  return out;
+}
 
 /** Events εμφανίζονται πάντα αμέσως μετά τα άρθρα όταν υπάρχει μπλοκ new_articles. */
 function ensureEventsAfterArticles(sections: HomeSectionId[]): HomeSectionId[] {
@@ -80,7 +105,7 @@ export interface ResolvedHomepageLayout extends MappedHomepage {}
 /** Ενοποίηση: κενές λίστες ή null → προεπιλογές */
 export function resolveHomepageLayout(mapped: MappedHomepage | null): ResolvedHomepageLayout {
   const base = mapped?.sections.length ? mapped.sections : [...FALLBACK_SECTIONS];
-  return { sections: ensureEventsAfterArticles(base) };
+  return { sections: ensureEventsAfterArticles(orderHomeSectionsForFirstLook(base)) };
 }
 
 export function layoutShowsHero(layout: ResolvedHomepageLayout): boolean {

@@ -46,22 +46,22 @@ export default function HomeCrawlableBody({ data }: { data: HomeCrawlSnapshot })
   return (
     <div id="seo-crawl-shell" className="seo-crawl-shell section-black">
       <CrawlMovieList
-        eyebrow="Σήμερα"
-        title="Ταινίες σήμερα στα σινεμά"
+        eyebrow="Απόψε"
+        title="Τι παίζει σήμερα στα σινεμά"
         movies={data.today}
         moreHref={moviesSectionPath("today")}
+      />
+      <CrawlMovieList
+        eyebrow="Θερινά"
+        title="Θερινά σινεμά αυτή την εβδομάδα"
+        movies={data.summer}
+        moreHref={moviesSectionPath("summer")}
       />
       <CrawlMovieList
         eyebrow="Εβδομάδα"
         title="Ταινίες εβδομάδας κινηματογράφου"
         movies={data.week}
         moreHref={moviesSectionPath("week")}
-      />
-      <CrawlMovieList
-        eyebrow="Καλοκαίρι"
-        title="Θερινές προβολές"
-        movies={data.summer}
-        moreHref={moviesSectionPath("summer")}
       />
       {data.summerVenues.length > 0 ? (
         <section className="seo-crawl-section border-b border-white/10 py-8 md:py-10">

@@ -3,8 +3,8 @@ import type { HomeSectionId } from "@/config/home";
 /** Προσεγγιστικά ίδια ύψη με τα loading shells του HomeBody (padding + header + cards). */
 const SECTION_MIN_H: Partial<Record<HomeSectionId, string>> = {
   strip: "min-h-[3.25rem]",
-  movies_today: "min-h-[32rem] md:min-h-[36rem]",
-  summer_cinema: "min-h-[38rem] md:min-h-[42rem]",
+  movies_today: "min-h-[38rem] md:min-h-[42rem]",
+  summer_cinema: "min-h-[32rem] md:min-h-[36rem]",
   summer_venues: "min-h-[36rem] md:min-h-[40rem]",
   tours: "min-h-[32rem]",
   new_articles: "min-h-[28rem]",

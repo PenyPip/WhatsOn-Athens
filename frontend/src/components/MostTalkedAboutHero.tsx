@@ -368,17 +368,21 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
       </div>
 
       {hasCarousel ? (
-        <div className="relative z-10 flex justify-center gap-2 pb-5 pt-2 md:absolute md:bottom-7 md:left-0 md:right-0 md:pb-0 md:pt-0">
+        <div
+          className="relative z-10 flex justify-center gap-2 pb-5 pt-2 md:absolute md:bottom-7 md:left-0 md:right-0 md:pb-0 md:pt-0"
+          role="tablist"
+          aria-label="Άλλες πολυσυζητημένες ταινίες"
+        >
           {movies.map((m, i) => (
             <button
               key={m.id}
               type="button"
               onClick={() => goTo(i)}
-              aria-label={`Ταινία ${i + 1}: ${m.title}`}
+              aria-label={`Ταινία ${i + 1} από ${movies.length}: ${m.title}`}
               aria-current={i === activeIndex ? "true" : undefined}
               className={cn(
-                "h-1.5 rounded-full transition-all",
-                i === activeIndex ? "w-7 bg-amber-300" : "w-2 bg-white/35 hover:bg-white/55",
+                "h-2 rounded-full transition-all",
+                i === activeIndex ? "w-8 bg-amber-300" : "w-2.5 bg-white/50 hover:bg-white/75",
               )}
             />
           ))}

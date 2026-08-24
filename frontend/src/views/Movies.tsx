@@ -207,34 +207,50 @@ function MovieListShowtimeRow({
   const venue = findVenueFromStableKey(venues, row.venueKey, row.venueLabel);
   const programHref = moviesHrefForVenue(venue);
 
+  const timeBlock = row.timesTba ? (
+    <span className="shrink-0 font-semibold text-foreground">
+      {row.weekRangeLabel ?? "Εβδομάδα"}
+      <span className="font-normal text-muted-foreground"> · ώρες σύντομα</span>
+    </span>
+  ) : (
+    <span className="shrink-0 font-semibold tabular-nums text-foreground">
+      {formatShowtimeClock(row.datetime)}
+    </span>
+  );
+
+  const venueInner = (
+    <>
+      <span className="min-w-0 truncate">{row.venueLabel}</span>
+      {row.summerScreening ? (
+        <SummerScreeningIndicator className="shrink-0" iconClassName="h-3 w-3" />
+      ) : null}
+    </>
+  );
+
   return (
-    <li className="font-body flex flex-wrap items-center gap-1 tabular-nums leading-relaxed">
-      <span className="inline-flex flex-wrap items-center gap-1 font-semibold text-foreground">
-        {row.timesTba ? (
-          <>
-            <span>{row.weekRangeLabel ?? "Εβδομάδα"}</span>
-            <span className="font-normal text-muted-foreground">· ώρες σύντομα</span>
-          </>
-        ) : (
-          <span className="inline-flex items-center gap-1 tabular-nums">
-            {formatShowtimeClock(row.datetime)}
-          </span>
-        )}
-      </span>
+    <li className="font-body flex min-w-0 flex-nowrap items-center gap-1 leading-snug">
+      {timeBlock}
       {singleVenueFilter ? (
-        row.hallName ? <span className="text-muted-foreground">{` · ${row.hallName}`}</span> : null
+        row.hallName ? (
+          <span className="min-w-0 truncate text-muted-foreground">{` · ${row.hallName}`}</span>
+        ) : null
       ) : (
         <>
-          <span className="text-muted-foreground"> · </span>
+          <span className="shrink-0 text-muted-foreground">·</span>
           {programHref ? (
-            <Link to={programHref} className="inline-flex items-center gap-1 font-medium text-primary hover:underline">
-              {row.venueLabel}
-              {row.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
+            <Link
+              to={programHref}
+              title={row.venueLabel}
+              className="inline-flex min-w-0 flex-1 items-center gap-1 overflow-hidden font-medium text-primary hover:underline"
+            >
+              {venueInner}
             </Link>
           ) : (
-            <span className="inline-flex items-center gap-1 text-muted-foreground">
-              {row.venueLabel}
-              {row.summerScreening ? <SummerScreeningIndicator iconClassName="h-3 w-3" /> : null}
+            <span
+              title={row.venueLabel}
+              className="inline-flex min-w-0 flex-1 items-center gap-1 overflow-hidden text-muted-foreground"
+            >
+              {venueInner}
             </span>
           )}
         </>
