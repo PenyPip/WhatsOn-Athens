@@ -1126,32 +1126,218 @@ const VENUE_STATUS_GROUP_META = {
   unchanged: { title: 'Άλλες αλλαγές', tone: 'neutral' },
 };
 
-function UnmatchedTitlesPanel({ titles, count }) {
-  const rows = Array.isArray(titles) ? titles.filter((t) => t?.playTitle || typeof t === 'string') : [];
+function unmatchedRowKey(row) {
+  if (typeof row === 'string') return row;
+  return `${row.playTitle || ''}::${(row.eventIds || []).join(',') || row.eventId || ''}`;
+}
+
+function UnmatchedTitlesPanel({
+  titles,
+  count,
+  cmsChoices = [],
+  busyKey,
+  picks = {},
+  onPickChange,
+  onLink,
+  onDismiss,
+}) {
+  const [filterByKey, setFilterByKey] = React.useState({});
+  const [browseByKey, setBrowseByKey] = React.useState({});
+  const rows = Array.isArray(titles)
+    ? titles.filter((t) => t?.playTitle || typeof t === 'string')
+    : [];
   const total = Number(count ?? rows.length);
   if (!rows.length && total <= 0) return null;
 
   return (
     <Box padding={4} background="warning100" hasRadius>
       <Typography fontWeight="semiBold" textColor="warning700">
-        Ταινίες χωρίς ταύτιση CMS
+        Ταινίες χωρίς ταύτιση CMS — ταύτισε χειροκίνητα
         {total > 0 ? ` (${total})` : ''}
       </Typography>
-      <Typography variant="pi" textColor="neutral700" paddingTop={2} paddingBottom={2}>
-        Δεν βρέθηκε αυτόματα αντίστοιχη ταινία/παράσταση. Αν υπάρχει στο CMS, αντιστοίχισέ την
-        χειροκίνητα (More κωδικός ή εισαγωγή προγράμματος).
+      <Typography variant="pi" textColor="neutral700" paddingTop={2} paddingBottom={3}>
+        Ίδια λογική με την ταύτιση: πρόταση με score, ή διάλεξε από CMS και πάτα «Σύνδεση».
+        Γράφει το More eventId στην ταινία· ξανατρέξε sync για να μπουν οι προβολές.
       </Typography>
-      <Flex direction="column" gap={1} alignItems="stretch">
-        {rows.slice(0, 40).map((row) => {
-          const title = typeof row === 'string' ? row : row.playTitle;
-          const venues = typeof row === 'string' ? [] : row.venues || (row.venueName ? [row.venueName] : []);
-          const n = typeof row === 'string' ? 1 : row.count || 1;
+      <Flex direction="column" gap={3} alignItems="stretch">
+        {rows.slice(0, 40).map((raw) => {
+          const row =
+            typeof raw === 'string'
+              ? { playTitle: raw, suggestions: [], eventIds: [], venues: [] }
+              : raw;
+          const key = unmatchedRowKey(row);
+          const title = row.playTitle;
+          const venues = row.venues || (row.venueName ? [row.venueName] : []);
+          const n = row.count || 1;
+          const eventIds = row.eventIds?.length
+            ? row.eventIds
+            : row.eventId
+              ? [row.eventId]
+              : [];
+          const playId = row.playId || row.playIds?.[0] || null;
+          const canLink = eventIds.length > 0 || Boolean(playId);
+          const suggestions = row.suggestions || [];
+          const suggested = row.suggestedContent || suggestions[0] || null;
+          const pick = picks[key] || '';
+          const showBrowse = browseByKey[key] === true;
+          const q = (filterByKey[key] || '').trim().toLocaleLowerCase('el');
+          const linkBusy = busyKey === `unmatched:${key}`;
+          const suggestedBusy = busyKey === `unmatched-suggested:${key}`;
+          const anyBusy = Boolean(busyKey);
+          const kind = row.kind === 'theater_show' ? 'theater_show' : 'movie';
+          const browseOptions = (() => {
+            if (!showBrowse) return [];
+            const sugIds = new Set(suggestions.map((s) => Number(s.cmsId ?? s.id)));
+            const fromCms = (cmsChoices || [])
+              .filter((c) => !c.contentType || c.contentType === kind)
+              .filter((c) => !sugIds.has(Number(c.id)))
+              .filter((c) => {
+                if (!q) return true;
+                const hay = `${c.title || ''} ${c.originalTitle || ''}`.toLocaleLowerCase('el');
+                return hay.includes(q);
+              });
+            const filteredSug = q
+              ? suggestions.filter((s) =>
+                  `${s.cmsTitle || s.title || ''} ${s.originalTitle || ''}`
+                    .toLocaleLowerCase('el')
+                    .includes(q),
+                )
+              : suggestions;
+            return [...filteredSug, ...fromCms].slice(0, 40);
+          })();
+
           return (
-            <Typography key={title} variant="pi" textColor="neutral800">
-              · «{title}»
-              {n > 1 ? ` ×${n}` : ''}
-              {venues.length ? ` — ${venues.slice(0, 4).join(', ')}` : ''}
-            </Typography>
+            <Box
+              key={key}
+              padding={3}
+              background="neutral0"
+              hasRadius
+              style={{ border: '1px solid #e8d9a8' }}
+            >
+              <Flex justifyContent="space-between" alignItems="flex-start" gap={3} wrap="wrap">
+                <Flex direction="column" alignItems="flex-start" gap={1} style={{ minWidth: 0, flex: 1 }}>
+                  <Typography fontWeight="semiBold" textColor="neutral800">
+                    «{title}»
+                    {n > 1 ? ` ×${n}` : ''}
+                  </Typography>
+                  <Typography variant="pi" textColor="neutral600">
+                    {venues.length ? venues.slice(0, 4).join(' · ') : '—'}
+                    {eventIds.length ? ` · eventId ${eventIds.slice(0, 3).join(', ')}` : ''}
+                    {playId ? ` · playId ${playId}` : ''}
+                    {!canLink ? ' · χωρίς More κωδικό (μόνο πρόταση τίτλου)' : ''}
+                  </Typography>
+                </Flex>
+                {onDismiss ? (
+                  <Button
+                    size="S"
+                    variant="tertiary"
+                    disabled={anyBusy}
+                    onClick={() => onDismiss(key)}
+                  >
+                    Απόκρυψη
+                  </Button>
+                ) : null}
+              </Flex>
+
+              <Flex gap={2} wrap="wrap" paddingTop={2} alignItems="center">
+                {suggested && canLink ? (
+                  <Button
+                    size="S"
+                    variant="success"
+                    loading={suggestedBusy}
+                    disabled={anyBusy && !suggestedBusy}
+                    onClick={() => onLink(row, suggested.cmsId ?? suggested.id, 'unmatched-suggested')}
+                    title={`Score ${Number(suggested.score || 0).toFixed(2)}`}
+                  >
+                    → {truncateLabel(suggested.cmsTitle || suggested.title)}
+                    {suggested.score != null ? ` · ${Number(suggested.score).toFixed(2)}` : ''}
+                  </Button>
+                ) : null}
+                {canLink ? (
+                  <>
+                    <Button
+                      size="S"
+                      variant="tertiary"
+                      disabled={anyBusy}
+                      onClick={() =>
+                        setBrowseByKey((prev) => ({ ...prev, [key]: !showBrowse }))
+                      }
+                    >
+                      {showBrowse ? 'Κλείσιμο' : 'CMS…'}
+                    </Button>
+                    <Button
+                      size="S"
+                      variant="secondary"
+                      loading={linkBusy}
+                      disabled={!pick || (anyBusy && !linkBusy)}
+                      onClick={() => onLink(row, pick, 'unmatched')}
+                    >
+                      Σύνδεση
+                    </Button>
+                  </>
+                ) : suggested ? (
+                  <Typography variant="pi" textColor="neutral600">
+                    Πιθανή CMS: «{suggested.cmsTitle || suggested.title}»
+                    {suggested.score != null ? ` (${Number(suggested.score).toFixed(2)})` : ''} —
+                    χωρίς More κωδικό για αυτόματη σύνδεση
+                  </Typography>
+                ) : (
+                  <Typography variant="pi" textColor="neutral500">
+                    Καμία πρόταση CMS
+                  </Typography>
+                )}
+              </Flex>
+
+              {pick && !showBrowse && canLink ? (
+                <Typography variant="pi" textColor="primary600" paddingTop={1}>
+                  Επιλογή:{' '}
+                  {(cmsChoices || []).find((c) => String(c.id) === String(pick))?.title ||
+                    suggestions.find((s) => String(s.cmsId ?? s.id) === String(pick))?.cmsTitle ||
+                    `#${pick}`}
+                </Typography>
+              ) : null}
+
+              {showBrowse && canLink ? (
+                <Flex direction="column" alignItems="stretch" gap={1} paddingTop={2}>
+                  <input
+                    type="search"
+                    placeholder="Αναζήτηση CMS…"
+                    value={filterByKey[key] || ''}
+                    onChange={(e) =>
+                      setFilterByKey((prev) => ({ ...prev, [key]: e.target.value }))
+                    }
+                    style={{
+                      padding: '6px 10px',
+                      borderRadius: 4,
+                      border: '1px solid #dcdce4',
+                      fontSize: 13,
+                    }}
+                  />
+                  <Flex direction="column" gap={1} style={{ maxHeight: 180, overflowY: 'auto' }}>
+                    {browseOptions.map((opt) => {
+                      const id = opt.cmsId ?? opt.id;
+                      return (
+                        <Button
+                          key={id}
+                          size="S"
+                          variant={String(pick) === String(id) ? 'secondary' : 'tertiary'}
+                          onClick={() => onPickChange(key, String(id))}
+                          style={{ justifyContent: 'flex-start' }}
+                        >
+                          {opt.cmsTitle || opt.title}
+                          {opt.score != null ? ` · ${Number(opt.score).toFixed(2)}` : ''}
+                        </Button>
+                      );
+                    })}
+                    {!browseOptions.length ? (
+                      <Typography variant="pi" textColor="neutral500">
+                        Καμία εγγραφή
+                      </Typography>
+                    ) : null}
+                  </Flex>
+                </Flex>
+              ) : null}
+            </Box>
           );
         })}
         {rows.length > 40 ? (
@@ -1270,7 +1456,15 @@ function VenueStatusTransitionsPanel({ venueStatus }) {
   );
 }
 
-function SyncReportPanel({ report }) {
+function SyncReportPanel({
+  report,
+  unmatchedBusyKey,
+  unmatchedPicks,
+  onUnmatchedPickChange,
+  onUnmatchedLink,
+  onUnmatchedDismiss,
+  dismissedUnmatchedKeys,
+}) {
   const [showAllMissingIds, setShowAllMissingIds] = React.useState(false);
   const [showErrors, setShowErrors] = React.useState(false);
 
@@ -1382,17 +1576,24 @@ function SyncReportPanel({ report }) {
 
         <Box paddingTop={okRows.length || failedRows.length ? 4 : 0}>
           <UnmatchedTitlesPanel
-            titles={
+            titles={(
               report.unmatchedTitles?.length
                 ? report.unmatchedTitles
                 : okRows.flatMap((row) =>
                     (row.unmatchedTitles || []).map((playTitle) => ({
                       playTitle,
                       venues: row.venueName ? [row.venueName] : [],
+                      suggestions: [],
                     })),
                   )
-            }
+            ).filter((row) => !dismissedUnmatchedKeys?.has?.(unmatchedRowKey(row)))}
             count={report.unmatchedMovies}
+            cmsChoices={report.cmsContentChoices || []}
+            busyKey={unmatchedBusyKey}
+            picks={unmatchedPicks}
+            onPickChange={onUnmatchedPickChange}
+            onLink={onUnmatchedLink}
+            onDismiss={onUnmatchedDismiss}
           />
         </Box>
 
@@ -1485,8 +1686,16 @@ function SyncReportPanel({ report }) {
       {(report.scrapeTitleMisses?.length || report.scrapeTitleUnmatched) ? (
         <Box paddingBottom={4}>
           <UnmatchedTitlesPanel
-            titles={report.scrapeTitleMisses}
+            titles={(report.scrapeTitleMisses || []).filter(
+              (row) => !dismissedUnmatchedKeys?.has?.(unmatchedRowKey(row)),
+            )}
             count={report.scrapeTitleUnmatched}
+            cmsChoices={report.cmsContentChoices || []}
+            busyKey={unmatchedBusyKey}
+            picks={unmatchedPicks}
+            onPickChange={onUnmatchedPickChange}
+            onLink={onUnmatchedLink}
+            onDismiss={onUnmatchedDismiss}
           />
         </Box>
       ) : null}
@@ -1764,6 +1973,8 @@ const App = () => {
   const [syncProgressAt, setSyncProgressAt] = useState(null);
   const [syncVenueCmsId, setSyncVenueCmsId] = useState('');
   const [athinoramaSyncing, setAthinoramaSyncing] = useState(false);
+  const [unmatchedPicks, setUnmatchedPicks] = useState({});
+  const [dismissedUnmatchedKeys, setDismissedUnmatchedKeys] = useState(() => new Set());
   const [, setProgressTick] = useState(0);
   const [lookupLoading, setLookupLoading] = useState(false);
   const [lookupProgress, setLookupProgress] = useState(null);
@@ -1793,6 +2004,76 @@ const App = () => {
     if (data?.progress) setSyncProgress(data.progress);
     if (data?.lastProgressAt) setSyncProgressAt(data.lastProgressAt);
   }, []);
+
+  const linkUnmatchedFromSync = useCallback(
+    async (row, cmsId, busySuffix = 'unmatched') => {
+      const key = unmatchedRowKey(row);
+      const id = Number(cmsId);
+      if (!Number.isFinite(id)) {
+        toggleNotification({ type: 'warning', message: 'Επίλεξε πρώτα ταινία CMS.' });
+        return;
+      }
+      const eventIds = row.eventIds?.length
+        ? row.eventIds
+        : row.eventId
+          ? [row.eventId]
+          : [];
+      const playId = row.playId || row.playIds?.[0] || null;
+      if (!eventIds.length && !playId) {
+        toggleNotification({
+          type: 'warning',
+          message: 'Χωρίς More eventId/playId — δεν γίνεται σύνδεση από εδώ.',
+        });
+        return;
+      }
+      const busy = `${busySuffix}:${key}`;
+      setBusyKey(busy);
+      try {
+        const res = await post('/api/more-lookup/link-unmatched', {
+          contentType: row.kind === 'theater_show' ? 'theater_show' : 'movie',
+          cmsId: id,
+          playTitle: row.playTitle,
+          eventIds,
+          playId,
+        });
+        const payload = res?.data || res;
+        toggleNotification({
+          type: 'success',
+          message: payload?.message || `Συνδέθηκε «${row.playTitle}» → CMS #${id}`,
+        });
+        setDismissedUnmatchedKeys((prev) => new Set([...prev, key]));
+        setUnmatchedPicks((prev) => {
+          const next = { ...prev };
+          delete next[key];
+          return next;
+        });
+        setSyncReport((prev) => {
+          if (!prev) return prev;
+          const filterRow = (list) =>
+            (list || []).filter((item) => unmatchedRowKey(item) !== key);
+          return {
+            ...prev,
+            scrapeTitleMisses: filterRow(prev.scrapeTitleMisses),
+            scrapeTitleUnmatched: Math.max(
+              0,
+              (prev.scrapeTitleUnmatched || 0) - (row.count || 1),
+            ),
+            unmatchedTitles: filterRow(prev.unmatchedTitles),
+            unmatchedMovies: Math.max(0, (prev.unmatchedMovies || 0) - (row.count || 1)),
+          };
+        });
+      } catch (error) {
+        const message =
+          error?.response?.data?.error?.message ||
+          error?.response?.data?.errors?.[0]?.error ||
+          'Αποτυχία χειροκίνητης ταύτισης.';
+        toggleNotification({ type: 'warning', message });
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [post, toggleNotification],
+  );
 
   const pollSyncJob = useCallback(async () => {
     // ~45 λεπτά (2700 × 1s) — μεγάλα sync με πολλούς κωδικούς More.
@@ -2535,6 +2816,8 @@ const App = () => {
     setSyncLoading(true);
     setSyncProgress(`Έναρξη συγχρονισμού (${scopeLabel})…`);
     setSyncReport(null);
+    setUnmatchedPicks({});
+    setDismissedUnmatchedKeys(new Set());
     let finishedOk = false;
     const body = { scope: venueId != null ? 'cinema' : scope };
     if (venueId != null && Number.isFinite(venueId)) body.venueId = venueId;
@@ -2642,6 +2925,8 @@ const App = () => {
     setAthinoramaSyncing(true);
     setSyncProgress('Athinorama: φόρτωση εκκρεμών σινεμά (τρέχουσα εβδομάδα)…');
     setSyncProgressAt(Date.now());
+    setUnmatchedPicks({});
+    setDismissedUnmatchedKeys(new Set());
     try {
       const res = await post('/api/venues/sync-athinorama-pending', {});
       const report = res?.data;
@@ -2955,7 +3240,19 @@ const App = () => {
 
         {syncReport ? (
           <Box paddingBottom={4}>
-            <SyncReportPanel report={syncReport} />
+            <SyncReportPanel
+              report={syncReport}
+              unmatchedBusyKey={busyKey}
+              unmatchedPicks={unmatchedPicks}
+              onUnmatchedPickChange={(key, id) =>
+                setUnmatchedPicks((prev) => ({ ...prev, [key]: id }))
+              }
+              onUnmatchedLink={linkUnmatchedFromSync}
+              onUnmatchedDismiss={(key) =>
+                setDismissedUnmatchedKeys((prev) => new Set([...prev, key]))
+              }
+              dismissedUnmatchedKeys={dismissedUnmatchedKeys}
+            />
           </Box>
         ) : null}
 

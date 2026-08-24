@@ -125,11 +125,12 @@ const MIN_PLAY_TITLE_MATCH = Number(process.env.MORE_PLAY_TITLE_MATCH_MIN || 0.8
 /**
  * @param {string} playTitle
  * @param {Array<{ id: number, title: string, originalTitle?: string, slug?: string, contentType?: string }>} cmsItems
- * @param {{ minScore?: number }} options
+ * @param {{ minScore?: number, limit?: number }} options
  */
-function findBestCmsMatchByPlayTitle(playTitle, cmsItems, options = {}) {
-  const minScore = options.minScore ?? MIN_PLAY_TITLE_MATCH;
-  let best = null;
+function findTopCmsMatchesByPlayTitle(playTitle, cmsItems, options = {}) {
+  const minScore = options.minScore ?? 0.45;
+  const limit = Math.max(1, Number(options.limit) || 5);
+  const scored = [];
 
   for (const item of cmsItems || []) {
     const title = item.title || item.name || '';
@@ -141,17 +142,33 @@ function findBestCmsMatchByPlayTitle(playTitle, cmsItems, options = {}) {
     ];
     const score = Math.max(...scores);
     if (score < minScore) continue;
-    if (!best || score > best.score) {
-      best = {
-        cmsId: item.id,
-        cmsTitle: title,
-        contentType: item.contentType || 'movie',
-        score: Number(score.toFixed(3)),
-      };
-    }
+    scored.push({
+      cmsId: item.id,
+      id: item.id,
+      cmsTitle: title,
+      title,
+      originalTitle: originalTitle || '',
+      contentType: item.contentType || 'movie',
+      score: Number(score.toFixed(3)),
+    });
   }
 
-  return best;
+  scored.sort((a, b) => b.score - a.score || String(a.cmsTitle).localeCompare(String(b.cmsTitle), 'el'));
+  return scored.slice(0, limit);
+}
+
+/**
+ * @param {string} playTitle
+ * @param {Array<{ id: number, title: string, originalTitle?: string, slug?: string, contentType?: string }>} cmsItems
+ * @param {{ minScore?: number }} options
+ */
+function findBestCmsMatchByPlayTitle(playTitle, cmsItems, options = {}) {
+  const minScore = options.minScore ?? MIN_PLAY_TITLE_MATCH;
+  const [best] = findTopCmsMatchesByPlayTitle(playTitle, cmsItems, {
+    minScore,
+    limit: 1,
+  });
+  return best || null;
 }
 
 /** Κανονικοποίηση εγγραφής CMS (Strapi snake_case) για title matching από scrape. */
@@ -171,5 +188,6 @@ module.exports = {
   compactText,
   scorePlayTitleMatch,
   findBestCmsMatchByPlayTitle,
+  findTopCmsMatchesByPlayTitle,
   mapCmsRowForPlayTitleMatch,
 };

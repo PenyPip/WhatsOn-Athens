@@ -9,6 +9,7 @@ const {
 const { scrapeAthinoramaHallProgram, normalizeAthinoramaHallUrl } = require('./athinoramaHallScrape');
 const {
   findBestCmsMatchByPlayTitle,
+  findTopCmsMatchesByPlayTitle,
   MIN_PLAY_TITLE_MATCH,
 } = require('./morePlayTitleMatch');
 const { createProgramTextShowtimes } = require('./programTextImport');
@@ -332,7 +333,26 @@ async function syncPendingAthinoramaVenues(
   report.created = report.createdTotal;
   report.alreadyExists = alreadyExistsTotal;
   report.unmatchedMovies = unmatchedMoviesTotal;
-  report.unmatchedTitles = [...unmatchedTitleIndex.values()];
+  report.unmatchedTitles = [...unmatchedTitleIndex.values()].map((row) => {
+    const suggestions = findTopCmsMatchesByPlayTitle(row.playTitle, cmsMovies, {
+      minScore: 0.45,
+      limit: 5,
+    });
+    return {
+      ...row,
+      kind: 'movie',
+      eventIds: [],
+      playIds: [],
+      suggestions,
+      suggestedContent: suggestions[0] || null,
+    };
+  });
+  report.cmsContentChoices = (cmsMovies || []).slice(0, 800).map((m) => ({
+    id: m.id,
+    title: m.title || m.name || `#${m.id}`,
+    originalTitle: m.originalTitle || m.original_title || '',
+    contentType: 'movie',
+  }));
   report.weekSynced = weekSyncedTotal;
   report.weekExpected = weekExpectedTotal;
   report.source = 'athinorama';

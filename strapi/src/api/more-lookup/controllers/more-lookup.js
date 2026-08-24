@@ -11,6 +11,7 @@ const {
   DEFAULT_APPLY_MIN_SCORE,
 } = require('../../../utils/moreEventCodeLookup');
 const { syncShowtimesFromMore } = require('../../../utils/moreShowtimeSync');
+const { linkEventIdsManually } = require('../../../utils/moreEventIdPersist');
 const {
   getMoreShowtimeSyncJob,
   startMoreShowtimeSyncJob,
@@ -307,6 +308,87 @@ module.exports = {
           (result.alreadyLinked
             ? `Ο κωδικός ${result.eventGroupCode} υπάρχει ήδη στο CMS`
             : `Γράφτηκε ${result.eventGroupCode} στο more_event_groups (#${result.cmsId})`),
+      };
+    } catch (e) {
+      ctx.status = 400;
+      ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+    }
+  },
+
+  /**
+   * Χειροκίνητη ταύτιση τίτλου από sync report:
+   * - eventIds → more_event_ids (για το επόμενο sync προβολών)
+   * - προαιρετικά playId → more_event_groups (μόνιμος κωδικός όπως «Σύνδ.»)
+   */
+  async linkUnmatched(ctx) {
+    const body = ctx.request.body ?? {};
+    const adminEmail = ctx.state?.admin?.email || 'unknown';
+    const contentType = body.contentType === 'theater_show' ? 'theater_show' : 'movie';
+    const cmsId = Number(body.cmsId ?? body.movieId ?? body.theaterShowId);
+    const playTitle = String(body.playTitle || body.moreTitle || '').trim();
+    const eventIds = Array.isArray(body.eventIds)
+      ? body.eventIds
+      : body.eventId
+        ? [body.eventId]
+        : [];
+    const playId = String(body.playId || body.eventGroupCode || '').trim();
+
+    try {
+      const parts = [];
+      let eventLink = null;
+      if (eventIds.length) {
+        eventLink = await linkEventIdsManually(strapi, {
+          contentType,
+          cmsId,
+          eventIds,
+          playTitle,
+        });
+        if (!eventLink.ok) {
+          ctx.status = 400;
+          ctx.body = { ok: false, error: { message: eventLink.error || 'Αποτυχία σύνδεσης eventId' } };
+          return;
+        }
+        parts.push(eventLink.message);
+      }
+
+      let groupLink = null;
+      if (playId) {
+        groupLink = await linkMoreCodeToCms(strapi, {
+          contentType,
+          cmsId,
+          movieId: contentType === 'movie' ? cmsId : undefined,
+          theaterShowId: contentType === 'theater_show' ? cmsId : undefined,
+          eventGroupCode: playId,
+          catalogKind: contentType === 'theater_show' ? 'show' : 'movie',
+          moreTitle: playTitle,
+        });
+        parts.push(groupLink.message || `more_event_groups ← ${playId}`);
+      }
+
+      if (!eventLink && !groupLink) {
+        ctx.status = 400;
+        ctx.body = {
+          ok: false,
+          error: { message: 'Απαιτείται eventId ή playId για σύνδεση' },
+        };
+        return;
+      }
+
+      strapi.log.info(
+        `[more-lookup] link-unmatched by ${adminEmail} ${contentType} #${cmsId}` +
+          ` eventIds=${eventIds.join(',') || '—'} playId=${playId || '—'}`,
+      );
+
+      ctx.body = {
+        ok: true,
+        contentType,
+        cmsId,
+        cmsTitle: eventLink?.cmsTitle,
+        eventIds: eventLink?.eventIds || [],
+        playId: playId || null,
+        eventLink,
+        groupLink,
+        message: parts.filter(Boolean).join(' · '),
       };
     } catch (e) {
       ctx.status = 400;

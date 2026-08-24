@@ -245,6 +245,66 @@ async function flushEventIdPersistQueue(strapi, queue, { onProgress } = {}) {
   return { persisted, entries };
 }
 
+/**
+ * Χειροκίνητη ταύτιση από sync report: γράφει eventIds στο more_event_ids
+ * (χωρίς min score) ώστε το επόμενο sync να τα αναγνωρίζει.
+ */
+async function linkEventIdsManually(strapi, {
+  contentType = 'movie',
+  cmsId,
+  eventIds = [],
+  playTitle = '',
+} = {}) {
+  const id = Number(cmsId);
+  const kind = contentType === 'theater_show' ? 'theater_show' : 'movie';
+  const uid = kind === 'theater_show' ? 'api::theater-show.theater-show' : 'api::movie.movie';
+  if (!Number.isFinite(id)) {
+    return { ok: false, error: 'Απαιτείται cmsId' };
+  }
+  const ids = [...new Set((eventIds || []).map((e) => normalizeEventId(e)).filter(Boolean))];
+  if (!ids.length) {
+    return { ok: false, error: 'Απαιτείται τουλάχιστον ένα eventId' };
+  }
+
+  const row = await strapi.entityService.findOne(uid, id, {
+    populate: { more_event_ids: true },
+    publicationState: 'preview',
+  });
+  if (!row) {
+    return { ok: false, error: 'Η εγγραφή CMS δεν βρέθηκε' };
+  }
+
+  const existing = row.more_event_ids ?? row.moreEventIds ?? [];
+  const incoming = ids.map((eventId) => ({
+    eventId,
+    moreVenueId: '',
+    playTitle: String(playTitle || '').trim(),
+  }));
+  const next = mergeEventIdRows(existing, incoming);
+  const already = ids.every((eventId) =>
+    existing.some((e) => normalizeEventId(e.event_id ?? e.eventId) === eventId),
+  );
+
+  if (!already) {
+    await strapi.entityService.update(uid, id, {
+      data: { more_event_ids: next },
+    });
+  }
+
+  const cmsTitle = row.title || row.name || `#${id}`;
+  return {
+    ok: true,
+    alreadyLinked: already,
+    contentType: kind,
+    cmsId: id,
+    cmsTitle,
+    eventIds: ids,
+    message: already
+      ? `Τα eventId υπάρχουν ήδη στο «${cmsTitle}»`
+      : `Συνδέθηκαν ${ids.length} eventId → «${cmsTitle}». Ξανατρέξε sync για να μπουν οι προβολές.`,
+  };
+}
+
 module.exports = {
   MAX_EVENT_IDS_PER_ENTRY,
   MIN_SCORE_TO_PERSIST,
@@ -253,6 +313,7 @@ module.exports = {
   loadPersistedTheaterEventIdsIntoIndex,
   queueScrapeMappingForPersist,
   flushEventIdPersistQueue,
+  linkEventIdsManually,
   mergePersistedMovieRowsIntoIndex,
   mergePersistedTheaterRowsIntoIndex,
 };

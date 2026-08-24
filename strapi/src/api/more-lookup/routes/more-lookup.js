@@ -76,6 +76,15 @@ module.exports = {
     },
     {
       method: 'POST',
+      path: '/more-lookup/link-unmatched',
+      handler: 'more-lookup.linkUnmatched',
+      config: {
+        auth: false,
+        policies: ['global::is-admin'],
+      },
+    },
+    {
+      method: 'POST',
       path: '/more-lookup/create-venue',
       handler: 'more-lookup.createVenue',
       config: {
