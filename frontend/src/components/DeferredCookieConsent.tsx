@@ -1,11 +1,16 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { lazyWithChunkReload } from "@/lib/lazyWithChunkReload";
 
 const CookieConsentBanner = lazyWithChunkReload(() => import("@/components/CookieConsentBanner"));
 
-/** Μετά το πρώτο paint — δεν μπαίνει στο critical path (κινητό PSI). */
+/**
+ * Μετά το πρώτο paint — δεν μπαίνει στο critical path (κινητό PSI).
+ * Portal στο `document.body` (όχι μέσα στο `<main>`) ώστε το late mount να μην
+ * μετράει ως layout shift του main (CLS ~1 στα Lighthouse audits).
+ */
 export default function DeferredCookieConsent() {
   const [ready, setReady] = useState(false);
 
@@ -19,11 +24,12 @@ export default function DeferredCookieConsent() {
     return () => window.clearTimeout(t);
   }, []);
 
-  if (!ready) return null;
+  if (!ready || typeof document === "undefined") return null;
 
-  return (
+  return createPortal(
     <Suspense fallback={null}>
       <CookieConsentBanner />
-    </Suspense>
+    </Suspense>,
+    document.body,
   );
 }

@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { getMetadataBase, siteSeo } from "@/lib/siteMetadata";
 import { ROOT_CRITICAL_CSS } from "@/lib/rootCriticalCss";
+import { HOME_HERO_CRITICAL_CSS } from "@/lib/homeHeroLayout";
 import "@/index.css";
 
 export const viewport: Viewport = {
@@ -49,6 +50,12 @@ export const metadata: Metadata = {
   },
 };
 
+/** Inline στο <head> πριν το async Tailwind — crawl clip + hero spacer/overlay χωρίς FOUC/CLS. */
+const CRITICAL_CSS =
+  "html,body{margin:0;min-height:100%}body{font-family:system-ui,-apple-system,sans-serif;background:#f0edf8;color:#1c1d62}" +
+  ROOT_CRITICAL_CSS +
+  HOME_HERO_CRITICAL_CSS;
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -56,8 +63,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="el" className="h-full">
+      <head>
+        <style dangerouslySetInnerHTML={{ __html: CRITICAL_CSS }} />
+      </head>
       <body className="min-h-full antialiased max-md:overscroll-y-none">
-        <style dangerouslySetInnerHTML={{ __html: ROOT_CRITICAL_CSS }} />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var m=window.matchMedia("(max-width:767px)");if(!m.matches)return;var d=document.createElement("div");d.style.cssText="position:fixed;left:-9999px;bottom:0;visibility:hidden;padding-bottom:env(safe-area-inset-bottom,0px)";document.documentElement.appendChild(d);var px=parseFloat(getComputedStyle(d).paddingBottom)||0;document.documentElement.removeChild(d);document.documentElement.style.setProperty("--mobile-safe-bottom-fixed",px+"px")}catch(e){}})();`,

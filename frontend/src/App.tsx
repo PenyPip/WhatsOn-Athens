@@ -109,9 +109,9 @@ function AppShell({ homeMainOverlap, homeStaticLcp }: AppShellProps) {
         )}
       >
         {homeStaticLcp && overlapHome ? <div id="home-hero-ssr-spacer" aria-hidden /> : null}
-        <DeferredCookieConsent />
         <AppRoutes />
       </main>
+      <DeferredCookieConsent />
     </>
   );
 }

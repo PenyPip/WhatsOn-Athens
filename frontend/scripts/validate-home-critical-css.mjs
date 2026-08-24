@@ -18,9 +18,15 @@ const REQUIRED_IF_LCP = [
   "html.spa-lcp-done #home-hero-slot{display:none}",
   "contain:layout style paint",
   "[data-home-hero-live]{position:absolute",
+  "#seo-crawl-shell{position:absolute!important",
 ];
 
-const CORRUPT = ["min-height:380@media", "min-height:580.home-main-overlap", "calc(380px + 3.5rem)"];
+const CORRUPT = [
+  "min-height:380@media",
+  "min-height:580.home-main-overlap",
+  "calc(380px + 3.5rem)",
+  'data-async-css="sheet" //',
+];
 
 try {
   const html = readFileSync(HOME, "utf8");
@@ -29,16 +35,8 @@ try {
     process.exit(0);
   }
 
-  const styleOpen = html.indexOf("<style>");
-  const styleClose = html.indexOf("</style>", styleOpen);
-  if (styleOpen === -1 || styleClose === -1) {
-    console.error("[validate-home-critical-css] FAIL — home has #home-static-lcp but no <style>");
-    process.exit(1);
-  }
-
-  const css = html.slice(styleOpen + 7, styleClose);
-  const missing = REQUIRED_IF_LCP.filter((m) => !css.includes(m));
-  const corrupt = CORRUPT.filter((m) => css.includes(m));
+  const missing = REQUIRED_IF_LCP.filter((m) => !html.includes(m));
+  const corrupt = CORRUPT.filter((m) => html.includes(m));
 
   if (missing.length || corrupt.length) {
     console.error("[validate-home-critical-css] FAIL — broken home hero critical CSS");

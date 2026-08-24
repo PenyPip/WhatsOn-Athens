@@ -4,7 +4,7 @@ import EventCard from "@/components/EventCard";
 import RestaurantCard from "@/components/RestaurantCard";
 import VenueCard from "@/components/VenueCard";
 import type { ReactNode } from "react";
-import { Fragment, useEffect, useMemo } from "react";
+import { Fragment, useEffect, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { prefetchArticleBySlug, prefetchArticleDetailChunk } from "@/lib/articlePrefetch";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
@@ -387,15 +387,18 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   );
 
   /**
-   * Healing μόνο για παλιά broken bootstraps (~5 ταινίες χωρίς αρκετές αφίσες).
-   * Μην κάνεις refetch σε κάθε load: χτυπάει TBT/CLS και διπλασιάζει το `/api/movies`.
+   * Healing μόνο μία φορά για παλιά broken bootstraps (~5 ταινίες).
+   * Μην κάνεις refetch όσο `movies === undefined` (διπλό fetch) ούτε σε υγιές catalog.
    */
+  const moviesHealAttempted = useRef(false);
   useEffect(() => {
     if (!deferProgramData) return;
-    const currentCount = movies?.length ?? 0;
-    if (currentCount >= 12) return;
+    if (movies === undefined) return;
+    if (movies.length >= 12) return;
+    if (moviesHealAttempted.current) return;
+    moviesHealAttempted.current = true;
     void queryClient.refetchQueries({ queryKey: ["movies"] });
-  }, [deferProgramData, movies?.length, queryClient]);
+  }, [deferProgramData, movies, queryClient]);
   const awaitingMovies = movies === undefined && (moviesPending || !deferProgramData);
   const awaitingShowtimes = showtimes === undefined && (showtimesPending || !deferProgramData);
   /**
