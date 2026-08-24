@@ -25,7 +25,8 @@ const CORRUPT = [
   "min-height:380@media",
   "min-height:580.home-main-overlap",
   "calc(380px + 3.5rem)",
-  'data-async-css="sheet" //',
+  'data-async-css="sheet"',
+  'media="print" onload="this.media=\'all\'"',
 ];
 
 try {
