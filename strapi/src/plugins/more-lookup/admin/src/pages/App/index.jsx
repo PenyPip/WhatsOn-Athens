@@ -1126,6 +1126,44 @@ const VENUE_STATUS_GROUP_META = {
   unchanged: { title: 'Άλλες αλλαγές', tone: 'neutral' },
 };
 
+function UnmatchedTitlesPanel({ titles, count }) {
+  const rows = Array.isArray(titles) ? titles.filter((t) => t?.playTitle || typeof t === 'string') : [];
+  const total = Number(count ?? rows.length);
+  if (!rows.length && total <= 0) return null;
+
+  return (
+    <Box padding={4} background="warning100" hasRadius>
+      <Typography fontWeight="semiBold" textColor="warning700">
+        Ταινίες χωρίς ταύτιση CMS
+        {total > 0 ? ` (${total})` : ''}
+      </Typography>
+      <Typography variant="pi" textColor="neutral700" paddingTop={2} paddingBottom={2}>
+        Δεν βρέθηκε αυτόματα αντίστοιχη ταινία/παράσταση. Αν υπάρχει στο CMS, αντιστοίχισέ την
+        χειροκίνητα (More κωδικός ή εισαγωγή προγράμματος).
+      </Typography>
+      <Flex direction="column" gap={1} alignItems="stretch">
+        {rows.slice(0, 40).map((row) => {
+          const title = typeof row === 'string' ? row : row.playTitle;
+          const venues = typeof row === 'string' ? [] : row.venues || (row.venueName ? [row.venueName] : []);
+          const n = typeof row === 'string' ? 1 : row.count || 1;
+          return (
+            <Typography key={title} variant="pi" textColor="neutral800">
+              · «{title}»
+              {n > 1 ? ` ×${n}` : ''}
+              {venues.length ? ` — ${venues.slice(0, 4).join(', ')}` : ''}
+            </Typography>
+          );
+        })}
+        {rows.length > 40 ? (
+          <Typography variant="pi" textColor="neutral600">
+            …και {rows.length - 40} ακόμα τίτλοι
+          </Typography>
+        ) : null}
+      </Flex>
+    </Box>
+  );
+}
+
 function VenueStatusTransitionsPanel({ venueStatus }) {
   const [expanded, setExpanded] = React.useState({});
   const venues = Array.isArray(venueStatus?.venues) ? venueStatus.venues : [];
@@ -1342,6 +1380,22 @@ function SyncReportPanel({ report }) {
           </Box>
         ) : null}
 
+        <Box paddingTop={okRows.length || failedRows.length ? 4 : 0}>
+          <UnmatchedTitlesPanel
+            titles={
+              report.unmatchedTitles?.length
+                ? report.unmatchedTitles
+                : okRows.flatMap((row) =>
+                    (row.unmatchedTitles || []).map((playTitle) => ({
+                      playTitle,
+                      venues: row.venueName ? [row.venueName] : [],
+                    })),
+                  )
+            }
+            count={report.unmatchedMovies}
+          />
+        </Box>
+
         {failedRows.length ? (
           <Box>
             <Typography variant="sigma" textColor="danger600" fontWeight="semiBold" paddingBottom={2}>
@@ -1410,6 +1464,14 @@ function SyncReportPanel({ report }) {
             hint="Άγνωστα eventId από more_link"
           />
         ) : null}
+        {(report.scrapeTitleUnmatched ?? 0) > 0 ? (
+          <StatBadge
+            label="Χωρίς ταύτιση τίτλου"
+            value={report.scrapeTitleUnmatched}
+            tone="warning"
+            hint="Δες λίστα από κάτω"
+          />
+        ) : null}
         {skippedPast > 0 ? (
           <StatBadge label="Παρελθούσες" value={skippedPast} tone="neutral" hint="Παραλείφθηκαν" />
         ) : null}
@@ -1419,6 +1481,15 @@ function SyncReportPanel({ report }) {
           tone={errorCount > 0 ? 'danger' : 'neutral'}
         />
       </Flex>
+
+      {(report.scrapeTitleMisses?.length || report.scrapeTitleUnmatched) ? (
+        <Box paddingBottom={4}>
+          <UnmatchedTitlesPanel
+            titles={report.scrapeTitleMisses}
+            count={report.scrapeTitleUnmatched}
+          />
+        </Box>
+      ) : null}
 
       <Grid gap={4} paddingBottom={missingIds.length || errorCount ? 4 : 0}>
         <GridItem col={6} s={12}>

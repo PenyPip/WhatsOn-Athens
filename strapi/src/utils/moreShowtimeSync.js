@@ -26,6 +26,75 @@ const {
   lookupScrapedEventRow,
 } = require('./moreVenueProgramScrape');
 const { findBestCmsMatchByPlayTitle, mapCmsRowForPlayTitleMatch } = require('./morePlayTitleMatch');
+
+const UNMATCHED_TITLE_CAP = 80;
+
+function unmatchedTitleKey(title) {
+  return String(title || '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+/**
+ * Ταινία/παράσταση από More scrape που δεν ταυτίστηκε με CMS — για χειροκίνητη αντιστοίχιση.
+ */
+function recordUnmatchedPlayTitle(report, { playTitle, venueName, venueId, eventId, kind } = {}) {
+  const title = String(playTitle || '').trim();
+  if (!report || !title) return;
+  report.scrapeTitleUnmatched = (report.scrapeTitleUnmatched || 0) + 1;
+  if (!Array.isArray(report.scrapeTitleMisses)) report.scrapeTitleMisses = [];
+
+  const key = unmatchedTitleKey(title);
+  const existing = report.scrapeTitleMisses.find((row) => unmatchedTitleKey(row.playTitle) === key);
+  if (existing) {
+    existing.count = (existing.count || 1) + 1;
+    if (venueName) {
+      const venues = Array.isArray(existing.venues) ? existing.venues : [];
+      if (!venues.includes(venueName)) existing.venues = [...venues, venueName].slice(0, 8);
+    }
+    return;
+  }
+  if (report.scrapeTitleMisses.length >= UNMATCHED_TITLE_CAP) return;
+
+  report.scrapeTitleMisses.push({
+    playTitle: title,
+    eventId: eventId || null,
+    venueId: venueId ?? null,
+    venueName: venueName || null,
+    venues: venueName ? [venueName] : [],
+    kind: kind || 'movie',
+    count: 1,
+  });
+
+  if (typeof report.onProgress === 'function') {
+    report.onProgress(
+      `Χωρίς ταύτιση CMS: «${title}»${venueName ? ` · ${venueName}` : ''}. Αντιστοίχισέ την χειροκίνητα αν υπάρχει.`,
+    );
+  }
+}
+
+function mergeUnmatchedTitleLists(...lists) {
+  const acc = { scrapeTitleMisses: [], scrapeTitleUnmatched: 0 };
+  for (const list of lists) {
+    for (const row of list || []) {
+      recordUnmatchedPlayTitle(acc, {
+        playTitle: row.playTitle,
+        venueName: row.venueName || (Array.isArray(row.venues) ? row.venues[0] : null),
+        venueId: row.venueId,
+        eventId: row.eventId,
+        kind: row.kind,
+      });
+      if (Number(row.count) > 1) {
+        const last = acc.scrapeTitleMisses.find(
+          (r) => unmatchedTitleKey(r.playTitle) === unmatchedTitleKey(row.playTitle),
+        );
+        if (last) last.count = (last.count || 1) + (Number(row.count) - 1);
+      }
+    }
+  }
+  return acc;
+}
 const {
   createEventIdPersistQueue,
   loadPersistedCinemaEventIdsIntoIndex,
@@ -1235,6 +1304,7 @@ function mergeMovieSyncReports(target, source) {
     'skippedUnknownEventId',
     'skippedInvalidDate',
     'resolvedViaVenueScrape',
+    'scrapeTitleUnmatched',
   ];
   target.moviesScanned = (target.moviesScanned || 0) + (source.moviesScanned || 0);
   for (const key of counterKeys) {
@@ -1248,6 +1318,10 @@ function mergeMovieSyncReports(target, source) {
   target.byVenue = [...(target.byVenue || []), ...(source.byVenue || [])];
   target.missingVenueIds = [...(target.missingVenueIds || []), ...(source.missingVenueIds || [])];
   target.errors = [...(target.errors || []), ...(source.errors || [])];
+  target.scrapeTitleMisses = mergeUnmatchedTitleLists(
+    target.scrapeTitleMisses,
+    source.scrapeTitleMisses,
+  ).scrapeTitleMisses;
   if (source.venueUpdatedStatuses) target.venueUpdatedStatuses = source.venueUpdatedStatuses;
   if (source.note && !target.note) target.note = source.note;
   return trimReportDetailArrays(target);
@@ -1267,6 +1341,7 @@ function mergeTheaterSyncReports(target, source) {
     'skippedUnknownEventId',
     'skippedInvalidDate',
     'resolvedViaVenueScrape',
+    'scrapeTitleUnmatched',
   ];
   target.theaterShowsScanned = (target.theaterShowsScanned || 0) + (source.theaterShowsScanned || 0);
   for (const key of counterKeys) {
@@ -1280,6 +1355,10 @@ function mergeTheaterSyncReports(target, source) {
   target.byTheaterVenue = [...(target.byTheaterVenue || []), ...(source.byTheaterVenue || [])];
   target.missingVenueIds = [...(target.missingVenueIds || []), ...(source.missingVenueIds || [])];
   target.errors = [...(target.errors || []), ...(source.errors || [])];
+  target.scrapeTitleMisses = mergeUnmatchedTitleLists(
+    target.scrapeTitleMisses,
+    source.scrapeTitleMisses,
+  ).scrapeTitleMisses;
   if (source.note && !target.note) target.note = source.note;
   return trimReportDetailArrays(target);
 }
@@ -1935,6 +2014,7 @@ async function runBundleVenueScrapeRetry({
 
 function trimReportDetailArrays(report) {
   if (!report || typeof report !== 'object') return report;
+  delete report.onProgress;
   const cap = (arr, key) => {
     if (!Array.isArray(arr) || arr.length <= REPORT_DETAIL_MAX) return arr;
     report[`${key}Truncated`] = arr.length - REPORT_DETAIL_MAX;
@@ -1946,6 +2026,7 @@ function trimReportDetailArrays(report) {
   report.byTheaterVenue = cap(report.byTheaterVenue, 'byTheaterVenue');
   report.missingVenueIds = cap(report.missingVenueIds, 'missingVenueIds');
   report.errors = cap(report.errors, 'errors');
+  report.scrapeTitleMisses = cap(report.scrapeTitleMisses, 'scrapeTitleMisses');
   return report;
 }
 
@@ -2091,17 +2172,13 @@ async function resolveCinemaMovieFromEventId({
 
   const match = findBestCmsMatchByPlayTitle(row.playTitle, moviesForTitle);
   if (!match) {
-    if (report) {
-      report.scrapeTitleUnmatched = (report.scrapeTitleUnmatched || 0) + 1;
-      if (!report.scrapeTitleMisses) report.scrapeTitleMisses = [];
-      if (report.scrapeTitleMisses.length < 20) {
-        report.scrapeTitleMisses.push({
-          venueId: venue?.id,
-          eventId: key,
-          playTitle: row.playTitle,
-        });
-      }
-    }
+    recordUnmatchedPlayTitle(report, {
+      playTitle: row.playTitle,
+      venueName: venue?.name,
+      venueId: venue?.id,
+      eventId: key,
+      kind: 'movie',
+    });
     return null;
   }
 
@@ -2136,13 +2213,11 @@ function indexCinemaMappingsFromVenueScrape(
 
     const match = findBestCmsMatchByPlayTitle(row.playTitle, pool);
     if (!match) {
-      if (report) {
-        report.scrapeTitleUnmatched = (report.scrapeTitleUnmatched || 0) + 1;
-        if (!report.scrapeTitleMisses) report.scrapeTitleMisses = [];
-        if (report.scrapeTitleMisses.length < 20) {
-          report.scrapeTitleMisses.push({ eventId: key, playTitle: row.playTitle });
-        }
-      }
+      recordUnmatchedPlayTitle(report, {
+        playTitle: row.playTitle,
+        eventId: key,
+        kind: 'movie',
+      });
       continue;
     }
 
@@ -2181,7 +2256,14 @@ function indexTheaterMappingsFromVenueScrape(
     if (!key || supplementalIndex.has(key) || !row?.playTitle) continue;
 
     const match = findBestCmsMatchByPlayTitle(row.playTitle, pool);
-    if (!match) continue;
+    if (!match) {
+      recordUnmatchedPlayTitle(report, {
+        playTitle: row.playTitle,
+        eventId: key,
+        kind: 'theater_show',
+      });
+      continue;
+    }
 
     const mapped = {
       theaterShowId: match.cmsId,
@@ -2787,6 +2869,9 @@ async function syncMovieShowtimesFromMore(strapi, {
     byMovie: [],
     byVenue: [],
     missingVenueIds: [],
+    scrapeTitleMisses: [],
+    scrapeTitleUnmatched: 0,
+    onProgress,
   };
 
   const pendingVenueCreates = new Map();
@@ -2810,7 +2895,7 @@ async function syncMovieShowtimesFromMore(strapi, {
 
   if (!movies.length && !venuesWithBundle.length) {
     report.note = 'Δεν υπάρχουν ταινίες με per-movie event_group_code ούτε σινεμά με venue bundle.';
-    return report;
+    return trimReportDetailArrays(report);
   }
 
   if (!movies.length && venuesWithBundle.length) {
@@ -3079,11 +3164,14 @@ async function syncTheaterPerformancesFromMore(strapi, {
     byTheaterShow: [],
     byTheaterVenue: [],
     missingVenueIds: [],
+    scrapeTitleMisses: [],
+    scrapeTitleUnmatched: 0,
+    onProgress,
   };
 
   if (!theaterShows.length && !venuesWithBundle.length) {
     report.note = 'Δεν υπάρχουν παραστάσεις θεάτρου με event_group_code.';
-    return report;
+    return trimReportDetailArrays(report);
   }
 
   const pendingVenueCreates = new Map();
@@ -3695,6 +3783,8 @@ async function syncSingleCinemaVenueFromMore(strapi, options = {}) {
     skippedNoVenue: movieReport.skippedNoVenue || 0,
     skippedUnknownEventId: movieReport.skippedUnknownEventId || 0,
     resolvedViaVenueScrape: movieReport.resolvedViaVenueScrape || 0,
+    scrapeTitleUnmatched: movieReport.scrapeTitleUnmatched || 0,
+    scrapeTitleMisses: movieReport.scrapeTitleMisses || [],
     persistedEventIdCache: persistedEventIds.entries,
     persistedEventIdEntriesUpdated: persistedEventIds.persisted,
     skippedInvalidDate: movieReport.skippedInvalidDate || 0,
@@ -3717,6 +3807,9 @@ async function syncSingleCinemaVenueFromMore(strapi, options = {}) {
     ` (ταινίες: ${report.createdFromMovies} · bundle: ${report.createdFromVenues})` +
     ` · υπήρχαν: ${report.alreadyExists}` +
     ` · άγνωστο eventId: ${report.skippedUnknownEventId}` +
+    (report.scrapeTitleUnmatched
+      ? ` · χωρίς ταύτιση τίτλου: ${report.scrapeTitleUnmatched}`
+      : '') +
     (statusEntry?.statusLabel ? ` · κατάσταση: ${statusEntry.statusLabel}` : '') +
     (hintPreview ? ` · ${hintPreview}` : '');
 
@@ -4227,6 +4320,12 @@ async function syncShowtimesFromMore(strapi, options = {}) {
       movieReport.skippedUnknownEventId + theaterReport.skippedUnknownEventId,
     resolvedViaVenueScrape:
       (movieReport.resolvedViaVenueScrape || 0) + (theaterReport.resolvedViaVenueScrape || 0),
+    scrapeTitleUnmatched:
+      (movieReport.scrapeTitleUnmatched || 0) + (theaterReport.scrapeTitleUnmatched || 0),
+    scrapeTitleMisses: mergeUnmatchedTitleLists(
+      movieReport.scrapeTitleMisses,
+      theaterReport.scrapeTitleMisses,
+    ).scrapeTitleMisses,
     persistedEventIdCache: persistedEventIds.entries,
     persistedEventIdEntriesUpdated: persistedEventIds.persisted,
     skippedInvalidDate: movieReport.skippedInvalidDate + theaterReport.skippedInvalidDate,
@@ -4284,6 +4383,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     ` · άγνωστο eventId: ${report.skippedUnknownEventId}` +
     (report.resolvedViaVenueScrape
       ? ` · scrape→ταινία/παράσταση: ${report.resolvedViaVenueScrape}`
+      : '') +
+    (report.scrapeTitleUnmatched
+      ? ` · χωρίς ταύτιση τίτλου: ${report.scrapeTitleUnmatched}`
       : '');
 
   strapi.log.info(

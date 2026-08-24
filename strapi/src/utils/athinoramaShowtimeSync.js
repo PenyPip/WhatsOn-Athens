@@ -108,6 +108,7 @@ async function findPendingAthinoramaCinemas(strapi, { includeDrafts = false } = 
 
 function buildImportItemsFromScraped(scrapedMovies, cmsMovies, { summerDefault = false } = {}) {
   const items = [];
+  const unmatchedTitles = [];
   let unmatchedMovies = 0;
   let matchedMovies = 0;
 
@@ -126,6 +127,7 @@ function buildImportItemsFromScraped(scrapedMovies, cmsMovies, { summerDefault =
 
     if (!match?.cmsId) {
       unmatchedMovies += 1;
+      unmatchedTitles.push(title);
       items.push({
         parsedTitle: title,
         movieId: null,
@@ -142,7 +144,7 @@ function buildImportItemsFromScraped(scrapedMovies, cmsMovies, { summerDefault =
     });
   }
 
-  return { items, unmatchedMovies, matchedMovies };
+  return { items, unmatchedMovies, matchedMovies, unmatchedTitles };
 }
 
 async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new Date() } = {}) {
@@ -170,7 +172,7 @@ async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new 
     };
   }
 
-  const { items, unmatchedMovies, matchedMovies } = buildImportItemsFromScraped(
+  const { items, unmatchedMovies, matchedMovies, unmatchedTitles } = buildImportItemsFromScraped(
     scraped.movies,
     cmsMovies,
     { summerDefault: venue.summerOutdoor === true || venue.summer_outdoor === true },
@@ -219,6 +221,7 @@ async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new 
     weekLabel: formatWeekLabel(weekBounds.start, weekBounds.end),
     matchedMovies,
     unmatchedMovies,
+    unmatchedTitles,
     created: created.summary?.created || 0,
     skippedExists: created.summary?.skippedExists || 0,
     weekExpected: created.summary?.weekExpected || 0,
@@ -272,7 +275,15 @@ async function syncPendingAthinoramaVenues(
       onProgress(`Athinorama ${index + 1}/${pending.length}: ${venue.name}`);
     }
     try {
-      return await syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now });
+      const row = await syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now });
+      if (row?.ok && row.unmatchedTitles?.length && typeof onProgress === 'function') {
+        onProgress(
+          `${venue.name}: χωρίς CMS — ${row.unmatchedTitles.slice(0, 8).join(', ')}${
+            row.unmatchedTitles.length > 8 ? '…' : ''
+          }. Αντιστοίχισέ τες χειροκίνητα αν υπάρχουν.`,
+        );
+      }
+      return row;
     } catch (e) {
       return {
         ok: false,
@@ -288,6 +299,7 @@ async function syncPendingAthinoramaVenues(
   let unmatchedMoviesTotal = 0;
   let weekSyncedTotal = 0;
   let weekExpectedTotal = 0;
+  const unmatchedTitleIndex = new Map();
   for (const row of results) {
     if (row?.ok) {
       report.synced += 1;
@@ -299,6 +311,18 @@ async function syncPendingAthinoramaVenues(
       if (row.venueUpdated?.status === VENUE_UPDATED_STATUS.COMPLETE) {
         report.becameComplete += 1;
       }
+      for (const title of row.unmatchedTitles || []) {
+        const key = String(title).trim().toLowerCase();
+        if (!key) continue;
+        if (!unmatchedTitleIndex.has(key)) {
+          unmatchedTitleIndex.set(key, { playTitle: title, venues: [], count: 0 });
+        }
+        const entry = unmatchedTitleIndex.get(key);
+        entry.count += 1;
+        if (row.venueName && !entry.venues.includes(row.venueName)) {
+          entry.venues.push(row.venueName);
+        }
+      }
     } else {
       report.failed += 1;
     }
@@ -308,6 +332,7 @@ async function syncPendingAthinoramaVenues(
   report.created = report.createdTotal;
   report.alreadyExists = alreadyExistsTotal;
   report.unmatchedMovies = unmatchedMoviesTotal;
+  report.unmatchedTitles = [...unmatchedTitleIndex.values()];
   report.weekSynced = weekSyncedTotal;
   report.weekExpected = weekExpectedTotal;
   report.source = 'athinorama';
