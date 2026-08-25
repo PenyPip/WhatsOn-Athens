@@ -508,21 +508,5 @@ function SyncReportPanel({
   );
 }
 
-function PanelHeader({ title, subtitle, action }) {
-  return (
-    <Flex justifyContent="space-between" alignItems="flex-start" gap={4} wrap="wrap" paddingBottom={4}>
-      <Flex direction="column" alignItems="flex-start" gap={2} style={{ flex: '1 1 12rem', minWidth: 0 }}>
-        <Typography variant="delta">{title}</Typography>
-        {subtitle ? (
-          <Typography variant="pi" textColor="neutral600">
-            {subtitle}
-          </Typography>
-        ) : null}
-      </Flex>
-      {action ? <Box style={{ flexShrink: 0 }}>{action}</Box> : null}
-    </Flex>
-  );
-}
-
 
 export { SyncReportPanel };

@@ -47,6 +47,22 @@ function WorkflowStep({ number, title, detail }) {
   );
 }
 
+function PanelHeader({ title, subtitle, action }) {
+  return (
+    <Flex justifyContent="space-between" alignItems="flex-start" gap={4} wrap="wrap" paddingBottom={4}>
+      <Flex direction="column" alignItems="flex-start" gap={2} style={{ flex: '1 1 12rem', minWidth: 0 }}>
+        <Typography variant="delta">{title}</Typography>
+        {subtitle ? (
+          <Typography variant="pi" textColor="neutral600">
+            {subtitle}
+          </Typography>
+        ) : null}
+      </Flex>
+      {action ? <Box style={{ flexShrink: 0 }}>{action}</Box> : null}
+    </Flex>
+  );
+}
+
 function truncateLabel(text, max = 28) {
   const s = String(text || '').trim();
   if (s.length <= max) return s;
@@ -252,6 +268,7 @@ export {
   cardStyle,
   actionButtonStyle,
   WorkflowStep,
+  PanelHeader,
   truncateLabel,
   cmsDualTitleLabel,
   StatBadge,

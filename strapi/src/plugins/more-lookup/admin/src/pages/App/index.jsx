@@ -25,6 +25,7 @@ import {
   cardStyle,
   actionButtonStyle,
   WorkflowStep,
+  PanelHeader,
   truncateLabel,
   cmsDualTitleLabel,
   StatBadge,
