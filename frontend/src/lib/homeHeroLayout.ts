@@ -34,7 +34,9 @@ export const HOME_HERO_CRITICAL_CSS =
   "html.spa-lcp-done.spa-lcp-layout-done [data-home-hero-live]{opacity:1;pointer-events:auto}" +
   "@media(min-width:768px){html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}html.spa-lcp-done #home-hero-slot{display:none}}" +
   ".home-main-overlap{padding-top:3.5rem}" +
-  "@media(min-width:768px){.home-main-overlap{padding-top:4rem}}" +
+  /** Desktop navbar = h-28 (7rem) — το overlap path πρέπει να κρατά ίσο offset. */
+  "@media(min-width:768px){.home-main-overlap{padding-top:7rem}}" +
+  "html.spa-not-home #home-hero-slot,html.spa-not-home #home-hero-ssr-spacer{display:none!important;height:0!important;min-height:0!important;max-height:0!important;overflow:hidden!important}" +
   ".home-below-fold{content-visibility:visible}";
 
 /** Πριν το async index.css — αποφυγή FOUC/CLS στο sr-only H1 και crawl shell. */

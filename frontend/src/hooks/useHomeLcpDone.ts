@@ -1,7 +1,7 @@
 import { useCallback } from "react";
 
 /** Κρύβει μόνο το static overlay/slot — ΟΧΙ το spacer (κρατάει ύψος → χωρίς CLS). */
-function hideHomeStaticLcpDom() {
+export function hideHomeStaticLcpDom() {
   if (typeof document === "undefined") return;
   const slot = document.getElementById("home-hero-slot");
   if (slot) {
@@ -13,6 +13,14 @@ function hideHomeStaticLcpDom() {
     staticLcp.style.setProperty("opacity", "0", "important");
     staticLcp.style.setProperty("visibility", "hidden", "important");
   }
+}
+
+/** Το server `#home-hero-slot` είναι έξω από το Router — κρύψ’ το όταν φεύγεις από την αρχική. */
+export function syncHomeHeroSlotForPath(pathname: string) {
+  if (typeof document === "undefined") return;
+  const onHome = pathname === "/";
+  document.documentElement.classList.toggle("spa-not-home", !onHome);
+  if (!onHome) hideHomeStaticLcpDom();
 }
 
 /** Κρύβει μόνο το static overlay — χωρίς layout shift (margin / slot). */

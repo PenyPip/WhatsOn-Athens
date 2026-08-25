@@ -7,6 +7,7 @@ import {
   lazyWithChunkReload,
 } from "@/lib/lazyWithChunkReload";
 import { cn } from "@/lib/utils";
+import { syncHomeHeroSlotForPath } from "@/hooks/useHomeLcpDone";
 import UrlBackedMemoryRouter from "@/components/UrlBackedMemoryRouter";
 import ScrollToTop from "@/components/ScrollToTop";
 import Navbar from "@/components/Navbar";
@@ -79,13 +80,17 @@ function AppRoutes() {
 }
 
 type AppShellProps = {
-  homeMainOverlap?: boolean;
   homeStaticLcp?: boolean;
 };
 
-function AppShell({ homeMainOverlap, homeStaticLcp }: AppShellProps) {
+function AppShell({ homeStaticLcp }: AppShellProps) {
   const { pathname } = useLocation();
-  const overlapHome = homeMainOverlap ?? pathname === "/";
+  /** Πάντα από το τρέχον path — το SSR `homeMainOverlap` της `/` δεν πρέπει να «κολλάει» στις ταινίες. */
+  const overlapHome = pathname === "/";
+
+  useEffect(() => {
+    syncHomeHeroSlotForPath(pathname);
+  }, [pathname]);
 
   useEffect(() => {
     if (/^\/articles\/[^/]+$/.test(pathname)) {
@@ -122,9 +127,9 @@ type AppProps = {
   homeStaticLcp?: boolean;
 };
 
-const App = ({ ssrPath = "/", homeMainOverlap, homeStaticLcp }: AppProps) => (
+const App = ({ ssrPath = "/", homeStaticLcp }: AppProps) => (
   <UrlBackedMemoryRouter ssrPath={ssrPath}>
-    <AppShell homeMainOverlap={homeMainOverlap} homeStaticLcp={homeStaticLcp} />
+    <AppShell homeStaticLcp={homeStaticLcp} />
   </UrlBackedMemoryRouter>
 );
 
