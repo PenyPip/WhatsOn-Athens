@@ -293,39 +293,42 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
 
       <div
         className={cn(
-          "relative z-10 container flex max-w-7xl items-center py-6 md:py-14",
-          hasCarousel ? "px-4 md:px-16" : "px-4 md:px-8",
+          "relative z-10 container flex max-w-7xl items-center py-6 md:py-10",
+          /** Χώρος για dots κάτω — αλλιώς το CTA κόβεται από overflow-hidden + font swap. */
+          hasCarousel ? "px-4 pb-10 md:px-16 md:pb-14" : "px-4 md:px-8",
         )}
       >
         <div className="grid w-full grid-cols-1 items-center gap-6 max-md:[&>*:first-child]:order-2 max-md:[&>*:last-child]:order-1 md:grid-cols-[minmax(0,1fr)_auto] md:gap-12 lg:gap-16">
-          <div className="min-w-0 max-w-2xl lg:max-w-3xl max-md:text-center">
-            <div className="mb-5">
-              <span className="inline-flex items-center rounded-full border border-amber-300/55 bg-gradient-to-r from-amber-400/30 via-amber-500/20 to-amber-600/10 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.22em] text-amber-50 shadow-[0_4px_28px_rgba(251,191,36,0.22)] ring-1 ring-amber-100/25 md:px-5 md:text-xs md:tracking-[0.24em]">
-                Πολυσυζητημένες
-              </span>
+          <div className="flex min-h-0 min-w-0 max-w-2xl flex-col lg:max-w-3xl max-md:text-center">
+            <div className="min-h-0 min-w-0 shrink">
+              <div className="mb-4 md:mb-5">
+                <span className="inline-flex items-center rounded-full border border-amber-300/55 bg-gradient-to-r from-amber-400/30 via-amber-500/20 to-amber-600/10 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.22em] text-amber-50 shadow-[0_4px_28px_rgba(251,191,36,0.22)] ring-1 ring-amber-100/25 md:px-5 md:text-xs md:tracking-[0.24em]">
+                  Πολυσυζητημένες
+                </span>
+              </div>
+              <p className="font-display text-3xl font-bold leading-[1.08] text-white md:text-4xl lg:text-[2.75rem]">{titles.primary}</p>
+              {titles.secondary ? (
+                <p className="font-display mt-2 text-xl font-medium leading-tight text-white/90 md:text-2xl">{titles.secondary}</p>
+              ) : null}
+              {(active.genre ?? "").trim() ? (
+                <span className="mt-3 inline-flex rounded border border-white/15 bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200/95">
+                  {active.genre}
+                </span>
+              ) : null}
+              <p
+                className={cn(
+                  "mt-3 font-body text-base leading-relaxed text-white md:mt-4 md:text-lg md:leading-[1.65]",
+                  synopsis ? "line-clamp-3 md:line-clamp-4" : "italic text-white/90",
+                )}
+              >
+                {synopsis || "Δεν υπάρχει σύνοψη για αυτή την ταινία."}
+              </p>
+              {schedule.mode === "release" ? (
+                <p className="mt-2 font-body text-sm font-medium text-white md:text-base">{schedule.label}</p>
+              ) : null}
+              {meta ? <p className="mt-2 font-body text-sm text-white/55">{meta}</p> : null}
             </div>
-            <p className="font-display text-3xl font-bold leading-[1.08] text-white md:text-4xl lg:text-[2.75rem]">{titles.primary}</p>
-            {titles.secondary ? (
-              <p className="font-display mt-2 text-xl font-medium leading-tight text-white/90 md:text-2xl">{titles.secondary}</p>
-            ) : null}
-            {(active.genre ?? "").trim() ? (
-              <span className="mt-3 inline-flex rounded border border-white/15 bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200/95">
-                {active.genre}
-              </span>
-            ) : null}
-            <p
-              className={cn(
-                "mt-4 font-body text-base leading-relaxed text-white md:mt-5 md:text-lg md:leading-[1.7]",
-                synopsis ? "line-clamp-3 md:line-clamp-6" : "italic text-white/90",
-              )}
-            >
-              {synopsis || "Δεν υπάρχει σύνοψη για αυτή την ταινία."}
-            </p>
-            {schedule.mode === "release" ? (
-              <p className="mt-3 font-body text-sm font-medium text-white md:text-base">{schedule.label}</p>
-            ) : null}
-            {meta ? <p className="mt-3 font-body text-sm text-white/55">{meta}</p> : null}
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-4 md:mt-8 md:justify-start">
+            <div className="mt-4 flex shrink-0 flex-wrap items-center justify-center gap-4 md:mt-6 md:justify-start">
               <Link
                 to={cta.to}
                 className="inline-flex items-center rounded bg-white px-6 py-3 text-sm font-semibold text-[#13143E] transition-colors hover:bg-white/90"

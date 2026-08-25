@@ -48,5 +48,5 @@ export function resolveHeroScheduleDisplay(
 }
 
 export function heroMovieCta(slug: string): { label: string; to: string } {
-  return { label: "Δες ώρες & σινεμά", to: `/movies/${slug}#showtimes` };
+  return { label: "Περισσότερα", to: `/movies/${slug}` };
 }

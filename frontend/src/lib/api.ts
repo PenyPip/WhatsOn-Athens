@@ -1124,6 +1124,10 @@ function mapHomeCalendarShowtime(rawS: any): StrapiShowtime[] {
     typeof (venue as { slug?: string } | null)?.slug === "string"
       ? (venue as { slug: string }).slug
       : undefined;
+  const venueName =
+    typeof (venue as { name?: string } | null)?.name === "string"
+      ? (venue as { name: string }).name.trim()
+      : "";
   const posterNode =
     movie && typeof (movie as { poster?: unknown }).poster === "object"
       ? (movie as { poster: unknown }).poster
@@ -1134,7 +1138,7 @@ function mapHomeCalendarShowtime(rawS: any): StrapiShowtime[] {
     id: String(s.id ?? ""),
     documentId: "",
     datetime: String(s.datetime),
-    venue: "",
+    venue: venueName,
     availableSeats: 0,
     summerScreening,
     venueSummerOutdoor,

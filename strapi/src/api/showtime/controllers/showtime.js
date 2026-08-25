@@ -66,7 +66,7 @@ const HOME_SHOWTIME_POPULATE = {
     populate: { poster: { fields: ['url', 'formats'] } },
   },
   venue: {
-    fields: ['id', 'slug', 'summer_outdoor'],
+    fields: ['id', 'slug', 'name', 'summer_outdoor'],
   },
 };
 
@@ -125,6 +125,7 @@ function slimHomeCalendarRows(rows) {
     }
     if (v) {
       out.venue = { id: v.id, slug: v.slug };
+      if (typeof v.name === 'string' && v.name.trim()) out.venue.name = v.name.trim();
       if (v.summer_outdoor) out.venue.summer_outdoor = true;
     }
     return out;

@@ -48,6 +48,13 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
     () => new Set((profile?.favoriteVenues ?? []).map((v) => v.id)),
     [profile?.favoriteVenues],
   );
+  const favoriteVenueById = useMemo(() => {
+    const map = new Map<number, { name: string; slug: string }>();
+    for (const v of profile?.favoriteVenues ?? []) {
+      map.set(v.id, { name: v.name, slug: v.slug });
+    }
+    return map;
+  }, [profile?.favoriteVenues]);
 
   const nextShowtimeByMovieId = useMemo(() => {
     const map = new Map<number, StrapiShowtime>();
@@ -70,10 +77,17 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
     }));
   }, [profile?.favoriteMovies, movies, nextShowtimeByMovieId]);
 
-  const yourProgramByVenue = useMemo(
-    () => personalizedProgramByVenue(showtimes, favoriteMovieIds, favoriteVenueIds, { now }),
-    [showtimes, favoriteMovieIds, favoriteVenueIds, now],
-  );
+  const yourProgramByVenue = useMemo(() => {
+    const groups = personalizedProgramByVenue(showtimes, favoriteMovieIds, favoriteVenueIds, { now });
+    return groups.map((group) => {
+      const fromProfile = favoriteVenueById.get(group.venueId);
+      return {
+        ...group,
+        venueName: group.venueName?.trim() || fromProfile?.name?.trim() || "Σινεμά",
+        venueSlug: group.venueSlug || fromProfile?.slug || "",
+      };
+    });
+  }, [showtimes, favoriteMovieIds, favoriteVenueIds, now, favoriteVenueById]);
 
   const favoriteVenueShowtimes = useMemo(() => {
     if (!favoriteVenueIds.size) return [];
@@ -88,8 +102,13 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
     for (const st of favoriteVenueShowtimes) {
       const key = st.venueId;
       if (key == null) continue;
+      const fromProfile = favoriteVenueById.get(key);
       if (!map.has(key)) {
-        map.set(key, { venueName: st.venue, venueSlug: st.venueSlug ?? "", slots: [] });
+        map.set(key, {
+          venueName: (st.venue || "").trim() || fromProfile?.name?.trim() || "Σινεμά",
+          venueSlug: st.venueSlug || fromProfile?.slug || "",
+          slots: [],
+        });
       }
       const group = map.get(key)!;
       const slotKey = showtimeSlotKey(st);
@@ -98,7 +117,7 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
       }
     }
     return [...map.values()];
-  }, [favoriteVenueShowtimes]);
+  }, [favoriteVenueShowtimes, favoriteVenueById]);
 
   const profileFavoriteCount = profile?.favoriteMovies?.length ?? 0;
   if (
@@ -234,15 +253,28 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
             <p className="mt-1 font-body text-sm text-white/65">Τι παίζει στους αγαπημένους σου κινηματογράφους</p>
             <ul className="mt-8 grid list-none gap-4">
               {showtimesByVenue.map((group) => (
-                <li key={group.venueSlug} className="rounded-xl border border-white/10 bg-white/[0.04] p-4 md:p-5">
-                  <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-                    <h3 className="font-display text-lg font-semibold text-white">{group.venueName}</h3>
-                    <Link
-                      to={moviesVenueProgramPath(group.venueSlug)}
-                      className="text-xs font-medium uppercase tracking-wide text-amber-200/90 hover:text-amber-100"
-                    >
-                      Όλο το πρόγραμμα
-                    </Link>
+                <li key={group.venueSlug || group.venueName} className="rounded-xl border border-white/10 bg-white/[0.04] p-4 md:p-5">
+                  <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+                    <h3 className="min-w-0 flex-1 font-display text-xl font-bold leading-tight text-white md:text-2xl">
+                      {group.venueSlug ? (
+                        <Link
+                          to={moviesVenueProgramPath(group.venueSlug)}
+                          className="hover:text-amber-100"
+                        >
+                          {group.venueName}
+                        </Link>
+                      ) : (
+                        group.venueName
+                      )}
+                    </h3>
+                    {group.venueSlug ? (
+                      <Link
+                        to={moviesVenueProgramPath(group.venueSlug)}
+                        className="shrink-0 text-xs font-medium uppercase tracking-wide text-amber-200/90 hover:text-amber-100"
+                      >
+                        Όλο το πρόγραμμα
+                      </Link>
+                    ) : null}
                   </div>
                   <ul className="grid list-none gap-2 sm:grid-cols-2 lg:grid-cols-3">
                     {group.slots.slice(0, 6).map((st) => (
@@ -250,7 +282,9 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
                         <Link to={`/movies/${st.movieSlug}`} className="font-medium text-white hover:underline">
                           {st.movieTitle}
                         </Link>
-                        <p className="mt-0.5 text-xs text-white/55">{formatNextShowtimeLabel(st, now)}</p>
+                        <p className="mt-0.5 text-xs text-white/55">
+                          {formatNextShowtimeLabel(st, now, { omitVenue: true })}
+                        </p>
                       </li>
                     ))}
                   </ul>
