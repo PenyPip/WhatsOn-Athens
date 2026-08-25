@@ -7,6 +7,12 @@ import {
   Grid,
   GridItem,
   Badge,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
 } from '@strapi/design-system';
 import {
   cardStyle,
@@ -139,8 +145,11 @@ function SyncReportPanel({
 }) {
   const [showAllMissingIds, setShowAllMissingIds] = React.useState(false);
   const [showErrors, setShowErrors] = React.useState(false);
+  const errorGroups = React.useMemo(() => groupSyncErrors(report?.errors), [report?.errors]);
 
-  const isAthinorama = report?.source === 'athinorama';
+  if (!report) return null;
+
+  const isAthinorama = report.source === 'athinorama';
   const created = Number(report.created ?? report.createdTotal ?? 0);
   const createdFromBuckets = Number(report.createdFromBuckets ?? created);
   const createdInDb = report.createdInDb != null ? Number(report.createdInDb) : null;
@@ -151,7 +160,6 @@ function SyncReportPanel({
   const resolvedViaScrape = Number(report.resolvedViaVenueScrape ?? 0);
   const skippedPast = Number(report.skippedPast ?? 0);
   const errorCount = Array.isArray(report.errors) ? report.errors.length : 0;
-  const errorGroups = React.useMemo(() => groupSyncErrors(report.errors), [report.errors]);
 
   const missingIds = [
     ...new Set(
