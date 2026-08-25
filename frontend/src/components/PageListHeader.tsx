@@ -5,6 +5,13 @@ import PageHeaderReveal from "@/components/PageHeaderReveal";
 export const PAGE_NAV_CLEARANCE_CLASS =
   "pt-[max(calc(env(safe-area-inset-top,0px)+4.75rem),5.5rem)] md:pt-32";
 
+/**
+ * Detail heroes (ταινία/θέατρο/…): ίσο με το ύψος navbar, χωρίς επιπλέον κενό.
+ * Mobile top bar ~3.5rem · desktop h-28 = 7rem.
+ */
+export const PAGE_DETAIL_NAV_CLEARANCE_CLASS =
+  "pt-[max(calc(env(safe-area-inset-top,0px)+3.75rem),4.25rem)] md:pt-28";
+
 /** Shell wrapper για σελίδες λίστας — compact offset κάτω από fixed nav. */
 export const PAGE_LIST_SHELL_CLASS = "min-h-screen pb-20 md:pb-8";
 
@@ -31,14 +38,14 @@ export const PAGE_LIST_SUBTITLE_CLASS = "text-sm text-white/60 md:text-base";
 
 /** Εσωτερικό padding για hero λεπτομέρειας (παράσταση, event). */
 export const PAGE_DETAIL_HERO_INNER_CLASS = cn(
-  "relative z-10 container pb-6 md:pb-8",
-  PAGE_NAV_CLEARANCE_CLASS,
+  "relative z-10 container pb-5 md:pb-6",
+  PAGE_DETAIL_NAV_CLEARANCE_CLASS,
 );
 
-/** Hero σελίδας ταινίας — ίδιο clearance με λίστες. */
+/** Hero σελίδας ταινίας — ίδιο compact clearance με θέατρο. */
 export const PAGE_MOVIE_DETAIL_HERO_INNER_CLASS = cn(
-  "relative z-10 container pb-4 md:pb-6",
-  PAGE_NAV_CLEARANCE_CLASS,
+  "relative z-10 container pb-4 md:pb-5",
+  PAGE_DETAIL_NAV_CLEARANCE_CLASS,
 );
 
 /** Loading / not-found states κάτω από navbar. */

@@ -71,8 +71,9 @@ export function movieDetailSeo(
       ? `${name} — πού παίζεται · ${genre} · σινεμά`
       : `${name} — πού παίζεται · πρόγραμμα σινεμά`;
 
-  const h1 = `${name} — πού παίζεται`;
+  const h1 = `${tl.primary} — πού παίζεται`;
 
+  /** Μόνο για SEO/meta — όχι στο ορατό hero (υπάρχει CTA «Δες ώρες»). */
   const subtitle = venueList
     ? `Πρόγραμμα προβολών · ${venueList}`
     : "Πρόγραμμα σινεμά · ώρες προβολών";

@@ -83,6 +83,7 @@ import { buildTheaterDetailJsonLd } from "@/lib/jsonLdTheaterDetail";
 import JsonLd from "@/components/JsonLd";
 import {
   PAGE_BELOW_NAV_CLASS,
+  PAGE_DETAIL_HERO_INNER_CLASS,
   PAGE_MOVIE_DETAIL_HERO_INNER_CLASS,
 } from "@/components/PageListHeader";
 import GenreLinks from "@/components/GenreLinks";
@@ -992,11 +993,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           className={
             isMovie
               ? PAGE_MOVIE_DETAIL_HERO_INNER_CLASS
-              : cn(
-                  "relative z-10 container",
-                  "pt-[max(calc(env(safe-area-inset-top,0px)+4.25rem),5rem)] md:pt-24",
-                  "pb-2.5 md:pb-3",
-                )
+              : cn(PAGE_DETAIL_HERO_INNER_CLASS, "pb-2.5 md:pb-3")
           }
         >
           <div
@@ -1020,7 +1017,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             >
             <Link
               to={isMovie ? "/movies" : "/theater"}
-              className="inline-flex items-center gap-1 text-sm text-white/50 transition-colors hover:text-white mb-1.5"
+              className="mb-1 inline-flex items-center gap-1 text-sm text-white/50 transition-colors hover:text-white"
             >
               <ArrowLeft className="w-4 h-4" /> Πίσω στις {isMovie ? "Ταινίες" : "Παραστάσεις"}
             </Link>
@@ -1049,7 +1046,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             ) : null}
 
             {movie && (imdbRating != null || movie.ageRating?.trim() || moviePopularity?.isPopular) ? (
-              <div className="flex flex-wrap items-center gap-3 mb-3">
+              <div className="mb-2 flex flex-wrap items-center gap-3">
                 {imdbRating != null ? <ImdbRatingBadge rating={imdbRating} variant="hero" /> : null}
                 {moviePopularity?.isPopular ? <PopularBadge /> : null}
                 {movie.ageRating?.trim() ? (
@@ -1062,17 +1059,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             <h1
               className={cn(
                 "font-display font-bold text-white text-2xl md:text-4xl",
-                isMovie && movieSeo
-                  ? headline.secondary
-                    ? "mb-2"
-                    : "mb-3"
-                  : headline.secondary
-                    ? "mb-2"
-                    : theaterShow?.posterUrl && !isMovie
-                      ? "mb-2"
-                      : isMovie
-                        ? "mb-3"
-                        : "mb-4",
+                headline.secondary ? "mb-1" : "mb-3",
               )}
             >
               {isMovie && movieSeo ? movieSeo.h1 : headline.primary}
@@ -1096,58 +1083,48 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               />
             ) : null}
             </div>
-            {isMovie && movieSeo ? (
-              <p className="font-display text-lg md:text-xl font-medium text-white/80 mb-2">{movieSeo.subtitle}</p>
-            ) : null}
             {headline.secondary ? (
-              <p className="font-display text-xl md:text-3xl font-medium text-white/85 mb-4">{headline.secondary}</p>
+              <p className="mb-3 font-display text-lg font-medium text-white/80 md:text-xl">{headline.secondary}</p>
             ) : null}
 
-            <div
-              className={cn(
-                "flex flex-wrap items-center gap-3 text-white/60 text-sm md:text-base",
-                isMovie ? "mb-4" : "mb-2",
-              )}
-            >
-              {hasDuration ? (
-                <span className="flex items-center gap-1">
-                  <Clock className="w-4 h-4" /> {event.duration} λεπτά
-                </span>
-              ) : null}
-              {movie ? (
-                genreLinkItems.length ? (
-                  <GenreLinks items={genreLinkItems} prefix="Είδος" variant="hero" />
-                ) : genreLabel ? (
-                  <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white">
-                    Είδος · {genreLabel}
+            {(hasDuration ||
+              (!isMovie && genreLabel) ||
+              movie?.isDubbed ||
+              movie?.language?.trim() ||
+              (theaterShow && isTouringTheaterShow(theaterShow)) ||
+              (theaterShow && formatTheaterRunPeriod(theaterShow))) ? (
+              <div
+                className={cn(
+                  "flex flex-wrap items-center gap-3 text-sm text-white/60 md:text-base",
+                  isMovie ? "mb-3" : "mb-2",
+                )}
+              >
+                {hasDuration ? (
+                  <span className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" /> {event.duration} λεπτά
                   </span>
-                ) : (
-                  <span className="rounded border border-white/20 bg-white/10 px-2 py-0.5 text-sm font-medium text-white/75">
-                    Είδος · —
+                ) : null}
+                {!isMovie && genreLabel ? <span>{genreLabel}</span> : null}
+                {movie?.isDubbed ? (
+                  <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
+                    Μεταγλωτισμένη
                   </span>
-                )
-              ) : genreLabel ? (
-                <span>{genreLabel}</span>
-              ) : null}
-              {movie?.isDubbed ? (
-                <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
-                  Μεταγλωτισμένη
-                </span>
-              ) : null}
-              {movie?.language?.trim() ? (
-                <span className="flex items-center gap-1">
-                  <Globe className="w-4 h-4" /> {movie.language.trim()}
-                </span>
-              ) : null}
-              {theaterShow && isTouringTheaterShow(theaterShow) ? (
-                <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
-                  Περιοδεία
-                </span>
-              ) : null}
-              {theaterShow && formatTheaterRunPeriod(theaterShow) ? (
-                <span className="flex items-center gap-1">{formatTheaterRunPeriod(theaterShow)}</span>
-              ) : null}
-            </div>
+                ) : null}
+                {movie?.language?.trim() ? (
+                  <span className="flex items-center gap-1">
+                    <Globe className="w-4 h-4" /> {movie.language.trim()}
+                  </span>
+                ) : null}
+                {theaterShow && isTouringTheaterShow(theaterShow) ? (
+                  <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
+                    Περιοδεία
+                  </span>
+                ) : null}
+                {theaterShow && formatTheaterRunPeriod(theaterShow) ? (
+                  <span className="flex items-center gap-1">{formatTheaterRunPeriod(theaterShow)}</span>
+                ) : null}
+              </div>
+            ) : null}
 
             {theaterShow ? <TheaterTicketHeroPreview show={theaterShow} /> : null}
 
