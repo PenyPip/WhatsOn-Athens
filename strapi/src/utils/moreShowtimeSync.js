@@ -1,6 +1,5 @@
 'use strict';
 
-const { fetchMoreEventsByGroupCode } = require('./moreApi');
 const {
   collectEventGroupCodes,
   collectVenueBundleCodes,
@@ -21,241 +20,43 @@ const {
   SCRAPE_ENABLED,
   SCRAPE_ON_SYNC,
   BUNDLE_SYNC_SCRAPE_ENABLED,
-  resolveVenueMoreProgramLink,
   loadVenueScrapeWithFallback,
   lookupScrapedEventRow,
 } = require('./moreVenueProgramScrape');
-const { findBestCmsMatchByPlayTitle, findTopCmsMatchesByPlayTitle, mapCmsRowForPlayTitleMatch } = require('./morePlayTitleMatch');
+const { findBestCmsMatchByPlayTitle, mapCmsRowForPlayTitleMatch } = require('./morePlayTitleMatch');
+const {
+  normalizeVenueName,
+  slugifyVenueName,
+} = require('./moreSync/textNormalize');
+const {
+  cmsVenueDisplayName,
+  enrichUnmatchedVenuesFromBundles,
+  enrichUnmatchedFromEventList,
+  attachCmsVenueToScrapeUnmatched,
+  recordUnmatchedPlayTitle,
+  enrichUnmatchedTitlesWithSuggestions,
+} = require('./moreSync/unmatchedReport');
+const { yieldEventLoop, maybeGc } = require('./moreSync/runtime');
+const { createEventsCache } = require('./moreSync/eventsCache');
+const { findAllEntities } = require('./moreSync/findAllEntities');
+const {
+  showtimeExistsInIndex,
+  addShowtimeToExistenceIndex,
+  findPerformanceInIndex,
+  setPerformanceInExistenceIndex,
+  loadShowtimeExistenceIndex,
+  loadPerformanceExistenceIndex,
+} = require('./moreSync/existenceIndexes');
+const {
+  pushSyncError,
+  mergeMovieSyncReports,
+  mergeTheaterSyncReports,
+  emptySyncCounters,
+  trimReportDetailArrays,
+  combineSyncReports,
+} = require('./moreSync/syncReports');
 
-const UNMATCHED_TITLE_CAP = 80;
 
-function unmatchedTitleKey(title) {
-  return String(title || '')
-    .trim()
-    .toLowerCase()
-    .replace(/\s+/g, ' ');
-}
-
-function pushUnique(list, value, max = 24) {
-  const v = String(value ?? '').trim();
-  if (!v) return list || [];
-  const next = Array.isArray(list) ? list : [];
-  if (next.includes(v)) return next;
-  if (next.length >= max) return next;
-  return [...next, v];
-}
-
-/** Εμφανίσιμο όνομα CMS χώρου (Strapi entity ή plain object). */
-function cmsVenueDisplayName(venue) {
-  if (!venue || typeof venue !== 'object') return '';
-  return String(
-    venue.name ||
-      venue.title ||
-      venue.attributes?.name ||
-      (venue.id != null ? `χώρος #${venue.id}` : ''),
-  ).trim();
-}
-
-function attachVenueNamesToUnmatchedRow(row, names, venueId = null) {
-  if (!row) return;
-  for (const raw of names || []) {
-    const name = String(raw || '').trim();
-    if (!name) continue;
-    row.venues = pushUnique(row.venues || [], name, 8);
-    row.venueName = row.venueName || name;
-  }
-  if (venueId != null && row.venueId == null) row.venueId = venueId;
-}
-
-/**
- * Συμπληρώνει venues στα unmatched από More getevents (event.venueName) + CMS name.
- * Καλείται στο τέλος sync — ακόμα κι αν το recordUnmatched δεν πέρασε venue.
- */
-async function enrichUnmatchedVenuesFromBundles(report, venuesWithBundle, eventsCache) {
-  if (!report?.scrapeTitleMisses?.length || !eventsCache) return report;
-  const namesByEventId = new Map();
-
-  for (const venue of venuesWithBundle || []) {
-    const cmsName = cmsVenueDisplayName(venue);
-    const codes = venue.bundleCodes?.length
-      ? venue.bundleCodes
-      : collectVenueBundleCodes(venue);
-    for (const code of codes || []) {
-      let events = [];
-      try {
-        events = await eventsCache.get(code);
-      } catch {
-        continue;
-      }
-      for (const event of events || []) {
-        const eid = String(event?.eventId ?? '').trim();
-        if (!eid) continue;
-        if (!namesByEventId.has(eid)) namesByEventId.set(eid, new Set());
-        const set = namesByEventId.get(eid);
-        const moreName = String(event?.venueName || event?.venue_name || '').trim();
-        if (moreName) set.add(moreName);
-        if (cmsName) set.add(cmsName);
-      }
-    }
-  }
-
-  for (const row of report.scrapeTitleMisses) {
-    const ids = row.eventIds?.length
-      ? row.eventIds
-      : row.eventId
-        ? [row.eventId]
-        : [];
-    for (const eid of ids) {
-      const names = namesByEventId.get(String(eid));
-      if (!names?.size) continue;
-      attachVenueNamesToUnmatchedRow(row, names);
-    }
-  }
-  return report;
-}
-
-/** Γρήγορο attach από λίστα More events (pending scrape retry). */
-function enrichUnmatchedFromEventList(report, events, cmsVenueName = '', cmsVenueId = null) {
-  if (!report?.scrapeTitleMisses?.length || !events?.length) return;
-  const cms = String(cmsVenueName || '').trim();
-  for (const event of events) {
-    const eventId = String(event?.eventId ?? '').trim();
-    if (!eventId) continue;
-    const moreName = String(event?.venueName || event?.venue_name || '').trim();
-    for (const row of report.scrapeTitleMisses) {
-      const ids = row.eventIds?.length
-        ? row.eventIds.map(String)
-        : row.eventId
-          ? [String(row.eventId)]
-          : [];
-      if (!ids.includes(eventId)) continue;
-      attachVenueNamesToUnmatchedRow(
-        row,
-        [moreName, cms].filter(Boolean),
-        cmsVenueId,
-      );
-    }
-  }
-}
-
-/** CMS όνομα χώρου σε unmatched που προήλθαν από το scrape αυτής της σελίδας. */
-function attachCmsVenueToScrapeUnmatched(report, scrape, venue) {
-  const cmsName = cmsVenueDisplayName(venue);
-  if (!cmsName || !report?.scrapeTitleMisses?.length || !scrape?.byEventId?.size) return;
-  const scrapeIds = new Set([...scrape.byEventId.keys()].map((k) => String(k)));
-  for (const row of report.scrapeTitleMisses) {
-    const ids = row.eventIds?.length
-      ? row.eventIds.map(String)
-      : row.eventId
-        ? [String(row.eventId)]
-        : [];
-    if (!ids.some((id) => scrapeIds.has(id))) continue;
-    attachVenueNamesToUnmatchedRow(row, [cmsName], venue?.id);
-  }
-}
-
-/**
- * Ταινία/παράσταση από More scrape που δεν ταυτίστηκε με CMS — για χειροκίνητη αντιστοίχιση.
- */
-function recordUnmatchedPlayTitle(report, { playTitle, venueName, venueId, eventId, playId, kind } = {}) {
-  const title = String(playTitle || '').trim();
-  if (!report || !title) return;
-  report.scrapeTitleUnmatched = (report.scrapeTitleUnmatched || 0) + 1;
-  if (!Array.isArray(report.scrapeTitleMisses)) report.scrapeTitleMisses = [];
-
-  const label = String(venueName || '').trim();
-  const key = unmatchedTitleKey(title);
-  const existing = report.scrapeTitleMisses.find((row) => unmatchedTitleKey(row.playTitle) === key);
-  if (existing) {
-    existing.count = (existing.count || 1) + 1;
-    attachVenueNamesToUnmatchedRow(existing, label ? [label] : [], venueId);
-    existing.eventIds = pushUnique(existing.eventIds, eventId);
-    existing.playIds = pushUnique(existing.playIds, playId);
-    if (eventId && !existing.eventId) existing.eventId = String(eventId).trim();
-    if (playId && !existing.playId) existing.playId = String(playId).trim();
-    return;
-  }
-  if (report.scrapeTitleMisses.length >= UNMATCHED_TITLE_CAP) return;
-
-  const row = {
-    playTitle: title,
-    eventId: eventId ? String(eventId).trim() : null,
-    playId: playId ? String(playId).trim() : null,
-    eventIds: eventId ? [String(eventId).trim()] : [],
-    playIds: playId ? [String(playId).trim()] : [],
-    venueId: venueId ?? null,
-    venueName: label || null,
-    venues: label ? [label] : [],
-    kind: kind || 'movie',
-    count: 1,
-    suggestions: [],
-  };
-  report.scrapeTitleMisses.push(row);
-
-  if (typeof report.onProgress === 'function') {
-    report.onProgress(
-      `Χωρίς ταύτιση CMS: «${title}»${label ? ` · ${label}` : ''}. Αντιστοίχισέ την χειροκίνητα αν υπάρχει.`,
-    );
-  }
-}
-
-function enrichUnmatchedTitlesWithSuggestions(report, cmsPool) {
-  if (!report?.scrapeTitleMisses?.length || !cmsPool?.length) return report;
-  for (const row of report.scrapeTitleMisses) {
-    const suggestions = findTopCmsMatchesByPlayTitle(row.playTitle, cmsPool, {
-      minScore: 0.45,
-      limit: 5,
-    });
-    row.suggestions = suggestions;
-    row.suggestedContent = suggestions[0] || null;
-  }
-  return report;
-}
-
-function slimCmsChoicesForUnmatched(cmsPool, kind = 'movie') {
-  return (cmsPool || [])
-    .filter((item) => !kind || !item.contentType || item.contentType === kind)
-    .map((item) => ({
-      id: item.id,
-      title: item.title || item.name || `#${item.id}`,
-      originalTitle: item.originalTitle || item.original_title || '',
-      contentType: item.contentType || kind,
-    }))
-    .slice(0, 800);
-}
-
-function mergeUnmatchedTitleLists(...lists) {
-  const acc = { scrapeTitleMisses: [], scrapeTitleUnmatched: 0 };
-  for (const list of lists) {
-    for (const row of list || []) {
-      recordUnmatchedPlayTitle(acc, {
-        playTitle: row.playTitle,
-        venueName:
-          row.venueName ||
-          (Array.isArray(row.venues) && row.venues.length ? row.venues[0] : null),
-        venueId: row.venueId,
-        eventId: row.eventId || (Array.isArray(row.eventIds) ? row.eventIds[0] : null),
-        playId: row.playId || (Array.isArray(row.playIds) ? row.playIds[0] : null),
-        kind: row.kind,
-      });
-      const last = acc.scrapeTitleMisses.find(
-        (r) => unmatchedTitleKey(r.playTitle) === unmatchedTitleKey(row.playTitle),
-      );
-      if (!last) continue;
-      if (Number(row.count) > 1) {
-        last.count = (last.count || 1) + (Number(row.count) - 1);
-      }
-      for (const id of row.eventIds || []) last.eventIds = pushUnique(last.eventIds, id);
-      for (const id of row.playIds || []) last.playIds = pushUnique(last.playIds, id);
-      attachVenueNamesToUnmatchedRow(last, row.venues || [], row.venueId);
-      if (Array.isArray(row.suggestions) && row.suggestions.length && !last.suggestions?.length) {
-        last.suggestions = row.suggestions;
-        last.suggestedContent = row.suggestedContent || row.suggestions[0] || null;
-      }
-    }
-  }
-  return acc;
-}
 const {
   createEventIdPersistQueue,
   loadPersistedCinemaEventIdsIntoIndex,
@@ -274,63 +75,10 @@ const { isDatetimeInTargetCinemaWeekForVenueStatus } = require('./cinemaWeek');
 const { buildMoreImportTrace } = require('./moreImportTrace');
 
 const MOVIE_FETCH_DELAY_MS = Number(process.env.MORE_SHOWTIME_SYNC_DELAY_MS || 40);
-const EVENTS_CACHE_MAX = Number(process.env.MORE_SHOWTIME_SYNC_EVENTS_CACHE_MAX || 512);
 const MOVIE_BATCH_SIZE = Number(process.env.MORE_SHOWTIME_SYNC_MOVIE_BATCH || 8);
 const THEATER_BATCH_SIZE = Number(process.env.MORE_SHOWTIME_SYNC_THEATER_BATCH || 8);
 /** Παράλληλο prefetch κωδικών More πριν το loop — false μόνο σε πολύ περιορισμένη RAM. */
 const PREFETCH_ENABLED = process.env.MORE_SHOWTIME_SYNC_PREFETCH !== 'false';
-const REPORT_DETAIL_MAX = Number(process.env.MORE_SHOWTIME_SYNC_REPORT_DETAIL_MAX || 80);
-
-function maybeGc() {
-  if (typeof global.gc === 'function') global.gc();
-}
-
-function compactSyncErrorMessage(raw) {
-  const s = String(raw || '').trim();
-  if (!s) return '';
-
-  const dataTooLong = s.match(/Data too long for column '([^']+)'/i);
-  if (dataTooLong) {
-    return `Πολύ μεγάλη τιμή για το πεδίο «${dataTooLong[1]}»`;
-  }
-  if (/Duplicate entry/i.test(s)) {
-    return 'Διπλότυπη εγγραφή (unique constraint)';
-  }
-
-  const parts = s.split(' - ');
-  const tail = parts[parts.length - 1]?.trim() || '';
-  if (tail && tail.length < 240 && !/^insert into/i.test(tail)) {
-    if (tail !== s) return compactSyncErrorMessage(tail);
-    return tail;
-  }
-
-  if (/^insert into/i.test(s) && s.length > 120) {
-    return compactSyncErrorMessage(tail) || 'Σφάλμα εγγραφής στη βάση';
-  }
-
-  return s.length > 240 ? `${s.slice(0, 237)}…` : s;
-}
-
-function pushSyncError(report, dedup, entry) {
-  if (!Array.isArray(report.errors)) report.errors = [];
-  const msg = compactSyncErrorMessage(entry.error || entry.message || '');
-  const key = [
-    entry.action,
-    entry.venueType,
-    entry.name || entry.title,
-    entry.moreVenueId,
-    entry.movieId,
-    entry.theaterShowId,
-    entry.venueId,
-    entry.code,
-    msg,
-  ]
-    .filter((v) => v != null && v !== '')
-    .join('|');
-  if (dedup.has(key)) return;
-  dedup.add(key);
-  report.errors.push({ ...entry, error: msg });
-}
 
 /** Κατά sync: δημιουργία χώρου από More αν λείπει (venueId / venueName). */
 const AUTO_CREATE_THEATER_VENUES = process.env.MORE_THEATER_SYNC_AUTO_CREATE_VENUES !== 'false';
@@ -461,180 +209,6 @@ async function preloadCinemaBundleScrapeMappings({
   return true;
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-function yieldEventLoop() {
-  return new Promise((resolve) => setImmediate(resolve));
-}
-
-function createEventsCache(fetchDelayMs, fetchProgress) {
-  const cache = new Map();
-  const fetchProgressFn = typeof fetchProgress === 'function' ? fetchProgress : null;
-
-  function trimCache() {
-    while (cache.size > EVENTS_CACHE_MAX) {
-      const oldest = cache.keys().next().value;
-      if (oldest === undefined) break;
-      cache.delete(oldest);
-    }
-  }
-
-  async function fetchAndStore(key, { skipTrim = false } = {}) {
-    let events = [];
-    try {
-      events = await fetchMoreEventsByGroupCode(key);
-    } catch (e) {
-      const msg = e?.message || String(e);
-      console.warn(`[more-showtime-sync] getevents failed (${key}): ${msg}`);
-      events = [];
-    }
-    cache.set(key, events);
-    if (!skipTrim) trimCache();
-    return events;
-  }
-
-  return {
-    size() {
-      return cache.size;
-    },
-    has(code) {
-      const key = String(code || '').trim();
-      return Boolean(key && cache.has(key));
-    },
-    clear() {
-      cache.clear();
-    },
-    async get(code) {
-      const key = String(code || '').trim();
-      if (!key) return [];
-      if (cache.has(key)) return cache.get(key);
-      if (fetchProgressFn) fetchProgressFn(key);
-      const events = await fetchAndStore(key);
-      if (fetchDelayMs > 0) await sleep(fetchDelayMs);
-      if (cache.size % 8 === 0) await yieldEventLoop();
-      return events;
-    },
-    /** Παράλληλο prefetch μοναδικών κωδικών — πολύ πιο γρήγορο από σειριακό sync. */
-    async prefetchAll(codes, options = {}) {
-      const concurrency = Number(
-        options.concurrency ?? process.env.MORE_SHOWTIME_SYNC_CONCURRENCY ?? 4,
-      );
-      const delayMs = Number(options.delayMs ?? fetchDelayMs);
-      const unique = [
-        ...new Set((codes || []).map((c) => String(c || '').trim()).filter(Boolean)),
-      ];
-      if (!unique.length) return { total: 0, fetched: 0 };
-
-      let cursor = 0;
-      let fetched = 0;
-
-      let lastProgressAt = 0;
-      async function worker() {
-        while (cursor < unique.length) {
-          const idx = cursor;
-          cursor += 1;
-          const key = unique[idx];
-          if (!key || cache.has(key)) continue;
-          await fetchAndStore(key, { skipTrim: true });
-          fetched += 1;
-          if (typeof options.onProgress === 'function' && fetched - lastProgressAt >= 8) {
-            lastProgressAt = fetched;
-            options.onProgress(`More API: ${fetched}/${unique.length} κωδικοί…`);
-          }
-          if (delayMs > 0) await sleep(delayMs);
-          if (fetched % 12 === 0) await yieldEventLoop();
-        }
-      }
-
-      const workers = Math.min(Math.max(1, concurrency), unique.length);
-      await Promise.all(Array.from({ length: workers }, () => worker()));
-      trimCache();
-      return { total: unique.length, fetched };
-    },
-  };
-}
-
-async function findAllEntities(strapi, uid, options = {}) {
-  const pageSize = Math.min(Math.max(1, options.pageSize ?? 100), 250);
-  const maxRecords = options.maxRecords ?? 10_000;
-  const maxPages = options.maxPages ?? Math.ceil(maxRecords / pageSize) + 1;
-  const onPageProgress = options.onPageProgress;
-  const progressLabel = options.progressLabel;
-  const base = { ...options };
-  delete base.pageSize;
-  delete base.maxRecords;
-  delete base.maxPages;
-  delete base.onPageProgress;
-  delete base.progressLabel;
-
-  let totalExpected = null;
-  try {
-    totalExpected = await strapi.entityService.count(uid, { filters: base.filters });
-  } catch {
-    // count optional
-  }
-
-  const seenIds = new Set();
-  const all = [];
-  let start = 0;
-
-  const queryBase =
-    base.sort != null ? base : { ...base, sort: { id: 'asc' } };
-
-  for (let pageNum = 0; pageNum < maxPages; pageNum += 1) {
-    const rows = await strapi.entityService.findMany(uid, {
-      ...queryBase,
-      pagination: { start, limit: pageSize },
-    });
-    const list = Array.isArray(rows) ? rows : [];
-    if (!list.length) break;
-
-    let addedThisPage = 0;
-    for (const row of list) {
-      const id = row?.id;
-      if (id != null) {
-        if (seenIds.has(id)) continue;
-        seenIds.add(id);
-      }
-      all.push(row);
-      addedThisPage += 1;
-    }
-
-    if (typeof onPageProgress === 'function') {
-      const label = progressLabel || uid;
-      const totalHint =
-        totalExpected != null ? ` / ~${totalExpected}` : '';
-      onPageProgress(`${label}: ${all.length}${totalHint} (offset ${start})…`);
-    }
-
-    if (all.length >= maxRecords) {
-      throw new Error(
-        `[more-showtime-sync] Υπερβολικά αποτελέσματα (${all.length}+) για ${uid} — πιθανό bug pagination. Σταμάτησε στο offset ${start}.`,
-      );
-    }
-
-    // Κενή σελίδα ή μόνο duplicates ή τελευταία σελίδα
-    if (addedThisPage === 0 || list.length < pageSize) break;
-    if (totalExpected != null && all.length >= totalExpected) break;
-
-    start += pageSize;
-    if (pageNum % 3 === 2) await yieldEventLoop();
-  }
-
-  return all;
-}
-
-function normalizeVenueName(name) {
-  return String(name || '')
-    .trim()
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .replace(/\s+/g, ' ');
-}
-
 function registerVenueMoreIdsInLookup(lookup, venue) {
   const allowList = parseMoreVenueIdAllowList(venue?.venue_id);
   if (allowList?.length) {
@@ -719,28 +293,6 @@ function buildVenueDataFromMoreEvent(event, config) {
   return { data, moreVenueId, venueName };
 }
 
-const GREEK_TO_LATIN = {
-  α: 'a', ά: 'a', β: 'v', γ: 'g', δ: 'd', ε: 'e', έ: 'e', ζ: 'z', η: 'i', ή: 'i',
-  θ: 'th', ι: 'i', ί: 'i', ϊ: 'i', ΐ: 'i', κ: 'k', λ: 'l', μ: 'm', ν: 'n', ξ: 'x',
-  ο: 'o', ό: 'o', π: 'p', ρ: 'r', σ: 's', ς: 's', τ: 't', υ: 'y', ύ: 'y', ϋ: 'y',
-  ΰ: 'y', φ: 'f', χ: 'ch', ψ: 'ps', ω: 'o', ώ: 'o',
-};
-
-/** Slug από όνομα χώρου (μεταγραφή ελληνικών → λατινικά)· ποτέ με venue_id. */
-function slugifyVenueName(name) {
-  return String(name || '')
-    .trim()
-    .toLowerCase()
-    .split('')
-    .map((ch) => GREEK_TO_LATIN[ch] ?? ch)
-    .join('')
-    .normalize('NFD')
-    .replace(/\p{M}/gu, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
-
-/** Βρίσκει χώρο που υπάρχει ήδη με ίδιο όνομα (αποφυγή διπλότυπων). */
 async function findVenueByName(strapi, name) {
   const trimmed = String(name || '').trim();
   if (!trimmed) return null;
@@ -1455,107 +1007,6 @@ async function loadTheaterShowsWithCodesPage(strapi, { page, pageSize, theaterSh
   return list.filter((show) => collectEventGroupCodes(show).length > 0);
 }
 
-function mergeMovieSyncReports(target, source) {
-  if (!source) return target;
-  if (!target) return { ...source };
-  const counterKeys = [
-    'createdFromMovies',
-    'createdFromVenues',
-    'createdCinemaVenues',
-    'alreadyExists',
-    'dedupedSummerShowtimes',
-    'skippedPast',
-    'skippedNoVenue',
-    'skippedUnknownEventId',
-    'skippedInvalidDate',
-    'resolvedViaVenueScrape',
-    'scrapeTitleUnmatched',
-  ];
-  target.moviesScanned = (target.moviesScanned || 0) + (source.moviesScanned || 0);
-  for (const key of counterKeys) {
-    target[key] = (target[key] || 0) + (source[key] || 0);
-  }
-  target.createdCinemaVenuesList = [
-    ...(target.createdCinemaVenuesList || []),
-    ...(source.createdCinemaVenuesList || []),
-  ];
-  target.byMovie = [...(target.byMovie || []), ...(source.byMovie || [])];
-  target.byVenue = [...(target.byVenue || []), ...(source.byVenue || [])];
-  target.missingVenueIds = [...(target.missingVenueIds || []), ...(source.missingVenueIds || [])];
-  target.errors = [...(target.errors || []), ...(source.errors || [])];
-  target.scrapeTitleMisses = mergeUnmatchedTitleLists(
-    target.scrapeTitleMisses,
-    source.scrapeTitleMisses,
-  ).scrapeTitleMisses;
-  if (source.cmsContentChoices?.length) {
-    const seen = new Set((target.cmsContentChoices || []).map((c) => `${c.contentType}:${c.id}`));
-    target.cmsContentChoices = [
-      ...(target.cmsContentChoices || []),
-      ...source.cmsContentChoices.filter((c) => {
-        const key = `${c.contentType || 'movie'}:${c.id}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      }),
-    ];
-  }
-  if (source.venueUpdatedStatuses) target.venueUpdatedStatuses = source.venueUpdatedStatuses;
-  if (source.note && !target.note) target.note = source.note;
-  return trimReportDetailArrays(target);
-}
-
-function mergeTheaterSyncReports(target, source) {
-  if (!source) return target;
-  if (!target) return { ...source };
-  const counterKeys = [
-    'createdFromTheaterShows',
-    'createdFromTheaterVenues',
-    'createdTheaterVenues',
-    'alreadyExists',
-    'updatedSoldOut',
-    'skippedPast',
-    'skippedNoVenue',
-    'skippedUnknownEventId',
-    'skippedInvalidDate',
-    'resolvedViaVenueScrape',
-    'scrapeTitleUnmatched',
-  ];
-  target.theaterShowsScanned = (target.theaterShowsScanned || 0) + (source.theaterShowsScanned || 0);
-  for (const key of counterKeys) {
-    target[key] = (target[key] || 0) + (source[key] || 0);
-  }
-  target.createdTheaterVenuesList = [
-    ...(target.createdTheaterVenuesList || []),
-    ...(source.createdTheaterVenuesList || []),
-  ];
-  target.byTheaterShow = [...(target.byTheaterShow || []), ...(source.byTheaterShow || [])];
-  target.byTheaterVenue = [...(target.byTheaterVenue || []), ...(source.byTheaterVenue || [])];
-  target.missingVenueIds = [...(target.missingVenueIds || []), ...(source.missingVenueIds || [])];
-  target.errors = [...(target.errors || []), ...(source.errors || [])];
-  target.scrapeTitleMisses = mergeUnmatchedTitleLists(
-    target.scrapeTitleMisses,
-    source.scrapeTitleMisses,
-  ).scrapeTitleMisses;
-  if (source.cmsContentChoices?.length) {
-    const seen = new Set((target.cmsContentChoices || []).map((c) => `${c.contentType}:${c.id}`));
-    target.cmsContentChoices = [
-      ...(target.cmsContentChoices || []),
-      ...source.cmsContentChoices.filter((c) => {
-        const key = `${c.contentType || 'theater_show'}:${c.id}`;
-        if (seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      }),
-    ];
-  }
-  if (source.note && !target.note) target.note = source.note;
-  return trimReportDetailArrays(target);
-}
-
-/**
- * Μετρά πόσες more_sync εγγραφές (προβολές + παραστάσεις) δημιουργήθηκαν στη βάση από
- * τη στιγμή `sinceMs` και μετά — ανεξάρτητη επαλήθευση του «Νέες» της αναφοράς.
- */
 async function countMoreSyncCreatedSince(strapi, sinceMs) {
   const sinceIso = new Date(sinceMs).toISOString();
   const filters = {
@@ -1578,108 +1029,6 @@ async function countMoreSyncCreatedSince(strapi, sinceMs) {
 }
 
 /** Κλειδί ανά λεπτό ±1 για ταίριασμα με το ±60s window των queries. */
-function showtimeMinuteKey(movieId, venueId, datetime) {
-  const d = datetime instanceof Date ? datetime : new Date(datetime);
-  const t = d.getTime();
-  if (Number.isNaN(t)) return null;
-  const mid = movieId != null ? String(movieId) : '?';
-  return `${mid}|${venueId}|${Math.floor(t / 60000)}`;
-}
-
-function performanceMinuteKey(theaterShowId, venueId, datetime) {
-  const d = datetime instanceof Date ? datetime : new Date(datetime);
-  const t = d.getTime();
-  if (Number.isNaN(t)) return null;
-  return `${theaterShowId}|${venueId}|${Math.floor(t / 60000)}`;
-}
-
-function showtimeExistsInIndex(index, movieId, venueId, datetime) {
-  if (!index?.size) return false;
-  const d = datetime instanceof Date ? datetime : new Date(datetime);
-  const baseMinute = Math.floor(d.getTime() / 60000);
-  const mid = movieId != null ? String(movieId) : '?';
-  for (const delta of [-1, 0, 1]) {
-    if (index.has(`${mid}|${venueId}|${baseMinute + delta}`)) return true;
-  }
-  return false;
-}
-
-function addShowtimeToExistenceIndex(index, movieId, venueId, datetime) {
-  if (!index) return;
-  const key = showtimeMinuteKey(movieId, venueId, datetime);
-  if (key) index.add(key);
-}
-
-function findPerformanceInIndex(index, theaterShowId, venueId, datetime) {
-  if (!index?.size) return null;
-  const d = datetime instanceof Date ? datetime : new Date(datetime);
-  const baseMinute = Math.floor(d.getTime() / 60000);
-  for (const delta of [-1, 0, 1]) {
-    const key = `${theaterShowId}|${venueId}|${baseMinute + delta}`;
-    if (index.has(key)) return index.get(key);
-  }
-  return null;
-}
-
-function setPerformanceInExistenceIndex(index, theaterShowId, venueId, datetime, entry) {
-  if (!index) return;
-  const key = performanceMinuteKey(theaterShowId, venueId, datetime);
-  if (key) index.set(key, entry);
-}
-
-async function loadShowtimeExistenceIndex(strapi, _movieIds, now) {
-  const index = new Set();
-
-  const rows = await findAllEntities(strapi, 'api::showtime.showtime', {
-    filters: {
-      datetime: { $gte: now.toISOString() },
-    },
-    fields: ['datetime'],
-    populate: {
-      venue: { fields: ['id'] },
-      movie: { fields: ['id'] },
-    },
-    pageSize: 250,
-    maxRecords: 80_000,
-  });
-
-  for (const row of rows) {
-    const venueId = row.venue?.id ?? row.venue;
-    const movieId = row.movie?.id ?? row.movie;
-    const key = showtimeMinuteKey(movieId, venueId, row.datetime);
-    if (key) index.add(key);
-  }
-  return index;
-}
-
-async function loadPerformanceExistenceIndex(strapi, theaterShowIds, now) {
-  const index = new Map();
-  const ids = [...new Set((theaterShowIds || []).filter((id) => id != null))];
-  if (!ids.length) return index;
-
-  const rows = await findAllEntities(strapi, 'api::theater-performance.theater-performance', {
-    filters: {
-      theater_show: { id: { $in: ids } },
-      datetime: { $gte: now.toISOString() },
-    },
-    fields: ['id', 'datetime', 'sold_out'],
-    populate: {
-      venue: { fields: ['id'] },
-      theater_show: { fields: ['id'] },
-    },
-    pageSize: 250,
-    maxRecords: 80_000,
-  });
-
-  for (const row of rows) {
-    const venueId = row.venue?.id ?? row.venue;
-    const theaterShowId = row.theater_show?.id ?? row.theater_show;
-    const key = performanceMinuteKey(theaterShowId, venueId, row.datetime);
-    if (key) index.set(key, { id: row.id, sold_out: row.sold_out === true });
-  }
-  return index;
-}
-
 function collectCodesFromMovies(movies) {
   const codes = [];
   for (const movie of movies || []) codes.push(...collectEventGroupCodes(movie));
@@ -2104,21 +1453,6 @@ async function upsertPerformanceFromEvent(strapi, report, {
   return 'created';
 }
 
-function emptySyncCounters() {
-  return {
-    created: 0,
-    alreadyExists: 0,
-    dedupedSummerShowtimes: 0,
-    updatedSoldOut: 0,
-    skippedPast: 0,
-    skippedNoVenue: 0,
-    skippedUnknownEventId: 0,
-    skippedInvalidDate: 0,
-    resolvedViaVenueScrape: 0,
-    errors: [],
-  };
-}
-
 async function loadCmsEntriesForPlayTitleMatch(strapi, uid, fields, contentType) {
   const scrapeTitlePool =
     BUNDLE_SYNC_SCRAPE_ENABLED || (SCRAPE_ENABLED && SCRAPE_ON_SYNC);
@@ -2209,24 +1543,6 @@ async function runBundleVenueScrapeRetry({
   for (const item of pending) {
     await onEachRetry(item);
   }
-}
-
-function trimReportDetailArrays(report) {
-  if (!report || typeof report !== 'object') return report;
-  delete report.onProgress;
-  const cap = (arr, key) => {
-    if (!Array.isArray(arr) || arr.length <= REPORT_DETAIL_MAX) return arr;
-    report[`${key}Truncated`] = arr.length - REPORT_DETAIL_MAX;
-    return arr.slice(0, REPORT_DETAIL_MAX);
-  };
-  report.byMovie = cap(report.byMovie, 'byMovie');
-  report.byVenue = cap(report.byVenue, 'byVenue');
-  report.byTheaterShow = cap(report.byTheaterShow, 'byTheaterShow');
-  report.byTheaterVenue = cap(report.byTheaterVenue, 'byTheaterVenue');
-  report.missingVenueIds = cap(report.missingVenueIds, 'missingVenueIds');
-  report.errors = cap(report.errors, 'errors');
-  report.scrapeTitleMisses = cap(report.scrapeTitleMisses, 'scrapeTitleMisses');
-  return report;
 }
 
 function eventMatchesVenue(event, venue, options = {}) {
@@ -3430,7 +2746,7 @@ async function syncMovieShowtimesFromMore(strapi, {
   if (onProgress) onProgress('Καθαρισμός διπλότυπων προβολών σε θερινά…');
   await pruneDuplicateSummerShowtimes(strapi, now, report);
 
-  await enrichUnmatchedVenuesFromBundles(report, venuesWithBundle, eventsCache);
+  enrichUnmatchedVenuesFromBundles(report, venuesWithBundle, eventsCache);
   enrichUnmatchedTitlesWithSuggestions(report, moviesForTitle);
   // Μην ενσωματώνεις 800 ταινίες στο report — admin: suggestions + /cms-search.
   report.cmsContentChoices = [];
@@ -3677,7 +2993,7 @@ async function syncTheaterPerformancesFromMore(strapi, {
     }
   }
 
-  await enrichUnmatchedVenuesFromBundles(report, venuesWithBundle, eventsCache);
+  enrichUnmatchedVenuesFromBundles(report, venuesWithBundle, eventsCache);
   enrichUnmatchedTitlesWithSuggestions(report, showsForTitle);
   report.cmsContentChoices = [];
 
@@ -3898,7 +3214,9 @@ async function syncSingleCinemaVenueFromMore(strapi, options = {}) {
   const cinemaEventsCache = createEventsCache(MOVIE_FETCH_DELAY_MS);
   const cinemaVenueSyncTracker = createVenueSyncStatsTracker();
   progress('Φόρτωση υπαρχουσών προβολών…');
-  const showtimeExistenceIndex = await loadShowtimeExistenceIndex(strapi, null, now);
+  const showtimeExistenceIndex = await loadShowtimeExistenceIndex(strapi, null, now, {
+    venueIds: [venue.id],
+  });
 
   await prefetchEventCodes(
     cinemaEventsCache,
@@ -4287,6 +3605,14 @@ async function syncShowtimesFromMore(strapi, options = {}) {
       (v) => v.bundleCodes.length > 0,
     );
     cinemaVenueBundleCount = cinemaVenuesWithBundleCodes.length;
+    if (!showtimeExistenceIndex && cinemaVenuesWithBundleCodes.length) {
+      progress(
+        `Φόρτωση υπαρχουσών προβολών για ${cinemaVenuesWithBundleCodes.length} σινεμά με bundle…`,
+      );
+      showtimeExistenceIndex = await loadShowtimeExistenceIndex(strapi, null, now, {
+        venueIds: cinemaVenuesWithBundleCodes.map((v) => v.id),
+      });
+    }
     if (cinemaVenuesWithBundle.length) {
       progress(
         `Σινεμά CMS: ${cinemaVenuesWithBundle.length} συνολικά · ${cinemaVenuesWithBundleCodes.length} με bundle codes…`,
@@ -4709,58 +4035,6 @@ async function syncShowtimesFromMore(strapi, options = {}) {
 }
 
 /** Βαθύ merge δύο τιμών report: αριθμοί→άθροισμα, arrays→concat, objects→αναδρομικά. */
-function mergeReportValue(a, b) {
-  if (a == null) return b;
-  if (b == null) return a;
-  if (Array.isArray(a) && Array.isArray(b)) return [...a, ...b];
-  if (typeof a === 'number' && typeof b === 'number') return a + b;
-  if (typeof a === 'boolean' && typeof b === 'boolean') return a && b;
-  if (typeof a === 'object' && typeof b === 'object') {
-    const out = {};
-    for (const key of new Set([...Object.keys(a), ...Object.keys(b)])) {
-      out[key] = mergeReportValue(a[key], b[key]);
-    }
-    return out;
-  }
-  return b !== undefined && b !== '' ? b : a;
-}
-
-/**
- * Συνδυάζει per-phase reports (cinema + theater) σε ένα ενιαίο report.
- * Χρησιμοποιείται από το chained worker («Όλα» = δύο σειριακά processes).
- */
-function combineSyncReports(reports) {
-  const list = (reports || []).filter(Boolean);
-  if (list.length === 0) return null;
-  if (list.length === 1) return list[0];
-
-  const merged = list.reduce((acc, r) => mergeReportValue(acc, r));
-  merged.scope = 'all';
-  merged.ok = list.every((r) => r.ok !== false);
-  merged.at = new Date().toISOString();
-
-  // Τα unmatched πρέπει να συγχωνεύονται ανά τίτλο (venues/eventIds), όχι απλό concat.
-  merged.scrapeTitleMisses = mergeUnmatchedTitleLists(
-    ...list.map((r) => r.scrapeTitleMisses),
-  ).scrapeTitleMisses;
-  merged.scrapeTitleUnmatched = list.reduce(
-    (n, r) => n + (Number(r.scrapeTitleUnmatched) || 0),
-    0,
-  );
-
-  merged.message =
-    `Νέες: ${merged.created} (ταινίες: ${merged.createdFromMovies} · σινεμά bundle: ${merged.createdFromVenues}` +
-    ` · θέατρο: ${merged.createdFromTheaterShows} · θέατρο bundle: ${merged.createdFromTheaterVenues})` +
-    ` · υπήρχαν: ${merged.alreadyExists}` +
-    (merged.createdCinemaVenues ? ` · νέα σινεμά: ${merged.createdCinemaVenues}` : '') +
-    (merged.createdTheaterVenues ? ` · νέοι χώροι θεάτρου: ${merged.createdTheaterVenues}` : '') +
-    (merged.updatedSoldOut ? ` · sold out ενημ.: ${merged.updatedSoldOut}` : '') +
-    ` · χωρίς venue_id: ${merged.skippedNoVenue}` +
-    ` · άγνωστο eventId: ${merged.skippedUnknownEventId}`;
-
-  return merged;
-}
-
 module.exports = {
   syncShowtimesFromMore,
   combineSyncReports,

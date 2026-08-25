@@ -2,7 +2,7 @@ import { useParams, Link, useSearchParams } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
-import { Clock, Globe, ArrowLeft, MapPin, Play, ChevronDown } from "lucide-react";
+import { ArrowLeft, MapPin, Play, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import SharePageButton from "@/components/SharePageButton";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
@@ -1087,32 +1087,22 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               <p className="mb-3 font-display text-lg font-medium text-white/80 md:text-xl">{headline.secondary}</p>
             ) : null}
 
-            {(hasDuration ||
+            {(
               (!isMovie && genreLabel) ||
               movie?.isDubbed ||
-              movie?.language?.trim() ||
               (theaterShow && isTouringTheaterShow(theaterShow)) ||
-              (theaterShow && formatTheaterRunPeriod(theaterShow))) ? (
+              (theaterShow && formatTheaterRunPeriod(theaterShow))
+            ) ? (
               <div
                 className={cn(
                   "flex flex-wrap items-center gap-3 text-sm text-white/60 md:text-base",
                   isMovie ? "mb-3" : "mb-2",
                 )}
               >
-                {hasDuration ? (
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" /> {event.duration} λεπτά
-                  </span>
-                ) : null}
                 {!isMovie && genreLabel ? <span>{genreLabel}</span> : null}
                 {movie?.isDubbed ? (
                   <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
                     Μεταγλωτισμένη
-                  </span>
-                ) : null}
-                {movie?.language?.trim() ? (
-                  <span className="flex items-center gap-1">
-                    <Globe className="w-4 h-4" /> {movie.language.trim()}
                   </span>
                 ) : null}
                 {theaterShow && isTouringTheaterShow(theaterShow) ? (
