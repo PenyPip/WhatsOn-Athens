@@ -45,6 +45,115 @@ function pushUnique(list, value, max = 24) {
   return [...next, v];
 }
 
+/** Εμφανίσιμο όνομα CMS χώρου (Strapi entity ή plain object). */
+function cmsVenueDisplayName(venue) {
+  if (!venue || typeof venue !== 'object') return '';
+  return String(
+    venue.name ||
+      venue.title ||
+      venue.attributes?.name ||
+      (venue.id != null ? `χώρος #${venue.id}` : ''),
+  ).trim();
+}
+
+function attachVenueNamesToUnmatchedRow(row, names, venueId = null) {
+  if (!row) return;
+  for (const raw of names || []) {
+    const name = String(raw || '').trim();
+    if (!name) continue;
+    row.venues = pushUnique(row.venues || [], name, 8);
+    row.venueName = row.venueName || name;
+  }
+  if (venueId != null && row.venueId == null) row.venueId = venueId;
+}
+
+/**
+ * Συμπληρώνει venues στα unmatched από More getevents (event.venueName) + CMS name.
+ * Καλείται στο τέλος sync — ακόμα κι αν το recordUnmatched δεν πέρασε venue.
+ */
+async function enrichUnmatchedVenuesFromBundles(report, venuesWithBundle, eventsCache) {
+  if (!report?.scrapeTitleMisses?.length || !eventsCache) return report;
+  const namesByEventId = new Map();
+
+  for (const venue of venuesWithBundle || []) {
+    const cmsName = cmsVenueDisplayName(venue);
+    const codes = venue.bundleCodes?.length
+      ? venue.bundleCodes
+      : collectVenueBundleCodes(venue);
+    for (const code of codes || []) {
+      let events = [];
+      try {
+        events = await eventsCache.get(code);
+      } catch {
+        continue;
+      }
+      for (const event of events || []) {
+        const eid = String(event?.eventId ?? '').trim();
+        if (!eid) continue;
+        if (!namesByEventId.has(eid)) namesByEventId.set(eid, new Set());
+        const set = namesByEventId.get(eid);
+        const moreName = String(event?.venueName || event?.venue_name || '').trim();
+        if (moreName) set.add(moreName);
+        if (cmsName) set.add(cmsName);
+      }
+    }
+  }
+
+  for (const row of report.scrapeTitleMisses) {
+    const ids = row.eventIds?.length
+      ? row.eventIds
+      : row.eventId
+        ? [row.eventId]
+        : [];
+    for (const eid of ids) {
+      const names = namesByEventId.get(String(eid));
+      if (!names?.size) continue;
+      attachVenueNamesToUnmatchedRow(row, names);
+    }
+  }
+  return report;
+}
+
+/** Γρήγορο attach από λίστα More events (pending scrape retry). */
+function enrichUnmatchedFromEventList(report, events, cmsVenueName = '', cmsVenueId = null) {
+  if (!report?.scrapeTitleMisses?.length || !events?.length) return;
+  const cms = String(cmsVenueName || '').trim();
+  for (const event of events) {
+    const eventId = String(event?.eventId ?? '').trim();
+    if (!eventId) continue;
+    const moreName = String(event?.venueName || event?.venue_name || '').trim();
+    for (const row of report.scrapeTitleMisses) {
+      const ids = row.eventIds?.length
+        ? row.eventIds.map(String)
+        : row.eventId
+          ? [String(row.eventId)]
+          : [];
+      if (!ids.includes(eventId)) continue;
+      attachVenueNamesToUnmatchedRow(
+        row,
+        [moreName, cms].filter(Boolean),
+        cmsVenueId,
+      );
+    }
+  }
+}
+
+/** CMS όνομα χώρου σε unmatched που προήλθαν από το scrape αυτής της σελίδας. */
+function attachCmsVenueToScrapeUnmatched(report, scrape, venue) {
+  const cmsName = cmsVenueDisplayName(venue);
+  if (!cmsName || !report?.scrapeTitleMisses?.length || !scrape?.byEventId?.size) return;
+  const scrapeIds = new Set([...scrape.byEventId.keys()].map((k) => String(k)));
+  for (const row of report.scrapeTitleMisses) {
+    const ids = row.eventIds?.length
+      ? row.eventIds.map(String)
+      : row.eventId
+        ? [String(row.eventId)]
+        : [];
+    if (!ids.some((id) => scrapeIds.has(id))) continue;
+    attachVenueNamesToUnmatchedRow(row, [cmsName], venue?.id);
+  }
+}
+
 /**
  * Ταινία/παράσταση από More scrape που δεν ταυτίστηκε με CMS — για χειροκίνητη αντιστοίχιση.
  */
@@ -54,14 +163,12 @@ function recordUnmatchedPlayTitle(report, { playTitle, venueName, venueId, event
   report.scrapeTitleUnmatched = (report.scrapeTitleUnmatched || 0) + 1;
   if (!Array.isArray(report.scrapeTitleMisses)) report.scrapeTitleMisses = [];
 
+  const label = String(venueName || '').trim();
   const key = unmatchedTitleKey(title);
   const existing = report.scrapeTitleMisses.find((row) => unmatchedTitleKey(row.playTitle) === key);
   if (existing) {
     existing.count = (existing.count || 1) + 1;
-    if (venueName) {
-      existing.venues = pushUnique(existing.venues, venueName, 8);
-      existing.venueName = existing.venueName || venueName;
-    }
+    attachVenueNamesToUnmatchedRow(existing, label ? [label] : [], venueId);
     existing.eventIds = pushUnique(existing.eventIds, eventId);
     existing.playIds = pushUnique(existing.playIds, playId);
     if (eventId && !existing.eventId) existing.eventId = String(eventId).trim();
@@ -70,23 +177,24 @@ function recordUnmatchedPlayTitle(report, { playTitle, venueName, venueId, event
   }
   if (report.scrapeTitleMisses.length >= UNMATCHED_TITLE_CAP) return;
 
-  report.scrapeTitleMisses.push({
+  const row = {
     playTitle: title,
     eventId: eventId ? String(eventId).trim() : null,
     playId: playId ? String(playId).trim() : null,
     eventIds: eventId ? [String(eventId).trim()] : [],
     playIds: playId ? [String(playId).trim()] : [],
     venueId: venueId ?? null,
-    venueName: venueName || null,
-    venues: venueName ? [venueName] : [],
+    venueName: label || null,
+    venues: label ? [label] : [],
     kind: kind || 'movie',
     count: 1,
     suggestions: [],
-  });
+  };
+  report.scrapeTitleMisses.push(row);
 
   if (typeof report.onProgress === 'function') {
     report.onProgress(
-      `Χωρίς ταύτιση CMS: «${title}»${venueName ? ` · ${venueName}` : ''}. Αντιστοίχισέ την χειροκίνητα αν υπάρχει.`,
+      `Χωρίς ταύτιση CMS: «${title}»${label ? ` · ${label}` : ''}. Αντιστοίχισέ την χειροκίνητα αν υπάρχει.`,
     );
   }
 }
@@ -122,7 +230,9 @@ function mergeUnmatchedTitleLists(...lists) {
     for (const row of list || []) {
       recordUnmatchedPlayTitle(acc, {
         playTitle: row.playTitle,
-        venueName: row.venueName || (Array.isArray(row.venues) ? row.venues[0] : null),
+        venueName:
+          row.venueName ||
+          (Array.isArray(row.venues) && row.venues.length ? row.venues[0] : null),
         venueId: row.venueId,
         eventId: row.eventId || (Array.isArray(row.eventIds) ? row.eventIds[0] : null),
         playId: row.playId || (Array.isArray(row.playIds) ? row.playIds[0] : null),
@@ -137,7 +247,7 @@ function mergeUnmatchedTitleLists(...lists) {
       }
       for (const id of row.eventIds || []) last.eventIds = pushUnique(last.eventIds, id);
       for (const id of row.playIds || []) last.playIds = pushUnique(last.playIds, id);
-      for (const v of row.venues || []) last.venues = pushUnique(last.venues, v, 8);
+      attachVenueNamesToUnmatchedRow(last, row.venues || [], row.venueId);
       if (Array.isArray(row.suggestions) && row.suggestions.length && !last.suggestions?.length) {
         last.suggestions = row.suggestions;
         last.suggestedContent = row.suggestedContent || row.suggestions[0] || null;
@@ -341,6 +451,7 @@ async function preloadCinemaBundleScrapeMappings({
     eventIdIndex,
     venue,
   );
+  attachCmsVenueToScrapeUnmatched(report, scrape, venue);
   mergeSupplementalIntoEventIdIndex(supplementalIndex, eventIdIndex);
   if (venueStats) {
     venueStats.scrapePreloaded = true;
@@ -2083,7 +2194,17 @@ async function runBundleVenueScrapeRetry({
 
   venueStats.scrapeEventCount = scrape.eventCount || 0;
   indexMappingsFromScrape(scrape, supplementalIndex, titlePool, report, persistQueue, eventIdIndex, venue);
+  attachCmsVenueToScrapeUnmatched(report, scrape, venue);
   mergeSupplementalIntoEventIdIndex(supplementalIndex, eventIdIndex);
+
+  // Άμεσα: ονόματα από More events των pending + CMS χώρος (μην περιμένεις τέλος sync).
+  const cmsName = cmsVenueDisplayName(venue);
+  enrichUnmatchedFromEventList(
+    report,
+    pending.map((p) => p.event),
+    cmsName,
+    venue?.id,
+  );
 
   for (const item of pending) {
     await onEachRetry(item);
@@ -2267,7 +2388,7 @@ async function resolveCinemaMovieFromEventId({
   if (!match) {
     recordUnmatchedPlayTitle(report, {
       playTitle: row.playTitle,
-      venueName: venue?.name,
+      venueName: cmsVenueDisplayName(venue),
       venueId: venue?.id,
       eventId: key,
       playId: row.playId,
@@ -2332,7 +2453,7 @@ function indexCinemaMappingsFromVenueScrape(
     if (!match) {
       recordUnmatchedPlayTitle(report, {
         playTitle: row.playTitle,
-        venueName: venue?.name,
+        venueName: cmsVenueDisplayName(venue),
         venueId: venue?.id,
         eventId: key,
         playId: row.playId,
@@ -2401,7 +2522,7 @@ function indexTheaterMappingsFromVenueScrape(
     if (!match) {
       recordUnmatchedPlayTitle(report, {
         playTitle: row.playTitle,
-        venueName: venue?.name,
+        venueName: cmsVenueDisplayName(venue),
         venueId: venue?.id,
         eventId: key,
         playId: row.playId,
@@ -2893,7 +3014,7 @@ async function resolveTheaterShowFromEventId({
   if (!match) {
     recordUnmatchedPlayTitle(report, {
       playTitle: row.playTitle,
-      venueName: venue?.name,
+      venueName: cmsVenueDisplayName(venue),
       venueId: venue?.id,
       eventId: key,
       playId: row.playId,
@@ -3309,8 +3430,10 @@ async function syncMovieShowtimesFromMore(strapi, {
   if (onProgress) onProgress('Καθαρισμός διπλότυπων προβολών σε θερινά…');
   await pruneDuplicateSummerShowtimes(strapi, now, report);
 
+  await enrichUnmatchedVenuesFromBundles(report, venuesWithBundle, eventsCache);
   enrichUnmatchedTitlesWithSuggestions(report, moviesForTitle);
-  report.cmsContentChoices = slimCmsChoicesForUnmatched(moviesForTitle, 'movie');
+  // Μην ενσωματώνεις 800 ταινίες στο report — admin: suggestions + /cms-search.
+  report.cmsContentChoices = [];
 
   report.eventIdIndex = eventIdIndex;
   return trimReportDetailArrays(report);
@@ -3554,8 +3677,9 @@ async function syncTheaterPerformancesFromMore(strapi, {
     }
   }
 
+  await enrichUnmatchedVenuesFromBundles(report, venuesWithBundle, eventsCache);
   enrichUnmatchedTitlesWithSuggestions(report, showsForTitle);
-  report.cmsContentChoices = slimCmsChoicesForUnmatched(showsForTitle, 'theater_show');
+  report.cmsContentChoices = [];
 
   report.eventIdIndex = eventIdIndex;
   return trimReportDetailArrays(report);
@@ -4614,6 +4738,15 @@ function combineSyncReports(reports) {
   merged.scope = 'all';
   merged.ok = list.every((r) => r.ok !== false);
   merged.at = new Date().toISOString();
+
+  // Τα unmatched πρέπει να συγχωνεύονται ανά τίτλο (venues/eventIds), όχι απλό concat.
+  merged.scrapeTitleMisses = mergeUnmatchedTitleLists(
+    ...list.map((r) => r.scrapeTitleMisses),
+  ).scrapeTitleMisses;
+  merged.scrapeTitleUnmatched = list.reduce(
+    (n, r) => n + (Number(r.scrapeTitleUnmatched) || 0),
+    0,
+  );
 
   merged.message =
     `Νέες: ${merged.created} (ταινίες: ${merged.createdFromMovies} · σινεμά bundle: ${merged.createdFromVenues}` +

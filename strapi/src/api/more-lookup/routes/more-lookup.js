@@ -48,6 +48,15 @@ module.exports = {
       },
     },
     {
+      method: 'GET',
+      path: '/more-lookup/cms-search',
+      handler: 'more-lookup.cmsSearch',
+      config: {
+        auth: false,
+        policies: ['global::is-admin'],
+      },
+    },
+    {
       method: 'POST',
       path: '/more-lookup/sync-showtimes/reset',
       handler: 'more-lookup.syncShowtimesReset',

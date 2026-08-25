@@ -96,18 +96,23 @@ function preflightSpawnWorker(jobId) {
   return script;
 }
 
-function publicJob(job) {
+function publicJob(job, { forStatusPoll = false } = {}) {
   if (!job) return null;
   const phases = Array.isArray(job.phases) ? job.phases : null;
   const phaseIndex = job.phaseIndex != null ? job.phaseIndex : null;
+  const status = job.status;
+  const running = status === 'running' || status === 'started';
+  // Κατά το poll: μόνο progress — όχι MB report κάθε 1s.
+  const includeReport = !forStatusPoll || !running;
+
   return {
     id: job.id,
-    status: job.status,
+    status,
     startedAt: job.startedAt,
     finishedAt: job.finishedAt ?? null,
     progress: job.progress,
     error: job.error ?? null,
-    report: resolvePublicReport(job),
+    report: includeReport ? slimReportForClient(resolvePublicReport(job)) : null,
     lastProgressAt: job.lastProgressAt ?? null,
     workerPid: job.workerPid ?? null,
     scope: job.scope ?? null,
@@ -148,6 +153,7 @@ function slimReportForDisk(report) {
     createdTheaterVenuesList,
     eventIdIndex,
     phaseReports,
+    cmsContentChoices,
     ...summary
   } = trimmed;
   return {
@@ -157,8 +163,16 @@ function slimReportForDisk(report) {
     byTheaterShowCount: Array.isArray(byTheaterShow) ? byTheaterShow.length : 0,
     byTheaterVenueCount: Array.isArray(byTheaterVenue) ? byTheaterVenue.length : 0,
     missingVenueIdsCount: Array.isArray(missingVenueIds) ? missingVenueIds.length : 0,
+    // Ο κατάλογος CMS δεν χρειάζεται στο disk — suggestions στα unmatched + /cms-search.
+    cmsContentChoicesOmitted: true,
     detailsOmitted: true,
   };
+}
+
+/** Αναφορά για admin API: χωρίς by* lists και χωρίς πλήρη cmsContentChoices. */
+function slimReportForClient(report) {
+  if (!report || typeof report !== 'object') return report;
+  return slimReportForDisk(report);
 }
 
 function resolvePublicReport(job) {
@@ -397,13 +411,17 @@ function recoverDeadWorkerJob(job, strapi) {
   return publicJob(failed);
 }
 
-function getMoreShowtimeSyncJob(strapi) {
+function getMoreShowtimeSyncJob(strapi, { forStatusPoll = false } = {}) {
   const disk = loadPersistedJob();
   if (disk) {
     activeJob = disk;
   }
   if (strapi) resumeOrphanedSyncWorker(strapi);
-  let job = disk ? publicJob(disk) : activeJob ? publicJob(activeJob) : null;
+  let job = disk
+    ? publicJob(disk, { forStatusPoll })
+    : activeJob
+      ? publicJob(activeJob, { forStatusPoll })
+      : null;
   job = recoverDeadWorkerJob(job, strapi);
   if (isJobStale(job)) {
     return resetStuckMoreShowtimeSyncJob(

@@ -347,12 +347,7 @@ async function syncPendingAthinoramaVenues(
       suggestedContent: suggestions[0] || null,
     };
   });
-  report.cmsContentChoices = (cmsMovies || []).slice(0, 800).map((m) => ({
-    id: m.id,
-    title: m.title || m.name || `#${m.id}`,
-    originalTitle: m.originalTitle || m.original_title || '',
-    contentType: 'movie',
-  }));
+  report.cmsContentChoices = [];
   report.weekSynced = weekSyncedTotal;
   report.weekExpected = weekExpectedTotal;
   report.source = 'athinorama';
