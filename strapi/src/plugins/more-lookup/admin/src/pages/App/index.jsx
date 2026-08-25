@@ -578,6 +578,17 @@ function truncateLabel(text, max = 28) {
   return `${s.slice(0, max - 1)}…`;
 }
 
+/** Ελληνικός + πρωτότυπος τίτλος CMS για σύνδεση unmatched. */
+function cmsDualTitleLabel(opt, { max = 56 } = {}) {
+  if (!opt) return '';
+  const el = String(opt.cmsTitle || opt.title || '').trim();
+  const orig = String(opt.originalTitle || '').trim();
+  if (el && orig && orig.toLocaleLowerCase('el') !== el.toLocaleLowerCase('el')) {
+    return truncateLabel(`${el} (${orig})`, max);
+  }
+  return truncateLabel(el || orig || `#${opt.cmsId ?? opt.id ?? ''}`, max);
+}
+
 function CatalogContentPanel({
   row,
   cmsContentChoices,
@@ -1150,18 +1161,12 @@ function UnmatchedTitlesPanel({
   if (!rows.length && total <= 0) return null;
 
   return (
-    <Box padding={4} background="warning100" hasRadius>
-      <Typography fontWeight="semiBold" textColor="warning700">
-        Ταινίες χωρίς ταύτιση CMS — ταύτισε χειροκίνητα
-        {total > 0 ? ` (${total})` : ''}
+    <Box padding={3} background="warning100" hasRadius>
+      <Typography fontWeight="semiBold" textColor="warning700" variant="pi">
+        Χωρίς ταύτιση CMS ({total || rows.length}) — σύνδεσε χειροκίνητα
       </Typography>
-      <Typography variant="pi" textColor="neutral700" paddingTop={2} paddingBottom={3}>
-        Ίδια λογική με την ταύτιση: πρόταση με score, ή διάλεξε από CMS και πάτα «Σύνδεση».
-        Αποθηκεύει alias τίτλου (+ eventId) στην ταινία· στο επόμενο sync μπαίνουν και νέες
-        προβολές του ίδιου έργου, όχι μόνο τα συγκεκριμένα eventId.
-      </Typography>
-      <Flex direction="column" gap={3} alignItems="stretch">
-        {rows.slice(0, 40).map((raw) => {
+      <Flex direction="column" gap={1} paddingTop={2} alignItems="stretch">
+        {rows.slice(0, 50).map((raw) => {
           const row =
             typeof raw === 'string'
               ? { playTitle: raw, suggestions: [], eventIds: [], venues: [] }
@@ -1186,6 +1191,10 @@ function UnmatchedTitlesPanel({
           const suggestedBusy = busyKey === `unmatched-suggested:${key}`;
           const anyBusy = Boolean(busyKey);
           const kind = row.kind === 'theater_show' ? 'theater_show' : 'movie';
+          const pickedOpt =
+            (cmsChoices || []).find((c) => String(c.id) === String(pick)) ||
+            suggestions.find((s) => String(s.cmsId ?? s.id) === String(pick)) ||
+            null;
           const browseOptions = (() => {
             if (!showBrowse) return [];
             const sugIds = new Set(suggestions.map((s) => Number(s.cmsId ?? s.id)));
@@ -1204,97 +1213,85 @@ function UnmatchedTitlesPanel({
                     .includes(q),
                 )
               : suggestions;
-            return [...filteredSug, ...fromCms].slice(0, 40);
+            return [...filteredSug, ...fromCms].slice(0, 36);
           })();
+          const whereLabel = venues.length
+            ? venues.slice(0, 3).join(' · ') + (venues.length > 3 ? ` +${venues.length - 3}` : '')
+            : 'άγνωστο σινεμά';
 
           return (
             <Box
               key={key}
-              padding={3}
+              paddingTop={2}
+              paddingBottom={2}
+              paddingLeft={2}
+              paddingRight={2}
               background="neutral0"
               hasRadius
-              style={{ border: '1px solid #e8d9a8' }}
+              style={{ border: '1px solid #ead9a0' }}
             >
-              <Flex justifyContent="space-between" alignItems="flex-start" gap={3} wrap="wrap">
-                <Flex direction="column" alignItems="flex-start" gap={1} style={{ minWidth: 0, flex: 1 }}>
-                  <Typography fontWeight="semiBold" textColor="neutral800">
-                    «{title}»
-                    {n > 1 ? ` ×${n}` : ''}
+              <Flex justifyContent="space-between" alignItems="center" gap={2} wrap="wrap">
+                <Flex direction="column" gap={0} style={{ minWidth: 0, flex: '1 1 220px' }}>
+                  <Typography fontWeight="semiBold" textColor="neutral800" variant="pi">
+                    «{truncateLabel(title, 42)}»{n > 1 ? ` ×${n}` : ''}
                   </Typography>
-                  <Typography variant="pi" textColor="neutral600">
-                    {venues.length ? venues.slice(0, 4).join(' · ') : '—'}
-                    {eventIds.length ? ` · eventId ${eventIds.slice(0, 3).join(', ')}` : ''}
-                    {playId ? ` · playId ${playId}` : ''}
-                    {!canLink ? ' · χωρίς More κωδικό (μόνο πρόταση τίτλου)' : ''}
+                  <Typography variant="pi" textColor="neutral600" style={{ fontSize: 11, lineHeight: 1.35 }}>
+                    Βρέθηκε: {whereLabel}
                   </Typography>
                 </Flex>
-                {onDismiss ? (
-                  <Button
-                    size="S"
-                    variant="tertiary"
-                    disabled={anyBusy}
-                    onClick={() => onDismiss(key)}
-                  >
-                    Απόκρυψη
-                  </Button>
-                ) : null}
-              </Flex>
-
-              <Flex gap={2} wrap="wrap" paddingTop={2} alignItems="center">
-                {suggested && canLink ? (
-                  <Button
-                    size="S"
-                    variant="success"
-                    loading={suggestedBusy}
-                    disabled={anyBusy && !suggestedBusy}
-                    onClick={() => onLink(row, suggested.cmsId ?? suggested.id, 'unmatched-suggested')}
-                    title={`Score ${Number(suggested.score || 0).toFixed(2)}`}
-                  >
-                    → {truncateLabel(suggested.cmsTitle || suggested.title)}
-                    {suggested.score != null ? ` · ${Number(suggested.score).toFixed(2)}` : ''}
-                  </Button>
-                ) : null}
-                {canLink ? (
-                  <>
+                <Flex gap={1} wrap="wrap" alignItems="center">
+                  {suggested && canLink ? (
+                    <Button
+                      size="S"
+                      variant="success"
+                      loading={suggestedBusy}
+                      disabled={anyBusy && !suggestedBusy}
+                      onClick={() => onLink(row, suggested.cmsId ?? suggested.id, 'unmatched-suggested')}
+                      title={cmsDualTitleLabel(suggested, { max: 120 })}
+                    >
+                      → {cmsDualTitleLabel(suggested, { max: 34 })}
+                      {suggested.score != null ? ` · ${Number(suggested.score).toFixed(2)}` : ''}
+                    </Button>
+                  ) : null}
+                  {canLink ? (
+                    <>
+                      <Button
+                        size="S"
+                        variant="tertiary"
+                        disabled={anyBusy}
+                        onClick={() =>
+                          setBrowseByKey((prev) => ({ ...prev, [key]: !showBrowse }))
+                        }
+                      >
+                        {showBrowse ? '✕' : 'CMS…'}
+                      </Button>
+                      <Button
+                        size="S"
+                        variant="secondary"
+                        loading={linkBusy}
+                        disabled={!pick || (anyBusy && !linkBusy)}
+                        onClick={() => onLink(row, pick, 'unmatched')}
+                      >
+                        Σύνδ.
+                      </Button>
+                    </>
+                  ) : null}
+                  {onDismiss ? (
                     <Button
                       size="S"
                       variant="tertiary"
                       disabled={anyBusy}
-                      onClick={() =>
-                        setBrowseByKey((prev) => ({ ...prev, [key]: !showBrowse }))
-                      }
+                      onClick={() => onDismiss(key)}
                     >
-                      {showBrowse ? 'Κλείσιμο' : 'CMS…'}
+                      ×
                     </Button>
-                    <Button
-                      size="S"
-                      variant="secondary"
-                      loading={linkBusy}
-                      disabled={!pick || (anyBusy && !linkBusy)}
-                      onClick={() => onLink(row, pick, 'unmatched')}
-                    >
-                      Σύνδεση
-                    </Button>
-                  </>
-                ) : suggested ? (
-                  <Typography variant="pi" textColor="neutral600">
-                    Πιθανή CMS: «{suggested.cmsTitle || suggested.title}»
-                    {suggested.score != null ? ` (${Number(suggested.score).toFixed(2)})` : ''} —
-                    χωρίς More κωδικό για αυτόματη σύνδεση
-                  </Typography>
-                ) : (
-                  <Typography variant="pi" textColor="neutral500">
-                    Καμία πρόταση CMS
-                  </Typography>
-                )}
+                  ) : null}
+                </Flex>
               </Flex>
 
-              {pick && !showBrowse && canLink ? (
-                <Typography variant="pi" textColor="primary600" paddingTop={1}>
-                  Επιλογή:{' '}
-                  {(cmsChoices || []).find((c) => String(c.id) === String(pick))?.title ||
-                    suggestions.find((s) => String(s.cmsId ?? s.id) === String(pick))?.cmsTitle ||
-                    `#${pick}`}
+              {pick && pickedOpt && !showBrowse ? (
+                <Typography variant="pi" textColor="primary600" paddingTop={1} style={{ fontSize: 11 }}>
+                  Επιλογή: {cmsDualTitleLabel(pickedOpt, { max: 72 })}
                 </Typography>
               ) : null}
 
@@ -1302,32 +1299,47 @@ function UnmatchedTitlesPanel({
                 <Flex direction="column" alignItems="stretch" gap={1} paddingTop={2}>
                   <input
                     type="search"
-                    placeholder="Αναζήτηση CMS…"
+                    placeholder="Αναζήτηση ελληνικού / original…"
                     value={filterByKey[key] || ''}
                     onChange={(e) =>
                       setFilterByKey((prev) => ({ ...prev, [key]: e.target.value }))
                     }
                     style={{
-                      padding: '6px 10px',
+                      padding: '4px 8px',
                       borderRadius: 4,
                       border: '1px solid #dcdce4',
-                      fontSize: 13,
+                      fontSize: 12,
                     }}
                   />
-                  <Flex direction="column" gap={1} style={{ maxHeight: 180, overflowY: 'auto' }}>
+                  <Flex direction="column" gap={0} style={{ maxHeight: 160, overflowY: 'auto' }}>
                     {browseOptions.map((opt) => {
                       const id = opt.cmsId ?? opt.id;
+                      const el = String(opt.cmsTitle || opt.title || '').trim();
+                      const orig = String(opt.originalTitle || '').trim();
                       return (
-                        <Button
+                        <button
                           key={id}
-                          size="S"
-                          variant={String(pick) === String(id) ? 'secondary' : 'tertiary'}
+                          type="button"
                           onClick={() => onPickChange(key, String(id))}
-                          style={{ justifyContent: 'flex-start' }}
+                          style={{
+                            textAlign: 'left',
+                            padding: '4px 6px',
+                            border: 'none',
+                            borderBottom: '1px solid #f0f0f5',
+                            background: String(pick) === String(id) ? '#eaf3ff' : 'transparent',
+                            cursor: 'pointer',
+                            fontSize: 12,
+                            lineHeight: 1.3,
+                          }}
                         >
-                          {opt.cmsTitle || opt.title}
-                          {opt.score != null ? ` · ${Number(opt.score).toFixed(2)}` : ''}
-                        </Button>
+                          <span style={{ fontWeight: 600 }}>{el || `#${id}`}</span>
+                          {orig && orig.toLocaleLowerCase('el') !== el.toLocaleLowerCase('el') ? (
+                            <span style={{ color: '#666687' }}> · {orig}</span>
+                          ) : null}
+                          {opt.score != null ? (
+                            <span style={{ color: '#8e8ea9' }}> · {Number(opt.score).toFixed(2)}</span>
+                          ) : null}
+                        </button>
                       );
                     })}
                     {!browseOptions.length ? (
@@ -1341,9 +1353,9 @@ function UnmatchedTitlesPanel({
             </Box>
           );
         })}
-        {rows.length > 40 ? (
+        {rows.length > 50 ? (
           <Typography variant="pi" textColor="neutral600">
-            …και {rows.length - 40} ακόμα τίτλοι
+            …και {rows.length - 50} ακόμα
           </Typography>
         ) : null}
       </Flex>

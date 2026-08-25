@@ -339,6 +339,7 @@ async function preloadCinemaBundleScrapeMappings({
     report,
     persistQueue,
     eventIdIndex,
+    venue,
   );
   mergeSupplementalIntoEventIdIndex(supplementalIndex, eventIdIndex);
   if (venueStats) {
@@ -2081,7 +2082,7 @@ async function runBundleVenueScrapeRetry({
   }
 
   venueStats.scrapeEventCount = scrape.eventCount || 0;
-  indexMappingsFromScrape(scrape, supplementalIndex, titlePool, report, persistQueue, eventIdIndex);
+  indexMappingsFromScrape(scrape, supplementalIndex, titlePool, report, persistQueue, eventIdIndex, venue);
   mergeSupplementalIntoEventIdIndex(supplementalIndex, eventIdIndex);
 
   for (const item of pending) {
@@ -2299,6 +2300,7 @@ function indexCinemaMappingsFromVenueScrape(
   report,
   persistQueue,
   eventIdIndex = null,
+  venue = null,
 ) {
   if (!scrape?.ok || !scrape.byEventId?.size || !moviesForTitle?.length) return 0;
 
@@ -2330,6 +2332,8 @@ function indexCinemaMappingsFromVenueScrape(
     if (!match) {
       recordUnmatchedPlayTitle(report, {
         playTitle: row.playTitle,
+        venueName: venue?.name,
+        venueId: venue?.id,
         eventId: key,
         playId: row.playId,
         kind: 'movie',
@@ -2366,6 +2370,7 @@ function indexTheaterMappingsFromVenueScrape(
   report,
   persistQueue,
   eventIdIndex = null,
+  venue = null,
 ) {
   if (!scrape?.ok || !scrape.byEventId?.size || !showsForTitle?.length) return 0;
 
@@ -2396,6 +2401,8 @@ function indexTheaterMappingsFromVenueScrape(
     if (!match) {
       recordUnmatchedPlayTitle(report, {
         playTitle: row.playTitle,
+        venueName: venue?.name,
+        venueId: venue?.id,
         eventId: key,
         playId: row.playId,
         kind: 'theater_show',
