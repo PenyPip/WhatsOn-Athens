@@ -204,7 +204,11 @@ module.exports = {
   },
 
   async syncShowtimesStatus(ctx) {
-    ctx.body = { ok: true, ...getMoreShowtimeSyncJob(strapi, { forStatusPoll: true }) };
+    // Poll: ποτέ spawn worker — μόνο ανάγνωση κατάστασης (resume γίνεται στο bootstrap / start).
+    ctx.body = {
+      ok: true,
+      ...getMoreShowtimeSyncJob(strapi, { forStatusPoll: true, allowResume: false }),
+    };
   },
 
   async cmsSearch(ctx) {
@@ -291,6 +295,18 @@ module.exports = {
       scope,
       force: body.force === true,
     };
+
+    if (wait && process.env.MORE_SHOWTIME_SYNC_ALLOW_WAIT !== 'true') {
+      ctx.status = 400;
+      ctx.body = {
+        ok: false,
+        error: {
+          message:
+            'wait=true απενεργοποιημένο (κινδυνεύει με timeout HTTP). Χρησιμοποίησε async job χωρίς wait, ή MORE_SHOWTIME_SYNC_ALLOW_WAIT=true.',
+        },
+      };
+      return;
+    }
 
     if (wait) {
       strapi.log.info(

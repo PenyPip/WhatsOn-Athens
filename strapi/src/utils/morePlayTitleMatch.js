@@ -120,7 +120,10 @@ function scorePlayTitleMatch(cmsTitle, playTitle) {
   return best;
 }
 
+/** Αυτόματη ταύτιση (δημιουργία προβολών χωρίς χειροκίνητο link). */
 const MIN_PLAY_TITLE_MATCH = Number(process.env.MORE_PLAY_TITLE_MATCH_MIN || 0.85);
+/** Κατώφλι προτάσεων στο admin unmatched panel (χαμηλότερο από auto). */
+const SUGGESTION_MIN_SCORE = Number(process.env.MORE_PLAY_TITLE_SUGGESTION_MIN || 0.45);
 
 /**
  * @param {string} playTitle
@@ -128,7 +131,7 @@ const MIN_PLAY_TITLE_MATCH = Number(process.env.MORE_PLAY_TITLE_MATCH_MIN || 0.8
  * @param {{ minScore?: number, limit?: number }} options
  */
 function findTopCmsMatchesByPlayTitle(playTitle, cmsItems, options = {}) {
-  const minScore = options.minScore ?? 0.45;
+  const minScore = options.minScore ?? SUGGESTION_MIN_SCORE;
   const limit = Math.max(1, Number(options.limit) || 5);
   const scored = [];
 
@@ -184,6 +187,7 @@ function mapCmsRowForPlayTitleMatch(row, contentType = 'movie') {
 
 module.exports = {
   MIN_PLAY_TITLE_MATCH,
+  SUGGESTION_MIN_SCORE,
   normalizeText,
   compactText,
   scorePlayTitleMatch,

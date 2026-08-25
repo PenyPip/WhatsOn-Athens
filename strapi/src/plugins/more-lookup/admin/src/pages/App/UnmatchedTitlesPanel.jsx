@@ -214,6 +214,9 @@ export function UnmatchedTitlesPanel({
   onPickChange,
   onLink,
   onDismiss,
+  capped = false,
+  dropped = 0,
+  titleMatchHint = null,
 }) {
   const { get } = useFetchClient();
   const [filterByKey, setFilterByKey] = useState({});
@@ -229,6 +232,8 @@ export function UnmatchedTitlesPanel({
     [titles],
   );
   const total = Number(count ?? rows.length);
+  const autoMin = Number(titleMatchHint?.autoMin ?? 0.85);
+  const suggestionMin = Number(titleMatchHint?.suggestionMin ?? 0.45);
 
   useEffect(() => {
     let cancelled = false;
@@ -276,6 +281,15 @@ export function UnmatchedTitlesPanel({
       <Typography fontWeight="semiBold" textColor="warning700" variant="pi">
         Χωρίς ταύτιση CMS ({total || rows.length}) — σύνδεσε χειροκίνητα
       </Typography>
+      <Typography variant="pi" textColor="neutral600" style={{ fontSize: 11, marginTop: 4 }}>
+        Αυτόματη ταύτιση ≥{autoMin.toFixed(2)} · προτάσεις ≥{suggestionMin.toFixed(2)}
+      </Typography>
+      {capped ? (
+        <Typography variant="pi" textColor="warning700" style={{ fontSize: 11, marginTop: 4 }}>
+          Εμφανίζονται έως 80 τίτλοι
+          {Number(dropped) > 0 ? ` · +${dropped} δεν μπήκαν στη λίστα (σύνολο hits: ${total})` : ''}.
+        </Typography>
+      ) : null}
       <Flex direction="column" gap={1} paddingTop={2} alignItems="stretch">
         {rows.slice(0, 50).map((raw) => {
           const row =

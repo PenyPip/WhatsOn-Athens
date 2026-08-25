@@ -1,7 +1,11 @@
 'use strict';
 
 const { collectVenueBundleCodes } = require('../moreEventGroupCodes');
-const { findTopCmsMatchesByPlayTitle } = require('../morePlayTitleMatch');
+const {
+  findTopCmsMatchesByPlayTitle,
+  SUGGESTION_MIN_SCORE,
+  MIN_PLAY_TITLE_MATCH,
+} = require('../morePlayTitleMatch');
 const { unmatchedTitleKey, pushUnique } = require('./textNormalize');
 
 const UNMATCHED_TITLE_CAP = 80;
@@ -135,7 +139,11 @@ function recordUnmatchedPlayTitle(report, { playTitle, venueName, venueId, event
     if (playId && !existing.playId) existing.playId = String(playId).trim();
     return;
   }
-  if (report.scrapeTitleMisses.length >= UNMATCHED_TITLE_CAP) return;
+  if (report.scrapeTitleMisses.length >= UNMATCHED_TITLE_CAP) {
+    report.scrapeTitleMissesCapped = true;
+    report.scrapeTitleMissesDropped = (report.scrapeTitleMissesDropped || 0) + 1;
+    return;
+  }
 
   const row = {
     playTitle: title,
@@ -163,12 +171,16 @@ function enrichUnmatchedTitlesWithSuggestions(report, cmsPool) {
   if (!report?.scrapeTitleMisses?.length || !cmsPool?.length) return report;
   for (const row of report.scrapeTitleMisses) {
     const suggestions = findTopCmsMatchesByPlayTitle(row.playTitle, cmsPool, {
-      minScore: 0.45,
+      minScore: SUGGESTION_MIN_SCORE,
       limit: 5,
     });
     row.suggestions = suggestions;
     row.suggestedContent = suggestions[0] || null;
   }
+  report.titleMatchHint = {
+    autoMin: MIN_PLAY_TITLE_MATCH,
+    suggestionMin: SUGGESTION_MIN_SCORE,
+  };
   return report;
 }
 

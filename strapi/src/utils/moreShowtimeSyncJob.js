@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const { syncShowtimesFromMore, combineSyncReports } = require('./moreShowtimeSync');
 
 const JOB_FILE = path.join(process.cwd(), 'data', 'more-showtime-sync-job.json');
+const REPORT_SIDECAR = path.join(process.cwd(), 'data', 'more-showtime-sync-report-last.json');
 const WORKER_LOG = path.join(process.cwd(), 'data', 'more-showtime-sync-worker.log');
 const STALE_MS = Number(process.env.MORE_SHOWTIME_SYNC_STALE_MS || 20 * 60 * 1000);
 const HEARTBEAT_MS = 30_000;
@@ -357,7 +358,7 @@ function resumeOrphanedSyncWorker(strapi) {
   }
 }
 
-function recoverDeadWorkerJob(job, strapi) {
+function recoverDeadWorkerJob(job, strapi, { allowResume = true } = {}) {
   if (!job || job.status !== 'running' || !USE_WORKER) return job;
 
   const pid = job.workerPid;
@@ -366,11 +367,11 @@ function recoverDeadWorkerJob(job, strapi) {
   const graceRef = job.phaseTransitionAt || job.startedAt;
   const graceAgeMs = graceRef ? Date.now() - new Date(graceRef).getTime() : Infinity;
   if (graceAgeMs < START_DELAY_MS + WORKER_BOOT_GRACE_MS) {
-    if (strapi && jobNeedsWorkerResume(job)) resumeOrphanedSyncWorker(strapi);
+    if (allowResume && strapi && jobNeedsWorkerResume(job)) resumeOrphanedSyncWorker(strapi);
     return publicJob(loadFullJobFromDisk()) || job;
   }
 
-  if (strapi && jobNeedsWorkerResume(job)) {
+  if (allowResume && strapi && jobNeedsWorkerResume(job)) {
     resumeOrphanedSyncWorker(strapi);
     const refreshed = loadFullJobFromDisk();
     if (refreshed?.workerPid && isProcessAlive(refreshed.workerPid)) {
@@ -384,7 +385,7 @@ function recoverDeadWorkerJob(job, strapi) {
     workerLogShowsRecentActivity(WORKER_BOOT_GRACE_MS + 60_000) ||
     hasRecentWorkerProgress(activityJob, WORKER_BOOT_GRACE_MS + 60_000)
   ) {
-    if (strapi) resumeOrphanedSyncWorker(strapi);
+    if (allowResume && strapi) resumeOrphanedSyncWorker(strapi);
     return publicJob(loadFullJobFromDisk()) || job;
   }
 
@@ -411,18 +412,25 @@ function recoverDeadWorkerJob(job, strapi) {
   return publicJob(failed);
 }
 
-function getMoreShowtimeSyncJob(strapi, { forStatusPoll = false } = {}) {
+/**
+ * @param {object} [strapi]
+ * @param {{ forStatusPoll?: boolean, allowResume?: boolean }} [options]
+ * - forStatusPoll: χωρίς βαρύ report όσο running
+ * - allowResume: αν true, μπορεί να spawn-άρει orphaned worker (ΜΗΝ το βάζεις στο status poll)
+ */
+function getMoreShowtimeSyncJob(strapi, { forStatusPoll = false, allowResume } = {}) {
+  const canResume = allowResume === true || (allowResume !== false && !forStatusPoll);
   const disk = loadPersistedJob();
   if (disk) {
     activeJob = disk;
   }
-  if (strapi) resumeOrphanedSyncWorker(strapi);
+  if (strapi && canResume) resumeOrphanedSyncWorker(strapi);
   let job = disk
     ? publicJob(disk, { forStatusPoll })
     : activeJob
       ? publicJob(activeJob, { forStatusPoll })
       : null;
-  job = recoverDeadWorkerJob(job, strapi);
+  job = recoverDeadWorkerJob(job, strapi, { allowResume: canResume });
   if (isJobStale(job)) {
     return resetStuckMoreShowtimeSyncJob(
       'Το sync κόλλησε χωρίς πρόοδο — ακυρώθηκε. Τρέξε ξανά (worker + χαμηλό concurrency).',
@@ -462,6 +470,47 @@ function patchJobOnDisk(jobId, patch) {
   return current;
 }
 
+function writeReportSidecar(jobId, report) {
+  try {
+    ensureJobDir();
+    fs.writeFileSync(
+      REPORT_SIDECAR,
+      JSON.stringify({
+        jobId,
+        savedAt: new Date().toISOString(),
+        report: slimReportForDisk(report),
+      }),
+    );
+  } catch (e) {
+    console.error('[more-showtime-sync] report sidecar write failed', e?.message || e);
+  }
+}
+
+/** Ελάχιστη αναφορά όταν το πλήρες slim persist αποτυγχάνει (ακόμα χρήσιμη στο admin). */
+function minimalSafeReport(report) {
+  const misses = Array.isArray(report?.scrapeTitleMisses)
+    ? report.scrapeTitleMisses.slice(0, 80)
+    : [];
+  return {
+    ok: true,
+    message: report?.message || 'Ολοκληρώθηκε',
+    created: report?.created ?? 0,
+    createdFromMovies: report?.createdFromMovies ?? 0,
+    createdFromVenues: report?.createdFromVenues ?? 0,
+    createdFromTheaterShows: report?.createdFromTheaterShows ?? 0,
+    createdFromTheaterVenues: report?.createdFromTheaterVenues ?? 0,
+    alreadyExists: report?.alreadyExists ?? 0,
+    durationMs: report?.durationMs,
+    scrapeTitleUnmatched: report?.scrapeTitleUnmatched ?? 0,
+    scrapeTitleMisses: misses,
+    scrapeTitleMissesCapped: Boolean(report?.scrapeTitleMissesCapped) || misses.length >= 80,
+    scrapeTitleMissesDropped: report?.scrapeTitleMissesDropped ?? 0,
+    cmsContentChoicesOmitted: true,
+    detailsOmitted: true,
+    persistDegraded: true,
+  };
+}
+
 function completeJobById(jobId, report, extraPatch = {}) {
   const slim = slimReportForDisk(report);
   let patched = patchJobOnDisk(jobId, {
@@ -475,18 +524,8 @@ function completeJobById(jobId, report, extraPatch = {}) {
   });
   if (patched) return patched;
 
-  const minimal = {
-    ok: true,
-    message: report?.message || 'Ολοκληρώθηκε',
-    created: report?.created ?? 0,
-    createdFromMovies: report?.createdFromMovies ?? 0,
-    createdFromVenues: report?.createdFromVenues ?? 0,
-    createdFromTheaterShows: report?.createdFromTheaterShows ?? 0,
-    createdFromTheaterVenues: report?.createdFromTheaterVenues ?? 0,
-    alreadyExists: report?.alreadyExists ?? 0,
-    durationMs: report?.durationMs,
-    detailsOmitted: true,
-  };
+  writeReportSidecar(jobId, report);
+  const minimal = minimalSafeReport(report);
   patched = patchJobOnDisk(jobId, {
     status: 'completed',
     report: minimal,
@@ -499,7 +538,7 @@ function completeJobById(jobId, report, extraPatch = {}) {
   if (!patched) {
     failJobById(
       jobId,
-      'Το sync ολοκληρώθηκε αλλά η αναφορά δεν αποθηκεύτηκε (disk). Δες data/more-showtime-sync-worker.log.',
+      'Το sync ολοκληρώθηκε αλλά η αναφορά δεν αποθηκεύτηκε (disk). Δες data/more-showtime-sync-report-last.json και το worker.log.',
     );
   }
   return patched;
