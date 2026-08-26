@@ -1,5 +1,5 @@
 import { useParams, Link, useSearchParams } from "react-router-dom";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
 import { ArrowLeft, MapPin, Play, ChevronDown } from "lucide-react";
@@ -26,8 +26,6 @@ import {
   useArticlesForMovie,
   useArticlesForTheater,
 } from "@/hooks/useStrapi";
-import RelatedArticlesSection from "@/components/RelatedArticlesSection";
-import EventCard from "@/components/EventCard";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
 import {
@@ -62,7 +60,6 @@ import FavoriteButton from "@/components/FavoriteButton";
 import SeenButton from "@/components/SeenButton";
 import RateReminderBanner from "@/components/RateReminderBanner";
 import PopularBadge from "@/components/PopularBadge";
-import WriteReviewForm from "@/components/WriteReviewForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { fetchMyReviews } from "@/lib/userProfile";
 import { userHasReviewedContent } from "@/lib/seenContent";
@@ -114,6 +111,17 @@ import {
   type MovieDetailDayFilter,
 } from "@/lib/movieDetailShowtimeFilters";
 import type { AthensDistrictKey, VenueAreaKey } from "@/lib/venueArea";
+import { lazyWithChunkReload } from "@/lib/lazyWithChunkReload";
+
+const RelatedArticlesSection = lazyWithChunkReload(
+  () => import(/* webpackChunkName: "related-articles" */ "@/components/RelatedArticlesSection"),
+);
+const WriteReviewForm = lazyWithChunkReload(
+  () => import(/* webpackChunkName: "write-review" */ "@/components/WriteReviewForm"),
+);
+const EventCard = lazyWithChunkReload(
+  () => import(/* webpackChunkName: "event-card" */ "@/components/EventCard"),
+);
 
 /** Γραμμή προβολής (ημερομηνία, ώρα, αίθουσα κ.λπ.) · χρησιμοποιείται και στη λίστα όλων των προβολών στη σελίδα ταινίας. */
 function ShowtimeCompactRow({
@@ -234,6 +242,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const isMovieRoute = type === "movie";
   const isTheaterRoute = type === "theater";
   const [loadRelatedMovies, setLoadRelatedMovies] = useState(false);
+  const [deferSecondary, setDeferSecondary] = useState(false);
+  const [trailerPlaying, setTrailerPlaying] = useState(false);
 
   useEffect(() => {
     if (!isMovieRoute) return;
@@ -246,22 +256,36 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     return () => window.clearTimeout(t);
   }, [isMovieRoute]);
 
-  const { data: movies, isLoading: moviesLoading } = useMovies(isMovieRoute && loadRelatedMovies);
+  useEffect(() => {
+    const run = () => setDeferSecondary(true);
+    if (typeof requestIdleCallback === "function") {
+      const id = requestIdleCallback(run, { timeout: 3500 });
+      return () => cancelIdleCallback(id);
+    }
+    const t = window.setTimeout(run, 800);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    setTrailerPlaying(false);
+  }, [slug]);
+
+  const { data: movies } = useMovies(isMovieRoute && loadRelatedMovies);
   const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows(isTheaterRoute);
-  const { data: editorialReviews } = useEditorialReviews();
-  const { data: userReviews } = useUserReviews();
+  const { data: editorialReviews } = useEditorialReviews(deferSecondary);
+  const { data: userReviews } = useUserReviews(deferSecondary);
   const { isAuthenticated, profile } = useAuth();
   const { data: myReviews } = useQuery({
     queryKey: ["myReviews"],
     queryFn: fetchMyReviews,
-    enabled: isAuthenticated,
+    enabled: isAuthenticated && deferSecondary,
     staleTime: 60_000,
   });
   const favoriteIds = useFavoriteIds();
   const { data: showtimes, isLoading: showtimesLoading } = useShowtimes(isMovieRoute);
   const { data: theaterPerformances, isLoading: performancesLoading } = useTheaterPerformances(isTheaterRoute);
   const { data: genreCatalog } = useMovieGenreCatalog(isMovieRoute && loadRelatedMovies);
-  const { data: movieGenresList } = useMovieGenres(isMovieRoute);
+  const { data: movieGenresList } = useMovieGenres(isMovieRoute && deferSecondary);
   const { data: venues } = useVenues(isMovieRoute || isTheaterRoute);
 
   const moviesEnriched = useMemo(
@@ -275,8 +299,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   );
 
   const { data: movieBySlug, isLoading: movieBySlugLoading } = useMovieBySlug(isMovieRoute && slug ? slug : "");
-  const { data: articlesForMovie } = useArticlesForMovie(slug ?? "", isMovieRoute && !!slug);
-  const { data: articlesForTheater } = useArticlesForTheater(slug ?? "", isTheaterRoute && !!slug);
+  const { data: articlesForMovie } = useArticlesForMovie(slug ?? "", isMovieRoute && !!slug && deferSecondary);
+  const { data: articlesForTheater } = useArticlesForTheater(slug ?? "", isTheaterRoute && !!slug && deferSecondary);
   const relatedArticles = isMovieRoute ? (articlesForMovie ?? []) : (articlesForTheater ?? []);
 
   const movieIdForPopularity = useMemo(() => {
@@ -286,7 +310,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     return movieBySlug?.id;
   }, [type, slug, moviesEnriched, movieBySlug]);
 
-  const { data: moviePopularity } = useMoviePopularity(movieIdForPopularity);
+  const { data: moviePopularity } = useMoviePopularity(movieIdForPopularity, deferSecondary);
 
   const event =
     type === "movie"
@@ -295,8 +319,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const isLoading =
     type === "movie"
-      ? moviesLoading || (!!slug && !movieFromList && movieBySlugLoading)
-      : theaterLoading;
+      ? !!slug && !movieBySlug && !movieFromList && movieBySlugLoading
+      : theaterLoading && !event;
   const eventShowtimes = useMemo((): StrapiShowtime[] => {
     const list = showtimes ?? [];
     if (!slug || type !== "movie") return [];
@@ -883,9 +907,18 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         </div>
       </div>
       {showtimesLoading && showtimes === undefined ? (
-        <p className="text-sm text-muted-foreground" role="status">
-          Φόρτωση προβολών…
-        </p>
+        <div className="min-h-[14rem] space-y-3" role="status" aria-label="Φόρτωση προβολών">
+          <p className="text-sm text-muted-foreground">Φόρτωση προβολών…</p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div
+                key={i}
+                className="h-28 animate-pulse rounded-lg border border-border/60 bg-muted/25"
+                aria-hidden
+              />
+            ))}
+          </div>
+        </div>
       ) : null}
       {!showtimesLoading && !hasMovieShowtimes ? (
         <p className="text-sm text-muted-foreground">
@@ -969,8 +1002,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             alt=""
             width={800}
             height={1200}
-            fetchPriority="high"
-            loading="eager"
+            fetchPriority="low"
+            loading="lazy"
             aria-hidden
             className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-[0.22] blur-2xl"
           />
@@ -981,7 +1014,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             alt=""
             width={1200}
             height={900}
-            fetchPriority="high"
+            fetchPriority="low"
+            loading="lazy"
             decoding="async"
             aria-hidden
             className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-[0.2] blur-2xl"
@@ -1271,15 +1305,40 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   <h2 className="font-display mb-4 text-xl font-semibold">Τρέιλερ</h2>
                   {trailerEmbedUrl ? (
                     <div className="aspect-video max-w-xl overflow-hidden rounded-xl border border-border/80 bg-black shadow-sm md:max-w-none">
-                      <iframe
-                        title={`Τρέιλερ — ${headline.primary}`}
-                        src={trailerEmbedUrl}
-                        className="h-full w-full"
-                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="strict-origin-when-cross-origin"
-                      />
+                      {trailerPlaying ? (
+                        <iframe
+                          title={`Τρέιλερ — ${headline.primary}`}
+                          src={`${trailerEmbedUrl}${trailerEmbedUrl.includes("?") ? "&" : "?"}autoplay=1`}
+                          className="h-full w-full"
+                          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                          allowFullScreen
+                          referrerPolicy="strict-origin-when-cross-origin"
+                        />
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setTrailerPlaying(true)}
+                          className="group relative flex h-full w-full items-center justify-center bg-[#13143E]"
+                          aria-label={`Αναπαραγωγή τρέιλερ — ${headline.primary}`}
+                        >
+                          {movie?.posterUrl ? (
+                            <PosterPicture
+                              src={movie.posterUrl}
+                              srcSet={movie.posterSrcSet}
+                              alt=""
+                              width={640}
+                              height={360}
+                              loading="lazy"
+                              fetchPriority="low"
+                              aria-hidden
+                              className="absolute inset-0 h-full w-full object-cover opacity-50"
+                            />
+                          ) : null}
+                          <span className="relative z-10 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white/95 text-[#13143E] shadow-lg transition group-hover:scale-105">
+                            <Play className="h-6 w-6 fill-current" aria-hidden />
+                          </span>
+                        </button>
+                      )}
                     </div>
                   ) : (
                     <p className="text-sm text-muted-foreground">Δεν υπάρχει διαθέσιμο τρέιλερ για αυτή την ταινία.</p>
@@ -1317,10 +1376,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           </>
         )}
 
-        <RelatedArticlesSection
-          articles={relatedArticles}
-          title={isMovie ? "Άρθρα για αυτή την ταινία" : "Άρθρα για αυτή την παράσταση"}
-        />
+        <Suspense fallback={<div className="min-h-[8rem]" aria-hidden />}>
+          <RelatedArticlesSection
+            articles={relatedArticles}
+            title={isMovie ? "Άρθρα για αυτή την ταινία" : "Άρθρα για αυτή την παράσταση"}
+          />
+        </Suspense>
 
         {eventEditorialReviews.length > 0 && (
           <section>
@@ -1365,14 +1426,16 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <div id="write-review" className="card-elevated mx-auto max-w-md border border-[#13143E]/12 p-6 md:p-8 scroll-mt-28">
           <h3 className="font-display mb-6 text-center text-xl font-semibold text-[#13143E]">Βαθμολόγησε</h3>
           {isAuthenticated ? (
-            <WriteReviewForm
-              contentType={isMovie ? "movie" : "theater"}
-              movieId={isMovie && movie ? movie.id : undefined}
-              theaterShowId={!isMovie && theaterShow ? theaterShow.id : undefined}
-              onSuccess={() => {
-                void queryClient.invalidateQueries({ queryKey: ["myReviews"] });
-              }}
-            />
+            <Suspense fallback={<div className="min-h-[10rem] animate-pulse rounded-lg bg-muted/20" aria-hidden />}>
+              <WriteReviewForm
+                contentType={isMovie ? "movie" : "theater"}
+                movieId={isMovie && movie ? movie.id : undefined}
+                theaterShowId={!isMovie && theaterShow ? theaterShow.id : undefined}
+                onSuccess={() => {
+                  void queryClient.invalidateQueries({ queryKey: ["myReviews"] });
+                }}
+              />
+            </Suspense>
           ) : (
             <div className="text-center">
               <p className="mb-4 text-base text-muted-foreground">Σύνδεση για να γράψεις κριτική</p>
@@ -1387,6 +1450,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           )}
         </div>
 
+        {related.length > 0 ? (
         <section>
           <h2 className="font-display text-xl font-semibold mb-4">Μπορεί να σου αρέσει</h2>
           <div
@@ -1399,38 +1463,41 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               const itemTl = isMovie ? movieTitleLines(item as StrapiMovie) : { primary: item.title, secondary: undefined as string | undefined };
               return (
               <div key={item.id} className="flex h-full min-h-0">
-                <EventCard
-                  slug={item.slug}
-                  title={itemTl.primary}
-                  titleSecondary={itemTl.secondary}
-                  subtitle={isMovie ? "" : item.director}
-                  genre={isMovie ? "" : theaterGenreLabel((item as StrapiTheaterShow).genre)}
-                  duration={item.duration}
-                  imdbRating={isMovie ? resolveImdbRating(item as StrapiMovie) : undefined}
-                  posterUrl={isMovie ? (item as StrapiMovie).posterUrl : item.posterUrl}
-                  posterSrcSet={isMovie ? (item as StrapiMovie).posterSrcSet : undefined}
-                  isDubbed={isMovie ? (item as StrapiMovie).isDubbed : false}
-                  type={type}
-                  badge={
-                    !isMovie
-                      ? (item as StrapiTheaterShow).soldOut
-                        ? "SOLD OUT"
-                        : (item as StrapiTheaterShow).isPremiere
-                          ? "Πρεμιέρα"
-                          : (item as StrapiTheaterShow).isLastShows
-                            ? "Τελευταίες"
-                            : undefined
-                      : undefined
-                  }
-                  uniformMovieSizing={isMovie}
-                  compactMovieMeta={isMovie}
-                  index={i}
-                  className="w-full flex-1"
-                />
+                <Suspense fallback={<div className="aspect-[2/3] w-full animate-pulse rounded-lg bg-muted/25" aria-hidden />}>
+                  <EventCard
+                    slug={item.slug}
+                    title={itemTl.primary}
+                    titleSecondary={itemTl.secondary}
+                    subtitle={isMovie ? "" : item.director}
+                    genre={isMovie ? "" : theaterGenreLabel((item as StrapiTheaterShow).genre)}
+                    duration={item.duration}
+                    imdbRating={isMovie ? resolveImdbRating(item as StrapiMovie) : undefined}
+                    posterUrl={isMovie ? (item as StrapiMovie).posterUrl : item.posterUrl}
+                    posterSrcSet={isMovie ? (item as StrapiMovie).posterSrcSet : undefined}
+                    isDubbed={isMovie ? (item as StrapiMovie).isDubbed : false}
+                    type={type}
+                    badge={
+                      !isMovie
+                        ? (item as StrapiTheaterShow).soldOut
+                          ? "SOLD OUT"
+                          : (item as StrapiTheaterShow).isPremiere
+                            ? "Πρεμιέρα"
+                            : (item as StrapiTheaterShow).isLastShows
+                              ? "Τελευταίες"
+                              : undefined
+                        : undefined
+                    }
+                    uniformMovieSizing={isMovie}
+                    compactMovieMeta={isMovie}
+                    index={i}
+                    className="w-full flex-1"
+                  />
+                </Suspense>
               </div>
             );})}
           </div>
         </section>
+        ) : null}
       </div>
 
       {(isMovie && hasMovieShowtimes) || (!isMovie && hasTheaterPerformances) ? (

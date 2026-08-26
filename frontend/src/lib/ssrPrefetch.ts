@@ -130,6 +130,7 @@ async function prefetchMoviesVenueProgram(qc: QueryClient, venueSlug: string) {
 }
 
 async function prefetchMovieDetail(qc: QueryClient, slug: string) {
+  // Critical path μόνο: ταινία + showtimes (trim ανά slug) + venues. Articles/genres στο client μετά idle.
   await Promise.all([
     qc.prefetchQuery({ queryKey: ["movie", slug], queryFn: () => api.getMovieBySlug(slug) }),
     qc.prefetchQuery({
@@ -138,12 +139,6 @@ async function prefetchMovieDetail(qc: QueryClient, slug: string) {
       ...queryDefaults,
     }),
     qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
-    qc.prefetchQuery({ queryKey: ["movieGenres"], queryFn: api.getMovieGenres, staleTime: 600_000, retry: 1 }),
-    qc.prefetchQuery({
-      queryKey: ["articles", "movie", slug],
-      queryFn: () => api.getArticlesByMovieSlug(slug),
-      ...queryDefaults,
-    }),
   ]);
   finalizeBootstrapCache(qc, { movieSlug: slug });
 }

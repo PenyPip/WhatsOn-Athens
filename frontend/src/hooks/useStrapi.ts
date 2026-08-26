@@ -155,8 +155,15 @@ export const useVenueBySlug = (slug: string | undefined, enabled = true) =>
     retry: 1,
   });
 
-export const useEditorialReviews = () =>
-  useQuery({ queryKey: ["editorialReviews"], queryFn: api.getEditorialReviews, staleTime: 300_000, retry: 1, throwOnError: false });
+export const useEditorialReviews = (enabled = true) =>
+  useQuery({
+    queryKey: ["editorialReviews"],
+    queryFn: api.getEditorialReviews,
+    staleTime: 300_000,
+    retry: 1,
+    throwOnError: false,
+    enabled,
+  });
 
 export const useEditorialReviewBySlug = (slug: string) =>
   useQuery({ queryKey: ["editorialReview", slug], queryFn: () => api.getEditorialReviewBySlug(slug), enabled: !!slug });
@@ -252,5 +259,12 @@ export const useTheaterPerformances = (enabled = true, venueSlug?: string) => {
   });
 };
 
-export const useUserReviews = () =>
-  useQuery({ queryKey: ["userReviews"], queryFn: api.getUserReviews, staleTime: 300_000, retry: 1, throwOnError: false });
+export const useUserReviews = (enabled = true) =>
+  useQuery({
+    queryKey: ["userReviews"],
+    queryFn: api.getUserReviews,
+    staleTime: 300_000,
+    retry: 1,
+    throwOnError: false,
+    enabled,
+  });

@@ -7,6 +7,7 @@ import { buildMetadataForPath } from "@/lib/pageMetadataServer";
 import HomeStaticLcp from "@/components/HomeStaticLcp";
 import HomePageH1 from "@/components/HomePageH1";
 import { homeLcpDisplay } from "@/lib/homeHeroLcp";
+import { detailPosterPreloadHref } from "@/lib/detailPosterPreload";
 import { layoutShowsHero, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
 import { slimHomeBootstrapState } from "@/lib/rqBootstrap";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
@@ -75,8 +76,10 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
   }
   const layout = resolveHomepageLayout(homepageData ?? null);
   const lcp = homeLcpDisplay(path, dehydratedState);
-  const preloadPoster =
+  const homePreload =
     path === "/" && layoutShowsHero(layout) ? lcp?.posterHref ?? null : null;
+  const detailPreload = !homePreload ? detailPosterPreloadHref(path, dehydratedState) : null;
+  const preloadPoster = homePreload ?? detailPreload;
   /** Server HTML για LCP (αφίσα + τίτλος) — κρύβεται με `spa-lcp-done` μετά hydrate. */
   const showStaticLcp = path === "/" && layoutShowsHero(layout) && Boolean(lcp?.posterHref);
 
