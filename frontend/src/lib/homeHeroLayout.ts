@@ -21,12 +21,16 @@ export const HOME_HERO_CRITICAL_CSS =
   "html.spa-lcp-layout-done #home-static-lcp{opacity:0;visibility:hidden}" +
   "html.spa-lcp-layout-done #home-hero-slot{display:none}" +
   /**
-   * Το spacer μένει ΠΑΝΤΑ στο flow (ίδιο ύψος πριν/μετά handoff) → χωρίς CLS.
-   * Static + live είναι absolute overlays πάνω από το spacer.
+   * Spacer στο flow: ύψος = hero − main padding, ώστε το absolute live (top:0, 380/580)
+   * να μην καλύπτει τις κάρτες και να μην μένει κενό navy κάτω από το hero.
+   * Ποτέ collapse στο layout-done (παλιό CSS το μηδένιζε → overlap).
    */
-  "#home-hero-ssr-spacer{background:#13143e;flex-shrink:0}" +
-  "@media(max-width:767px){#home-hero-ssr-spacer{height:380px;min-height:380px;max-height:380px}}" +
-  "@media(min-width:768px){#home-hero-ssr-spacer{height:580px;min-height:580px;max-height:580px}}" +
+  "#home-hero-ssr-spacer{background:#13143e;flex-shrink:0;display:block}" +
+  "@media(max-width:767px){#home-hero-ssr-spacer{height:calc(380px - 3.5rem);min-height:calc(380px - 3.5rem);max-height:calc(380px - 3.5rem)}}" +
+  "@media(min-width:768px){#home-hero-ssr-spacer{height:calc(580px - 7rem);min-height:calc(580px - 7rem);max-height:calc(580px - 7rem)}}" +
+  "html.spa-lcp-layout-done #home-hero-ssr-spacer{display:block!important}" +
+  "@media(max-width:767px){html.spa-lcp-layout-done #home-hero-ssr-spacer{height:calc(380px - 3.5rem)!important;min-height:calc(380px - 3.5rem)!important;max-height:calc(380px - 3.5rem)!important}}" +
+  "@media(min-width:768px){html.spa-lcp-layout-done #home-hero-ssr-spacer{height:calc(580px - 7rem)!important;min-height:calc(580px - 7rem)!important;max-height:calc(580px - 7rem)!important}}" +
   "[data-home-hero-live]{position:absolute;top:0;left:0;right:0;z-index:2;width:100%;overflow:hidden;pointer-events:none}" +
   "@media(max-width:767px){[data-home-hero-live]{height:380px;min-height:380px;max-height:380px}}" +
   "@media(min-width:768px){[data-home-hero-live]{height:580px;min-height:580px;max-height:580px;margin-top:0!important}}" +
@@ -48,3 +52,10 @@ export { ROOT_CRITICAL_CSS as HOME_PAGE_CRITICAL_CSS } from "@/lib/rootCriticalC
  */
 export const HOME_HERO_COMPACT_SECTION_CLASS =
   "overflow-hidden bg-[#13143E] max-md:h-[380px] max-md:min-h-[380px] max-md:max-h-[380px] md:h-[580px] md:min-h-[580px] md:max-h-[580px] md:pt-28";
+
+/**
+ * In-flow reserve κάτω από το fixed nav — ίδιο οπτικό κάτω άκρο με το absolute hero (380/580).
+ * `main.home-main-overlap` έχει ήδη pt 3.5rem/7rem.
+ */
+export const HOME_HERO_SPACER_CLASS =
+  "w-full shrink-0 bg-[#13143E] max-md:h-[calc(380px-3.5rem)] max-md:min-h-[calc(380px-3.5rem)] max-md:max-h-[calc(380px-3.5rem)] md:h-[calc(580px-7rem)] md:min-h-[calc(580px-7rem)] md:max-h-[calc(580px-7rem)]";

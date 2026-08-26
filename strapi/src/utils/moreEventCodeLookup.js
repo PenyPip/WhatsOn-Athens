@@ -1490,6 +1490,170 @@ async function uniqueMovieOriginalTitle(strapi, desired) {
 }
 
 /**
+ * Βρίσκει εγγραφή καταλόγου More με σελίδα (moreUrl) για draft από unmatched sync τίτλο.
+ * @returns {{ entry: object, score: number } | null}
+ */
+function findCatalogDraftCandidate(playTitle, catalog, { contentKind = 'movie' } = {}) {
+  const title = String(playTitle || '').trim();
+  if (!title) return null;
+  const wantCategory = contentKind === 'theater_show' ? 'theater' : 'cinema';
+  const wantKind = contentKind === 'theater_show' ? 'show' : 'movie';
+  const pool = (catalog || []).filter(
+    (e) =>
+      e.category === wantCategory &&
+      e.kind === wantKind &&
+      e.moreUrl &&
+      e.code &&
+      !isVenueBundleCode(e.code),
+  );
+  let best = null;
+  let bestScore = 0;
+  for (const entry of pool) {
+    const score = scoreMatch(
+      { title, originalTitle: '', slug: '' },
+      entry,
+    );
+    if (score > bestScore) {
+      bestScore = score;
+      best = entry;
+    }
+  }
+  if (!best || bestScore < MIN_HINT_SCORE) return null;
+  // Draft μόνο με σταθερή ταύτιση τίτλου (≥0.75) — αποφεύγει λάθος σελίδα More.
+  if (bestScore < 0.75) return null;
+  return { entry: best, score: bestScore };
+}
+
+/**
+ * Συμπληρώνει canCreateDraft / moreUrl / eventGroupCode στα unmatched του sync report.
+ * Χρειάζεται σελίδα More (αφίσα/σύνοψη) — αλλιώς χωρίς κουμπί Draft.
+ */
+async function enrichUnmatchedWithCatalogDraftMeta(report, { contentKind = 'movie' } = {}) {
+  if (!report?.scrapeTitleMisses?.length) return report;
+  let catalog;
+  try {
+    catalog = await fetchMoreCatalog();
+  } catch (e) {
+    for (const row of report.scrapeTitleMisses) {
+      if (row.canCreateDraft == null) row.canCreateDraft = false;
+    }
+    report.draftCatalogEnrichError = e?.message || String(e);
+    return report;
+  }
+
+  let ready = 0;
+  for (const row of report.scrapeTitleMisses) {
+    const kind = row.kind === 'theater_show' ? 'theater_show' : contentKind;
+    const hit = findCatalogDraftCandidate(row.playTitle, catalog, { contentKind: kind });
+    if (hit?.entry?.moreUrl && hit.entry.code) {
+      row.canCreateDraft = true;
+      row.eventGroupCode = hit.entry.code;
+      row.moreUrl = hit.entry.moreUrl;
+      row.catalogTitle = hit.entry.title;
+      row.catalogMatchScore = Number(hit.score.toFixed(3));
+      ready += 1;
+    } else {
+      row.canCreateDraft = false;
+      if (!row.eventGroupCode) row.eventGroupCode = null;
+      if (!row.moreUrl) row.moreUrl = null;
+    }
+  }
+  report.draftCreateReady = ready;
+  return report;
+}
+
+/**
+ * Δημιουργεί draft CMS από unmatched sync γραμμή + συνδέει eventIds/playTitle.
+ */
+async function createDraftFromUnmatchedSync(strapi, options = {}) {
+  const playTitle = String(options.playTitle || options.title || options.moreTitle || '').trim();
+  if (!playTitle) throw new Error('Απαιτείται playTitle');
+
+  const contentType = options.kind === 'theater_show' || options.contentType === 'theater_show'
+    ? 'theater_show'
+    : 'movie';
+  let code = String(options.eventGroupCode || '').trim();
+  let moreUrl = String(options.moreUrl || '').trim();
+  let catalogTitle = String(options.catalogTitle || '').trim();
+
+  if (!code || !moreUrl) {
+    const catalog = await fetchMoreCatalog();
+    const hit = findCatalogDraftCandidate(playTitle, catalog, { contentKind: contentType });
+    if (!hit?.entry?.moreUrl || !hit.entry.code) {
+      throw new Error(
+        'Δεν βρέθηκαν βασικά στοιχεία στο More (σελίδα/τίτλος) για draft. Σύνδεσε χειροκίνητα σε υπάρχουσα εγγραφή CMS.',
+      );
+    }
+    code = hit.entry.code;
+    moreUrl = hit.entry.moreUrl;
+    catalogTitle = hit.entry.title;
+  }
+
+  if (isVenueBundleCode(code)) {
+    throw new Error('Ο κωδικός More ανήκει σε χώρο, όχι σε ταινία/παράσταση.');
+  }
+
+  const created = await createCmsContentFromMoreCatalog(strapi, {
+    eventGroupCode: code,
+    kind: contentType === 'theater_show' ? 'show' : 'movie',
+    category: contentType === 'theater_show' ? 'theater' : 'cinema',
+    title: playTitle,
+    moreTitle: catalogTitle || playTitle,
+    moreUrl,
+  });
+
+  const cmsId = created?.entry?.id;
+  if (!cmsId) throw new Error('Η δημιουργία draft απέτυχε (χωρίς id).');
+
+  const eventIds = Array.isArray(options.eventIds)
+    ? options.eventIds
+    : options.eventId
+      ? [options.eventId]
+      : [];
+  const playId = String(options.playId || '').trim();
+  const isEventGroupCode = /^evg_/i.test(playId);
+
+  let eventLink = null;
+  if (eventIds.length || (playId && !isEventGroupCode) || playTitle) {
+    const { linkEventIdsManually } = require('./moreEventIdPersist');
+    eventLink = await linkEventIdsManually(strapi, {
+      contentType,
+      cmsId,
+      eventIds,
+      playId: isEventGroupCode ? '' : playId,
+      playTitle,
+    });
+  }
+
+  let groupLink = null;
+  if (code) {
+    groupLink = await linkMoreCodeToCms(strapi, {
+      contentType,
+      cmsId,
+      movieId: contentType === 'movie' ? cmsId : undefined,
+      theaterShowId: contentType === 'theater_show' ? cmsId : undefined,
+      eventGroupCode: code,
+      catalogKind: contentType === 'theater_show' ? 'show' : 'movie',
+      moreTitle: playTitle,
+    });
+  }
+
+  const posterBit = created.enriched?.posterUploaded ? ' · με αφίσα' : '';
+  const linkBit = eventLink?.ok ? ` · ${eventLink.message}` : '';
+  return {
+    ...created,
+    eventLink,
+    groupLink,
+    eventGroupCode: code,
+    moreUrl,
+    message:
+      `Draft «${created.entry.title}» (#${cmsId})${posterBit}` +
+      (code ? ` · ${code}` : '') +
+      linkBit,
+  };
+}
+
+/**
  * Δημιουργία unpublished ταινίας ή παράστασης από γραμμή καταλόγου More.
  * Συμπληρώνει όσα μπορεί από σελίδα More + getevents.
  */
@@ -2719,6 +2883,9 @@ module.exports = {
   linkMoreCodeToCms,
   createVenueFromMoreCatalog,
   createCmsContentFromMoreCatalog,
+  enrichUnmatchedWithCatalogDraftMeta,
+  createDraftFromUnmatchedSync,
+  findCatalogDraftCandidate,
   loadCmsMovies,
   loadCmsTheaterShows,
   loadAllCmsItems,

@@ -10,6 +10,7 @@ function UnmatchedRow({
   onPickChange,
   onLink,
   onDismiss,
+  onCreateDraft,
   showBrowse,
   onToggleBrowse,
   filter,
@@ -33,12 +34,19 @@ function UnmatchedRow({
       : [];
   const playId = row.playId || row.playIds?.[0] || null;
   const canLink = eventIds.length > 0 || Boolean(playId) || Boolean(title);
+  const canDraft = Boolean(onCreateDraft) && row.canCreateDraft === true;
   const suggestions = row.suggestions || [];
   const suggested = row.suggestedContent || suggestions[0] || null;
   const linkBusy = busyKey === `unmatched:${key}`;
   const suggestedBusy = busyKey === `unmatched-suggested:${key}`;
+  const draftBusy = busyKey === `unmatched-draft:${key}`;
   const anyBusy = Boolean(busyKey);
   const kind = row.kind === 'theater_show' ? 'theater_show' : 'movie';
+  const draftHint = canDraft
+    ? `Νέο draft από More${row.eventGroupCode ? ` · ${row.eventGroupCode}` : ''}${
+        row.catalogMatchScore != null ? ` · score ${Number(row.catalogMatchScore).toFixed(2)}` : ''
+      }`
+    : '';
 
   const pickedOpt = useMemo(() => {
     if (!pick) return null;
@@ -90,6 +98,12 @@ function UnmatchedRow({
               Βρέθηκε: {whereLabel}
             </Typography>
           ) : null}
+          {canDraft && row.catalogTitle ? (
+            <Typography variant="pi" textColor="neutral500" style={{ fontSize: 10, lineHeight: 1.3 }}>
+              More: {truncateLabel(row.catalogTitle, 40)}
+              {row.eventGroupCode ? ` · ${row.eventGroupCode}` : ''}
+            </Typography>
+          ) : null}
         </Flex>
         <Flex gap={1} wrap="wrap" alignItems="center">
           {suggested && canLink ? (
@@ -103,6 +117,18 @@ function UnmatchedRow({
             >
               → {cmsDualTitleLabel(suggested, { max: 34 })}
               {suggested.score != null ? ` · ${Number(suggested.score).toFixed(2)}` : ''}
+            </Button>
+          ) : null}
+          {canDraft ? (
+            <Button
+              size="S"
+              variant="default"
+              loading={draftBusy}
+              disabled={anyBusy && !draftBusy}
+              onClick={() => onCreateDraft(row)}
+              title={draftHint}
+            >
+              Draft
             </Button>
           ) : null}
           {canLink ? (
@@ -214,6 +240,7 @@ export function UnmatchedTitlesPanel({
   onPickChange,
   onLink,
   onDismiss,
+  onCreateDraft,
   capped = false,
   dropped = 0,
   titleMatchHint = null,
@@ -234,6 +261,7 @@ export function UnmatchedTitlesPanel({
   const total = Number(count ?? rows.length);
   const autoMin = Number(titleMatchHint?.autoMin ?? 0.85);
   const suggestionMin = Number(titleMatchHint?.suggestionMin ?? 0.45);
+  const draftReady = rows.filter((r) => r?.canCreateDraft === true).length;
 
   useEffect(() => {
     let cancelled = false;
@@ -279,10 +307,11 @@ export function UnmatchedTitlesPanel({
   return (
     <Box padding={3} background="warning100" hasRadius>
       <Typography fontWeight="semiBold" textColor="warning700" variant="pi">
-        Χωρίς ταύτιση CMS ({total || rows.length}) — σύνδεσε χειροκίνητα
+        Χωρίς ταύτιση CMS ({total || rows.length}) — σύνδεσε ή Draft
       </Typography>
       <Typography variant="pi" textColor="neutral600" style={{ fontSize: 11, marginTop: 4 }}>
         Αυτόματη ταύτιση ≥{autoMin.toFixed(2)} · προτάσεις ≥{suggestionMin.toFixed(2)}
+        {draftReady > 0 ? ` · Draft έτοιμα: ${draftReady}` : ''}
       </Typography>
       {capped ? (
         <Typography variant="pi" textColor="warning700" style={{ fontSize: 11, marginTop: 4 }}>
@@ -306,6 +335,7 @@ export function UnmatchedTitlesPanel({
               onPickChange={onPickChange}
               onLink={onLink}
               onDismiss={onDismiss}
+              onCreateDraft={onCreateDraft}
               showBrowse={browseByKey[key] === true}
               onToggleBrowse={() =>
                 setBrowseByKey((prev) => ({ ...prev, [key]: !prev[key] }))

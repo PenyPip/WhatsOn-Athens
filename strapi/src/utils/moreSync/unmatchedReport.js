@@ -224,6 +224,13 @@ function mergeUnmatchedTitleLists(...lists) {
         last.suggestions = row.suggestions;
         last.suggestedContent = row.suggestedContent || row.suggestions[0] || null;
       }
+      if (row.canCreateDraft && !last.canCreateDraft) {
+        last.canCreateDraft = true;
+        last.eventGroupCode = row.eventGroupCode || last.eventGroupCode;
+        last.moreUrl = row.moreUrl || last.moreUrl;
+        last.catalogTitle = row.catalogTitle || last.catalogTitle;
+        last.catalogMatchScore = row.catalogMatchScore ?? last.catalogMatchScore;
+      }
     }
   }
   return acc;

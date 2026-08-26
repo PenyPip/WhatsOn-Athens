@@ -140,6 +140,7 @@ function SyncReportPanel({
   unmatchedPicks,
   onUnmatchedPickChange,
   onUnmatchedLink,
+  onUnmatchedCreateDraft,
   onUnmatchedDismiss,
   dismissedUnmatchedKeys,
 }) {
@@ -185,6 +186,7 @@ function SyncReportPanel({
         unmatchedPicks={unmatchedPicks}
         onUnmatchedPickChange={onUnmatchedPickChange}
         onUnmatchedLink={onUnmatchedLink}
+        onUnmatchedCreateDraft={onUnmatchedCreateDraft}
         onUnmatchedDismiss={onUnmatchedDismiss}
         dismissedUnmatchedKeys={dismissedUnmatchedKeys}
       />
@@ -272,6 +274,7 @@ function SyncReportPanel({
             picks={unmatchedPicks}
             onPickChange={onUnmatchedPickChange}
             onLink={onUnmatchedLink}
+            onCreateDraft={onUnmatchedCreateDraft}
             onDismiss={onUnmatchedDismiss}
             capped={Boolean(report.scrapeTitleMissesCapped)}
             dropped={report.scrapeTitleMissesDropped ?? 0}

@@ -110,5 +110,14 @@ module.exports = {
         policies: ['global::is-admin'],
       },
     },
+    {
+      method: 'POST',
+      path: '/more-lookup/create-unmatched-draft',
+      handler: 'more-lookup.createUnmatchedDraft',
+      config: {
+        auth: false,
+        policies: ['global::is-admin'],
+      },
+    },
   ],
 };

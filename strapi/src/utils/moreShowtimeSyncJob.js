@@ -258,9 +258,29 @@ function markInterruptedIfNeeded(saved) {
   };
 }
 
+function isKnownFixedSyncBugError(job) {
+  if (!job) return false;
+  const err = String(job.error || job.progress || '');
+  return /showtimeMinuteKey is not defined|mergeUnmatchedTitleLists is not defined/i.test(err);
+}
+
+/** Σβήνει παλιές αποτυχίες από missing imports μετά το moreSync split. */
+function clearKnownFixedSyncBugJob(job) {
+  if (!job || !isKnownFixedSyncBugError(job)) return false;
+  if (job.status !== 'failed' && job.status !== 'running') return false;
+  try {
+    if (fs.existsSync(JOB_FILE)) fs.unlinkSync(JOB_FILE);
+  } catch {
+    /* ignore */
+  }
+  if (activeJob?.id === job.id) activeJob = null;
+  return true;
+}
+
 function initJobStateFromDisk() {
   const saved = loadPersistedJob();
   if (!saved) return;
+  if (clearKnownFixedSyncBugJob(saved)) return;
   const recovered = markInterruptedIfNeeded(saved);
   activeJob = recovered;
   if (recovered !== saved) persistJob(recovered);
@@ -298,13 +318,25 @@ function failJobById(jobId, error) {
   return failJob(current, error);
 }
 
-/** Μαρκάρει κολλημένο/ζombie job ώστε να επιτρέπεται νέο sync. */
+/** Μαρκάρει κολλημένο/ζombie job ώστε να επιτρέπεται νέο sync. Καθαρίζει και failed. */
 function resetStuckMoreShowtimeSyncJob(reason) {
   const job = activeJob || loadPersistedJob();
-  if (!job || job.status !== 'running') return null;
+  if (!job) return null;
   const msg =
     reason ||
     'Το sync διακόπηκε (502/restart). Τρέξε ξανά — η προηγούμενη εργασία ακυρώθηκε.';
+
+  // Failed / completed με bug: σβήσε το job file εντελώς.
+  if (job.status !== 'running') {
+    try {
+      if (fs.existsSync(JOB_FILE)) fs.unlinkSync(JOB_FILE);
+    } catch {
+      /* ignore */
+    }
+    activeJob = null;
+    return { cleared: true, previousStatus: job.status, error: job.error || null };
+  }
+
   if (activeJob) return failJob(activeJob, msg);
   const failed = {
     ...job,
@@ -420,7 +452,10 @@ function recoverDeadWorkerJob(job, strapi, { allowResume = true } = {}) {
  */
 function getMoreShowtimeSyncJob(strapi, { forStatusPoll = false, allowResume } = {}) {
   const canResume = allowResume === true || (allowResume !== false && !forStatusPoll);
-  const disk = loadPersistedJob();
+  let disk = loadPersistedJob();
+  if (disk && clearKnownFixedSyncBugJob(disk)) {
+    disk = null;
+  }
   if (disk) {
     activeJob = disk;
   }

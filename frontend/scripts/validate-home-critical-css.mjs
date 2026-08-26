@@ -15,6 +15,8 @@ const REQUIRED_IF_LCP = [
   "#home-static-lcp{position:absolute;inset:0",
   "html.spa-lcp-layout-done #home-hero-slot{display:none}",
   "#home-hero-ssr-spacer{background:#13143e",
+  "html.spa-lcp-layout-done #home-hero-ssr-spacer{display:block!important}",
+  "calc(580px - 7rem)",
   "html.spa-lcp-done #home-hero-slot{display:none}",
   "contain:layout style paint",
   "[data-home-hero-live]{position:absolute",
@@ -25,6 +27,7 @@ const CORRUPT = [
   "min-height:380@media",
   "min-height:580.home-main-overlap",
   "calc(380px + 3.5rem)",
+  'html.spa-lcp-layout-done #home-hero-ssr-spacer{display:none',
   'data-async-css="sheet"',
   'media="print" onload="this.media=\'all\'"',
 ];

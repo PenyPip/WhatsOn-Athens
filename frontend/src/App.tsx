@@ -8,6 +8,7 @@ import {
 } from "@/lib/lazyWithChunkReload";
 import { cn } from "@/lib/utils";
 import { syncHomeHeroSlotForPath } from "@/hooks/useHomeLcpDone";
+import { HOME_HERO_SPACER_CLASS } from "@/lib/homeHeroLayout";
 import UrlBackedMemoryRouter from "@/components/UrlBackedMemoryRouter";
 import ScrollToTop from "@/components/ScrollToTop";
 import Navbar from "@/components/Navbar";
@@ -113,7 +114,9 @@ function AppShell({ homeStaticLcp }: AppShellProps) {
           overlapHome ? "home-main-overlap" : "max-md:pt-16 md:pt-28",
         )}
       >
-        {homeStaticLcp && overlapHome ? <div id="home-hero-ssr-spacer" aria-hidden /> : null}
+        {homeStaticLcp && overlapHome ? (
+          <div id="home-hero-ssr-spacer" className={HOME_HERO_SPACER_CLASS} aria-hidden />
+        ) : null}
         <AppRoutes />
       </main>
       <DeferredCookieConsent />

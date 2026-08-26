@@ -1027,6 +1027,69 @@ const App = () => {
     [post, toggleNotification],
   );
 
+  const createUnmatchedDraftFromSync = useCallback(
+    async (row) => {
+      const key = unmatchedRowKey(row);
+      if (!row?.canCreateDraft && !(row?.eventGroupCode && row?.moreUrl)) {
+        toggleNotification({
+          type: 'warning',
+          message:
+            'Χωρίς σελίδα More για αυτή τη γραμμή — δεν δημιουργείται draft. Σύνδεσε σε υπάρχουσα ταινία CMS.',
+        });
+        return;
+      }
+      const busy = `unmatched-draft:${key}`;
+      setBusyKey(busy);
+      try {
+        const eventIds = row.eventIds?.length
+          ? row.eventIds
+          : row.eventId
+            ? [row.eventId]
+            : [];
+        const res = await post('/api/more-lookup/create-unmatched-draft', {
+          playTitle: row.playTitle,
+          kind: row.kind === 'theater_show' ? 'theater_show' : 'movie',
+          eventGroupCode: row.eventGroupCode,
+          moreUrl: row.moreUrl,
+          catalogTitle: row.catalogTitle,
+          eventIds,
+          playId: row.playId || row.playIds?.[0] || null,
+        });
+        const payload = res?.data || res;
+        toggleNotification({
+          type: 'success',
+          message: payload?.message || `Draft για «${row.playTitle}»`,
+        });
+        setDismissedUnmatchedKeys((prev) => new Set([...prev, key]));
+        setSyncReport((prev) => {
+          if (!prev) return prev;
+          const filterRow = (list) =>
+            (list || []).filter((item) => unmatchedRowKey(item) !== key);
+          return {
+            ...prev,
+            scrapeTitleMisses: filterRow(prev.scrapeTitleMisses),
+            scrapeTitleUnmatched: Math.max(
+              0,
+              (prev.scrapeTitleUnmatched || 0) - (row.count || 1),
+            ),
+            unmatchedTitles: filterRow(prev.unmatchedTitles),
+            unmatchedMovies: Math.max(0, (prev.unmatchedMovies || 0) - (row.count || 1)),
+            draftCreateReady: Math.max(0, (prev.draftCreateReady || 0) - 1),
+          };
+        });
+      } catch (error) {
+        const message =
+          error?.response?.data?.error?.message ||
+          error?.response?.data?.errors?.[0]?.error ||
+          'Αποτυχία δημιουργίας draft.';
+        toggleNotification({ type: 'warning', message });
+      } finally {
+        setBusyKey(null);
+      }
+    },
+    [post, toggleNotification],
+  );
+
   const pollSyncJob = useCallback(async () => {
     // ~45 λεπτά (2700 × 1s) — μεγάλα sync με πολλούς κωδικούς More.
     let gatewayPauses = 0;
@@ -1182,13 +1245,9 @@ const App = () => {
       const data = res?.data;
       if (data?.status !== 'running' && data?.status !== 'started') {
         if (data?.status === 'completed' && data?.report) setSyncReport(data.report);
-        if (data?.status === 'failed') {
-          if (data?.report) setSyncReport(data.report);
-          toggleNotification({
-            type: 'warning',
-            message: data?.error || data?.progress || 'Το sync απέτυχε.',
-          });
-        }
+        // Μην δείχνεις toast για παλιό failed job σε κάθε είσοδο στη σελίδα —
+        // μόνο φόρτωσε την αναφορά αν υπάρχει.
+        if (data?.status === 'failed' && data?.report) setSyncReport(data.report);
         return;
       }
       setSyncLoading(true);
@@ -2234,6 +2293,7 @@ const App = () => {
                 setUnmatchedPicks((prev) => ({ ...prev, [key]: id }))
               }
               onUnmatchedLink={linkUnmatchedFromSync}
+              onUnmatchedCreateDraft={createUnmatchedDraftFromSync}
               onUnmatchedDismiss={(key) =>
                 setDismissedUnmatchedKeys((prev) => new Set([...prev, key]))
               }

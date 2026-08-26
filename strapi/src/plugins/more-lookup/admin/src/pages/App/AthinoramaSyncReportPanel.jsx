@@ -10,6 +10,7 @@ export function AthinoramaSyncReportPanel({
   unmatchedPicks,
   onUnmatchedPickChange,
   onUnmatchedLink,
+  onUnmatchedCreateDraft,
   onUnmatchedDismiss,
   dismissedUnmatchedKeys,
 }) {
@@ -110,6 +111,7 @@ export function AthinoramaSyncReportPanel({
           picks={unmatchedPicks}
           onPickChange={onUnmatchedPickChange}
           onLink={onUnmatchedLink}
+          onCreateDraft={onUnmatchedCreateDraft}
           onDismiss={onUnmatchedDismiss}
           capped={Boolean(report?.scrapeTitleMissesCapped)}
           dropped={report?.scrapeTitleMissesDropped ?? 0}

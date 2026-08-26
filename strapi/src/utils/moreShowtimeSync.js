@@ -24,6 +24,7 @@ const {
   lookupScrapedEventRow,
 } = require('./moreVenueProgramScrape');
 const { findBestCmsMatchByPlayTitle, mapCmsRowForPlayTitleMatch } = require('./morePlayTitleMatch');
+const { enrichUnmatchedWithCatalogDraftMeta } = require('./moreEventCodeLookup');
 const {
   normalizeVenueName,
   slugifyVenueName,
@@ -2750,6 +2751,14 @@ async function syncMovieShowtimesFromMore(strapi, {
 
   enrichUnmatchedVenuesFromBundles(report, venuesWithBundle, eventsCache);
   enrichUnmatchedTitlesWithSuggestions(report, moviesForTitle);
+  if (report.scrapeTitleMisses?.length) {
+    if (onProgress) onProgress('Έλεγχος Draft από κατάλογο More (τίτλος + σελίδα)…');
+    try {
+      await enrichUnmatchedWithCatalogDraftMeta(report, { contentKind: 'movie' });
+    } catch (e) {
+      strapi.log.warn(`[more-showtime-sync] draft catalog enrich: ${e?.message || e}`);
+    }
+  }
   // Μην ενσωματώνεις 800 ταινίες στο report — admin: suggestions + /cms-search.
   report.cmsContentChoices = [];
 
@@ -2997,6 +3006,14 @@ async function syncTheaterPerformancesFromMore(strapi, {
 
   enrichUnmatchedVenuesFromBundles(report, venuesWithBundle, eventsCache);
   enrichUnmatchedTitlesWithSuggestions(report, showsForTitle);
+  if (report.scrapeTitleMisses?.length) {
+    if (onProgress) onProgress('Έλεγχος Draft από κατάλογο More (θέατρο)…');
+    try {
+      await enrichUnmatchedWithCatalogDraftMeta(report, { contentKind: 'theater_show' });
+    } catch (e) {
+      strapi.log.warn(`[more-theater-sync] draft catalog enrich: ${e?.message || e}`);
+    }
+  }
   report.cmsContentChoices = [];
 
   report.eventIdIndex = eventIdIndex;

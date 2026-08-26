@@ -7,6 +7,7 @@ const {
   linkMoreCodeToCms,
   createVenueFromMoreCatalog,
   createCmsContentFromMoreCatalog,
+  createDraftFromUnmatchedSync,
   DEFAULT_MIN_SCORE,
   DEFAULT_APPLY_MIN_SCORE,
 } = require('../../../utils/moreEventCodeLookup');
@@ -263,7 +264,7 @@ module.exports = {
     ctx.body = {
       ok: true,
       cleared: Boolean(cleared),
-      job: getMoreShowtimeSyncJob(strapi),
+      job: getMoreShowtimeSyncJob(strapi, { allowResume: false }),
     };
   },
 
@@ -510,6 +511,32 @@ module.exports = {
       });
       strapi.log.info(
         `[more-lookup] create-content by ${adminEmail} ${result.contentType} #${result.entry.id} → ${body.eventGroupCode}`,
+      );
+      ctx.body = result;
+    } catch (e) {
+      ctx.status = 400;
+      ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+    }
+  },
+
+  async createUnmatchedDraft(ctx) {
+    const body = ctx.request.body ?? {};
+    const adminEmail = ctx.state?.admin?.email || 'unknown';
+    try {
+      const result = await createDraftFromUnmatchedSync(strapi, {
+        playTitle: body.playTitle || body.moreTitle || body.title,
+        kind: body.kind || body.contentType,
+        contentType: body.contentType || body.kind,
+        eventGroupCode: body.eventGroupCode,
+        moreUrl: body.moreUrl,
+        catalogTitle: body.catalogTitle,
+        eventIds: body.eventIds,
+        eventId: body.eventId,
+        playId: body.playId,
+      });
+      strapi.log.info(
+        `[more-lookup] create-unmatched-draft by ${adminEmail} ${result.contentType} #${result.entry?.id}` +
+          ` ← «${body.playTitle || ''}» ${body.eventGroupCode || result.eventGroupCode || ''}`,
       );
       ctx.body = result;
     } catch (e) {
