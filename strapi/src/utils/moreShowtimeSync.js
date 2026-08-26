@@ -35,11 +35,13 @@ const {
   attachCmsVenueToScrapeUnmatched,
   recordUnmatchedPlayTitle,
   enrichUnmatchedTitlesWithSuggestions,
+  mergeUnmatchedTitleLists,
 } = require('./moreSync/unmatchedReport');
 const { yieldEventLoop, maybeGc } = require('./moreSync/runtime');
 const { createEventsCache } = require('./moreSync/eventsCache');
 const { findAllEntities } = require('./moreSync/findAllEntities');
 const {
+  showtimeMinuteKey,
   showtimeExistsInIndex,
   addShowtimeToExistenceIndex,
   findPerformanceInIndex,

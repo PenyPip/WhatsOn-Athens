@@ -18,7 +18,9 @@ function publicJob(job) {
     finishedAt: job.finishedAt ?? null,
     progress: job.progress,
     error: job.error ?? null,
-    result: job.result ?? null,
+    // Μην στέλνεις result όσο τρέχει — μόνο στο completed.
+    result: job.status === 'completed' ? job.result ?? null : null,
+    hasResult: Boolean(job.result),
   };
 }
 

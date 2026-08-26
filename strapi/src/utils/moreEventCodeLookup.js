@@ -7,6 +7,19 @@ const USER_AGENT = 'whatson-more-lookup/1.0';
 const FETCH_TIMEOUT_MS = Number(process.env.MORE_LOOKUP_FETCH_TIMEOUT_MS || 45_000);
 const VERIFY_TIMEOUT_MS = Number(process.env.MORE_LOOKUP_VERIFY_TIMEOUT_MS || 20_000);
 const VERIFY_CONCURRENCY = Number(process.env.MORE_LOOKUP_VERIFY_CONCURRENCY || 8);
+/** Μέγιστες προτάσεις More ανά CMS εγγραφή (UI + verify). */
+const MAX_MORE_MATCHES_PER_CMS = Number(process.env.MORE_LOOKUP_MAX_MATCHES_PER_CMS || 8);
+/**
+ * Επιπλέον API verify για κωδικούς καταλόγου που δεν καλύφθηκαν από ταύτιση.
+ * Default 0 — το διπλό full-catalog verify έκανε την ταύτιση να ξεπερνά τα 20 λεπτά.
+ * MORE_LOOKUP_VERIFY_CATALOG=true ή αριθμός >0 για περιορισμένο sample.
+ */
+const CATALOG_VERIFY_EXTRA_MAX = (() => {
+  if (process.env.MORE_LOOKUP_VERIFY_CATALOG === 'true') return 48;
+  if (process.env.MORE_LOOKUP_VERIFY_CATALOG === 'false') return 0;
+  const n = Number(process.env.MORE_LOOKUP_VERIFY_CATALOG);
+  return Number.isFinite(n) && n >= 0 ? n : 0;
+})();
 const SCRAPE_LOOKUP_ENABLED = process.env.MORE_LOOKUP_VENUE_SCRAPE === 'true';
 const SCRAPE_LOOKUP_MAX = Number(process.env.MORE_LOOKUP_VENUE_SCRAPE_MAX || 20);
 const MIN_HINT_SCORE = 0.45;
@@ -557,6 +570,7 @@ function matchCmsItemsToMore(cmsItems, catalog, minScore = DEFAULT_MIN_SCORE, ta
       if (taken.has(row.more.code)) continue;
       seenCodes.add(row.more.code);
       deduped.push(row);
+      if (deduped.length >= MAX_MORE_MATCHES_PER_CMS) break;
     }
 
     const best = deduped[0] || null;
@@ -623,6 +637,7 @@ function matchVenueBundlesToCms(cmsVenues, catalog, minScore = DEFAULT_MIN_SCORE
       if (taken.has(row.more.code)) continue;
       seenCodes.add(row.more.code);
       deduped.push(row);
+      if (deduped.length >= MAX_MORE_MATCHES_PER_CMS) break;
     }
 
     const best = deduped[0] || null;
@@ -2393,12 +2408,14 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
 
     const codesToVerify = new Set();
     for (const row of allRawMatches) {
+      // Μόνο προτάσεις ≥ minScore (+ best) — όχι όλα τα χαμηλά fuzzy hits.
       if (row.more?.code) codesToVerify.add(row.more.code);
-      for (const match of row.moreMatches || []) {
-        if (match.suggestedEventGroupCode) codesToVerify.add(match.suggestedEventGroupCode);
+      for (const code of row.suggestedEventGroupCodes || []) {
+        if (code) codesToVerify.add(code);
       }
     }
 
+    progress(`Επαλήθευση More API: 0/${codesToVerify.size} κωδικοί…`);
     const verified = skipVerify
       ? new Map()
       : await verifyEventGroupCodesParallel([...codesToVerify], { onProgress: progress });
@@ -2425,6 +2442,7 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
     result.stats.unmatched = result.unmatched.length;
     result.stats.withExistingCode = result.matches.filter((r) => r.cmsEventGroupCode).length;
     result.stats.lowScoreMatches = result.matches.filter((r) => r.needsApproval).length;
+    result.stats.codesVerified = verified.size;
   }
 
   {
@@ -2441,18 +2459,54 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
     const cmsCodeIndex = buildCmsEventGroupCodeIndex(cmsItems, cmsVenues);
     const cmsVenueByMoreId = buildCmsVenueByMoreIdIndex(cmsVenues);
 
-    const withVerify = await attachVerification(
-      catalogRows.map((e) => ({
-        moreTitle: e.title,
-        eventGroupCode: e.code,
-        moreUrl: e.moreUrl,
-        kind: e.kind,
-        category: e.category,
-        moreCatalogOrder: e.moreCatalogOrder,
-      })),
-      skipVerify,
-      { onProgress: progress },
-    );
+    const catalogMapped = catalogRows.map((e) => ({
+      moreTitle: e.title,
+      eventGroupCode: e.code,
+      moreUrl: e.moreUrl,
+      kind: e.kind,
+      category: e.category,
+      moreCatalogOrder: e.moreCatalogOrder,
+    }));
+
+    // Μην ξανα-καλείς More API για όλο τον κατάλογο (παλιά συμπεριφορά → timeout 20+ λεπτά).
+    // Επαναχρησιμοποίησε verify από τις προτάσεις ταύτισης· προαιρετικά λίγα extra.
+    let catalogVerified = new Map();
+    if (!skipVerify && matchCms && result.matches?.length) {
+      for (const row of result.matches) {
+        if (row.suggestedEventGroupCode && row.verify) {
+          catalogVerified.set(row.suggestedEventGroupCode, row.verify);
+        }
+        for (const m of row.moreMatches || []) {
+          if (m.suggestedEventGroupCode && m.verify) {
+            catalogVerified.set(m.suggestedEventGroupCode, m.verify);
+          }
+        }
+      }
+    }
+
+    if (!skipVerify && CATALOG_VERIFY_EXTRA_MAX > 0) {
+      const extraCodes = [];
+      for (const row of catalogMapped) {
+        const code = row.eventGroupCode;
+        if (!code || catalogVerified.has(code)) continue;
+        extraCodes.push(code);
+        if (extraCodes.length >= CATALOG_VERIFY_EXTRA_MAX) break;
+      }
+      if (extraCodes.length) {
+        progress(`Επιπλέον verify καταλόγου: 0/${extraCodes.length}…`);
+        const extra = await verifyEventGroupCodesParallel(extraCodes, { onProgress: progress });
+        for (const [code, verify] of extra) catalogVerified.set(code, verify);
+      }
+    }
+
+    const withVerify = skipVerify
+      ? catalogMapped.map((e) => ({ ...e, verify: null }))
+      : catalogMapped.map((entry) => ({
+          ...entry,
+          verify: entry.eventGroupCode
+            ? catalogVerified.get(entry.eventGroupCode) ?? null
+            : null,
+        }));
     const annotated = annotateCatalogWithCmsStatus(withVerify, cmsCodeIndex, cmsVenueByMoreId);
     let catalogOut = await enrichCatalogWithVenueProgramScrape(annotated, cmsVenues, cmsItems, {
       onProgress: progress,
@@ -2557,7 +2611,7 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
       .slice(0, 500);
 
     catalogOut.sort(compareMoreCatalogOrder);
-    result.catalog = catalogOut;
+    result.catalog = slimCatalogVerify(catalogOut);
     result.stats.catalogShown = result.catalog.length;
     result.stats.catalogVenueScrapeResolved = result.catalog
       .filter((row) => row.venueScrape?.ok)
@@ -2573,7 +2627,40 @@ async function runMoreEventCodeLookup(strapi, options = {}) {
   };
 
   result.durationMs = Date.now() - started;
+  if (Array.isArray(result.matches)) {
+    result.matches = result.matches.map(slimMatchVerify);
+  }
   return result;
+}
+
+function slimVerify(verify) {
+  if (!verify || typeof verify !== 'object') return verify;
+  const { jsonPreview, raw, ...rest } = verify;
+  return rest;
+}
+
+function slimMatchVerify(row) {
+  if (!row) return row;
+  return {
+    ...row,
+    verify: slimVerify(row.verify),
+    moreMatches: Array.isArray(row.moreMatches)
+      ? row.moreMatches.map((m) => ({ ...m, verify: slimVerify(m.verify) }))
+      : row.moreMatches,
+  };
+}
+
+function slimCatalogVerify(rows) {
+  return (rows || []).map((row) => ({
+    ...row,
+    verify: slimVerify(row.verify),
+    venueScrape: row.venueScrape
+      ? (() => {
+          const { jsonPreview, ...vs } = row.venueScrape;
+          return vs;
+        })()
+      : row.venueScrape,
+  }));
 }
 
 function skipCodeReason(row, code, score, verify, options) {

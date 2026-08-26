@@ -28,7 +28,8 @@ module.exports = {
     ctx.body = {
       enabled: process.env.MORE_LOOKUP_ENABLED !== 'false',
       showtimeSyncEnabled: process.env.MORE_SHOWTIME_SYNC_ENABLED !== 'false',
-      showtimeSyncJob: getMoreShowtimeSyncJob(strapi),
+      // Χωρίς resume — αλλιώς κάθε άνοιγμα admin μπορεί να spawn-άρει sync worker και να πνίξει την ταύτιση.
+      showtimeSyncJob: getMoreShowtimeSyncJob(strapi, { allowResume: false }),
       lookupJob: getMoreLookupJob(),
       moreProxy: getMoreProxyStatus(),
       minScore: DEFAULT_MIN_SCORE,

@@ -1087,21 +1087,62 @@ const App = () => {
   }, [applySyncStatus, get, setSyncReport]);
 
   const pollLookupJob = useCallback(async () => {
-    for (let attempt = 0; attempt < 480; attempt += 1) {
+    // ~40 λεπτά — μεγάλα catalogs + verify· η πρόοδος ενημερώνεται στο progress.
+    let lastProgress = '';
+    let stagnant = 0;
+    for (let attempt = 0; attempt < 960; attempt += 1) {
       await new Promise((resolve) => setTimeout(resolve, 2500));
-      const res = await get('/api/more-lookup/run/status');
-      const data = res?.data;
+      let data;
+      try {
+        const res = await get('/api/more-lookup/run/status');
+        data = res?.data;
+      } catch (netErr) {
+        if (attempt < 8) continue;
+        throw new Error(
+          netErr?.message || 'Αποτυχία επικοινωνίας με το Strapi κατά την ταύτιση.',
+        );
+      }
       if (data?.kind) setLookupJobKind(data.kind);
-      if (data?.progress) setLookupProgress(data.progress);
+      if (data?.progress) {
+        setLookupProgress(data.progress);
+        if (data.progress !== lastProgress) {
+          lastProgress = data.progress;
+          stagnant = 0;
+        } else {
+          stagnant += 1;
+        }
+      }
       if (data?.status === 'completed' && data?.result) return data.result;
+      if (data?.status === 'completed' && data?.hasResult && !data?.result) {
+        throw new Error(
+          'Η ταύτιση ολοκληρώθηκε αλλά το αποτέλεσμα δεν φορτώθηκε (πολύ μεγάλο/δίκτυο). Κάνε refresh.',
+        );
+      }
       if (data?.status === 'failed') {
         throw new Error(
           data?.error || (data?.kind === 'apply' ? 'Αποτυχία εγγραφής CMS' : 'Αποτυχία ταύτισης'),
         );
       }
-      if (data?.status !== 'running' && data?.status !== 'started') break;
+      if (!data?.status) {
+        throw new Error(
+          'Η ταύτιση διακόπηκε (επανεκκίνηση Strapi ή χάθηκε η εργασία). Τρέξε ξανά.',
+        );
+      }
+      if (data?.status !== 'running' && data?.status !== 'started') {
+        throw new Error(
+          data?.error ||
+            data?.progress ||
+            `Η ταύτιση σταμάτησε (${data.status}).`,
+        );
+      }
+      // Κολλημένη πρόοδος > ~8 λεπτά χωρίς αλλαγή μηνύματος
+      if (stagnant > 190) {
+        throw new Error(
+          `Η ταύτιση φαίνεται κολλημένη («${lastProgress || '…'}»). Έλεγξε logs Strapi ή τρέξε ξανά.`,
+        );
+      }
     }
-    throw new Error('Η διαδικασία ξεπέρασε το χρονικό όριο αναμονής (~20 λεπτά).');
+    throw new Error('Η διαδικασία ξεπέρασε το χρονικό όριο αναμονής (~40 λεπτά).');
   }, [get]);
 
   const resumeLookupIfRunning = useCallback(async () => {
