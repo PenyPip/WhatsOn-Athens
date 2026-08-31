@@ -1,7 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { getMetadataBase, siteSeo } from "@/lib/siteMetadata";
 import { ROOT_CRITICAL_CSS } from "@/lib/rootCriticalCss";
-import { HOME_HERO_CRITICAL_CSS } from "@/lib/homeHeroLayout";
+import { HOME_HERO_CRITICAL_CSS, HOME_HERO_SPACER_LOCK_SCRIPT } from "@/lib/homeHeroLayout";
 import "@/index.css";
 
 export const viewport: Viewport = {
@@ -69,7 +69,7 @@ export default function RootLayout({
       <body className="min-h-full antialiased max-md:overscroll-y-none">
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var m=window.matchMedia("(max-width:767px)");if(!m.matches)return;var d=document.createElement("div");d.style.cssText="position:fixed;left:-9999px;bottom:0;visibility:hidden;padding-bottom:env(safe-area-inset-bottom,0px)";document.documentElement.appendChild(d);var px=parseFloat(getComputedStyle(d).paddingBottom)||0;document.documentElement.removeChild(d);document.documentElement.style.setProperty("--mobile-safe-bottom-fixed",px+"px")}catch(e){}})();`,
+            __html: `(function(){try{var m=window.matchMedia("(max-width:767px)");if(!m.matches)return;var d=document.createElement("div");d.style.cssText="position:fixed;left:-9999px;bottom:0;visibility:hidden;padding-bottom:env(safe-area-inset-bottom,0px)";document.documentElement.appendChild(d);var px=parseFloat(getComputedStyle(d).paddingBottom)||0;document.documentElement.removeChild(d);document.documentElement.style.setProperty("--mobile-safe-bottom-fixed",px+"px")}catch(e){}})();${HOME_HERO_SPACER_LOCK_SCRIPT}`,
           }}
         />
         {children}

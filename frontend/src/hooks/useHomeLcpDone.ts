@@ -1,5 +1,7 @@
 import { useCallback } from "react";
 
+export { HOME_HERO_SPACER_LOCK_SCRIPT } from "@/lib/homeHeroLayout";
+
 /** Ύψος in-flow spacer = absolute hero − main overlap padding (3.5rem / 7rem). */
 export function homeHeroSpacerCssHeight(isDesktop: boolean): string {
   return isDesktop ? "calc(580px - 7rem)" : "calc(380px - 3.5rem)";

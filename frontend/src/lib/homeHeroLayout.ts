@@ -41,7 +41,11 @@ export const HOME_HERO_CRITICAL_CSS =
   /** Desktop navbar = h-28 (7rem) — το overlap path πρέπει να κρατά ίσο offset. */
   "@media(min-width:768px){.home-main-overlap{padding-top:7rem}}" +
   "html.spa-not-home #home-hero-slot,html.spa-not-home #home-hero-ssr-spacer{display:none!important;height:0!important;min-height:0!important;max-height:0!important;overflow:hidden!important}" +
-  ".home-below-fold{content-visibility:visible}";
+  ".home-below-fold{content-visibility:visible;position:relative;z-index:3}";
+
+/** Inline lock — πριν το React hydrate (παλιό cached CSS / χωρίς spacer στο πρώτο paint). */
+export const HOME_HERO_SPACER_LOCK_SCRIPT =
+  "(function(){function l(){var s=document.getElementById('home-hero-ssr-spacer');if(!s)return;var d=window.matchMedia('(min-width:768px)').matches,h=d?'calc(580px - 7rem)':'calc(380px - 3.5rem)';s.style.setProperty('display','block','important');s.style.setProperty('height',h,'important');s.style.setProperty('min-height',h,'important');s.style.setProperty('max-height',h,'important')}l();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',l);var n=0,iv=setInterval(function(){l();if(++n>40)clearInterval(iv)},50)})();";
 
 /** Πριν το async index.css — αποφυγή FOUC/CLS στο sr-only H1 και crawl shell. */
 export { ROOT_CRITICAL_CSS as HOME_PAGE_CRITICAL_CSS } from "@/lib/rootCriticalCss";

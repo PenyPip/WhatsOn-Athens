@@ -1,4 +1,4 @@
-import { Suspense, useEffect, type ReactNode } from "react";
+import { Suspense, useEffect, useLayoutEffect, type ReactNode } from "react";
 import { Route, Routes, useLocation } from "react-router-dom";
 import { prefetchArticleDetailChunk } from "@/lib/articlePrefetch";
 import {
@@ -7,8 +7,7 @@ import {
   lazyWithChunkReload,
 } from "@/lib/lazyWithChunkReload";
 import { cn } from "@/lib/utils";
-import { syncHomeHeroSlotForPath } from "@/hooks/useHomeLcpDone";
-import { HOME_HERO_SPACER_CLASS } from "@/lib/homeHeroLayout";
+import { lockHomeHeroSpacerDom, syncHomeHeroSlotForPath } from "@/hooks/useHomeLcpDone";
 import UrlBackedMemoryRouter from "@/components/UrlBackedMemoryRouter";
 import ScrollToTop from "@/components/ScrollToTop";
 import Navbar from "@/components/Navbar";
@@ -80,17 +79,19 @@ function AppRoutes() {
   );
 }
 
-type AppShellProps = {
-  homeStaticLcp?: boolean;
-};
+type AppShellProps = Record<string, never>;
 
-function AppShell({ homeStaticLcp }: AppShellProps) {
+function AppShell(_props: AppShellProps) {
   const { pathname } = useLocation();
   /** Πάντα από το τρέχον path — το SSR `homeMainOverlap` της `/` δεν πρέπει να «κολλάει» στις ταινίες. */
   const overlapHome = pathname === "/";
 
   useEffect(() => {
     syncHomeHeroSlotForPath(pathname);
+  }, [pathname]);
+
+  useLayoutEffect(() => {
+    if (pathname === "/") lockHomeHeroSpacerDom();
   }, [pathname]);
 
   useEffect(() => {
@@ -114,9 +115,6 @@ function AppShell({ homeStaticLcp }: AppShellProps) {
           overlapHome ? "home-main-overlap" : "max-md:pt-16 md:pt-28",
         )}
       >
-        {homeStaticLcp && overlapHome ? (
-          <div id="home-hero-ssr-spacer" className={HOME_HERO_SPACER_CLASS} aria-hidden />
-        ) : null}
         <AppRoutes />
       </main>
       <DeferredCookieConsent />
@@ -130,9 +128,9 @@ type AppProps = {
   homeStaticLcp?: boolean;
 };
 
-const App = ({ ssrPath = "/", homeStaticLcp }: AppProps) => (
+const App = ({ ssrPath = "/" }: AppProps) => (
   <UrlBackedMemoryRouter ssrPath={ssrPath}>
-    <AppShell homeStaticLcp={homeStaticLcp} />
+    <AppShell />
   </UrlBackedMemoryRouter>
 );
 
