@@ -76,6 +76,48 @@ function sanitizeProfile(entry) {
   };
 }
 
+async function loadFollowedTheaterShows(strapi, userId) {
+  const rows = await strapi.db.query('api::theater-show-subscription.theater-show-subscription').findMany({
+    where: { user: userId, active: true },
+    populate: {
+      theater_show: {
+        fields: ['id', 'slug', 'title'],
+        populate: { poster: { fields: ['url', 'formats'] } },
+      },
+    },
+  });
+  return (rows || []).map((row) => mapTheaterShow(row.theater_show)).filter(Boolean);
+}
+
+async function enrichProfile(strapi, userId, entry) {
+  const base = sanitizeProfile(entry);
+  const followedTheaterShows = await loadFollowedTheaterShows(strapi, userId);
+  return { ...base, followedTheaterShows };
+}
+
+async function syncTheaterShowSubscription(strapi, userId, theaterShowId, profile, { active, source }) {
+  const { ensureSubscription, deactivateSubscription } = require('../../../utils/theaterShowNotifications');
+  if (active) {
+    await ensureSubscription(strapi, userId, theaterShowId, source);
+    return true;
+  }
+  const stillReviewed = await strapi.db.query('api::user-review.user-review').findOne({
+    where: { user: userId, content_type: 'theater', theater_show: theaterShowId },
+    select: ['id'],
+  });
+  if (stillReviewed) {
+    await ensureSubscription(strapi, userId, theaterShowId, 'review');
+    return true;
+  }
+  const stillSeen = (profile?.seen_theater_shows || []).some((row) => Number(row.id) === Number(theaterShowId));
+  if (stillSeen) {
+    await ensureSubscription(strapi, userId, theaterShowId, 'seen');
+    return true;
+  }
+  await deactivateSubscription(strapi, userId, theaterShowId);
+  return false;
+}
+
 module.exports = createCoreController('api::user-profile.user-profile', ({ strapi }) => ({
   async me(ctx) {
     const user = requireUser(ctx);
@@ -83,7 +125,7 @@ module.exports = createCoreController('api::user-profile.user-profile', ({ strap
     const profile = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
     ctx.body = {
       data: {
-        ...sanitizeProfile(profile),
+        ...(await enrichProfile(strapi, user.id, profile)),
         user: {
           id: user.id,
           username: user.username,
@@ -106,7 +148,7 @@ module.exports = createCoreController('api::user-profile.user-profile', ({ strap
       populate: strapi.service('api::user-profile.user-profile').PROFILE_POPULATE,
     });
 
-    ctx.body = { data: sanitizeProfile(updated) };
+    ctx.body = { data: await enrichProfile(strapi, user.id, updated) };
   },
 
   async toggleFavoriteMovie(ctx) {
@@ -122,7 +164,7 @@ module.exports = createCoreController('api::user-profile.user-profile', ({ strap
     const toggle = await strapi.service('api::user-profile.user-profile').toggleFavoriteMovie(profile.id, movieId);
     const refreshed = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
 
-    ctx.body = { data: { ...toggle, profile: sanitizeProfile(refreshed) } };
+    ctx.body = { data: { ...toggle, profile: await enrichProfile(strapi, user.id, refreshed) } };
   },
 
   async toggleFavoriteVenue(ctx) {
@@ -138,7 +180,7 @@ module.exports = createCoreController('api::user-profile.user-profile', ({ strap
     const toggle = await strapi.service('api::user-profile.user-profile').toggleFavoriteVenue(profile.id, venueId);
     const refreshed = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
 
-    ctx.body = { data: { ...toggle, profile: sanitizeProfile(refreshed) } };
+    ctx.body = { data: { ...toggle, profile: await enrichProfile(strapi, user.id, refreshed) } };
   },
 
   async toggleSeenMovie(ctx) {
@@ -154,7 +196,7 @@ module.exports = createCoreController('api::user-profile.user-profile', ({ strap
     const toggle = await strapi.service('api::user-profile.user-profile').toggleSeenMovie(profile.id, movieId);
     const refreshed = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
 
-    ctx.body = { data: { ...toggle, profile: sanitizeProfile(refreshed) } };
+    ctx.body = { data: { ...toggle, profile: await enrichProfile(strapi, user.id, refreshed) } };
   },
 
   async toggleSeenTheaterShow(ctx) {
@@ -173,25 +215,60 @@ module.exports = createCoreController('api::user-profile.user-profile', ({ strap
     const refreshed = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
 
     try {
-      const { ensureSubscription, deactivateSubscription } = require('../../../utils/theaterShowNotifications');
-      if (toggle.active) {
-        await ensureSubscription(strapi, user.id, theaterShowId, 'seen');
-      } else {
-        const stillReviewed = await strapi.db.query('api::user-review.user-review').findOne({
-          where: { user: user.id, content_type: 'theater', theater_show: theaterShowId },
-          select: ['id'],
-        });
-        if (stillReviewed) {
-          await ensureSubscription(strapi, user.id, theaterShowId, 'review');
-        } else {
-          await deactivateSubscription(strapi, user.id, theaterShowId);
-        }
-      }
+      await syncTheaterShowSubscription(strapi, user.id, theaterShowId, refreshed, {
+        active: toggle.active,
+        source: 'seen',
+      });
     } catch (err) {
       strapi.log.warn('[theater-alert] subscribe on seen toggle:', err?.message || err);
     }
 
-    ctx.body = { data: { ...toggle, profile: sanitizeProfile(refreshed) } };
+    ctx.body = {
+      data: {
+        ...toggle,
+        profile: await enrichProfile(strapi, user.id, refreshed),
+      },
+    };
+  },
+
+  async toggleFollowTheaterShow(ctx) {
+    const user = requireUser(ctx);
+    if (!user) return;
+    const theaterShowId = Number(ctx.params.theaterShowId);
+    if (!Number.isFinite(theaterShowId) || theaterShowId <= 0) return ctx.badRequest('Invalid theater show id');
+
+    const show = await strapi.db.query('api::theater-show.theater-show').findOne({ where: { id: theaterShowId } });
+    if (!show) return ctx.notFound('Theater show not found');
+
+    const profile = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
+    const { findSubscription } = require('../../../utils/theaterShowNotifications');
+    const existing = await findSubscription(strapi, user.id, theaterShowId);
+    const wasActive = Boolean(existing?.active);
+    let active = wasActive;
+
+    try {
+      if (wasActive) {
+        active = await syncTheaterShowSubscription(strapi, user.id, theaterShowId, profile, {
+          active: false,
+          source: 'follow',
+        });
+      } else {
+        active = await syncTheaterShowSubscription(strapi, user.id, theaterShowId, profile, {
+          active: true,
+          source: 'follow',
+        });
+      }
+    } catch (err) {
+      strapi.log.warn('[theater-alert] subscribe on follow toggle:', err?.message || err);
+    }
+
+    const refreshed = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
+    ctx.body = {
+      data: {
+        active,
+        profile: await enrichProfile(strapi, user.id, refreshed),
+      },
+    };
   },
 
   async moviePopularity(ctx) {

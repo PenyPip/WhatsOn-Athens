@@ -30,7 +30,7 @@
     },
     "source": {
       "type": "enumeration",
-      "enum": ["review", "seen"],
+      "enum": ["review", "seen", "follow"],
       "default": "seen"
     },
     "last_emailed_at": {

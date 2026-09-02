@@ -8,8 +8,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { fetchMyNotifications } from "@/lib/userProfile";
 import { filterProfileNotifications, markProfileNotificationsSeen } from "@/lib/profileNotifications";
 
-function sourceLabel(source: "review" | "seen"): string {
-  return source === "review" ? "Κριτική" : "Το είδα";
+function sourceLabel(source: "review" | "seen" | "follow"): string {
+  if (source === "review") return "Κριτική";
+  if (source === "follow") return "Παρακολούθηση";
+  return "Το είδα";
 }
 
 export default function ProfileNotificationsSection() {

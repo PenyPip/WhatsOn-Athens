@@ -33,6 +33,11 @@ module.exports = {
       handler: 'api::user-profile.user-profile.toggleSeenTheaterShow',
     },
     {
+      method: 'POST',
+      path: '/user-profiles/me/follow-theater-shows/:theaterShowId',
+      handler: 'api::user-profile.user-profile.toggleFollowTheaterShow',
+    },
+    {
       method: 'GET',
       path: '/user-profiles/me/notifications',
       handler: 'api::user-profile.user-profile.myNotifications',

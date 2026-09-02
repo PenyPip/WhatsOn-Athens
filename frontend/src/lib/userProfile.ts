@@ -34,6 +34,7 @@ export type UserProfile = {
   favoriteVenues: ProfileVenue[];
   seenMovies: ProfileMovie[];
   seenTheaterShows: ProfileTheaterShow[];
+  followedTheaterShows: ProfileTheaterShow[];
   user?: {
     id: number;
     username: string;
@@ -68,7 +69,7 @@ export type ProfileTheaterShowNotification = {
   newCount: number;
   latestAt: string;
   performances: string[];
-  source: "review" | "seen";
+  source: "review" | "seen" | "follow";
 };
 
 export type ProfileWatchedShow = {
@@ -77,7 +78,7 @@ export type ProfileWatchedShow = {
   showSlug: string;
   posterUrl: string | null;
   href: string;
-  source: "review" | "seen";
+  source: "review" | "seen" | "follow";
 };
 
 export type ProfileNotifications = {
@@ -131,6 +132,13 @@ export async function toggleSeenMovie(movieId: number) {
 export async function toggleSeenTheaterShow(theaterShowId: number) {
   return authFetch<{ active: boolean; profile: UserProfile }>(
     `/user-profiles/me/seen-theater-shows/${theaterShowId}`,
+    { method: "POST", body: "{}" },
+  );
+}
+
+export async function toggleFollowTheaterShow(theaterShowId: number) {
+  return authFetch<{ active: boolean; profile: UserProfile }>(
+    `/user-profiles/me/follow-theater-shows/${theaterShowId}`,
     { method: "POST", body: "{}" },
   );
 }

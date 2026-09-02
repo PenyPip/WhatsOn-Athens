@@ -306,7 +306,7 @@ async function getProfileNotifications(strapi, userId, { now = new Date() } = {}
       showSlug: slug || '',
       posterUrl: mapPosterUrl(show),
       href: slug ? `/theater/${encodeURIComponent(slug)}#theater-performances` : '/theater',
-      source: sub.source === 'review' ? 'review' : 'seen',
+      source: sub.source === 'review' ? 'review' : sub.source === 'follow' ? 'follow' : 'seen',
     });
   }
 
@@ -468,6 +468,7 @@ function deferNotifyPerformance(strapi, performanceId) {
 module.exports = {
   ensureSubscription,
   deactivateSubscription,
+  findSubscription,
   notifySubscribersForShow,
   processRecentTheaterPerformances,
   deferNotifyPerformance,

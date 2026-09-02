@@ -58,6 +58,7 @@ import {
 import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import FavoriteButton from "@/components/FavoriteButton";
 import SeenButton from "@/components/SeenButton";
+import TheaterFollowButton from "@/components/TheaterFollowButton";
 import RateReminderBanner from "@/components/RateReminderBanner";
 import PopularBadge from "@/components/PopularBadge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1109,12 +1110,19 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 <FavoriteButton kind="movie" entityId={movie.id} className="shrink-0 border-white/20 bg-black/30 text-white hover:text-rose-300" />
               </div>
             ) : theaterShow?.id ? (
-              <SeenButton
-                kind="theater"
-                entityId={theaterShow.id}
-                showLabel
-                className="shrink-0 border-white/20 bg-black/30 text-white hover:text-sky-200"
-              />
+              <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-start">
+                <TheaterFollowButton
+                  theaterShowId={theaterShow.id}
+                  showLabel
+                  className="border-white/20 bg-black/30 text-white hover:text-rose-300"
+                />
+                <SeenButton
+                  kind="theater"
+                  entityId={theaterShow.id}
+                  showLabel
+                  className="border-white/20 bg-black/30 text-white hover:text-sky-200"
+                />
+              </div>
             ) : null}
             </div>
             {headline.secondary ? (
