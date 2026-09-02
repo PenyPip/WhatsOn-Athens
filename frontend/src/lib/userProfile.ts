@@ -50,6 +50,42 @@ export type PopularityStats = {
   avgRating: number | null;
 };
 
+export type ProfileVenueNotification = {
+  venueId: number;
+  venueName: string;
+  venueSlug: string;
+  href: string;
+  newCount: number;
+  latestAt: string;
+};
+
+export type ProfileTheaterShowNotification = {
+  showId: number;
+  showTitle: string;
+  showSlug: string;
+  posterUrl: string | null;
+  href: string;
+  newCount: number;
+  latestAt: string;
+  performances: string[];
+  source: "review" | "seen";
+};
+
+export type ProfileWatchedShow = {
+  showId: number;
+  showTitle: string;
+  showSlug: string;
+  posterUrl: string | null;
+  href: string;
+  source: "review" | "seen";
+};
+
+export type ProfileNotifications = {
+  favoriteTheaterVenues: ProfileVenueNotification[];
+  theaterShowUpdates: ProfileTheaterShowNotification[];
+  subscriptions: ProfileWatchedShow[];
+};
+
 export type UserReviewMine = {
   id: number;
   userName: string;
@@ -65,6 +101,10 @@ export type UserReviewMine = {
 
 export async function fetchMyProfile() {
   return authFetch<UserProfile>("/user-profiles/me");
+}
+
+export async function fetchMyNotifications() {
+  return authFetch<ProfileNotifications>("/user-profiles/me/notifications");
 }
 
 export async function toggleFavoriteMovie(movieId: number) {

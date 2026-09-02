@@ -186,4 +186,23 @@ module.exports = {
       rule: '20 4 * * *',
     },
   },
+  /** Email σε συνδρομητές όταν προστέθηκαν νέες εμφανίσεις θεάτρου (bulk sync). */
+  theaterShowPerformanceAlerts: {
+    task: async ({ strapi }) => {
+      try {
+        const { processRecentTheaterPerformances } = require('../src/utils/theaterShowNotifications');
+        const result = await processRecentTheaterPerformances(strapi);
+        if (result.emailsSent > 0) {
+          strapi.log.info(
+            `[cron] theaterShowPerformanceAlerts: ${result.emailsSent} email(s), ${result.shows} show(s)`,
+          );
+        }
+      } catch (e) {
+        strapi.log.error('[cron] theaterShowPerformanceAlerts', e);
+      }
+    },
+    options: {
+      rule: '*/15 * * * *',
+    },
+  },
 };

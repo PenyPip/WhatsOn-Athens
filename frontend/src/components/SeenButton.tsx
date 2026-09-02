@@ -23,6 +23,7 @@ export default function SeenButton({
 }: SeenButtonProps) {
   const { isAuthenticated, profile, setProfile, refreshProfile } = useAuth();
   const [pending, setPending] = useState(false);
+  const [notifyHint, setNotifyHint] = useState(false);
 
   const active =
     kind === "movie"
@@ -73,6 +74,7 @@ export default function SeenButton({
           : await toggleSeenTheaterShow(entityId);
       setProfile(result.profile);
       await refreshProfile();
+      if (kind === "theater" && result.active) setNotifyHint(true);
     } catch {
       /* ignore */
     } finally {
@@ -82,24 +84,30 @@ export default function SeenButton({
 
   if (showLabel) {
     return (
-      <button
-        type="button"
-        onClick={onToggle}
-        disabled={pending}
-        className={cn(
-          "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors",
-          active
-            ? "border-sky-500/40 bg-sky-500/15 text-sky-700 dark:text-sky-200"
-            : "border-border bg-background/80 text-muted-foreground hover:border-sky-400/40 hover:text-sky-700",
-          pending && "opacity-60",
-          className,
-        )}
-        aria-pressed={active}
-        aria-label={label}
-      >
-        {active ? <Eye className={iconSize} aria-hidden /> : <EyeOff className={iconSize} aria-hidden />}
-        {label}
-      </button>
+      <div className={cn("flex flex-col items-start gap-1", className)}>
+        <button
+          type="button"
+          onClick={onToggle}
+          disabled={pending}
+          className={cn(
+            "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors",
+            active
+              ? "border-sky-500/40 bg-sky-500/15 text-sky-700 dark:text-sky-200"
+              : "border-border bg-background/80 text-muted-foreground hover:border-sky-400/40 hover:text-sky-700",
+            pending && "opacity-60",
+          )}
+          aria-pressed={active}
+          aria-label={label}
+        >
+          {active ? <Eye className={iconSize} aria-hidden /> : <EyeOff className={iconSize} aria-hidden />}
+          {label}
+        </button>
+        {notifyHint && active ? (
+          <p className="max-w-xs text-xs text-muted-foreground">
+            Θα λάβεις email για νέες ημερομηνίες αυτής της παράστασης.
+          </p>
+        ) : null}
+      </div>
     );
   }
 

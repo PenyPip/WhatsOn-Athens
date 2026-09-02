@@ -1,0 +1,40 @@
+{
+  "kind": "collectionType",
+  "collectionName": "theater_show_subscriptions",
+  "info": {
+    "singularName": "theater-show-subscription",
+    "pluralName": "theater-show-subscriptions",
+    "displayName": "Theater Show Subscription",
+    "description": "Ειδοποίηση χρήστη με email για νέες ημερομηνίες παράστασης θεάτρου."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "required": true
+    },
+    "theater_show": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::theater-show.theater-show",
+      "required": true
+    },
+    "active": {
+      "type": "boolean",
+      "default": true,
+      "required": true
+    },
+    "source": {
+      "type": "enumeration",
+      "enum": ["review", "seen"],
+      "default": "seen"
+    },
+    "last_emailed_at": {
+      "type": "datetime"
+    }
+  }
+}

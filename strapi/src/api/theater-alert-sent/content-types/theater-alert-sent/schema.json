@@ -1,0 +1,27 @@
+{
+  "kind": "collectionType",
+  "collectionName": "theater_alert_sents",
+  "info": {
+    "singularName": "theater-alert-sent",
+    "pluralName": "theater-alert-sents",
+    "displayName": "Theater Alert Sent",
+    "description": "Αποτρέπει διπλό email για την ίδια εμφάνιση θεάτρου."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "user": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "plugin::users-permissions.user",
+      "required": true
+    },
+    "theater_performance": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::theater-performance.theater-performance",
+      "required": true
+    }
+  }
+}

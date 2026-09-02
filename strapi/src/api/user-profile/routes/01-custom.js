@@ -34,6 +34,11 @@ module.exports = {
     },
     {
       method: 'GET',
+      path: '/user-profiles/me/notifications',
+      handler: 'api::user-profile.user-profile.myNotifications',
+    },
+    {
+      method: 'GET',
       path: '/user-profiles/popularity/movie/:movieId',
       handler: 'api::user-profile.user-profile.moviePopularity',
       config: { auth: false },

@@ -55,6 +55,7 @@ const AUTHENTICATED_USER_ACTIONS = [
   'api::user-profile.user-profile.toggleFavoriteVenue',
   'api::user-profile.user-profile.toggleSeenMovie',
   'api::user-profile.user-profile.toggleSeenTheaterShow',
+  'api::user-profile.user-profile.myNotifications',
   'api::user-review.user-review.listMine',
   'api::user-review.user-review.createMine',
   'api::user-review.user-review.deleteMine',

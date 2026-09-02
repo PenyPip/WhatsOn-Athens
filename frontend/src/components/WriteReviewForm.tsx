@@ -28,10 +28,12 @@ export default function WriteReviewForm({
   const [rating, setRating] = useState(4);
   const [body, setBody] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [pending, setPending] = useState(false);
 
   const submit = async () => {
     setError(null);
+    setSuccess(null);
     setPending(true);
     try {
       await createMyReview({
@@ -43,6 +45,9 @@ export default function WriteReviewForm({
         restaurantId,
       });
       setBody("");
+      if (contentType === "theater") {
+        setSuccess("Θα λάβεις email όταν προστεθούν νέες ημερομηνίες για αυτή την παράσταση.");
+      }
       await refreshProfile();
       await queryClient.invalidateQueries({ queryKey: ["userReviews"] });
       await queryClient.invalidateQueries({ queryKey: ["myReviews"] });
@@ -106,6 +111,7 @@ export default function WriteReviewForm({
       </div>
 
       {error ? <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p> : null}
+      {success ? <p className="rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900">{success}</p> : null}
 
       <Button
         type="submit"

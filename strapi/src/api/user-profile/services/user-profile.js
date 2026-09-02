@@ -79,4 +79,11 @@ module.exports = createCoreService('api::user-profile.user-profile', ({ strapi }
 
     return { active };
   },
+
+  async isTheaterShowSeen(userId, theaterShowId) {
+    const profile = await findProfileByUserId(strapi, userId);
+    if (!profile) return false;
+    const sid = Number(theaterShowId);
+    return (profile.seen_theater_shows || []).some((row) => Number(row.id) === sid);
+  },
 }));

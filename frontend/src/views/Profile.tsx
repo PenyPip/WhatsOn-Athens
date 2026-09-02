@@ -16,7 +16,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { fetchMyReviews } from "@/lib/userProfile";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { programHrefForVenue } from "@/lib/venueType";
-import FavoriteTheaterUpdatesBanner from "@/components/FavoriteTheaterUpdatesBanner";
+import ProfileNotificationsSection from "@/components/ProfileNotificationsSection";
 
 const Profile = () => {
   usePageSeo(staticPageSeo.profile);
@@ -187,7 +187,7 @@ const Profile = () => {
           </Button>
         </div>
 
-        <FavoriteTheaterUpdatesBanner />
+        <ProfileNotificationsSection />
 
         <section>
           <div className="flex items-center gap-2 mb-4">
