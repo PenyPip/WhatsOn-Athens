@@ -93,10 +93,6 @@ export default function TheaterDateFilters({
               onKeyDown={(e) => {
                 if (e.key === "Enter") onApply();
               }}
-              onFocus={(e) => {
-                const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
-                input.showPicker?.();
-              }}
               className={cn(DATE_INPUT_CLASS, !draftFrom && "theater-filter-date--empty")}
               aria-label="Από ημερομηνία"
             />
@@ -120,10 +116,6 @@ export default function TheaterDateFilters({
               onChange={(e) => onDraftToChange(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter") onApply();
-              }}
-              onFocus={(e) => {
-                const input = e.currentTarget as HTMLInputElement & { showPicker?: () => void };
-                input.showPicker?.();
               }}
               className={cn(DATE_INPUT_CLASS, !draftTo && "theater-filter-date--empty")}
               aria-label="Έως ημερομηνία"

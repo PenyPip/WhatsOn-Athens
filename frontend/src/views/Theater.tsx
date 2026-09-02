@@ -33,7 +33,10 @@ const TheaterPage = () => {
   const { data: theaterShows, isLoading: showsLoading } = useTheaterShows();
   const { data: theaterPerformances, isLoading: performancesLoading } = useTheaterPerformances();
   const { data: venues } = useVenuesForProgram();
-  const isLoading = showsLoading || performancesLoading;
+  /** Spinner μόνο χωρίς cache — όχι σε background refetch (αποφεύγει flicker). */
+  const isLoading =
+    (theaterShows === undefined && showsLoading) ||
+    (theaterPerformances === undefined && performancesLoading);
   const [regionFilter, setRegionFilter] = useState<TheaterRegionFilter>("all");
   const [draftFrom, setDraftFrom] = useState("");
   const [draftTo, setDraftTo] = useState("");
