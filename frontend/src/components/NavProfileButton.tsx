@@ -108,7 +108,7 @@ export default function NavProfileButton({ variant, pathname }: NavProfileButton
           <div className="border-b border-border/60 bg-amber-50/60 px-4 py-3">
             <p className="font-display text-base font-semibold text-[#13143E]">Ειδοποιήσεις</p>
             <p className="mt-0.5 text-xs text-muted-foreground">
-              Νέες ημερομηνίες σε αγαπημένα θέατρα και παραστάσεις.
+              Like στην παράσταση → μαθαίνεις πρώτος για νέες ημερομηνίες.
             </p>
           </div>
           <div className="max-h-[min(60vh,24rem)] overflow-y-auto px-4 py-3">

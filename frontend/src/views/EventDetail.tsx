@@ -59,6 +59,7 @@ import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import FavoriteButton from "@/components/FavoriteButton";
 import SeenButton from "@/components/SeenButton";
 import TheaterFollowButton from "@/components/TheaterFollowButton";
+import TheaterLikePromo from "@/components/TheaterLikePromo";
 import RateReminderBanner from "@/components/RateReminderBanner";
 import PopularBadge from "@/components/PopularBadge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1111,6 +1112,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               </div>
             ) : null}
             </div>
+            {theaterShow?.id ? (
+              <TheaterLikePromo variant="hero" className="mb-3" />
+            ) : null}
             {headline.secondary ? (
               <p className="mb-3 font-display text-lg font-medium text-white/80 md:text-xl">{headline.secondary}</p>
             ) : null}

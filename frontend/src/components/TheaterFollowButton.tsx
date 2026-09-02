@@ -1,3 +1,9 @@
+import {
+  THEATER_LIKE_BUTTON_HINT,
+  THEATER_LIKE_BUTTON_HINT_ACTIVE,
+  THEATER_LIKE_BUTTON_LABEL,
+  THEATER_LIKE_BUTTON_LABEL_ACTIVE,
+} from "@/lib/theaterLikeCopy";
 import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -29,7 +35,7 @@ export default function TheaterFollowButton({
 
   const active = (profile?.followedTheaterShows ?? []).some((s) => s.id === theaterShowId);
   const iconSize = size === "sm" ? "w-4 h-4" : "w-5 h-5";
-  const label = active ? "Αγαπημένη" : "Προσθήκη στα αγαπημένα";
+  const label = active ? THEATER_LIKE_BUTTON_LABEL_ACTIVE : THEATER_LIKE_BUTTON_LABEL;
   const heroMode = variant === "hero";
   const showText = showLabel && !heroMode;
 
@@ -44,7 +50,7 @@ export default function TheaterFollowButton({
           )}
         >
           <Heart className={iconSize} aria-hidden />
-          Σύνδεση για αγαπημένα
+          Σύνδεση για like & ειδοποιήσεις
         </Link>
       );
     }
@@ -56,8 +62,8 @@ export default function TheaterFollowButton({
           size === "sm" ? "h-8 w-8" : "h-10 w-10",
           className,
         )}
-        title="Σύνδεση για αγαπημένα"
-        aria-label="Σύνδεση για αγαπημένα"
+        title="Σύνδεση — κάνε like για νέες ημερομηνίες"
+        aria-label="Σύνδεση — κάνε like για νέες ημερομηνίες"
       >
         <Heart className={iconSize} />
       </Link>
@@ -122,8 +128,8 @@ export default function TheaterFollowButton({
       onClick={onToggle}
       disabled={pending}
       className={buttonClass}
-      title={active ? "Αφαίρεση από αγαπημένα" : "Αγαπημένη — ειδοποιήσεις για νέες ημερομηνίες"}
-      aria-label={active ? "Αφαίρεση από αγαπημένα" : "Προσθήκη στα αγαπημένα"}
+      title={active ? THEATER_LIKE_BUTTON_HINT_ACTIVE : THEATER_LIKE_BUTTON_HINT}
+      aria-label={active ? THEATER_LIKE_BUTTON_HINT_ACTIVE : THEATER_LIKE_BUTTON_HINT}
       aria-pressed={active}
     >
       <Heart className={cn(iconSize, active && "fill-current")} />

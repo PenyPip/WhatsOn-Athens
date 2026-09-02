@@ -35,7 +35,7 @@ export default function ProfileNotificationsSection() {
           <div>
             <h2 className="font-display text-lg font-semibold text-[#13143E]">Ειδοποιήσεις</h2>
             <p className="mt-0.5 text-sm text-muted-foreground">
-              Νέες ημερομηνίες σε αγαπημένα θέατρα και παραστάσεις.
+              Κάνε like στην παράσταση που θες να δεις — μαθαίνεις πρώτος για νέες ημερομηνίες.
             </p>
           </div>
         </div>

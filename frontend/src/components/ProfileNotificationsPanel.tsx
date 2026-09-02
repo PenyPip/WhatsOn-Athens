@@ -20,7 +20,7 @@ export default function ProfileNotificationsPanel({
   if (!hasUpdates && !hasSubscriptions) {
     return (
       <p className="text-sm text-muted-foreground">
-        Δεν έχεις νέες ειδοποιήσεις. Πρόσθεσε αγαπημένες παραστάσεις ή θέατρα για να ενημερώνεσαι.
+        Δεν έχεις νέες ειδοποιήσεις. Κάνε like σε παραστάσεις που θες να δεις για να μαθαίνεις πρώτος.
       </p>
     );
   }
@@ -54,7 +54,7 @@ export default function ProfileNotificationsPanel({
 
           {notifications.theaterShowUpdates.length > 0 ? (
             <div>
-              <p className="text-sm font-semibold text-[#13143E]">Αγαπημένες παραστάσεις</p>
+              <p className="text-sm font-semibold text-[#13143E]">Liked παραστάσεις</p>
               <ul className="mt-2 space-y-3">
                 {notifications.theaterShowUpdates.map((show) => (
                   <li key={show.showId} className="text-sm">

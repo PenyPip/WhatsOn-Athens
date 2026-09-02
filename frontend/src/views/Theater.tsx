@@ -3,6 +3,7 @@ import EventCard from "@/components/EventCard";
 import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_SUBTITLE_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import LoadingState from "@/components/LoadingState";
 import Footer from "@/components/Footer";
+import TheaterLikePromo from "@/components/TheaterLikePromo";
 import TheaterDateFilters from "@/components/TheaterDateFilters";
 import { useTheaterShows, useTheaterPerformances, useVenuesForProgram } from "@/hooks/useStrapi";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
@@ -108,9 +109,13 @@ const TheaterPage = () => {
       <PageListHeader>
         <h1 className={PAGE_LIST_TITLE_CLASS}>Θέατρο</h1>
         <p className={PAGE_LIST_SUBTITLE_CLASS}>
-          Παραστάσεις, περιοδείες, πρόγραμμα και ημερομηνίες ανά παραγωγή.
+          Παραστάσεις, πρόγραμμα και ημερομηνίες — κάνε like σε ό,τι θες να δεις.
         </p>
       </PageListHeader>
+
+      <div className="container mb-6">
+        <TheaterLikePromo />
+      </div>
 
       <div className="container">
         {isLoading ? (
