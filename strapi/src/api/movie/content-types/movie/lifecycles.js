@@ -37,13 +37,32 @@ module.exports = {
   async beforeCreate(event) {
     applyOriginalTitleNormalization(event.params.data);
     await assertUniqueOriginalTitle(strapi, event.params.data?.original_title);
+    if (event.params.data?.most_talked_about === true) {
+      event.params.data.most_talked_about_at = new Date().toISOString();
+    }
   },
 
   async beforeUpdate(event) {
-    const { data } = event.params;
+    const { data, where } = event.params;
+
+    if (data?.most_talked_about !== undefined) {
+      const id = where?.id;
+      if (id != null) {
+        const existing = await strapi.db.query('api::movie.movie').findOne({
+          where: { id },
+          select: ['most_talked_about'],
+        });
+        if (data.most_talked_about === true && !existing?.most_talked_about) {
+          data.most_talked_about_at = new Date().toISOString();
+        } else if (data.most_talked_about === false) {
+          data.most_talked_about_at = null;
+        }
+      }
+    }
+
     if (!data || data.original_title === undefined) return;
     applyOriginalTitleNormalization(data);
-    const excludeId = event.params.where?.id ?? null;
+    const excludeId = where?.id ?? null;
     await assertUniqueOriginalTitle(strapi, data.original_title, excludeId);
   },
 };

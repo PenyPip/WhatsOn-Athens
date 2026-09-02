@@ -82,6 +82,10 @@
       "default": false,
       "description": "Εμφάνιση στην ενότητα «Πολυσυζητημένες» της αρχικής (μπορείς να επιλέξεις πολλές ταινίες)."
     },
+    "most_talked_about_at": {
+      "type": "datetime",
+      "description": "Αυτόματα όταν η ταινία μπαίνει στις «Πολυσυζητημένες» — για σειρά εμφάνισης στο hero."
+    },
     "event_group_code": {
       "type": "string",
       "description": "Κύριος More.com eventGroupCode (π.χ. evg_arkoudotrupa_1902_38). Όχι venue bundle."

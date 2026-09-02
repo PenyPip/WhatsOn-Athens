@@ -650,6 +650,12 @@ function mapMovie(
     criticScore: m.critic_score,
     imdbRating: parseOptionalDecimal(m.imdb_rating) ?? parseOptionalDecimal(m.critic_score),
     mostTalkedAbout: m.most_talked_about === true,
+    mostTalkedAboutAt:
+      typeof m.most_talked_about_at === "string" && m.most_talked_about_at.trim()
+        ? m.most_talked_about_at
+        : undefined,
+    createdAt: typeof m.createdAt === "string" && m.createdAt.trim() ? m.createdAt : undefined,
+    updatedAt: typeof m.updatedAt === "string" && m.updatedAt.trim() ? m.updatedAt : undefined,
     releaseDate: m.release_date,
     trailerUrl: m.trailer_url,
     ...(() => {
@@ -1332,6 +1338,10 @@ export interface StrapiMovie {
   imdbRating?: number;
   /** CMS `most_talked_about` — pool για hero αρχικής. */
   mostTalkedAbout: boolean;
+  /** Όταν μπήκε στις «Πολυσυζητημένες» (CMS). */
+  mostTalkedAboutAt?: string;
+  createdAt?: string;
+  updatedAt?: string;
   releaseDate: string;
   trailerUrl?: string;
   posterUrl?: string;

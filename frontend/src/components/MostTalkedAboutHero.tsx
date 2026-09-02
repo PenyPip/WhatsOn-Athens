@@ -139,7 +139,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
 
   useEffect(() => {
     setActiveIndex(0);
-  }, [movies.length]);
+  }, [movies.length, movies[0]?.id]);
 
   useEffect(() => {
     if (movies.length <= 1) return;
