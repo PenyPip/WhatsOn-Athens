@@ -19,7 +19,7 @@ export default function ProfileNotificationsPanel({
 
   if (!hasUpdates && !hasSubscriptions) {
     return (
-      <p className="text-sm text-muted-foreground">
+      <p className="text-sm text-[#13143E]/80">
         Δεν έχεις νέες ειδοποιήσεις. Κάνε like σε παραστάσεις που θες να δεις για να μαθαίνεις πρώτος.
       </p>
     );
@@ -42,7 +42,7 @@ export default function ProfileNotificationsPanel({
                     >
                       {u.venueName}
                     </Link>
-                    <span className="text-muted-foreground">
+                    <span className="text-[#13143E]/65">
                       {" "}
                       · {u.newCount} {u.newCount === 1 ? "νέα ημερομηνία" : "νέες ημερομηνίες"}
                     </span>
@@ -65,7 +65,7 @@ export default function ProfileNotificationsPanel({
                     >
                       {show.showTitle}
                     </Link>
-                    <span className="text-muted-foreground">
+                    <span className="text-[#13143E]/65">
                       {" "}
                       · {show.newCount} {show.newCount === 1 ? "νέα ημερομηνία" : "νέες ημερομηνίες"}
                     </span>
@@ -83,14 +83,14 @@ export default function ProfileNotificationsPanel({
           ) : null}
         </>
       ) : (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-[#13143E]/80">
           Δεν υπάρχουν νέες ημερομηνίες αυτή την εβδομάδα.
         </p>
       )}
 
       {hasSubscriptions ? (
         <div className="border-t border-border/60 pt-3">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-xs font-medium uppercase tracking-wide text-[#13143E]/55">
             Αγαπημένες χωρίς νέες ημερομηνίες
           </p>
           <ul className="mt-2 flex flex-wrap gap-2">

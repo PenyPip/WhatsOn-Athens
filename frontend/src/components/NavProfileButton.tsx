@@ -103,19 +103,19 @@ export default function NavProfileButton({ variant, pathname }: NavProfileButton
         <PopoverContent
           align={variant === "mobile-tab" ? "center" : "end"}
           side={variant === "mobile-tab" ? "top" : "bottom"}
-          className="z-[70] w-[min(22rem,calc(100vw-1.5rem))] p-0"
+          className="z-[70] w-[min(22rem,calc(100vw-1.5rem))] border-border bg-white p-0 text-[#13143E] shadow-xl"
         >
-          <div className="border-b border-border/60 bg-amber-50/60 px-4 py-3">
+          <div className="border-b border-[#13143E]/10 bg-amber-50 px-4 py-3">
             <p className="font-display text-base font-semibold text-[#13143E]">Ειδοποιήσεις</p>
-            <p className="mt-0.5 text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-[#13143E]/70">
               Like στην παράσταση → μαθαίνεις πρώτος για νέες ημερομηνίες.
             </p>
           </div>
-          <div className="max-h-[min(60vh,24rem)] overflow-y-auto px-4 py-3">
+          <div className="bg-white max-h-[min(60vh,24rem)] overflow-y-auto px-4 py-3">
             {isLoading ? (
-              <p className="text-sm text-muted-foreground">Φόρτωση…</p>
+              <p className="text-sm text-[#13143E]/75">Φόρτωση…</p>
             ) : (
-              <Suspense fallback={<p className="text-sm text-muted-foreground">Φόρτωση…</p>}>
+              <Suspense fallback={<p className="text-sm text-[#13143E]/75">Φόρτωση…</p>}>
                 <ProfileNotificationsPanel
                   notifications={notifications}
                   onNavigate={() => setOpen(false)}
@@ -124,7 +124,7 @@ export default function NavProfileButton({ variant, pathname }: NavProfileButton
               </Suspense>
             )}
           </div>
-          <div className="border-t border-border/60 px-4 py-3">
+          <div className="border-t border-[#13143E]/10 bg-white px-4 py-3">
             <Link
               to="/profile"
               onClick={() => setOpen(false)}
