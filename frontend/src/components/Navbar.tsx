@@ -2,11 +2,12 @@ import { Suspense, useCallback, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useIdleMount } from "@/hooks/useIdleMount";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
+import { useDeferUntilIdleAfterLcp } from "@/hooks/useDeferUntilIdleAfterLcp";
 import { useClientMounted } from "@/hooks/useClientMounted";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useStableMobileSafeArea } from "@/hooks/useStableMobileSafeArea";
 import { Link, useLocation } from "react-router-dom";
-import NavProfileButton from "@/components/NavProfileButton";
+import { User } from "lucide-react";
 import { useSiteNavigationData } from "@/hooks/useStrapi";
 import { lazyWithChunkReload } from "@/lib/lazyWithChunkReload";
 import { isNavLinkActive } from "@/lib/navigation";
@@ -18,8 +19,41 @@ const NavSearch = lazyWithChunkReload(() =>
   import("@/components/GlobalSearch").then((m) => ({ default: m.NavSearch })),
 );
 
+const NavProfileButton = lazyWithChunkReload(() => import("@/components/NavProfileButton"));
+
 function NavSearchFallback({ className = "" }: { className?: string }) {
   return <div className={`rounded-md bg-white/10 ${className}`} aria-hidden />;
+}
+
+function ProfileNavFallback({
+  variant,
+  pathname,
+}: {
+  variant: "desktop" | "mobile-tab";
+  pathname: string;
+}) {
+  const isActive = pathname === "/profile";
+  if (variant === "mobile-tab") {
+    return (
+      <Link
+        to="/profile"
+        className="mobile-bottom-nav__tab transition-colors"
+        style={{ color: isActive ? "#B47EC8" : "rgba(240,237,248,0.5)" }}
+      >
+        <User strokeWidth={isActive ? 2.25 : 2} aria-hidden />
+        <span>Προφίλ</span>
+      </Link>
+    );
+  }
+  return (
+    <Link
+      to="/profile"
+      aria-label="Προφίλ"
+      className="shrink-0 rounded-full p-2 transition-colors hover:bg-white/10"
+    >
+      <User className="h-5 w-5 text-white/60" aria-hidden />
+    </Link>
+  );
 }
 
 const NAV_GRADIENT =
@@ -78,6 +112,7 @@ const Navbar = () => {
   const searchRef = useRef<NavSearchHandle>(null);
   const deferNav = useDeferUntilLcpDone();
   const deferNavIdle = useIdleMount(1800);
+  const deferProfileNav = useDeferUntilIdleAfterLcp(deferNav, isMobile ? 5500 : 4000);
   const mounted = useClientMounted();
   const onHome = location.pathname === "/";
   const navQueriesEnabled =
@@ -119,6 +154,14 @@ const Navbar = () => {
   const desktopLinks = nav.desktopLinks;
   const mobileTabLinks = nav.mobileTabLinks;
   const mobileTabCount = mobileTabLinks.length + 1;
+  const profileNavNode = deferProfileNav ? (
+    <Suspense fallback={<ProfileNavFallback variant="mobile-tab" pathname={location.pathname} />}>
+      <NavProfileButton variant="mobile-tab" pathname={location.pathname} />
+    </Suspense>
+  ) : (
+    <ProfileNavFallback variant="mobile-tab" pathname={location.pathname} />
+  );
+
   const mobileBottomNav = (
     <nav className="mobile-bottom-nav md:hidden" aria-label="Κύρια πλοήγηση κινητού">
       <div
@@ -140,7 +183,7 @@ const Navbar = () => {
             </Link>
           );
         })}
-        <NavProfileButton variant="mobile-tab" pathname={location.pathname} />
+        {profileNavNode}
       </div>
     </nav>
   );
@@ -199,7 +242,13 @@ const Navbar = () => {
               })}
             </div>
 
-            <NavProfileButton variant="desktop" pathname={location.pathname} />
+            {deferProfileNav ? (
+              <Suspense fallback={<ProfileNavFallback variant="desktop" pathname={location.pathname} />}>
+                <NavProfileButton variant="desktop" pathname={location.pathname} />
+              </Suspense>
+            ) : (
+              <ProfileNavFallback variant="desktop" pathname={location.pathname} />
+            )}
           </div>
         </div>
       </nav>

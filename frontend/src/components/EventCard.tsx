@@ -2,7 +2,6 @@ import { Link } from "react-router-dom";
 import { Clock } from "lucide-react";
 import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
-import TheaterFollowButton from "@/components/TheaterFollowButton";
 import { cn } from "@/lib/utils";
 import GenreLinks from "@/components/GenreLinks";
 import type { GenreLinkItem } from "@/lib/movieGenreLinks";
@@ -51,8 +50,6 @@ interface EventCardProps {
   theaterPriceLine?: string;
   /** Θέατρο: σύντομο πρόγραμμα (π.χ. «Τετ 19:00 · Πέμ 20:30»). */
   theaterScheduleLine?: string;
-  /** Θέατρο: id παράστασης για κουμπί παρακολούθησης στην κάρτα. */
-  theaterShowId?: number;
   /** Ο χρήστης το έχει σημειώσει ως «το είδα». */
   seen?: boolean;
   className?: string;
@@ -86,7 +83,6 @@ const EventCard = ({
   posterEager = false,
   theaterPriceLine,
   theaterScheduleLine,
-  theaterShowId,
   seen = false,
   className = "",
   index: _index = 0,
@@ -223,15 +219,6 @@ const EventCard = ({
             >
               {badge}
             </span>
-          ) : null}
-          {isTheater && theaterShowId ? (
-            <div className="absolute right-2 top-2 z-[3]">
-              <TheaterFollowButton
-                theaterShowId={theaterShowId}
-                size="sm"
-                className="border-white/30 bg-black/45 text-white shadow-sm backdrop-blur-sm hover:text-rose-300"
-              />
-            </div>
           ) : null}
           {seen ? (
             <span className="pointer-events-none absolute bottom-2 left-2 z-[3] rounded-md bg-sky-600/90 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide text-white shadow-sm">

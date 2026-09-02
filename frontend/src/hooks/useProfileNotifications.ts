@@ -17,7 +17,8 @@ export function useProfileNotifications(enabled = true) {
     queryKey: ["profileNotifications"],
     queryFn: fetchMyNotifications,
     enabled: active,
-    staleTime: 60_000,
+    staleTime: 5 * 60_000,
+    gcTime: 10 * 60_000,
   });
 
   const notifications = useMemo(() => {

@@ -155,7 +155,6 @@ const TheaterPage = () => {
                     duration={show.duration}
                     posterUrl={show.posterUrl}
                     type="theater"
-                    theaterShowId={show.id}
                     theaterPriceLine={priceLine ?? undefined}
                     theaterScheduleLine={scheduleLine ?? undefined}
                     index={i}

@@ -1,13 +1,16 @@
 "use client";
 
-import { useState } from "react";
+import { lazy, Suspense, useState } from "react";
 import { Link } from "react-router-dom";
 import { User } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfileNotifications } from "@/hooks/useProfileNotifications";
-import ProfileNotificationsPanel from "@/components/ProfileNotificationsPanel";
+import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
+import { useIdleMount } from "@/hooks/useIdleMount";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+
+const ProfileNotificationsPanel = lazy(() => import("@/components/ProfileNotificationsPanel"));
 
 type NavProfileButtonProps = {
   variant: "desktop" | "mobile-tab";
@@ -17,7 +20,11 @@ type NavProfileButtonProps = {
 export default function NavProfileButton({ variant, pathname }: NavProfileButtonProps) {
   const { isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
-  const { notifications, unreadCount, isLoading, markRead } = useProfileNotifications(isAuthenticated);
+  const lcpDone = useDeferUntilLcpDone();
+  const idleReady = useIdleMount(5000);
+  const shouldFetchNotifications = isAuthenticated && (open || (lcpDone && idleReady));
+  const { notifications, unreadCount, isLoading, markRead } =
+    useProfileNotifications(shouldFetchNotifications);
   const isActive = pathname === "/profile";
 
   const onOpenChange = (next: boolean) => {
@@ -92,38 +99,42 @@ export default function NavProfileButton({ variant, pathname }: NavProfileButton
           {variant === "mobile-tab" ? <span>Προφίλ</span> : null}
         </button>
       </PopoverTrigger>
-      <PopoverContent
-        align={variant === "mobile-tab" ? "center" : "end"}
-        side={variant === "mobile-tab" ? "top" : "bottom"}
-        className="z-[70] w-[min(22rem,calc(100vw-1.5rem))] p-0"
-      >
-        <div className="border-b border-border/60 bg-amber-50/60 px-4 py-3">
-          <p className="font-display text-base font-semibold text-[#13143E]">Ειδοποιήσεις</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Νέες ημερομηνίες σε αγαπημένα θέατρα και παραστάσεις.
-          </p>
-        </div>
-        <div className="max-h-[min(60vh,24rem)] overflow-y-auto px-4 py-3">
-          {isLoading ? (
-            <p className="text-sm text-muted-foreground">Φόρτωση…</p>
-          ) : (
-            <ProfileNotificationsPanel
-              notifications={notifications}
-              onNavigate={() => setOpen(false)}
-              compact
-            />
-          )}
-        </div>
-        <div className="border-t border-border/60 px-4 py-3">
-          <Link
-            to="/profile"
-            onClick={() => setOpen(false)}
-            className="text-sm font-medium text-[#13143E] underline decoration-[#13143E]/30 underline-offset-2 hover:decoration-[#13143E]/60"
-          >
-            Όλο το προφίλ →
-          </Link>
-        </div>
-      </PopoverContent>
+      {open ? (
+        <PopoverContent
+          align={variant === "mobile-tab" ? "center" : "end"}
+          side={variant === "mobile-tab" ? "top" : "bottom"}
+          className="z-[70] w-[min(22rem,calc(100vw-1.5rem))] p-0"
+        >
+          <div className="border-b border-border/60 bg-amber-50/60 px-4 py-3">
+            <p className="font-display text-base font-semibold text-[#13143E]">Ειδοποιήσεις</p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Νέες ημερομηνίες σε αγαπημένα θέατρα και παραστάσεις.
+            </p>
+          </div>
+          <div className="max-h-[min(60vh,24rem)] overflow-y-auto px-4 py-3">
+            {isLoading ? (
+              <p className="text-sm text-muted-foreground">Φόρτωση…</p>
+            ) : (
+              <Suspense fallback={<p className="text-sm text-muted-foreground">Φόρτωση…</p>}>
+                <ProfileNotificationsPanel
+                  notifications={notifications}
+                  onNavigate={() => setOpen(false)}
+                  compact
+                />
+              </Suspense>
+            )}
+          </div>
+          <div className="border-t border-border/60 px-4 py-3">
+            <Link
+              to="/profile"
+              onClick={() => setOpen(false)}
+              className="text-sm font-medium text-[#13143E] underline decoration-[#13143E]/30 underline-offset-2 hover:decoration-[#13143E]/60"
+            >
+              Όλο το προφίλ →
+            </Link>
+          </div>
+        </PopoverContent>
+      ) : null}
     </Popover>
   );
 }
