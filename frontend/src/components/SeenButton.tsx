@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toggleSeenMovie, toggleSeenTheaterShow } from "@/lib/userProfile";
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 type SeenButtonProps = {
   kind: "movie" | "theater";
@@ -12,6 +13,8 @@ type SeenButtonProps = {
   size?: "sm" | "md";
   /** Εμφάνιση κειμένου δίπλα στο εικονίδιο (σελίδα λεπτομέρειας). */
   showLabel?: boolean;
+  /** Σκούρο hero — μόνο εικονίδιο, υψηλή αντίθεση. */
+  variant?: "default" | "hero";
 };
 
 export default function SeenButton({
@@ -20,10 +23,11 @@ export default function SeenButton({
   className,
   size = "md",
   showLabel = false,
+  variant = "default",
 }: SeenButtonProps) {
   const { isAuthenticated, profile, setProfile, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
-  const [notifyHint, setNotifyHint] = useState(false);
 
   const active =
     kind === "movie"
@@ -32,6 +36,8 @@ export default function SeenButton({
 
   const iconSize = size === "sm" ? "w-4 h-4" : "w-5 h-5";
   const label = active ? "Το είδα" : "Σημείωσε ότι το είδες";
+  const heroMode = variant === "hero";
+  const showText = showLabel && !heroMode;
 
   if (!isAuthenticated) {
     if (showLabel) {
@@ -74,7 +80,9 @@ export default function SeenButton({
           : await toggleSeenTheaterShow(entityId);
       setProfile(result.profile);
       await refreshProfile();
-      if (kind === "theater" && result.active) setNotifyHint(true);
+      if (kind === "theater") {
+        await queryClient.invalidateQueries({ queryKey: ["profileNotifications"] });
+      }
     } catch {
       /* ignore */
     } finally {
@@ -82,32 +90,38 @@ export default function SeenButton({
     }
   };
 
-  if (showLabel) {
+  const buttonClass = cn(
+    "inline-flex items-center justify-center rounded-full border font-medium transition-colors",
+    heroMode
+      ? cn(
+          size === "sm" ? "h-9 w-9" : "h-10 w-10",
+          active
+            ? "border-sky-300/70 bg-sky-500/35 text-white shadow-sm backdrop-blur-sm"
+            : "border-white/35 bg-black/45 text-white/95 hover:border-white/55 hover:bg-black/60",
+        )
+      : cn(
+          showText ? "gap-2 px-3 py-2 text-sm" : size === "sm" ? "h-8 w-8" : "h-10 w-10",
+          active
+            ? "border-sky-500/40 bg-sky-500/15 text-sky-600"
+            : "border-border bg-background text-muted-foreground hover:border-sky-400/40 hover:text-sky-600",
+        ),
+    pending && "opacity-60",
+    !showText && className,
+  );
+
+  if (showText) {
     return (
-      <div className={cn("flex flex-col items-start gap-1", className)}>
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={pending}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors",
-            active
-              ? "border-sky-500/40 bg-sky-500/15 text-sky-700 dark:text-sky-200"
-              : "border-border bg-background/80 text-muted-foreground hover:border-sky-400/40 hover:text-sky-700",
-            pending && "opacity-60",
-          )}
-          aria-pressed={active}
-          aria-label={label}
-        >
-          {active ? <Eye className={iconSize} aria-hidden /> : <EyeOff className={iconSize} aria-hidden />}
-          {label}
-        </button>
-        {notifyHint && active ? (
-          <p className="max-w-xs text-xs text-muted-foreground">
-            Θα λάβεις email για νέες ημερομηνίες αυτής της παράστασης.
-          </p>
-        ) : null}
-      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={pending}
+        className={cn(buttonClass, className)}
+        aria-pressed={active}
+        aria-label={label}
+      >
+        {active ? <Eye className={iconSize} aria-hidden /> : <EyeOff className={iconSize} aria-hidden />}
+        {label}
+      </button>
     );
   }
 
@@ -116,20 +130,16 @@ export default function SeenButton({
       type="button"
       onClick={onToggle}
       disabled={pending}
-      className={cn(
-        "inline-flex items-center justify-center rounded-full border transition-colors",
-        active
-          ? "border-sky-500/40 bg-sky-500/15 text-sky-600"
-          : "border-border bg-background/80 text-muted-foreground hover:text-sky-600",
-        size === "sm" ? "h-8 w-8" : "h-10 w-10",
-        pending && "opacity-60",
-        className,
-      )}
+      className={buttonClass}
       title={label}
       aria-label={label}
       aria-pressed={active}
     >
-      {active ? <Eye className={cn(iconSize, "fill-current/20")} /> : <Eye className={iconSize} />}
+      {active ? (
+        <Eye className={cn(iconSize, heroMode ? undefined : "fill-current/20")} />
+      ) : (
+        <Eye className={iconSize} />
+      )}
     </button>
   );
 }

@@ -1101,27 +1101,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </h1>
             {isMovie && movie?.id ? (
               <div className="flex shrink-0 items-center gap-2">
-                <SeenButton
-                  kind="movie"
-                  entityId={movie.id}
-                  showLabel
-                  className="border-white/20 bg-black/30 text-white hover:text-sky-200"
-                />
-                <FavoriteButton kind="movie" entityId={movie.id} className="shrink-0 border-white/20 bg-black/30 text-white hover:text-rose-300" />
+                <SeenButton kind="movie" entityId={movie.id} variant="hero" />
+                <FavoriteButton kind="movie" entityId={movie.id} className="shrink-0 border-white/35 bg-black/45 text-white/95 hover:border-white/55 hover:bg-black/60 hover:text-rose-200" />
               </div>
             ) : theaterShow?.id ? (
-              <div className="flex shrink-0 flex-col items-end gap-2 sm:flex-row sm:items-start">
-                <TheaterFollowButton
-                  theaterShowId={theaterShow.id}
-                  showLabel
-                  className="border-white/20 bg-black/30 text-white hover:text-rose-300"
-                />
-                <SeenButton
-                  kind="theater"
-                  entityId={theaterShow.id}
-                  showLabel
-                  className="border-white/20 bg-black/30 text-white hover:text-sky-200"
-                />
+              <div className="flex shrink-0 items-center gap-2">
+                <TheaterFollowButton theaterShowId={theaterShow.id} variant="hero" />
+                <SeenButton kind="theater" entityId={theaterShow.id} variant="hero" />
               </div>
             ) : null}
             </div>

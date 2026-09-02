@@ -75,9 +75,13 @@ async function ensureSubscription(strapi, userId, theaterShowId, source = 'seen'
 
   const existing = await findSubscription(strapi, uid, sid);
   if (existing) {
-    if (!existing.active) {
+    const data = { active: true };
+    if (!existing.active || source === 'follow') {
+      data.source = source;
+    }
+    if (!existing.active || data.source) {
       await strapi.entityService.update('api::theater-show-subscription.theater-show-subscription', existing.id, {
-        data: { active: true, source: existing.source || source },
+        data,
       });
     }
     return existing.id;
@@ -147,7 +151,7 @@ function buildEmail({ showTitle, showSlug, lines }) {
     `${listText}\n\n` +
     `Δες το πρόγραμμα: ${url}\n\n` +
     `— 37°N Athens\n` +
-    `Για να σταματήσεις τις ειδοποιήσεις για αυτή την παράσταση, αφαίρεσε το «Το είδα» ή τη κριτική σου στο the37n.gr.`;
+    `Για να σταματήσεις τα email, αφαίρεσε την παράσταση από τα αγαπημένα σου στο the37n.gr.`;
 
   const listHtml = lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('');
   const html =
@@ -155,7 +159,7 @@ function buildEmail({ showTitle, showSlug, lines }) {
     `<p>Προστέθηκαν νέες ημερομηνίες για την παράσταση <strong>${escapeHtml(showTitle)}</strong>:</p>` +
     `<ul>${listHtml}</ul>` +
     `<p><a href="${escapeHtml(url)}">Δες το πρόγραμμα στο 37°N</a></p>` +
-    `<p style="color:#666;font-size:12px">Για να σταματήσεις τις ειδοποιήσεις, αφαίρεσε το «Το είδα» ή τη κριτική σου στο the37n.gr.</p>`;
+    `<p style="color:#666;font-size:12px">Για να σταματήσεις τα email, αφαίρεσε την παράσταση από τα αγαπημένα σου στο the37n.gr.</p>`;
 
   return { subject, text, html, url };
 }
@@ -232,7 +236,7 @@ async function getProfileNotifications(strapi, userId, { now = new Date() } = {}
   });
 
   const subscriptions = await strapi.db.query('api::theater-show-subscription.theater-show-subscription').findMany({
-    where: { user: uid, active: true },
+    where: { user: uid, active: true, source: 'follow' },
     populate: {
       theater_show: {
         fields: ['id', 'slug', 'title'],
@@ -373,7 +377,7 @@ async function notifySubscribersForShow(strapi, theaterShowId, performanceIds, {
   if (!upcoming.length) return { sent: 0 };
 
   const subscriptions = await strapi.db.query('api::theater-show-subscription.theater-show-subscription').findMany({
-    where: { theater_show: sid, active: true },
+    where: { theater_show: sid, active: true, source: 'follow' },
     select: ['id', 'user'],
   });
   if (!subscriptions.length) return { sent: 0 };

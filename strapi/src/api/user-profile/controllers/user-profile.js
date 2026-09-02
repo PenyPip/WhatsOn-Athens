@@ -78,7 +78,7 @@ function sanitizeProfile(entry) {
 
 async function loadFollowedTheaterShows(strapi, userId) {
   const rows = await strapi.db.query('api::theater-show-subscription.theater-show-subscription').findMany({
-    where: { user: userId, active: true },
+    where: { user: userId, active: true, source: 'follow' },
     populate: {
       theater_show: {
         fields: ['id', 'slug', 'title'],
@@ -93,29 +93,6 @@ async function enrichProfile(strapi, userId, entry) {
   const base = sanitizeProfile(entry);
   const followedTheaterShows = await loadFollowedTheaterShows(strapi, userId);
   return { ...base, followedTheaterShows };
-}
-
-async function syncTheaterShowSubscription(strapi, userId, theaterShowId, profile, { active, source }) {
-  const { ensureSubscription, deactivateSubscription } = require('../../../utils/theaterShowNotifications');
-  if (active) {
-    await ensureSubscription(strapi, userId, theaterShowId, source);
-    return true;
-  }
-  const stillReviewed = await strapi.db.query('api::user-review.user-review').findOne({
-    where: { user: userId, content_type: 'theater', theater_show: theaterShowId },
-    select: ['id'],
-  });
-  if (stillReviewed) {
-    await ensureSubscription(strapi, userId, theaterShowId, 'review');
-    return true;
-  }
-  const stillSeen = (profile?.seen_theater_shows || []).some((row) => Number(row.id) === Number(theaterShowId));
-  if (stillSeen) {
-    await ensureSubscription(strapi, userId, theaterShowId, 'seen');
-    return true;
-  }
-  await deactivateSubscription(strapi, userId, theaterShowId);
-  return false;
 }
 
 module.exports = createCoreController('api::user-profile.user-profile', ({ strapi }) => ({
@@ -215,12 +192,12 @@ module.exports = createCoreController('api::user-profile.user-profile', ({ strap
     const refreshed = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
 
     try {
-      await syncTheaterShowSubscription(strapi, user.id, theaterShowId, refreshed, {
-        active: toggle.active,
-        source: 'seen',
-      });
+      if (toggle.active) {
+        const { deactivateSubscription } = require('../../../utils/theaterShowNotifications');
+        await deactivateSubscription(strapi, user.id, theaterShowId);
+      }
     } catch (err) {
-      strapi.log.warn('[theater-alert] subscribe on seen toggle:', err?.message || err);
+      strapi.log.warn('[theater-alert] unfollow on seen toggle:', err?.message || err);
     }
 
     ctx.body = {
@@ -240,23 +217,18 @@ module.exports = createCoreController('api::user-profile.user-profile', ({ strap
     const show = await strapi.db.query('api::theater-show.theater-show').findOne({ where: { id: theaterShowId } });
     if (!show) return ctx.notFound('Theater show not found');
 
-    const profile = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
-    const { findSubscription } = require('../../../utils/theaterShowNotifications');
+    const { ensureSubscription, deactivateSubscription, findSubscription } = require('../../../utils/theaterShowNotifications');
     const existing = await findSubscription(strapi, user.id, theaterShowId);
-    const wasActive = Boolean(existing?.active);
-    let active = wasActive;
+    const isFollowed = Boolean(existing?.active && existing.source === 'follow');
+    let active = isFollowed;
 
     try {
-      if (wasActive) {
-        active = await syncTheaterShowSubscription(strapi, user.id, theaterShowId, profile, {
-          active: false,
-          source: 'follow',
-        });
+      if (isFollowed) {
+        await deactivateSubscription(strapi, user.id, theaterShowId);
+        active = false;
       } else {
-        active = await syncTheaterShowSubscription(strapi, user.id, theaterShowId, profile, {
-          active: true,
-          source: 'follow',
-        });
+        await ensureSubscription(strapi, user.id, theaterShowId, 'follow');
+        active = true;
       }
     } catch (err) {
       strapi.log.warn('[theater-alert] subscribe on follow toggle:', err?.message || err);

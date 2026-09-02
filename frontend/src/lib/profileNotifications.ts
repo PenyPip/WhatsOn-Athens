@@ -49,3 +49,7 @@ export function filterProfileNotifications(
     subscriptions: data.subscriptions,
   };
 }
+
+export function countUnreadProfileNotifications(notifications: ProfileNotifications): number {
+  return notifications.favoriteTheaterVenues.length + notifications.theaterShowUpdates.length;
+}

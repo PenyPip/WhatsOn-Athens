@@ -6,7 +6,7 @@ import { useClientMounted } from "@/hooks/useClientMounted";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useStableMobileSafeArea } from "@/hooks/useStableMobileSafeArea";
 import { Link, useLocation } from "react-router-dom";
-import { User } from "lucide-react";
+import NavProfileButton from "@/components/NavProfileButton";
 import { useSiteNavigationData } from "@/hooks/useStrapi";
 import { lazyWithChunkReload } from "@/lib/lazyWithChunkReload";
 import { isNavLinkActive } from "@/lib/navigation";
@@ -140,16 +140,7 @@ const Navbar = () => {
             </Link>
           );
         })}
-        <Link
-          to="/profile"
-          className="mobile-bottom-nav__tab transition-colors"
-          style={{
-            color: location.pathname === "/profile" ? "#B47EC8" : "rgba(240,237,248,0.5)",
-          }}
-        >
-          <User strokeWidth={location.pathname === "/profile" ? 2.25 : 2} aria-hidden />
-          <span>Προφίλ</span>
-        </Link>
+        <NavProfileButton variant="mobile-tab" pathname={location.pathname} />
       </div>
     </nav>
   );
@@ -208,13 +199,7 @@ const Navbar = () => {
               })}
             </div>
 
-            <Link
-              to="/profile"
-              aria-label="Προφίλ"
-              className="shrink-0 rounded-full p-2 transition-colors hover:bg-white/10"
-            >
-              <User className="h-5 w-5 text-white/60" aria-hidden />
-            </Link>
+            <NavProfileButton variant="desktop" pathname={location.pathname} />
           </div>
         </div>
       </nav>

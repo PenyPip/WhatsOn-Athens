@@ -4,6 +4,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toggleFollowTheaterShow } from "@/lib/userProfile";
 import { useState, type MouseEvent } from "react";
 import { Link } from "react-router-dom";
+import { useQueryClient } from "@tanstack/react-query";
 
 type TheaterFollowButtonProps = {
   theaterShowId: number;
@@ -11,6 +12,8 @@ type TheaterFollowButtonProps = {
   size?: "sm" | "md";
   /** Εμφάνιση κειμένου δίπλα στην καρδιά (σελίδα λεπτομέρειας). */
   showLabel?: boolean;
+  /** Σκούρο hero — μόνο εικονίδιο, υψηλή αντίθεση. */
+  variant?: "default" | "hero";
 };
 
 export default function TheaterFollowButton({
@@ -18,14 +21,17 @@ export default function TheaterFollowButton({
   className,
   size = "md",
   showLabel = false,
+  variant = "default",
 }: TheaterFollowButtonProps) {
   const { isAuthenticated, profile, setProfile, refreshProfile } = useAuth();
+  const queryClient = useQueryClient();
   const [pending, setPending] = useState(false);
-  const [notifyHint, setNotifyHint] = useState(false);
 
   const active = (profile?.followedTheaterShows ?? []).some((s) => s.id === theaterShowId);
   const iconSize = size === "sm" ? "w-4 h-4" : "w-5 h-5";
-  const label = active ? "Παρακολουθείς" : "Παρακολούθηση";
+  const label = active ? "Αγαπημένη" : "Προσθήκη στα αγαπημένα";
+  const heroMode = variant === "hero";
+  const showText = showLabel && !heroMode;
 
   if (!isAuthenticated) {
     if (showLabel) {
@@ -38,7 +44,7 @@ export default function TheaterFollowButton({
           )}
         >
           <Heart className={iconSize} aria-hidden />
-          Σύνδεση για παρακολούθηση
+          Σύνδεση για αγαπημένα
         </Link>
       );
     }
@@ -50,8 +56,8 @@ export default function TheaterFollowButton({
           size === "sm" ? "h-8 w-8" : "h-10 w-10",
           className,
         )}
-        title="Σύνδεση για παρακολούθηση"
-        aria-label="Σύνδεση για παρακολούθηση"
+        title="Σύνδεση για αγαπημένα"
+        aria-label="Σύνδεση για αγαπημένα"
       >
         <Heart className={iconSize} />
       </Link>
@@ -67,8 +73,7 @@ export default function TheaterFollowButton({
       const result = await toggleFollowTheaterShow(theaterShowId);
       setProfile(result.profile);
       await refreshProfile();
-      if (result.active) setNotifyHint(true);
-      else setNotifyHint(false);
+      await queryClient.invalidateQueries({ queryKey: ["profileNotifications"] });
     } catch {
       /* ignore */
     } finally {
@@ -76,32 +81,38 @@ export default function TheaterFollowButton({
     }
   };
 
-  if (showLabel) {
+  const buttonClass = cn(
+    "inline-flex items-center justify-center rounded-full border font-medium transition-colors",
+    heroMode
+      ? cn(
+          size === "sm" ? "h-9 w-9" : "h-10 w-10",
+          active
+            ? "border-rose-300/70 bg-rose-500/35 text-white shadow-sm backdrop-blur-sm"
+            : "border-white/35 bg-black/45 text-white/95 hover:border-white/55 hover:bg-black/60",
+        )
+      : cn(
+          showText ? "gap-2 px-3 py-2 text-sm" : size === "sm" ? "h-8 w-8" : "h-10 w-10",
+          active
+            ? "border-rose-500/40 bg-rose-500/15 text-rose-600"
+            : "border-border bg-background text-muted-foreground hover:border-rose-400/40 hover:text-rose-600",
+        ),
+    pending && "opacity-60",
+    !showText && className,
+  );
+
+  if (showText) {
     return (
-      <div className={cn("flex flex-col items-start gap-1", className)}>
-        <button
-          type="button"
-          onClick={onToggle}
-          disabled={pending}
-          className={cn(
-            "inline-flex items-center gap-2 rounded-full border px-3 py-2 text-sm font-medium transition-colors",
-            active
-              ? "border-rose-500/40 bg-rose-500/15 text-rose-700 dark:text-rose-200"
-              : "border-border bg-background/80 text-muted-foreground hover:border-rose-400/40 hover:text-rose-600",
-            pending && "opacity-60",
-          )}
-          aria-pressed={active}
-          aria-label={label}
-        >
-          <Heart className={cn(iconSize, active && "fill-current")} aria-hidden />
-          {label}
-        </button>
-        {notifyHint && active ? (
-          <p className="max-w-xs text-xs text-muted-foreground">
-            Θα ενημερώνεσαι για νέες ημερομηνίες αυτής της παράστασης.
-          </p>
-        ) : null}
-      </div>
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={pending}
+        className={cn(buttonClass, className)}
+        aria-pressed={active}
+        aria-label={label}
+      >
+        <Heart className={cn(iconSize, active && "fill-current")} aria-hidden />
+        {label}
+      </button>
     );
   }
 
@@ -110,17 +121,9 @@ export default function TheaterFollowButton({
       type="button"
       onClick={onToggle}
       disabled={pending}
-      className={cn(
-        "inline-flex items-center justify-center rounded-full border transition-colors",
-        active
-          ? "border-rose-500/40 bg-rose-500/15 text-rose-500"
-          : "border-border bg-background/80 text-muted-foreground hover:text-rose-500",
-        size === "sm" ? "h-8 w-8" : "h-10 w-10",
-        pending && "opacity-60",
-        className,
-      )}
-      title={active ? "Διακοπή παρακολούθησης" : "Παρακολούθηση για νέες ημερομηνίες"}
-      aria-label={active ? "Διακοπή παρακολούθησης" : "Παρακολούθηση για νέες ημερομηνίες"}
+      className={buttonClass}
+      title={active ? "Αφαίρεση από αγαπημένα" : "Αγαπημένη — ειδοποιήσεις για νέες ημερομηνίες"}
+      aria-label={active ? "Αφαίρεση από αγαπημένα" : "Προσθήκη στα αγαπημένα"}
       aria-pressed={active}
     >
       <Heart className={cn(iconSize, active && "fill-current")} />

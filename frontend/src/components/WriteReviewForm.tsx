@@ -45,9 +45,7 @@ export default function WriteReviewForm({
         restaurantId,
       });
       setBody("");
-      if (contentType === "theater") {
-        setSuccess("Θα λάβεις email όταν προστεθούν νέες ημερομηνίες για αυτή την παράσταση.");
-      }
+      setSuccess("Η κριτική σου καταχωρήθηκε.");
       await refreshProfile();
       await queryClient.invalidateQueries({ queryKey: ["userReviews"] });
       await queryClient.invalidateQueries({ queryKey: ["myReviews"] });

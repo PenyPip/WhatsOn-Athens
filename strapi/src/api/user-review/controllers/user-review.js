@@ -118,15 +118,6 @@ module.exports = createCoreController('api::user-review.user-review', ({ strapi 
       populate: REVIEW_POPULATE,
     });
 
-    if (contentType === 'theater' && theaterShowId) {
-      try {
-        const { ensureSubscription } = require('../../../utils/theaterShowNotifications');
-        await ensureSubscription(strapi, user.id, theaterShowId, 'review');
-      } catch (err) {
-        strapi.log.warn('[theater-alert] subscribe on review:', err?.message || err);
-      }
-    }
-
     ctx.body = { data: mapReview(created) };
   },
 
@@ -144,23 +135,6 @@ module.exports = createCoreController('api::user-review.user-review', ({ strapi 
     if (!existing) return ctx.notFound('Review not found');
 
     await strapi.entityService.delete('api::user-review.user-review', reviewId);
-
-    if (existing.content_type === 'theater') {
-      const theaterShowId = existing.theater_show?.id ?? existing.theater_show;
-      if (theaterShowId) {
-        try {
-          const { deactivateSubscription, ensureSubscription } = require('../../../utils/theaterShowNotifications');
-          const stillSeen = await strapi.service('api::user-profile.user-profile').isTheaterShowSeen(user.id, theaterShowId);
-          if (stillSeen) {
-            await ensureSubscription(strapi, user.id, theaterShowId, 'seen');
-          } else {
-            await deactivateSubscription(strapi, user.id, theaterShowId);
-          }
-        } catch (err) {
-          strapi.log.warn('[theater-alert] unsubscribe on review delete:', err?.message || err);
-        }
-      }
-    }
 
     ctx.body = { data: { id: reviewId, deleted: true } };
   },
