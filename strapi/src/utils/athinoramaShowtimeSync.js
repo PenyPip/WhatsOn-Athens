@@ -236,6 +236,166 @@ async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new 
 }
 
 /**
+ * Sync ενός σινεμά από Athinorama (όταν έχει athinorama_link).
+ * Επιστρέφει report συμβατό με AthinoramaSyncReportPanel / SyncReportPanel.
+ */
+async function syncSingleCinemaVenueFromAthinorama(strapi, options = {}) {
+  const started = Date.now();
+  const now = options.now instanceof Date ? options.now : new Date();
+  const venueId = Number(options.venueId);
+  const progress = (msg) => {
+    if (typeof options.onProgress === 'function') options.onProgress(msg);
+  };
+
+  const weekBoundsEarly = getCurrentCinemaWeekBounds(now);
+  const weekLabelEarly = formatWeekLabel(weekBoundsEarly.start, weekBoundsEarly.end);
+
+  const emptyFail = (message, extra = {}) => ({
+    ok: false,
+    source: 'athinorama',
+    at: new Date().toISOString(),
+    scope: 'cinema',
+    venueId,
+    weekLabel: weekLabelEarly,
+    pendingCount: 0,
+    synced: 0,
+    failed: 1,
+    created: 0,
+    createdTotal: 0,
+    alreadyExists: 0,
+    unmatchedMovies: 0,
+    unmatchedTitles: [],
+    becameComplete: 0,
+    results: [],
+    durationMs: Date.now() - started,
+    message,
+    ...extra,
+  });
+
+  if (!Number.isFinite(venueId) || venueId <= 0) {
+    return emptyFail('Άκυρο CMS id σινεμά.');
+  }
+
+  const row = await strapi.entityService.findOne('api::venue.venue', venueId, {
+    fields: ['id', 'name', 'slug', 'updated', 'publishedAt', 'summer_outdoor', 'athinorama_link', 'type'],
+    publicationState: 'preview',
+  });
+
+  if (!row) {
+    return emptyFail(`Δεν βρέθηκε χώρος CMS #${venueId}.`);
+  }
+
+  if (row.type && row.type !== 'cinema') {
+    return emptyFail(`Ο χώρος #${venueId} «${row.name}» δεν είναι cinema (${row.type}).`);
+  }
+
+  const link = normalizeAthinoramaHallUrl(row.athinorama_link);
+  if (!link) {
+    return emptyFail(
+      `Ο χώρος #${venueId} «${row.name}» δεν έχει έγκυρο Athinorama link (athinorama.gr/cinema/halls/…).`,
+    );
+  }
+
+  const weekBounds = weekBoundsEarly;
+  const weekLabel = weekLabelEarly;
+  progress(`Athinorama · «${row.name}» (#${venueId}) · εβδομάδα ${weekLabel}…`);
+
+  const cmsMovies = await findAllMovies(strapi);
+  const venue = {
+    id: row.id,
+    name: row.name,
+    slug: row.slug,
+    updated: row.updated,
+    summerOutdoor: row.summer_outdoor === true,
+    summer_outdoor: row.summer_outdoor === true,
+    athinoramaLink: link,
+    athinorama_link: link,
+  };
+
+  let result;
+  try {
+    result = await syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now });
+    if (result?.ok && result.unmatchedTitles?.length) {
+      progress(
+        `${row.name}: χωρίς CMS — ${result.unmatchedTitles.slice(0, 8).join(', ')}${
+          result.unmatchedTitles.length > 8 ? '…' : ''
+        }.`,
+      );
+    }
+  } catch (e) {
+    result = {
+      ok: false,
+      venueId: row.id,
+      venueName: row.name,
+      error: e?.message || String(e),
+    };
+  }
+
+  const ok = Boolean(result?.ok);
+  const created = Number(result?.created || 0);
+  const alreadyExists = Number(result?.skippedExists || 0);
+  const unmatchedMovies = Number(result?.unmatchedMovies || 0);
+  const unmatchedTitles = [];
+  for (const title of result?.unmatchedTitles || []) {
+    const suggestions = findTopCmsMatchesByPlayTitle(title, cmsMovies, {
+      minScore: 0.45,
+      limit: 5,
+    });
+    unmatchedTitles.push({
+      playTitle: title,
+      venues: result?.venueName ? [result.venueName] : [row.name],
+      count: 1,
+      kind: 'movie',
+      eventIds: [],
+      playIds: [],
+      suggestions,
+      suggestedContent: suggestions[0] || null,
+    });
+  }
+
+  const becameComplete =
+    ok && result?.venueUpdated?.status === VENUE_UPDATED_STATUS.COMPLETE ? 1 : 0;
+
+  const report = {
+    ok,
+    source: 'athinorama',
+    at: new Date().toISOString(),
+    scope: 'cinema',
+    venueId: row.id,
+    weekLabel: result?.weekLabel || weekLabel,
+    weekStart: weekBounds.start.toISOString(),
+    weekEnd: weekBounds.end.toISOString(),
+    currentWeekPhase: isVenueStatusCurrentWeekPhase(now),
+    pendingCount: 1,
+    synced: ok ? 1 : 0,
+    failed: ok ? 0 : 1,
+    created,
+    createdTotal: created,
+    alreadyExists,
+    unmatchedMovies,
+    unmatchedTitles,
+    cmsContentChoices: [],
+    weekSynced: Number(result?.weekSynced || 0),
+    weekExpected: Number(result?.weekExpected || 0),
+    becameComplete,
+    results: [result],
+    durationMs: Date.now() - started,
+    athinoramaUrl: result?.athinoramaUrl || link,
+  };
+
+  report.message = ok
+    ? `Athinorama «${row.name}» (#${row.id}) · ${weekLabel} · +${created} νέες · ${alreadyExists} υπήρχαν${
+        unmatchedMovies ? ` · ${unmatchedMovies} χωρίς CMS` : ''
+      }${becameComplete ? ' · → complete' : ''}${
+        result?.venueUpdatedLabel ? ` · ${result.venueUpdatedLabel}` : ''
+      }`
+    : `Athinorama «${row.name}» (#${row.id}): ${result?.error || 'αποτυχία sync'}`;
+
+  progress(report.message);
+  return report;
+}
+
+/**
  * Φόρτωση τρέχουσας εβδομάδας από Athinorama για όλα τα μη complete σινεμά με link.
  * Athinorama δεν έχει μελλοντικές εβδομάδες — μόνο την τρέχουσα Πέμ→Τετ.
  */
@@ -367,6 +527,7 @@ function isAthinoramaSyncThursday(now = new Date()) {
 module.exports = {
   findPendingAthinoramaCinemas,
   syncOneVenueFromAthinorama,
+  syncSingleCinemaVenueFromAthinorama,
   syncPendingAthinoramaVenues,
   isAthinoramaSyncThursday,
 };

@@ -3469,6 +3469,26 @@ async function syncShowtimesFromMore(strapi, options = {}) {
       ? Number(options.venueId)
       : undefined;
   if (venueIdFilter != null) {
+    // Αν το σινεμά έχει Athinorama hall link → scrape από Athinorama, όχι More.
+    const venueRow = await strapi.entityService.findOne('api::venue.venue', venueIdFilter, {
+      fields: ['id', 'athinorama_link', 'name'],
+      publicationState: 'preview',
+    });
+    const { normalizeAthinoramaHallUrl } = require('./athinoramaHallScrape');
+    const athLink = normalizeAthinoramaHallUrl(venueRow?.athinorama_link);
+    if (athLink) {
+      const progress = (msg) => {
+        if (typeof options.onProgress === 'function') options.onProgress(msg);
+      };
+      progress(
+        `«${venueRow?.name || `#${venueIdFilter}`}» έχει Athinorama link — sync από Athinorama…`,
+      );
+      const { syncSingleCinemaVenueFromAthinorama } = require('./athinoramaShowtimeSync');
+      return syncSingleCinemaVenueFromAthinorama(strapi, {
+        ...options,
+        venueId: venueIdFilter,
+      });
+    }
     return syncSingleCinemaVenueFromMore(strapi, { ...options, venueId: venueIdFilter });
   }
 

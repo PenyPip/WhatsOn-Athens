@@ -241,7 +241,7 @@ function VenueQueueTable({
                     disabled={syncingVenueId != null && syncingVenueId !== row.id}
                     onClick={() => onSyncVenue?.(row)}
                   >
-                    Sync More
+                    {row.hasAthinoramaLink ? 'Sync Athinorama' : 'Sync More'}
                   </Button>
                   <Link to={venueEditPath(row.id)}>Επεξεργασία</Link>
                 </Flex>
@@ -512,7 +512,7 @@ const VenueUpdateQueuePage = () => {
                 (Πέμ→Τετ). <strong>Δευτέρα–Τετάρτη:</strong> την <strong>ερχόμενη</strong>. Κάθε{' '}
                 <strong>Σάββατο 06:00</strong> όλα επανέρχονται σε <strong>no_new</strong>. Το{' '}
                 <strong>Sync Athinorama</strong> φορτώνει μόνο την τρέχουσα εβδομάδα για σινεμά με link που δεν
-                είναι complete (cron Πέμπτη 3×). <strong>Sync More</strong> ανά σινεμά για διάγνωση.
+                είναι complete (cron Πέμπτη 3×). Ανά σινεμά: αν έχει Athinorama link → Athinorama, αλλιώς More.
               </Typography>
             </Box>
 

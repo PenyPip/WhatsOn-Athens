@@ -2172,8 +2172,9 @@ const App = () => {
                       Sync ένα σινεμά (διάγνωση)
                     </Typography>
                     <Typography variant="pi" textColor="neutral600" paddingTop={2} paddingBottom={3}>
-                      CMS id του χώρου (ο αριθμός στην επεξεργασία σινεμά, π.χ. #42). Μετά το sync
-                      εμφανίζεται αναφορά «τι φταίει» αν δεν πέρασαν προβολές.
+                      CMS id του χώρου (ο αριθμός στην επεξεργασία σινεμά, π.χ. #42). Αν έχει
+                      Athinorama link, παίρνει πρόγραμμα από Athinorama — αλλιώς από More. Μετά το
+                      sync εμφανίζεται αναφορά «τι φταίει» αν δεν πέρασαν προβολές.
                     </Typography>
                     <Flex gap={3} alignItems="flex-end" wrap="wrap">
                       <Box style={{ minWidth: '10rem', flex: '0 1 12rem' }}>
