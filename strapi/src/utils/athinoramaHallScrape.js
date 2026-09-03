@@ -190,14 +190,18 @@ function extractAthinoramaProgramText(html) {
   return out.join('\n').trim();
 }
 
-async function fetchAthinoramaHallHtml(url) {
+async function fetchAthinoramaHallHtml(url, { timeoutMs } = {}) {
   const normalized = normalizeAthinoramaHallUrl(url);
   if (!normalized) {
     return { ok: false, error: 'Άκυρο Athinorama URL — περίμενε /cinema/halls/…' };
   }
 
+  const waitMs =
+    Number.isFinite(Number(timeoutMs)) && Number(timeoutMs) > 0
+      ? Number(timeoutMs)
+      : FETCH_TIMEOUT_MS;
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
+  const timer = setTimeout(() => controller.abort(), waitMs);
   try {
     const res = await fetch(normalized, {
       signal: controller.signal,
@@ -227,8 +231,8 @@ async function fetchAthinoramaHallHtml(url) {
 /**
  * Fetch σελίδας αίθουσας Athinorama → parsed movies για program-import.
  */
-async function scrapeAthinoramaHallProgram(url, { weekBounds = null } = {}) {
-  const fetched = await fetchAthinoramaHallHtml(url);
+async function scrapeAthinoramaHallProgram(url, { weekBounds = null, timeoutMs } = {}) {
+  const fetched = await fetchAthinoramaHallHtml(url, { timeoutMs });
   if (!fetched.ok) return fetched;
 
   const blocks = parseLdJsonBlocks(fetched.html);

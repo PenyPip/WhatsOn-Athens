@@ -23,6 +23,27 @@ const VENUE_CONCURRENCY = Math.max(
   1,
   Number(process.env.ATHINORAMA_SYNC_CONCURRENCY || 3),
 );
+/**
+ * Σινεμά που timeout-άρουν στο παράλληλο batch — τρέχουν μόνα τους μετά το βασικό sync.
+ * Env: ATHINORAMA_DEFERRED_VENUE_IDS=2,15 (κενό = κανένα).
+ */
+function parseDeferredAthinoramaVenueIds() {
+  const raw = process.env.ATHINORAMA_DEFERRED_VENUE_IDS;
+  const source = raw == null || String(raw).trim() === '' ? '2' : String(raw);
+  return [
+    ...new Set(
+      source
+        .split(/[,;\s]+/)
+        .map((s) => Number(s.trim()))
+        .filter((n) => Number.isFinite(n) && n > 0),
+    ),
+  ];
+}
+
+const DEFERRED_FETCH_TIMEOUT_MS = Math.max(
+  25_000,
+  Number(process.env.ATHINORAMA_DEFERRED_FETCH_TIMEOUT_MS || 90_000),
+);
 
 async function mapPool(items, concurrency, fn) {
   const list = Array.isArray(items) ? items : [];
@@ -148,7 +169,7 @@ function buildImportItemsFromScraped(scrapedMovies, cmsMovies, { summerDefault =
   return { items, unmatchedMovies, matchedMovies, unmatchedTitles };
 }
 
-async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new Date() } = {}) {
+async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new Date(), timeoutMs } = {}) {
   const weekBounds = getCurrentCinemaWeekBounds(now);
   const link = venue.athinoramaLink || normalizeAthinoramaHallUrl(venue.athinorama_link);
   if (!link) {
@@ -160,7 +181,7 @@ async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new 
     };
   }
 
-  const scraped = await scrapeAthinoramaHallProgram(link, { weekBounds });
+  const scraped = await scrapeAthinoramaHallProgram(link, { weekBounds, timeoutMs });
   if (!scraped.ok) {
     return {
       ok: false,
@@ -314,7 +335,11 @@ async function syncSingleCinemaVenueFromAthinorama(strapi, options = {}) {
 
   let result;
   try {
-    result = await syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now });
+    const deferred = parseDeferredAthinoramaVenueIds().includes(venueId);
+    result = await syncOneVenueFromAthinorama(strapi, venue, cmsMovies, {
+      now,
+      timeoutMs: deferred ? DEFERRED_FETCH_TIMEOUT_MS : undefined,
+    });
     if (result?.ok && result.unmatchedTitles?.length) {
       progress(
         `${row.name}: χωρίς CMS — ${result.unmatchedTitles.slice(0, 8).join(', ')}${
@@ -398,6 +423,9 @@ async function syncSingleCinemaVenueFromAthinorama(strapi, options = {}) {
 /**
  * Φόρτωση τρέχουσας εβδομάδας από Athinorama για όλα τα μη complete σινεμά με link.
  * Athinorama δεν έχει μελλοντικές εβδομάδες — μόνο την τρέχουσα Πέμ→Τετ.
+ *
+ * Deferred venues (π.χ. #2): εξαιρούνται από το παράλληλο batch και τρέχουν
+ * σειριακά μόνα τους στο τέλος (μεγαλύτερο fetch timeout).
  */
 async function syncPendingAthinoramaVenues(
   strapi,
@@ -405,7 +433,10 @@ async function syncPendingAthinoramaVenues(
 ) {
   const weekBounds = getCurrentCinemaWeekBounds(now);
   const weekLabel = formatWeekLabel(weekBounds.start, weekBounds.end);
-  const pending = await findPendingAthinoramaCinemas(strapi, { includeDrafts });
+  const allPending = await findPendingAthinoramaCinemas(strapi, { includeDrafts });
+  const deferredIds = new Set(parseDeferredAthinoramaVenueIds());
+  const pending = allPending.filter((v) => !deferredIds.has(Number(v.id)));
+  const deferredPending = allPending.filter((v) => deferredIds.has(Number(v.id)));
 
   const report = {
     ok: true,
@@ -413,7 +444,8 @@ async function syncPendingAthinoramaVenues(
     weekStart: weekBounds.start.toISOString(),
     weekEnd: weekBounds.end.toISOString(),
     currentWeekPhase: isVenueStatusCurrentWeekPhase(now),
-    pendingCount: pending.length,
+    pendingCount: allPending.length,
+    deferredVenueIds: deferredPending.map((v) => v.id),
     synced: 0,
     failed: 0,
     createdTotal: 0,
@@ -421,22 +453,32 @@ async function syncPendingAthinoramaVenues(
     results: [],
   };
 
-  if (!pending.length) {
+  if (!allPending.length) {
     report.message = `Κανένα εκκρεμές σινεμά με Athinorama link για ${weekLabel}.`;
     return report;
   }
 
   if (typeof onProgress === 'function') {
-    onProgress(`Athinorama: ${pending.length} σινεμά · εβδομάδα ${weekLabel}`);
+    const deferredNote = deferredPending.length
+      ? ` · ${deferredPending.length} deferred μετά το batch`
+      : '';
+    onProgress(
+      `Athinorama: ${pending.length} σινεμά batch${deferredNote} · εβδομάδα ${weekLabel}`,
+    );
   }
 
   const cmsMovies = await findAllMovies(strapi);
-  const results = await mapPool(pending, VENUE_CONCURRENCY, async (venue, index) => {
+
+  async function runOne(venue, label) {
     if (typeof onProgress === 'function') {
-      onProgress(`Athinorama ${index + 1}/${pending.length}: ${venue.name}`);
+      onProgress(label);
     }
     try {
-      const row = await syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now });
+      const isDeferred = deferredIds.has(Number(venue.id));
+      const row = await syncOneVenueFromAthinorama(strapi, venue, cmsMovies, {
+        now,
+        timeoutMs: isDeferred ? DEFERRED_FETCH_TIMEOUT_MS : undefined,
+      });
       if (row?.ok && row.unmatchedTitles?.length && typeof onProgress === 'function') {
         onProgress(
           `${venue.name}: χωρίς CMS — ${row.unmatchedTitles.slice(0, 8).join(', ')}${
@@ -453,7 +495,27 @@ async function syncPendingAthinoramaVenues(
         error: e?.message || String(e),
       };
     }
-  });
+  }
+
+  const batchResults =
+    pending.length > 0
+      ? await mapPool(pending, VENUE_CONCURRENCY, async (venue, index) =>
+          runOne(venue, `Athinorama ${index + 1}/${pending.length}: ${venue.name}`),
+        )
+      : [];
+
+  const deferredResults = [];
+  for (let i = 0; i < deferredPending.length; i += 1) {
+    const venue = deferredPending[i];
+    deferredResults.push(
+      await runOne(
+        venue,
+        `Athinorama deferred ${i + 1}/${deferredPending.length} (μόνο): ${venue.name} (#${venue.id})`,
+      ),
+    );
+  }
+
+  const results = [...batchResults, ...deferredResults];
 
   report.results = results;
   let alreadyExistsTotal = 0;
@@ -512,9 +574,14 @@ async function syncPendingAthinoramaVenues(
   report.weekExpected = weekExpectedTotal;
   report.source = 'athinorama';
 
-  report.message = `Athinorama ${weekLabel}: ${report.synced}/${pending.length} OK · +${report.createdTotal} νέες · ${alreadyExistsTotal} υπήρχαν · ${report.becameComplete} complete${
+  const deferredOk = deferredResults.filter((r) => r?.ok).length;
+  report.message = `Athinorama ${weekLabel}: ${report.synced}/${allPending.length} OK · +${report.createdTotal} νέες · ${alreadyExistsTotal} υπήρχαν · ${report.becameComplete} complete${
     report.failed ? ` · ${report.failed} αποτυχίες` : ''
-  }${unmatchedMoviesTotal ? ` · ${unmatchedMoviesTotal} ταινίες χωρίς CMS` : ''}`;
+  }${unmatchedMoviesTotal ? ` · ${unmatchedMoviesTotal} ταινίες χωρίς CMS` : ''}${
+    deferredPending.length
+      ? ` · deferred #${deferredPending.map((v) => v.id).join(',')}: ${deferredOk}/${deferredPending.length}`
+      : ''
+  }`;
 
   return report;
 }
@@ -530,4 +597,5 @@ module.exports = {
   syncSingleCinemaVenueFromAthinorama,
   syncPendingAthinoramaVenues,
   isAthinoramaSyncThursday,
+  parseDeferredAthinoramaVenueIds,
 };
