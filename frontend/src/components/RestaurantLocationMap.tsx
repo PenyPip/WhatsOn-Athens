@@ -28,7 +28,7 @@ const RestaurantLocationMap = ({ restaurant, className }: Props) => {
       <div className="relative h-64 overflow-hidden rounded-lg border border-border bg-secondary">
         {embedSrc ? (
           <iframe
-            title={`Χάρτης — ${restaurant.name}`}
+            title={`Χάρτης - ${restaurant.name}`}
             src={embedSrc}
             className="absolute inset-0 h-full w-full border-0"
             loading="lazy"

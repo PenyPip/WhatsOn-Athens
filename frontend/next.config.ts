@@ -18,7 +18,7 @@ function devStrapiOrigin(): string {
 const isProdBuild = process.env.NODE_ENV === "production";
 
 const nextConfig: NextConfig = {
-  /* Μόνο στο `next build` — στο `next dev` σπάει chunks (ENOENT layout.js). */
+  /* Μόνο στο `next build` - στο `next dev` σπάει chunks (ENOENT layout.js). */
   ...(isProdBuild ? { output: "export" as const } : {}),
   compiler: {
     removeConsole: process.env.NODE_ENV === "production" ? { exclude: ["error", "warn"] } : false,
@@ -47,7 +47,7 @@ const nextConfig: NextConfig = {
             { source: "/admin", destination: `${origin}/admin` },
             { source: "/admin/:path*", destination: `${origin}/admin/:path*` },
             { source: "/api/:path*", destination: `${origin}/api/:path*` },
-            // Ίδιο λεξικό διαδρομών με nginx.conf (συμπ. sync-program-status) — dev admin από :3000.
+            // Ίδιο λεξικό διαδρομών με nginx.conf (συμπ. sync-program-status) - dev admin από :3000.
             ...(
               [
                 "content-manager",

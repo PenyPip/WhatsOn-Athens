@@ -57,7 +57,7 @@ export default function TheaterVenueProgramLayout({
       {allSoldOut ? (
         <div className="rounded-xl border border-[#C10022]/25 bg-[#C10022]/[0.07] px-4 py-3 ring-1 ring-[#C10022]/15">
           <p className="text-sm font-semibold uppercase tracking-wide text-[#C10022]">
-            Sold out — όλες οι παραστάσεις σε αυτόν τον χώρο
+            Sold out - όλες οι παραστάσεις σε αυτόν τον χώρο
           </p>
         </div>
       ) : null}

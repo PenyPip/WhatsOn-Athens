@@ -1,6 +1,6 @@
 const API_PREFIX = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
 
-/** Βάση URL για `new URL(API_PREFIX + endpoint, base)` — browser origin ή Strapi στο build/SSR. */
+/** Βάση URL για `new URL(API_PREFIX + endpoint, base)` - browser origin ή Strapi στο build/SSR. */
 export function apiRequestBaseUrl(): string {
   if (API_PREFIX.startsWith("http://") || API_PREFIX.startsWith("https://")) return API_PREFIX;
   if (typeof window !== "undefined") return window.location.origin;

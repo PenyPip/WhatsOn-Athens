@@ -66,7 +66,7 @@ type EventDetailContentProps = {
   title: string;
   /** Μέγεθος αφίσας: compact (άρθρο), hero (σελίδα event). */
   posterSize?: "compact" | "hero";
-  /** article-panel: πίνακας πληροφοριών κάτω από άρθρο — ξεχωριστό από το κείμενο. */
+  /** article-panel: πίνακας πληροφοριών κάτω από άρθρο - ξεχωριστό από το κείμενο. */
   variant?: "default" | "article-panel";
   className?: string;
 };
@@ -104,7 +104,7 @@ export default function EventDetailContent({
     >
       <table className="w-full border-collapse">
         <tbody>
-          <DetailRow variant={variant} label="Πότε" value={schedule !== "—" ? schedule : null} />
+          <DetailRow variant={variant} label="Πότε" value={schedule !== "-" ? schedule : null} />
           {hasWhere ? (
             <DetailRow
               variant={variant}

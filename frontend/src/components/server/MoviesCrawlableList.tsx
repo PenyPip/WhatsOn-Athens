@@ -1,7 +1,7 @@
 import type { MoviesListCrawlSnapshot } from "@/lib/crawlTypes";
 import { absolutePageUrl } from "@/lib/siteMetadata";
 
-/** Server HTML — λίστα ταινιών για crawlers στη σελίδα /movies. */
+/** Server HTML - λίστα ταινιών για crawlers στη σελίδα /movies. */
 export default function MoviesCrawlableList({ h1, intro, movies }: MoviesListCrawlSnapshot) {
   if (!movies.length) {
     return (

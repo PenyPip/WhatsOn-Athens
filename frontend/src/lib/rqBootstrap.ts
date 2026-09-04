@@ -15,10 +15,10 @@ export function readRqBootstrapState(): DehydratedState | undefined {
 const HOME_BOOTSTRAP_QUERY_KEYS = new Set(["homepage", "movies", "bootstrapNow"]);
 
 /**
- * Μικρότερο bootstrap στην αρχική — χωρίς showtimes στο `#__RQ_STATE__` (TBT/LCP).
+ * Μικρότερο bootstrap στην αρχική - χωρίς showtimes στο `#__RQ_STATE__` (TBT/LCP).
  * Το crawl HTML χτίζεται από το raw prefetch πριν από αυτό· ο client φορτώνει
  * πλήρες home-calendar μετά το LCP (`deferProgramData`).
- * Μην ξαναβάλεις showtimes εδώ + date-trim + staleTime 6h — κόβει προβολές.
+ * Μην ξαναβάλεις showtimes εδώ + date-trim + staleTime 6h - κόβει προβολές.
  */
 export function slimHomeBootstrapState(
   state: DehydratedState,

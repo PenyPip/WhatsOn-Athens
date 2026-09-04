@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 
 /**
- * Αναβάλλει below-fold / δευτερεύοντα work μέχρι idle μετά LCP — μικρότερο TBT.
+ * Αναβάλλει below-fold / δευτερεύοντα work μέχρι idle μετά LCP - μικρότερο TBT.
  * Mobile: μικρότερο idle timeout (λιγότερο storm αμέσως στο spa-lcp-done).
  * Δεν αγγίζει deferProgramData / movies / showtimes.
  */

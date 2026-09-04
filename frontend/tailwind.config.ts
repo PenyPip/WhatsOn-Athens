@@ -5,7 +5,7 @@ export default {
   content: [
     "./app/**/*.{ts,tsx}",
     "./src/**/*.{ts,tsx}",
-    /* shadcn boilerplate — μόνο ό,τι χρησιμοποιεί η εφαρμογή (λιγότερο unused CSS). */
+    /* shadcn boilerplate - μόνο ό,τι χρησιμοποιεί η εφαρμογή (λιγότερο unused CSS). */
     "!./src/components/ui/**/*",
     "./src/components/ui/button.tsx",
     "./src/components/ui/dialog.tsx",
@@ -15,7 +15,7 @@ export default {
     "./src/components/ui/popover.tsx",
   ],
   prefix: "",
-  /** Dialog/alert: arbitrary top/z/translate δεν σκανάρονται πάντα — κρατάμε και τα standard. */
+  /** Dialog/alert: arbitrary top/z/translate δεν σκανάρονται πάντα - κρατάμε και τα standard. */
   safelist: [
     "top-1/2",
     "left-1/2",

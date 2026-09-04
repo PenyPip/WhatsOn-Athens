@@ -157,7 +157,7 @@ const Venues = () => {
       <PageListHeader>
         <h1 className={PAGE_LIST_TITLE_CLASS}>Χώροι</h1>
         <p className={PAGE_LIST_SUBTITLE_CLASS}>
-          Σινεμά, θέατρα και άλλοι πολιτιστικοί χώροι — Αθήνα, Θεσσαλονίκη και αλλού
+          Σινεμά, θέατρα και άλλοι πολιτιστικοί χώροι - Αθήνα, Θεσσαλονίκη και αλλού
         </p>
       </PageListHeader>
 

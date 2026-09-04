@@ -49,7 +49,7 @@ function shortVenueLead(names: string[]): string {
 }
 
 /**
- * Title / description / H1 για `/movies/:slug` — στοχεύει «[όνομα ταινίας]», «πού παίζεται», «πρόγραμμα».
+ * Title / description / H1 για `/movies/:slug` - στοχεύει «[όνομα ταινίας]», «πού παίζεται», «πρόγραμμα».
  * Παρόμοια λογική με `cinemaVenueProgramSeo` για χώρους.
  */
 export function movieDetailSeo(
@@ -66,32 +66,32 @@ export function movieDetailSeo(
   const venueShort = shortVenueLead(venues);
 
   const title = venueShort
-    ? `${name} — παίζεται ${venueShort} · πρόγραμμα σινεμά`
+    ? `${name} - παίζεται ${venueShort} · πρόγραμμα σινεμά`
     : genre
-      ? `${name} — πού παίζεται · ${genre} · σινεμά`
-      : `${name} — πού παίζεται · πρόγραμμα σινεμά`;
+      ? `${name} - πού παίζεται · ${genre} · σινεμά`
+      : `${name} - πού παίζεται · πρόγραμμα σινεμά`;
 
-  const h1 = `${tl.primary} — πού παίζεται`;
+  const h1 = `${tl.primary} - πού παίζεται`;
 
-  /** Μόνο για SEO/meta — όχι στο ορατό hero (υπάρχει CTA «Δες ώρες»). */
+  /** Μόνο για SEO/meta - όχι στο ορατό hero (υπάρχει CTA «Δες ώρες»). */
   const subtitle = venueList
     ? `Πρόγραμμα προβολών · ${venueList}`
     : "Πρόγραμμα σινεμά · ώρες προβολών";
 
   const ogTitle = venueShort
-    ? `${name} — παίζεται ${venueShort}`
-    : `${name} — πού παίζεται · σινεμά`;
+    ? `${name} - παίζεται ${venueShort}`
+    : `${name} - πού παίζεται · σινεμά`;
 
   const ogDescription = hint?.focusVenueName && hint?.focusDatetime
     ? truncateDescription(
-        `«${tl.primary}» — ${formatShowtimeShareLabel(hint.focusDatetime, hint.focusVenueName)}. Δες ώρες, σινεμά και εισιτήρια.`,
+        `«${tl.primary}» - ${formatShowtimeShareLabel(hint.focusDatetime, hint.focusVenueName)}. Δες ώρες, σινεμά και εισιτήρια.`,
       )
     : venueList
     ? truncateDescription(
         `«${tl.primary}» παίζεται τώρα στο ${venueList}. Δες ώρες προβολών, σινεμά και εισιτήρια.`,
       )
     : truncateDescription(
-        `«${tl.primary}» — δες πού παίζεται τώρα στα σινεμά. Πρόγραμμα, ώρες προβολών και αφίσα.`,
+        `«${tl.primary}» - δες πού παίζεται τώρα στα σινεμά. Πρόγραμμα, ώρες προβολών και αφίσα.`,
       );
 
   const lead = venueList
@@ -110,8 +110,8 @@ export function movieDetailSeo(
     : truncateDescription(`${lead}${directorBit}${tail}`);
 
   const intro = venueList
-    ? `Δες πού παίζεται η ταινία «${tl.primary}» τώρα — ${venueList}. Ενημερωμένο πρόγραμμα προβολών, ώρες${venueCount > 0 ? ` σε ${venueCount} σινεμά` : ""} και πληροφορίες για εισιτήρια.`
-    : `Δες πού και πότε παίζεται η ταινία «${tl.primary}» στα σινεμά της Αθήνας και της υπόλοιπης Ελλάδας — πρόγραμμα, ώρες προβολών και αφίσα.`;
+    ? `Δες πού παίζεται η ταινία «${tl.primary}» τώρα - ${venueList}. Ενημερωμένο πρόγραμμα προβολών, ώρες${venueCount > 0 ? ` σε ${venueCount} σινεμά` : ""} και πληροφορίες για εισιτήρια.`
+    : `Δες πού και πότε παίζεται η ταινία «${tl.primary}» στα σινεμά της Αθήνας και της υπόλοιπης Ελλάδας - πρόγραμμα, ώρες προβολών και αφίσα.`;
 
   return {
     title,

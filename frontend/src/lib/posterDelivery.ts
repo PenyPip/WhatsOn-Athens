@@ -1,4 +1,4 @@
-/** URL για LCP/preload — συμφωνεί με το default `src` του hero (μικρότερο format). */
+/** URL για LCP/preload - συμφωνεί με το default `src` του hero (μικρότερο format). */
 export function posterLcpSrc(posterUrl?: string | null, posterSrcSet?: string | null): string | null {
   const direct = typeof posterUrl === "string" ? posterUrl.trim() : "";
   if (!direct) return null;

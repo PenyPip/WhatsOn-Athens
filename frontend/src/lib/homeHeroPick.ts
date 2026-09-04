@@ -4,12 +4,12 @@ export function isMostTalkedAboutMovie(movie: StrapiMovie): boolean {
   return movie.mostTalkedAbout === true;
 }
 
-/** Ταινίες με `most_talked_about` — pool για το hero. */
+/** Ταινίες με `most_talked_about` - pool για το hero. */
 export function moviesForHeroPool(movies: StrapiMovie[]): StrapiMovie[] {
   return movies.filter(isMostTalkedAboutMovie);
 }
 
-/** Νεότερη πρώτα μεταξύ πολυσυζητημένων — πεδίο CMS ή fallback timestamps. */
+/** Νεότερη πρώτα μεταξύ πολυσυζητημένων - πεδίο CMS ή fallback timestamps. */
 function mostTalkedAboutSortMs(movie: StrapiMovie): number {
   const raw = movie.mostTalkedAboutAt ?? movie.updatedAt ?? movie.createdAt;
   if (!raw || typeof raw !== "string") return 0;
@@ -17,7 +17,7 @@ function mostTalkedAboutSortMs(movie: StrapiMovie): number {
   return Number.isFinite(ms) ? ms : 0;
 }
 
-/** Όλες οι πολυσυζητημένες για την ενότητα hero — τελευταία που προστέθηκε πρώτη. */
+/** Όλες οι πολυσυζητημένες για την ενότητα hero - τελευταία που προστέθηκε πρώτη. */
 export function mostTalkedAboutMovies(movies: StrapiMovie[]): StrapiMovie[] {
   const flagged = moviesForHeroPool(movies);
   if (flagged.length === 0) return [];

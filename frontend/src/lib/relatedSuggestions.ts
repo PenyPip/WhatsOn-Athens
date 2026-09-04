@@ -18,7 +18,7 @@ function mulberry32(seed: number): () => number {
   };
 }
 
-/** Ανακάτεμα με seed — διαφορετικό ανά σελίδα, σταθερό ανά slug. */
+/** Ανακάτεμα με seed - διαφορετικό ανά σελίδα, σταθερό ανά slug. */
 export function seededShuffle<T>(items: T[], seed: string): T[] {
   const out = [...items];
   const rand = mulberry32(hashSeed(seed));

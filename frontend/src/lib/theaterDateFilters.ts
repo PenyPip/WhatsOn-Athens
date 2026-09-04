@@ -18,7 +18,7 @@ export function formatLocalYmd(d: Date): string {
   return `${y}-${m}-${day}`;
 }
 
-/** Επερχόμενο Σαββατοκύριακο (Σάββατο + Κυριακή) — τοπική μέρα. */
+/** Επερχόμενο Σαββατοκύριακο (Σάββατο + Κυριακή) - τοπική μέρα. */
 export function upcomingWeekendDays(now = new Date()): Date[] {
   const todayStart = startOfLocalDay(now);
   const dow = todayStart.getDay();

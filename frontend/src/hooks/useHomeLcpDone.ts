@@ -26,7 +26,7 @@ export function lockHomeHeroSpacerDom() {
   spacer.style.setProperty("flex-shrink", "0", "important");
 }
 
-/** Κρύβει μόνο το static overlay/slot — ΟΧΙ το spacer (κρατάει ύψος → χωρίς CLS). */
+/** Κρύβει μόνο το static overlay/slot - ΟΧΙ το spacer (κρατάει ύψος → χωρίς CLS). */
 export function hideHomeStaticLcpDom() {
   if (typeof document === "undefined") return;
   const slot = document.getElementById("home-hero-slot");
@@ -53,7 +53,7 @@ function clearHomeHeroSpacerLock() {
   spacer.style.removeProperty("flex-shrink");
 }
 
-/** Το server `#home-hero-slot` είναι έξω από το Router — κρύψ’ το όταν φεύγεις από την αρχική. */
+/** Το server `#home-hero-slot` είναι έξω από το Router - κρύψ’ το όταν φεύγεις από την αρχική. */
 export function syncHomeHeroSlotForPath(pathname: string) {
   if (typeof document === "undefined") return;
   const onHome = pathname === "/";
@@ -66,14 +66,14 @@ export function syncHomeHeroSlotForPath(pathname: string) {
   }
 }
 
-/** Κρύβει μόνο το static overlay — χωρίς layout shift (margin / slot). */
+/** Κρύβει μόνο το static overlay - χωρίς layout shift (margin / slot). */
 export function useHomeLcpOverlayDone(): () => void {
   return useCallback(() => {
     document.documentElement.classList.add("spa-lcp-done");
   }, []);
 }
 
-/** Ολοκληρώνει handoff: κρύβει static slot — το spacer μένει για σταθερό ύψος. */
+/** Ολοκληρώνει handoff: κρύβει static slot - το spacer μένει για σταθερό ύψος. */
 export function useHomeLcpLayoutDone(): () => void {
   return useCallback(() => {
     document.documentElement.classList.add("spa-lcp-layout-done");
@@ -82,7 +82,7 @@ export function useHomeLcpLayoutDone(): () => void {
   }, []);
 }
 
-/** Desktop: overlay + layout μαζί — ποτέ static και live ταυτόχρονα. */
+/** Desktop: overlay + layout μαζί - ποτέ static και live ταυτόχρονα. */
 export function useHomeLcpFullyDone(): () => void {
   return useCallback(() => {
     document.documentElement.classList.add("spa-lcp-done", "spa-lcp-layout-done");

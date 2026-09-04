@@ -37,7 +37,7 @@ export const VENUE_AREA_FILTER_OPTIONS: { value: VenueAreaFilter; label: string 
   ...VENUE_AREA_KEYS.map((value) => ({ value, label: VENUE_AREA_LABELS[value] })),
 ];
 
-/** Φίλτρο σελίδας Χώροι — μόνο περιοχές Αθήνας. */
+/** Φίλτρο σελίδας Χώροι - μόνο περιοχές Αθήνας. */
 export type AthensDistrictFilter = "all" | AthensDistrictKey;
 
 export const ATHENS_DISTRICT_FILTER_OPTIONS: { value: AthensDistrictFilter; label: string }[] = [
@@ -62,7 +62,7 @@ export function parseVenueAreaParam(raw: string | null | undefined): VenueAreaKe
   return (VENUE_AREA_KEYS as readonly string[]).includes(v) ? (v as VenueAreaKey) : null;
 }
 
-/** Φίλτρο πόλης σελίδας Χώροι — default Αθήνα, ρητό `area=all` για όλες τις πόλεις. */
+/** Φίλτρο πόλης σελίδας Χώροι - default Αθήνα, ρητό `area=all` για όλες τις πόλεις. */
 export function parseVenueAreaFilterParam(raw: string | null | undefined): VenueAreaFilter {
   const v = raw?.trim().toLowerCase() ?? "";
   if (v === "all") return "all";

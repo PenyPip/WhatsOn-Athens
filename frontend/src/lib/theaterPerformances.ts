@@ -198,7 +198,7 @@ export function isTheaterPerformanceNewlyAdded(
 
 /**
  * «Νέες παραστάσεις» μόνο όταν προστέθηκαν ημερομηνίες σε έργο που είχε ήδη
- * παλιότερες — όχι όταν όλο το πρόγραμμα μπήκε μαζί (πρώτη καταχώρηση / full sync).
+ * παλιότερες - όχι όταν όλο το πρόγραμμα μπήκε μαζί (πρώτη καταχώρηση / full sync).
  */
 export function theaterShowHasNewlyAddedPerformances(
   performances: { createdAt?: string | null }[],
@@ -216,7 +216,7 @@ export function theaterShowHasNewlyAddedPerformances(
   return newly > 0 && older > 0;
 }
 
-/** Σύμβολο ✦ Νέο σε μία εμφάνιση — μόνο αν το έργο έχει και παλιότερες ημερομηνίες. */
+/** Σύμβολο ✦ Νέο σε μία εμφάνιση - μόνο αν το έργο έχει και παλιότερες ημερομηνίες. */
 export function isTheaterPerformanceNewlyAddedHighlight(
   p: { createdAt?: string | null },
   showPerformances: { createdAt?: string | null }[],
@@ -227,7 +227,7 @@ export function isTheaterPerformanceNewlyAddedHighlight(
   return theaterShowHasNewlyAddedPerformances(showPerformances, now, days);
 }
 
-/** Badge κάρτας θεάτρου — προτεραιότητα: sold out → πρεμιέρα → νέες παραστάσεις → τελευταίες. */
+/** Badge κάρτας θεάτρου - προτεραιότητα: sold out → πρεμιέρα → νέες παραστάσεις → τελευταίες. */
 export function theaterShowListBadge(
   show: {
     soldOut?: boolean;

@@ -29,7 +29,7 @@ export type PageSeoInput = {
   imageHeight?: number;
   /** YouTube embed URL για og:video (ταινίες με τρέιλερ). */
   videoUrl?: string | null;
-  /** Open Graph / Twitter title — χωρίς «· 37Ν» (override). */
+  /** Open Graph / Twitter title - χωρίς «· 37Ν» (override). */
   ogTitle?: string;
   /** Open Graph / Twitter description (override). */
   ogDescription?: string;

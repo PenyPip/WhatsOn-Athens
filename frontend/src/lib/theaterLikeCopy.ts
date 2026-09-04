@@ -10,7 +10,7 @@ export const THEATER_LIKE_BUTTON_LABEL = "Like";
 export const THEATER_LIKE_BUTTON_LABEL_ACTIVE = "Liked";
 
 export const THEATER_LIKE_BUTTON_HINT =
-  "Κάνε like — μάθε πρώτος για νέες ημερομηνίες";
+  "Κάνε like - μάθε πρώτος για νέες ημερομηνίες";
 
 export const THEATER_LIKE_BUTTON_HINT_ACTIVE =
   "Θα ενημερώνεσαι πρώτος όταν προστεθούν νέες ημερομηνίες";

@@ -42,9 +42,9 @@ interface EventCardProps {
   compactMovieMeta?: boolean;
   /** Σκούρο section (π.χ. περιοδείες αρχικής): σκούρο κείμενο σε λευκή κάρτα. */
   darkSectionCard?: boolean;
-  /** Πρώτες ορατές αφίσες — LCP / image delivery */
+  /** Πρώτες ορατές αφίσες - LCP / image delivery */
   posterPriority?: boolean;
-  /** Eager χωρίς high priority — horizontal scroll όπου το native lazy συχνά δεν φορτώνει */
+  /** Eager χωρίς high priority - horizontal scroll όπου το native lazy συχνά δεν φορτώνει */
   posterEager?: boolean;
   /** Θέατρο: εύρος τιμών (π.χ. «12 – 18 €»). */
   theaterPriceLine?: string;
@@ -101,12 +101,12 @@ const EventCard = ({
   const genreTrimmed = typeof genre === "string" ? genre.trim() : "";
   const isMovie = type === "movie";
   const isTheater = type === "theater";
-  /** Αρχική (compact) + horizontal scroll: ποτέ native lazy — αλλιώς μένουν κενές αφίσες. */
+  /** Αρχική (compact) + horizontal scroll: ποτέ native lazy - αλλιώς μένουν κενές αφίσες. */
   const useEagerPoster = posterPriority || posterEager || compactMovieMeta;
   const soldOutBadge = typeof badge === "string" && badge.trim().toUpperCase() === "SOLD OUT";
   const newPerformancesBadge =
     typeof badge === "string" && badge.trim().toLocaleLowerCase("el") === "νέες παραστάσεις";
-  /** Οριζόντια αφίσα θεάτρου — ολόκληρη, χωρίς crop σε 2:3. */
+  /** Οριζόντια αφίσα θεάτρου - ολόκληρη, χωρίς crop σε 2:3. */
   const landscapePoster = isTheater;
   /** Αρχική περιοδείες: μόνο τίτλος κάτω από την αφίσα. */
   const theaterHomeCompact = isTheater && compactMovieMeta;
@@ -121,7 +121,7 @@ const EventCard = ({
   /** Οριζόντια σειρά (αρχική, κ.λπ.): σταθερό ύψος τίτλου/υπότιτλου/ειδους. */
   const uniformScrollCard = uniformMovie && !movieListingMeta && !attachShowtimes;
 
-  /** Θέατρο: συμπαγής κάρτα — χωρίς τέντωμα ύψους (grid / οριζόντια σειρά). */
+  /** Θέατρο: συμπαγής κάρτα - χωρίς τέντωμα ύψους (grid / οριζόντια σειρά). */
   const theaterCompactCard = isTheater && !attachShowtimes;
 
   return (

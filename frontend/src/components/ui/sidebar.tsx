@@ -531,7 +531,7 @@ const SidebarMenuSkeleton = React.forwardRef<
     showIcon?: boolean;
   }
 >(({ className, showIcon = false, ...props }, ref) => {
-  // Σταθερό πλάτος skeleton — όχι Math.random() (hydration mismatch).
+  // Σταθερό πλάτος skeleton - όχι Math.random() (hydration mismatch).
   const width = "70%";
 
   return (

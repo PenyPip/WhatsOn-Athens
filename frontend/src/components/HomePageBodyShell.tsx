@@ -1,7 +1,7 @@
 import type { ResolvedHomepageLayout } from "@/config/home";
 import HomeSectionsPlaceholder from "@/components/HomeSectionsPlaceholder";
 
-/** Ελαφρύ placeholder — ίδιο ύψος με HomeBody ώστε χωρίς CLS στο handoff / lazy mount. */
+/** Ελαφρύ placeholder - ίδιο ύψος με HomeBody ώστε χωρίς CLS στο handoff / lazy mount. */
 export default function HomePageBodyShell({
   layout,
 }: {

@@ -8,7 +8,7 @@ type ImdbRatingBadgeProps = {
   className?: string;
 };
 
-/** Εμφάνιση βαθμολογίας IMDb — χαρακτηριστικό κίτρινο. */
+/** Εμφάνιση βαθμολογίας IMDb - χαρακτηριστικό κίτρινο. */
 export default function ImdbRatingBadge({ rating, variant = "poster", className }: ImdbRatingBadgeProps) {
   const label = formatImdbRating(rating);
 

@@ -1,4 +1,4 @@
-/** Crawlable κείμενο κάτω από το hero — πρόγραμμα σινεμά (on-page SEO). */
+/** Crawlable κείμενο κάτω από το hero - πρόγραμμα σινεμά (on-page SEO). */
 export default function CinemaVenueProgramIntro({
   venueName,
   intro,

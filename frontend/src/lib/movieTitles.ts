@@ -2,7 +2,7 @@ import type { StrapiMovie } from "@/lib/api";
 
 export type MovieTitleLines = { primary: string; secondary?: string };
 
-/** Κανονικοποίηση original_title — ίδια λογική με Strapi lifecycle. */
+/** Κανονικοποίηση original_title - ίδια λογική με Strapi lifecycle. */
 export function normalizeMovieOriginalTitle(value: string | null | undefined): string {
   if (typeof value !== "string") return "";
   return value.trim().replace(/\s+/g, " ");
@@ -23,7 +23,7 @@ export function movieDisplayName(tl: MovieTitleLines): string {
   return tl.primary;
 }
 
-/** Μοναδικό κλειδί ταυτοποίησης (εκτός id) — case-insensitive. */
+/** Μοναδικό κλειδί ταυτοποίησης (εκτός id) - case-insensitive. */
 export function movieOriginalTitleKey(movie: Pick<StrapiMovie, "originalTitle">): string | null {
   const normalized = normalizeMovieOriginalTitle(movie.originalTitle);
   return normalized ? normalized.toLowerCase() : null;

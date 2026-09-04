@@ -1,11 +1,11 @@
 /**
  * Post-build για την αρχική (`index.html`):
- * 1) Αφήνει το Tailwind **blocking** (όχι media=print) — το async CSS προκαλεί CLS ~0.8–1
+ * 1) Αφήνει το Tailwind **blocking** (όχι media=print) - το async CSS προκαλεί CLS ~0.8–1
  *    όταν το stylesheet εφαρμόζεται μετά το πρώτο paint (μέτρηση Aug 2026).
  * 2) Αφαιρεί image preloads χωρίς fetchPriority=high (κλέβουν bandwidth από LCP).
  * 3) Μεταφέρει το inline critical <style> στην αρχή του <head> για πιο γρήγορο πρώτο paint.
  *
- * Παλιό async (media=print onload) αφαιρέθηκε σκόπιμα — μη το επαναφέρεις χωρίς
+ * Παλιό async (media=print onload) αφαιρέθηκε σκόπιμα - μη το επαναφέρεις χωρίς
  * Lighthouse mobile CLS < 0.1 μετά.
  */
 import { readFileSync, writeFileSync } from "node:fs";
@@ -75,11 +75,11 @@ try {
   if (next !== raw) writeFileSync(homeHtml, next);
 
   if (/data-async-css="sheet"/i.test(next) || /media="print" onload="this\.media='all'"/i.test(next)) {
-    console.error("[async-css] FAIL — async stylesheet still present on home (causes CLS)");
+    console.error("[async-css] FAIL - async stylesheet still present on home (causes CLS)");
     process.exit(1);
   }
   if (/data-async-css="sheet"[^>]*\/\//.test(next)) {
-    console.error("[async-css] FAIL — broken sheet link (//) still present");
+    console.error("[async-css] FAIL - broken sheet link (//) still present");
     process.exit(1);
   }
   console.log("[async-css] Home: blocking CSS + LCP image preloads only");

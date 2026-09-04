@@ -50,7 +50,7 @@ export const metadata: Metadata = {
   },
 };
 
-/** Inline στο <head> πριν το async Tailwind — crawl clip + hero spacer/overlay χωρίς FOUC/CLS. */
+/** Inline στο <head> πριν το async Tailwind - crawl clip + hero spacer/overlay χωρίς FOUC/CLS. */
 const CRITICAL_CSS =
   "html,body{margin:0;min-height:100%}body{font-family:system-ui,-apple-system,sans-serif;background:#f0edf8;color:#1c1d62}" +
   ROOT_CRITICAL_CSS +

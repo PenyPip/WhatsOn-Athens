@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 
-/** SEO κείμενο αρχικής — κάτω από τις ενότητες, πριν το footer (δεν σπάει το hero). */
+/** SEO κείμενο αρχικής - κάτω από τις ενότητες, πριν το footer (δεν σπάει το hero). */
 export default function HomeSeoIntro() {
   const home = staticPageSeo.home;
   return (
@@ -19,8 +19,8 @@ export default function HomeSeoIntro() {
           <strong className="font-medium text-white/90">the37n.gr</strong>) είναι ο οδηγός σου για{" "}
           <strong className="font-medium text-white/90">τι παίζεται</strong> στα σινεμά και{" "}
           <strong className="font-medium text-white/90">πότε παίζεται</strong> κάθε{" "}
-          <strong className="font-medium text-white/90">ταινία</strong> — ανά{" "}
-          <strong className="font-medium text-white/90">κινηματογράφο</strong>, πόλη και είδος —{" "}
+          <strong className="font-medium text-white/90">ταινία</strong> - ανά{" "}
+          <strong className="font-medium text-white/90">κινηματογράφο</strong>, πόλη και είδος -{" "}
           <Link
             to={moviesSectionPath("today")}
             className="text-amber-100/95 underline decoration-amber-100/35 underline-offset-2 hover:text-white hover:decoration-white/50"
@@ -58,7 +58,7 @@ export default function HomeSeoIntro() {
           .
         </p>
         <p className="mt-3 max-w-3xl font-body text-sm leading-relaxed text-white/55 md:text-[0.9375rem]">
-          Ενημερώνουμε ώρες προβολών, αφίσες και πρόγραμμα ανά ταινία — ώστε να βρίσκεις γρήγορα πού και πότε παίζεται
+          Ενημερώνουμε ώρες προβολών, αφίσες και πρόγραμμα ανά ταινία - ώστε να βρίσκεις γρήγορα πού και πότε παίζεται
           κάθε ταινία, συμπεριλαμβανομένων θερινών σινεμά και εβδομάδας κινηματογράφου.
         </p>
       </div>

@@ -36,7 +36,7 @@ const DiningDetail = () => {
         title: restaurant.name,
         description: truncateDescription(
           (restaurant.synopsis ?? "").trim() ||
-            `${restaurant.name} — ${[restaurant.category, restaurant.cuisine].filter(Boolean).join(" · ")}${place ? `, ${place}` : ""}.`,
+            `${restaurant.name} - ${[restaurant.category, restaurant.cuisine].filter(Boolean).join(" · ")}${place ? `, ${place}` : ""}.`,
         ),
         path: `/dining/${restaurant.slug}`,
         image: restaurant.posterUrl,
@@ -146,7 +146,7 @@ const DiningDetail = () => {
                   <span className="font-bold text-foreground text-lg">{restaurant.editorialScore}/10</span>
                 </div>
                 <p className="text-foreground leading-relaxed italic text-lg">«{restaurant.editorialReview}»</p>
-                <p className="text-sm text-muted-foreground mt-4">— {restaurant.editorialAuthor}</p>
+                <p className="text-sm text-muted-foreground mt-4">- {restaurant.editorialAuthor}</p>
               </section>
             )}
 
@@ -170,7 +170,7 @@ const DiningDetail = () => {
                 </div>
                 <div>
                   <span className="text-muted-foreground text-xs uppercase tracking-wider">Περιοχή</span>
-                  <p className="mt-1 font-medium">{restaurantAreaLine(restaurant) || "—"}</p>
+                  <p className="mt-1 font-medium">{restaurantAreaLine(restaurant) || "-"}</p>
                 </div>
                 <div className="border-t border-border pt-4 space-y-3">
                   {restaurant.address || mapsHref ? (

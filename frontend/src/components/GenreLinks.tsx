@@ -29,7 +29,7 @@ export default function GenreLinks({ items, prefix, variant = "default", classNa
           key={item.slug}
           to={moviesGenreHref(item.slug)}
           className={chipClass}
-          title={`Όλες οι ταινίες — ${item.label}`}
+          title={`Όλες οι ταινίες - ${item.label}`}
         >
           {item.label}
         </Link>
@@ -54,7 +54,7 @@ export default function GenreLinks({ items, prefix, variant = "default", classNa
         {items.map((item, i) => (
           <span key={item.slug} className="inline-flex items-center gap-1">
             {i > 0 ? <span className="text-muted-foreground">·</span> : null}
-            <Link to={moviesGenreHref(item.slug)} className={chipClass} title={`Όλες οι ταινίες — ${item.label}`}>
+            <Link to={moviesGenreHref(item.slug)} className={chipClass} title={`Όλες οι ταινίες - ${item.label}`}>
               {item.label}
             </Link>
           </span>

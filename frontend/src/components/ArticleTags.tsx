@@ -1,13 +1,13 @@
 type ArticleTagsProps = {
   tags: string[];
   className?: string;
-  /** Στη λίστα άρθρων — μόνο pills, χωρίς τίτλο «Ετικέτες». */
+  /** Στη λίστα άρθρων - μόνο pills, χωρίς τίτλο «Ετικέτες». */
   showLabel?: boolean;
-  /** Σελίδα άρθρου — minimal pills, χωρίς rounded «κουμπιά». */
+  /** Σελίδα άρθρου - minimal pills, χωρίς rounded «κουμπιά». */
   variant?: "default" | "editorial";
 };
 
-/** Ετικέτες άρθρου — εμφανίζονται κάτω από το κείμενο. */
+/** Ετικέτες άρθρου - εμφανίζονται κάτω από το κείμενο. */
 export default function ArticleTags({
   tags,
   className,

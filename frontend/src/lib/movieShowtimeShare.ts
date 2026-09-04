@@ -1,4 +1,4 @@
-/** Deep link σελίδας ταινίας — highlight προβολής (#showtimes + query). */
+/** Deep link σελίδας ταινίας - highlight προβολής (#showtimes + query). */
 export function buildMovieShowtimeShareUrl(
   movieSlug: string,
   opts?: { showtimeId?: string | number; venueSlug?: string; datetime?: string },

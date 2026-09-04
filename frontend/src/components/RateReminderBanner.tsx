@@ -28,7 +28,7 @@ export default function RateReminderBanner({ title, onRateClick, className = "" 
           <Star className="h-5 w-5 fill-amber-400 text-amber-500" aria-hidden />
         </span>
         <div>
-          <p className="font-medium text-[#13143E]">Το είδες — βαθμολόγησέ το</p>
+          <p className="font-medium text-[#13143E]">Το είδες - βαθμολόγησέ το</p>
           <p className="mt-0.5 text-sm text-[#13143E]/75">
             Η γνώμη σου για «{title}» βοηθά και άλλους θεατές.
           </p>

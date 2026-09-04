@@ -1,13 +1,13 @@
-/** Κοινά SEO / Open Graph — root layout + hooks ανά σελίδα. */
+/** Κοινά SEO / Open Graph - root layout + hooks ανά σελίδα. */
 
 /** Google Analytics 4 (φόρτωση μόνο με «Αποδοχή όλων» cookies). */
 export const GA_MEASUREMENT_ID = "G-MHNBRQMW3M";
 
 export const siteSeo = {
   siteName: "37Ν",
-  titleDefault: "37Ν · the37n.gr — Τι παίζεται στα σινεμά & πότε",
+  titleDefault: "37Ν · the37n.gr - Τι παίζεται στα σινεμά & πότε",
   description:
-    "37Ν (the37n.gr): τι παίζεται τώρα, πότε παίζεται κάθε ταινία, ώρες προβολών ανά κινηματογράφο — Αθήνα, Θεσσαλονίκη και όλη η Ελλάδα.",
+    "37Ν (the37n.gr): τι παίζεται τώρα, πότε παίζεται κάθε ταινία, ώρες προβολών ανά κινηματογράφο - Αθήνα, Θεσσαλονίκη και όλη η Ελλάδα.",
   keywords: [
     "37Ν",
     "37n",
@@ -31,7 +31,7 @@ export const siteSeo = {
   ],
   /** Από το `public/` · αντικατάσταση με `og.png` (1200×630) αν προτιμάς PNG. */
   ogImagePath: "/og.svg",
-  ogImageAlt: "37Ν — Οδηγός ταινιών και θεάτρου",
+  ogImageAlt: "37Ν - Οδηγός ταινιών και θεάτρου",
 } as const;
 
 const DEFAULT_PRODUCTION_ORIGIN = "https://the37n.gr";

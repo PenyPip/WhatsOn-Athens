@@ -20,7 +20,7 @@ type Props = {
   sections: HomeSectionId[];
 };
 
-/** Κρατά χώρο κάτω από hero — χωρίς βαριά components πριν το idle chunk. */
+/** Κρατά χώρο κάτω από hero - χωρίς βαριά components πριν το idle chunk. */
 export default function HomeSectionsPlaceholder({ sections }: Props) {
   return (
     <>

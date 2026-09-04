@@ -33,7 +33,7 @@ export function showtimesForVenue(
   return showtimes.filter((st) => showtimeMatchesVenue(venue, st, venues));
 }
 
-/** Exact προβολές με συγκεκριμένη ημερομηνία/ώρα — όχι week_block. */
+/** Exact προβολές με συγκεκριμένη ημερομηνία/ώρα - όχι week_block. */
 export function showtimesForVenueProgramLabel(
   venue: StrapiVenue,
   showtimes: StrapiShowtime[],
@@ -80,7 +80,7 @@ function formatRangeDate(d: Date, withYear: boolean): string {
   });
 }
 
-/** Κείμενο για κάρτα χώρου — «Προβολές: 28 Μαΐ – 4 Ιουν» (πρώτη–τελευταία μέρα exact προβολής). */
+/** Κείμενο για κάρτα χώρου - «Προβολές: 28 Μαΐ – 4 Ιουν» (πρώτη–τελευταία μέρα exact προβολής). */
 export function formatVenueShowtimeRangeLabel(range: VenueShowtimeRange | null | undefined): string | null {
   if (!range) return null;
   const sameDay =

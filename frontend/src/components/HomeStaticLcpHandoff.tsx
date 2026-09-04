@@ -23,12 +23,12 @@ export default function HomeStaticLcpHandoff() {
     const finish = () => {
       if (cancelled) return;
       if (document.documentElement.classList.contains("spa-lcp-done")) return;
-      /** Μόνο overlay — το slot μένει μέχρι live hero + poster. */
+      /** Μόνο overlay - το slot μένει μέχρι live hero + poster. */
       markOverlayDone();
     };
 
     /**
-     * Περίμενε το static LCP img (ή σύντομο idle) πριν unlock —
+     * Περίμενε το static LCP img (ή σύντομο idle) πριν unlock -
      * άμεσο rAF έκλεβε bandwidth/CPU από το LCP element.
      */
     const scheduleUnlock = () => {

@@ -1,4 +1,4 @@
-/** Κοινές διαστάσεις hero (server critical CSS + React) — αποφυγή CLS. */
+/** Κοινές διαστάσεις hero (server critical CSS + React) - αποφυγή CLS. */
 export const HOME_HERO_CRITICAL_CSS =
   "body{position:relative}" +
   "#home-hero-slot{position:absolute;top:0;left:0;right:0;z-index:1;width:100%;min-height:380px;background:#13143e;overflow:hidden;contain:layout style paint}" +
@@ -38,27 +38,27 @@ export const HOME_HERO_CRITICAL_CSS =
   "html.spa-lcp-done.spa-lcp-layout-done [data-home-hero-live]{opacity:1;pointer-events:auto}" +
   "@media(min-width:768px){html.spa-lcp-done #home-static-lcp{opacity:0;visibility:hidden}html.spa-lcp-done #home-hero-slot{display:none}}" +
   ".home-main-overlap{padding-top:3.5rem}" +
-  /** Desktop navbar = h-28 (7rem) — το overlap path πρέπει να κρατά ίσο offset. */
+  /** Desktop navbar = h-28 (7rem) - το overlap path πρέπει να κρατά ίσο offset. */
   "@media(min-width:768px){.home-main-overlap{padding-top:7rem}}" +
   "html.spa-not-home #home-hero-slot,html.spa-not-home #home-hero-ssr-spacer{display:none!important;height:0!important;min-height:0!important;max-height:0!important;overflow:hidden!important}" +
   ".home-below-fold{content-visibility:visible;position:relative;z-index:3}";
 
-/** Inline lock — πριν το React hydrate (παλιό cached CSS / χωρίς spacer στο πρώτο paint). */
+/** Inline lock - πριν το React hydrate (παλιό cached CSS / χωρίς spacer στο πρώτο paint). */
 export const HOME_HERO_SPACER_LOCK_SCRIPT =
   "(function(){function l(){var s=document.getElementById('home-hero-ssr-spacer');if(!s)return;var d=window.matchMedia('(min-width:768px)').matches,h=d?'calc(580px - 7rem)':'calc(380px - 3.5rem)';s.style.setProperty('display','block','important');s.style.setProperty('height',h,'important');s.style.setProperty('min-height',h,'important');s.style.setProperty('max-height',h,'important')}l();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',l);var n=0,iv=setInterval(function(){l();if(++n>40)clearInterval(iv)},50)})();";
 
-/** Πριν το async index.css — αποφυγή FOUC/CLS στο sr-only H1 και crawl shell. */
+/** Πριν το async index.css - αποφυγή FOUC/CLS στο sr-only H1 και crawl shell. */
 export { ROOT_CRITICAL_CSS as HOME_PAGE_CRITICAL_CSS } from "@/lib/rootCriticalCss";
 
 /**
- * Compact hero — absolute overlay (ύψος από critical CSS / spacer).
+ * Compact hero - absolute overlay (ύψος από critical CSS / spacer).
  * Χωρίς negative margin στο desktop: το spacer κρατάει σταθερό χώρο.
  */
 export const HOME_HERO_COMPACT_SECTION_CLASS =
   "overflow-hidden bg-[#13143E] max-md:h-[380px] max-md:min-h-[380px] max-md:max-h-[380px] md:h-[580px] md:min-h-[580px] md:max-h-[580px] md:pt-28";
 
 /**
- * In-flow reserve κάτω από το fixed nav — ίδιο οπτικό κάτω άκρο με το absolute hero (380/580).
+ * In-flow reserve κάτω από το fixed nav - ίδιο οπτικό κάτω άκρο με το absolute hero (380/580).
  * `main.home-main-overlap` έχει ήδη pt 3.5rem/7rem.
  */
 export const HOME_HERO_SPACER_CLASS =

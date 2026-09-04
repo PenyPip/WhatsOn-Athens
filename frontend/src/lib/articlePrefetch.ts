@@ -5,7 +5,7 @@ import { tryReloadForStaleChunk } from "@/lib/lazyWithChunkReload";
 
 const ARTICLE_LIST_LIMITS = [6, 100] as const;
 
-/** Άρθρο από ήδη φορτωμένη λίστα (αρχική /articles) — άμεση εμφάνιση λεπτομέρειας χωρίς flash. */
+/** Άρθρο από ήδη φορτωμένη λίστα (αρχική /articles) - άμεση εμφάνιση λεπτομέρειας χωρίς flash. */
 export function findArticleInListCache(queryClient: QueryClient, slug: string): StrapiArticle | undefined {
   const key = slug.trim();
   if (!key) return undefined;
@@ -28,7 +28,7 @@ export function prefetchArticleBySlug(queryClient: QueryClient, slug: string) {
   });
 }
 
-/** JS chunk λεπτομέρειας — πριν το κλικ, λιγότερο Suspense placeholder. */
+/** JS chunk λεπτομέρειας - πριν το κλικ, λιγότερο Suspense placeholder. */
 export function prefetchArticleDetailChunk() {
   return import(/* webpackChunkName: "article-detail" */ "@/views/ArticleDetail").catch((error) => {
     tryReloadForStaleChunk(error);

@@ -12,7 +12,7 @@ const RestaurantCard = ({
 }: {
   restaurant: StrapiRestaurant;
   index?: number;
-  /** Αρχική horizontal scroll — native lazy συχνά δεν φορτώνει. */
+  /** Αρχική horizontal scroll - native lazy συχνά δεν φορτώνει. */
   eager?: boolean;
 }) => {
   const isNew = restaurant.isNew;

@@ -2,7 +2,7 @@
  * Το layout της αρχικής έρχεται από Strapi Single Type «Homepage».
  * Έτοιμα τμήματα: hero, movies_today, summer_cinema, summer_venues, tours (παραστάσεις με on_tour),
  * events (πολιτιστικά events), new_movies (τελευταίες 10 ημέρες release date), movies_week (ερχόμενη εβδομάδα κινηματογράφου Πέμ–Τετ),
- * coming_soon (κυκλοφορίες μετά από αυτή την εβδομάδα) — διάλεξε ποια εμφανίζονται και με ποια σειρά.
+ * coming_soon (κυκλοφορίες μετά από αυτή την εβδομάδα) - διάλεξε ποια εμφανίζονται και με ποια σειρά.
  */
 
 export const HOME_SECTION_IDS = [
@@ -49,7 +49,7 @@ export const FALLBACK_SECTIONS: HomeSectionId[] = [
   "newsletter",
 ];
 
-/** Βάζει τα 1–2 ισχυρά movie blocks αμέσως μετά hero/strip — λιγότερος θόρυβος στο fold. */
+/** Βάζει τα 1–2 ισχυρά movie blocks αμέσως μετά hero/strip - λιγότερος θόρυβος στο fold. */
 export function orderHomeSectionsForFirstLook(sections: HomeSectionId[]): HomeSectionId[] {
   const present = new Set(sections);
   const out: HomeSectionId[] = [];
@@ -132,14 +132,14 @@ export function homeNeedsArticles(sections: readonly HomeSectionId[]): boolean {
   return sections.includes("new_articles");
 }
 
-/** Προβολές για ταινίες σήμερα / θερινά / εβδομάδα / χώρους θερινών (όχι hero — μόνο `most_talked_about`). */
+/** Προβολές για ταινίες σήμερα / θερινά / εβδομάδα / χώρους θερινών (όχι hero - μόνο `most_talked_about`). */
 export function homeNeedsShowtimes(sections: readonly HomeSectionId[]): boolean {
   return sections.some((id) =>
     ["movies_today", "summer_cinema", "summer_venues", "movies_week"].includes(id),
   );
 }
 
-/** Πλήρες catalog ταινιών (release date κ.λπ.) — όχι για απλές σειρές από showtimes. */
+/** Πλήρες catalog ταινιών (release date κ.λπ.) - όχι για απλές σειρές από showtimes. */
 export function homeNeedsFullMovieCatalog(sections: readonly HomeSectionId[]): boolean {
   return sections.some((id) => ["new_movies", "movies_week", "coming_soon"].includes(id));
 }

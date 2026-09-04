@@ -314,7 +314,7 @@ function sortTimeSlotKeys(keys: string[]): string[] {
   return keys.includes("tba") ? [...regular, "tba"] : regular;
 }
 
-/** Επικεφαλίδα ημέρας — στοίχιση αριστερά μέσα στη στήλη του οριζόντιου ημερολογίου. */
+/** Επικεφαλίδα ημέρας - στοίχιση αριστερά μέσα στη στήλη του οριζόντιου ημερολογίου. */
 function VenueDayHeader({ day, isToday }: { day: ProgramDayGroup; isToday: boolean }) {
   return (
     <header

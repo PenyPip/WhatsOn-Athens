@@ -36,7 +36,7 @@ function compareShowtimesByFavoriteVenueThenTime(
   return new Date(a.datetime).getTime() - new Date(b.datetime).getTime();
 }
 
-/** Επόμενη προβολή ταινίας — προτεραιότητα σε αγαπημένα σινεμά. */
+/** Επόμενη προβολή ταινίας - προτεραιότητα σε αγαπημένα σινεμά. */
 export function nextShowtimeForMovie(
   movieId: number,
   showtimes: StrapiShowtime[],
@@ -75,7 +75,7 @@ export function buildNextShowtimeByMovieId(
   return best;
 }
 
-/** Labels «Σήμερα 20:30 · …» ανά movieId — μία φορά για όλες τις κάρτες της αρχικής. */
+/** Labels «Σήμερα 20:30 · …» ανά movieId - μία φορά για όλες τις κάρτες της αρχικής. */
 export function buildNextShowtimeLabelByMovieId(
   showtimes: StrapiShowtime[],
   options?: { favoriteVenueIds?: ReadonlySet<number>; now?: Date; omitVenue?: boolean },
@@ -98,7 +98,7 @@ export type PersonalizedVenueProgram = {
 
 /**
  * Σύνοψη «τι παίζει»: ανά αγαπημένο σινεμά, οι αγαπημένες ταινίες που έχουν μελλοντική
- * προβολή — χωρίς ώρες/ημερομηνίες. Το σινεμά με τις περισσότερες ταινίες πρώτο.
+ * προβολή - χωρίς ώρες/ημερομηνίες. Το σινεμά με τις περισσότερες ταινίες πρώτο.
  */
 export function personalizedProgramByVenue(
   showtimes: StrapiShowtime[],
@@ -149,7 +149,7 @@ export function personalizedProgramByVenue(
     .sort((a, b) => b.movies.length - a.movies.length || a.venueName.localeCompare(b.venueName, "el"));
 }
 
-/** Ταινίες × αγαπημένα σινεμά — χρονολογικά. */
+/** Ταινίες × αγαπημένα σινεμά - χρονολογικά. */
 export function personalizedProgramShowtimes(
   showtimes: StrapiShowtime[],
   favoriteMovieIds: ReadonlySet<number>,

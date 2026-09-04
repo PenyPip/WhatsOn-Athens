@@ -263,7 +263,7 @@ function MovieListShowtimeRow({
 type ShowingSlot = {
   datetime: Date;
   hallName?: string;
-  /** CMS `summer_screening` — θερινή προβολή. */
+  /** CMS `summer_screening` - θερινή προβολή. */
   summerScreening?: boolean;
   /** Ολόκληρη εβδομάδα χωρίς ώρες. */
   timesTba?: boolean;
@@ -312,7 +312,7 @@ type VenueShowingsBlock = {
   slots: ShowingSlot[];
 };
 
-/** Μία γραμμή λίστας ανά προβολή — όχι πολλές ώρες στην ίδια γραμμή. */
+/** Μία γραμμή λίστας ανά προβολή - όχι πολλές ώρες στην ίδια γραμμή. */
 type ShowingRow = {
   key: string;
   venueKey: string;
@@ -405,7 +405,7 @@ type DaySection = {
 
 const FILTER_ALL = "__all__";
 
-/** Φίλτρα λίστας ταινιών — συμπαγές πλάτος, ευανάγνωστα κείμενα. */
+/** Φίλτρα λίστας ταινιών - συμπαγές πλάτος, ευανάγνωστα κείμενα. */
 const MOVIES_FILTER_LABEL = "text-xs font-medium text-muted-foreground";
 const MOVIES_FILTER_DISTRICT_CELL = "w-full min-w-[13.5rem] max-w-[18rem] shrink-0 space-y-1.5";
 const MOVIES_FILTER_SELECT =
@@ -707,6 +707,9 @@ const Movies = () => {
 
       entries.sort((a, b) => compareMoviesByShowingVenueCount(a, b, favoriteIds));
 
+      const withShowtimes = entries.filter((e) => e.showings.length > 0);
+      if (withShowtimes.length === 0) return [];
+
       return [
         {
           label:
@@ -716,7 +719,7 @@ const Movies = () => {
                 ? "Ερχόμενη εβδομάδα"
                 : "Προσεχώς",
           date: todayStart,
-          entries,
+          entries: withShowtimes,
         },
       ];
     }

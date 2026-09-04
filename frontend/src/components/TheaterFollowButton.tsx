@@ -19,7 +19,7 @@ type TheaterFollowButtonProps = {
   size?: "sm" | "md";
   /** Εμφάνιση κειμένου δίπλα στην καρδιά (σελίδα λεπτομέρειας). */
   showLabel?: boolean;
-  /** Σκούρο hero — μόνο εικονίδιο, υψηλή αντίθεση. */
+  /** Σκούρο hero - μόνο εικονίδιο, υψηλή αντίθεση. */
   variant?: "default" | "hero";
 };
 
@@ -38,7 +38,7 @@ export default function TheaterFollowButton({
   const iconSize = size === "sm" ? "w-4 h-4" : "w-5 h-5";
   const label = active ? THEATER_LIKE_BUTTON_LABEL_ACTIVE : THEATER_LIKE_BUTTON_LABEL;
   const hint = !isAuthenticated
-    ? "Σύνδεση — κάνε like για νέες ημερομηνίες"
+    ? "Σύνδεση - κάνε like για νέες ημερομηνίες"
     : active
       ? THEATER_LIKE_BUTTON_HINT_ACTIVE
       : THEATER_LIKE_BUTTON_HINT;

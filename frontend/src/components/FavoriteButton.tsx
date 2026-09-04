@@ -11,7 +11,7 @@ type FavoriteButtonProps = {
   entityId: number;
   className?: string;
   size?: "sm" | "md";
-  /** Σκούρο hero — μόνο εικονίδιο, υψηλή αντίθεση (ίδιο με θέατρο). */
+  /** Σκούρο hero - μόνο εικονίδιο, υψηλή αντίθεση (ίδιο με θέατρο). */
   variant?: "default" | "hero";
 };
 
@@ -33,9 +33,9 @@ export default function FavoriteButton({
   const iconSize = size === "sm" ? "w-4 h-4" : "w-5 h-5";
   const heroMode = variant === "hero";
   const hintIdle =
-    kind === "movie" ? "Like — πρόσθεσε στα αγαπημένα σου" : "Προσθήκη στα αγαπημένα";
+    kind === "movie" ? "Like - πρόσθεσε στα αγαπημένα σου" : "Προσθήκη στα αγαπημένα";
   const hintActive =
-    kind === "movie" ? "Στα αγαπημένα — πάτα για αφαίρεση" : "Αφαίρεση από αγαπημένα";
+    kind === "movie" ? "Στα αγαπημένα - πάτα για αφαίρεση" : "Αφαίρεση από αγαπημένα";
   const hint = !isAuthenticated ? "Σύνδεση για αγαπημένα" : active ? hintActive : hintIdle;
 
   const wrap = (node: ReactElement) => (

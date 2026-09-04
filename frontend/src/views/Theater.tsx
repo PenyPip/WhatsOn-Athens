@@ -33,7 +33,7 @@ const TheaterPage = () => {
   const { data: theaterShows, isLoading: showsLoading } = useTheaterShows();
   const { data: theaterPerformances, isLoading: performancesLoading } = useTheaterPerformances();
   const { data: venues } = useVenuesForProgram();
-  /** Spinner μόνο χωρίς cache — όχι σε background refetch (αποφεύγει flicker). */
+  /** Spinner μόνο χωρίς cache - όχι σε background refetch (αποφεύγει flicker). */
   const isLoading =
     (theaterShows === undefined && showsLoading) ||
     (theaterPerformances === undefined && performancesLoading);
@@ -112,7 +112,7 @@ const TheaterPage = () => {
       <PageListHeader>
         <h1 className={PAGE_LIST_TITLE_CLASS}>Θέατρο</h1>
         <p className={PAGE_LIST_SUBTITLE_CLASS}>
-          Παραστάσεις, πρόγραμμα και ημερομηνίες — κάνε like σε ό,τι θες να δεις.
+          Παραστάσεις, πρόγραμμα και ημερομηνίες - κάνε like σε ό,τι θες να δεις.
         </p>
       </PageListHeader>
 

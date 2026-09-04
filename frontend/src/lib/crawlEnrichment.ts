@@ -20,7 +20,7 @@ export type CrawlMovie = {
   path: string;
   slug: string;
   title: string;
-  /** Μοναδικό business key — ταυτίζεται με original_title στο CMS. */
+  /** Μοναδικό business key - ταυτίζεται με original_title στο CMS. */
   originalTitle: string;
   genreSlugs: string[];
   genreLine?: string;
@@ -112,7 +112,7 @@ export function crawlPosterForPath(path: string): string | undefined {
 export type PageSeoCopy = {
   title: string;
   description: string;
-  /** Open Graph / Twitter title — χωρίς «· 37Ν» όταν οριστεί. */
+  /** Open Graph / Twitter title - χωρίς «· 37Ν» όταν οριστεί. */
   ogTitle?: string;
   ogDescription?: string;
 };
@@ -215,13 +215,13 @@ export function crawlSeoCopyForPath(path: string): PageSeoCopy | null {
     const s = hit.entity;
     const desc = s.synopsis?.trim()
       ? truncateDescription(`${s.title}. ${s.synopsis.trim()}`)
-      : truncateDescription(`Παράσταση ${s.title} — χώρος, είδος και πληροφορίες θεάτρου.`);
+      : truncateDescription(`Παράσταση ${s.title} - χώρος, είδος και πληροφορίες θεάτρου.`);
     return { title: s.title, description: desc };
   }
   if (hit.kind === "restaurant") {
     return {
       title: hit.entity.title,
-      description: truncateDescription(`${hit.entity.title} — εστιατόριο και τοποθεσία.`),
+      description: truncateDescription(`${hit.entity.title} - εστιατόριο και τοποθεσία.`),
     };
   }
   if (hit.kind === "culturalEvent") {
@@ -229,7 +229,7 @@ export function crawlSeoCopyForPath(path: string): PageSeoCopy | null {
     const desc =
       e.metaDescription?.trim() ||
       e.synopsis?.trim() ||
-      `Εκδήλωση ${e.title} — πληροφορίες, χώρος και εισιτήρια.`;
+      `Εκδήλωση ${e.title} - πληροφορίες, χώρος και εισιτήρια.`;
     return { title: e.title, description: truncateDescription(desc) };
   }
   return {

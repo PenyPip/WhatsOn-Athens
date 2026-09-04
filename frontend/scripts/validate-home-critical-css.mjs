@@ -35,7 +35,7 @@ const CORRUPT = [
 try {
   const html = readFileSync(HOME, "utf8");
   if (!html.includes('id="home-static-lcp"')) {
-    console.log("[validate-home-critical-css] Skip — no static LCP on home");
+    console.log("[validate-home-critical-css] Skip - no static LCP on home");
     process.exit(0);
   }
 
@@ -43,7 +43,7 @@ try {
   const corrupt = CORRUPT.filter((m) => html.includes(m));
 
   if (missing.length || corrupt.length) {
-    console.error("[validate-home-critical-css] FAIL — broken home hero critical CSS");
+    console.error("[validate-home-critical-css] FAIL - broken home hero critical CSS");
     if (missing.length) console.error("  missing:", missing.join(", "));
     if (corrupt.length) console.error("  corrupt:", corrupt.join(", "));
     process.exit(1);

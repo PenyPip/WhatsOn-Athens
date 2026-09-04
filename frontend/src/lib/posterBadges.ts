@@ -1,9 +1,9 @@
-/** Κοινά στυλ ετικετών πάνω σε αφίσες / κάρτες — πάνω αριστερά + πάνω δεξιά (όπως MoviePosterMeta). */
+/** Κοινά στυλ ετικετών πάνω σε αφίσες / κάρτες - πάνω αριστερά + πάνω δεξιά (όπως MoviePosterMeta). */
 
 export const POSTER_BADGE_TOP_LEFT =
   "rounded bg-[#13143E] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-white shadow-sm";
 
-/** «Νέες παραστάσεις» — κίτρινο/amber, ήπιο highlight. */
+/** «Νέες παραστάσεις» - κίτρινο/amber, ήπιο highlight. */
 export const POSTER_BADGE_TOP_LEFT_NEW =
   "rounded-md bg-amber-400/90 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-[#13143E] shadow-sm ring-1 ring-amber-600/25";
 

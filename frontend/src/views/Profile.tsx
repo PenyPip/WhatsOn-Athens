@@ -268,7 +268,7 @@ const Profile = () => {
               <h2 className="font-display text-lg font-semibold">Βαθμολόγησέ τα</h2>
             </div>
             <p className="text-sm text-muted-foreground mb-4">
-              Τα είδες αλλά δεν έχεις γράψει ακόμα κριτική — η γνώμη σου μετράει.
+              Τα είδες αλλά δεν έχεις γράψει ακόμα κριτική - η γνώμη σου μετράει.
             </p>
             <ul className="space-y-2">
               {seenWithoutReview.map((item) => (

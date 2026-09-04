@@ -8,7 +8,7 @@ interface HorizontalScrollProps {
   eyebrow?: string;
   /** Μεγάλη κεφαλίδα και ζωντανή ατμόσφαιρα για ενότητα-σημαία (π.χ. θερινά). */
   spotlight?: boolean;
-  /** Μικρότερη έμφαση — ενότητα περιεχομένου χωρίς να τραβάει την προσοχή. */
+  /** Μικρότερη έμφαση - ενότητα περιεχομένου χωρίς να τραβάει την προσοχή. */
   muted?: boolean;
   children: ReactNode;
 }
@@ -104,7 +104,7 @@ const HorizontalScroll = ({ title, subtitle, eyebrow, spotlight, muted, children
             </p>
           )}
         </div>
-        {/* Σταθερό πλάτος — opacity αντί invisible (ίδιο box, λιγότερο CLS). */}
+        {/* Σταθερό πλάτος - opacity αντί invisible (ίδιο box, λιγότερο CLS). */}
         <div
           className={cn(
             SCROLL_BTN_SLOT_CLASS,

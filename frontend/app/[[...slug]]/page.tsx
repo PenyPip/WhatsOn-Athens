@@ -24,14 +24,14 @@ type PageProps = {
   params: Promise<SpaPathParams>;
 };
 
-/** Αρχική `/` — απαιτείται ρητά με `output: export` και optional catch-all. */
+/** Αρχική `/` - απαιτείται ρητά με `output: export` και optional catch-all. */
 const HOME_STATIC_PARAMS: SpaPathParams = { slug: [] };
 
 /** Paths εκτός sitemap που χρειάζονται static HTML (noindex). */
 const EXTRA_STATIC_PARAMS: SpaPathParams[] = [{ slug: ["profile"] }];
 
 /**
- * Catch-all για React Router: κάθε path — SSR HTML στο build (prefetch Strapi) + JSON-LD / metadata.
+ * Catch-all για React Router: κάθε path - SSR HTML στο build (prefetch Strapi) + JSON-LD / metadata.
  */
 export function generateStaticParams(): SpaPathParams[] {
   const fromSitemap = spaPaths as SpaPathParams[];
@@ -80,7 +80,7 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
     path === "/" && layoutShowsHero(layout) ? lcp?.posterHref ?? null : null;
   const detailPreload = !homePreload ? detailPosterPreloadHref(path, dehydratedState) : null;
   const preloadPoster = homePreload ?? detailPreload;
-  /** Server HTML για LCP (αφίσα + τίτλος) — κρύβεται με `spa-lcp-done` μετά hydrate. */
+  /** Server HTML για LCP (αφίσα + τίτλος) - κρύβεται με `spa-lcp-done` μετά hydrate. */
   const showStaticLcp = path === "/" && layoutShowsHero(layout) && Boolean(lcp?.posterHref);
 
   return (

@@ -55,7 +55,7 @@ export function theaterShowMatchesRegionFilter(
   return performances.some((p) => performanceVenueCity(p, venues) === filter);
 }
 
-/** Συνδυασμένο φίλτρο λίστας — περιοχή + ημερομηνίες στην ίδια προβολή. */
+/** Συνδυασμένο φίλτρο λίστας - περιοχή + ημερομηνίες στην ίδια προβολή. */
 export function theaterShowMatchesListFilters(
   show: StrapiTheaterShow,
   performances: StrapiTheaterPerformance[],

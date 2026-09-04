@@ -12,7 +12,7 @@ type ScheduleCompactRowProps = {
   newlyAdded?: boolean;
 };
 
-/** Γραμμή ημερομηνίας/ώρας — κοινή για προβολές ταινίας και θεατρικές παραστάσεις. */
+/** Γραμμή ημερομηνίας/ώρας - κοινή για προβολές ταινίας και θεατρικές παραστάσεις. */
 export default function ScheduleCompactRow({
   slot,
   hallName,

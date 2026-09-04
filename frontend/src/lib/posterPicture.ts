@@ -22,7 +22,7 @@ export function splitPosterSources(
 
   return {
     fallbackSrc: src,
-    /** Ποτέ webp μέσα στο fallback srcset — σπάει <img> σε Safari/Chrome. */
+    /** Ποτέ webp μέσα στο fallback srcset - σπάει <img> σε Safari/Chrome. */
     fallbackSrcSet: fallbackParts.length > 0 ? fallbackParts.join(", ") : undefined,
     webpSrc: webpParts.length === 1 ? webpParts[0].split(/\s+/)[0] : undefined,
     webpSrcSet: webpParts.length > 0 ? webpParts.join(", ") : undefined,

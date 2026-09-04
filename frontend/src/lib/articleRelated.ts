@@ -11,7 +11,7 @@ export type ArticleRelated = {
   sectionLabel: string;
 };
 
-/** Σύντομο link ταινίας/παράστασης (όχι Event — αυτό έχει ξεχωριστό panel). */
+/** Σύντομο link ταινίας/παράστασης (όχι Event - αυτό έχει ξεχωριστό panel). */
 export function resolveArticleRelated(article: StrapiArticle): ArticleRelated | undefined {
   const theater = article.relatedTheaterShow;
   if (theater?.title?.trim() && theater.slug?.trim()) {
@@ -38,7 +38,7 @@ export function resolveArticleRelated(article: StrapiArticle): ArticleRelated | 
   return undefined;
 }
 
-/** Για λίστα άρθρων — τίτλος σχετικής εκδήλωσης αν υπάρχει. */
+/** Για λίστα άρθρων - τίτλος σχετικής εκδήλωσης αν υπάρχει. */
 export function resolveArticleRelatedListLabel(article: StrapiArticle): string | undefined {
   const theater = article.relatedTheaterShow?.title?.trim();
   if (theater) return theater;

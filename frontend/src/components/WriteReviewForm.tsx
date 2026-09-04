@@ -104,7 +104,7 @@ export default function WriteReviewForm({
           onChange={(e) => setBody(e.target.value)}
           rows={5}
           className="w-full resize-y rounded-lg border border-border bg-white px-3 py-2.5 text-sm leading-relaxed text-foreground shadow-sm placeholder:text-muted-foreground/60 focus:border-[#13143E]/35 focus:outline-none focus:ring-2 focus:ring-[#13143E]/15"
-          placeholder="Προαιρετικά — γράψε τη γνώμη σου με λόγια..."
+          placeholder="Προαιρετικά - γράψε τη γνώμη σου με λόγια..."
         />
       </div>
 

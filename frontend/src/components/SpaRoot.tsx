@@ -13,12 +13,12 @@ type SpaRootProps = {
   bootstrapState?: DehydratedState;
   /** Αρχική: main επικαλύπτει το #home-hero-slot (ίδιο ύψος, χωρίς CLS). */
   homeMainOverlap?: boolean;
-  /** Server HTML έχει HomeStaticLcp — το live hero δεν σχεδιάζει loading shell στο SSR. */
+  /** Server HTML έχει HomeStaticLcp - το live hero δεν σχεδιάζει loading shell στο SSR. */
   homeStaticLcp?: boolean;
   suppressHydrationWarning?: boolean;
 };
 
-/** Client boundary — bootstrap από `#__RQ_STATE__` (το flight row συγχρονίζεται στο build). */
+/** Client boundary - bootstrap από `#__RQ_STATE__` (το flight row συγχρονίζεται στο build). */
 export default function SpaRoot({
   ssrPath,
   bootstrapState,

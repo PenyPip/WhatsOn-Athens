@@ -68,7 +68,7 @@ function screeningEvent(
 
   const event: JsonLdObject = {
     "@type": "ScreeningEvent",
-    name: `${tl.primary} — ${venueName}`,
+    name: `${tl.primary} - ${venueName}`,
     startDate,
     eventStatus: "https://schema.org/EventScheduled",
     eventAttendanceMode: "https://schema.org/OfflineEventAttendanceMode",
@@ -141,7 +141,7 @@ export function buildMovieDetailJsonLd(input: MovieDetailJsonLdInput): JsonLdObj
   }
 
   // AggregateRating μόνο με ratingCount/reviewCount (απαίτηση Google Review snippets).
-  // Δεν εκπέμπουμε IMDb βαθμό χωρίς πλήθος κριτικών — το badge παραμένει στο UI.
+  // Δεν εκπέμπουμε IMDb βαθμό χωρίς πλήθος κριτικών - το badge παραμένει στο UI.
 
   const breadcrumbs: JsonLdObject = {
     "@type": "BreadcrumbList",

@@ -5,7 +5,7 @@ function subscribe() {
 }
 
 /**
- * false κατά SSR / πρώτο client pass — true μετά hydrate.
+ * false κατά SSR / πρώτο client pass - true μετά hydrate.
  * Αποφεύγει mismatch όταν το bootstrap (#__RQ_STATE__) δεν υπάρχει στο server render.
  */
 export function useIsHydrated(): boolean {

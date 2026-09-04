@@ -21,7 +21,7 @@ export type HomeLcpDisplay = {
   posterHref: string;
   title: string;
   synopsis: string;
-  /** CMS ενότητα hero — το SPA σχεδιάζει το πλήρες hero. */
+  /** CMS ενότητα hero - το SPA σχεδιάζει το πλήρες hero. */
   hasHeroSection: boolean;
 };
 

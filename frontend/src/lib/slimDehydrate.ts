@@ -169,12 +169,12 @@ function slimMoviesShowtimes(qc: QueryClient): void {
   }
 }
 
-/** Μικρότερο dehydrated state — αρχική + λίστα ταινιών (λιγότερο HTML). */
+/** Μικρότερο dehydrated state - αρχική + λίστα ταινιών (λιγότερο HTML). */
 export function slimListQueryCache(qc: QueryClient): void {
   slimMoviesShowtimes(qc);
 }
 
-/** Μικρότερο `#__RQ_STATE__` — λιγότερο JSON.parse στην αρχική (TBT). */
+/** Μικρότερο `#__RQ_STATE__` - λιγότερο JSON.parse στην αρχική (TBT). */
 export function minifyDehydratedState(state: DehydratedState): DehydratedState {
   return {
     mutations: state.mutations,
@@ -217,7 +217,7 @@ function slimHomepageBootstrap(qc: QueryClient): void {
 
 /**
  * Bootstrap αρχικής: κράτα σύνοψη/σκηνοθεσία για ΟΛΕΣ τις πολυσυζητημένες.
- * Το hero είναι carousel — χρειάζεται σύνοψη σε κάθε πολυσυζητημένη ταινία, όχι μόνο στην πρώτη (LCP).
+ * Το hero είναι carousel - χρειάζεται σύνοψη σε κάθε πολυσυζητημένη ταινία, όχι μόνο στην πρώτη (LCP).
  */
 export function trimMovieSynopsesForHomeBootstrap(qc: QueryClient): void {
   const movies = qc.getQueryData<StrapiMovie[]>(["movies"]);
@@ -232,9 +232,9 @@ export function trimMovieSynopsesForHomeBootstrap(qc: QueryClient): void {
   );
 }
 
-/** Bootstrap: ΜΗΝ κόβεις showtimes με date horizon — staleTime 6h + refetchOnMount:false κρύβει προβολές. */
+/** Bootstrap: ΜΗΝ κόβεις showtimes με date horizon - staleTime 6h + refetchOnMount:false κρύβει προβολές. */
 export function trimHomeShowtimesDehydrate(_qc: QueryClient): void {
-  /* no-op — πλήρες slim calendar· PageSpeed μέσω slim rows + home χωρίς showtimes στο RQ HTML */
+  /* no-op - πλήρες slim calendar· PageSpeed μέσω slim rows + home χωρίς showtimes στο RQ HTML */
 }
 
 /** Μόνο προβολές μίας ταινίας στο bootstrap σελίδας λεπτομέρειας. */

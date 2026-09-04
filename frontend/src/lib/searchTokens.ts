@@ -37,7 +37,7 @@ function isBrandToken(t: string): boolean {
   return false;
 }
 
-/** Λέξεις-κλειδιά αναζήτησης — αγνοεί «37n», «the37n» κ.λπ. */
+/** Λέξεις-κλειδιά αναζήτησης - αγνοεί «37n», «the37n» κ.λπ. */
 export function searchTokens(query: string): string[] {
   return tokenize(query).filter((t) => t.length >= 2 && !isBrandToken(t));
 }

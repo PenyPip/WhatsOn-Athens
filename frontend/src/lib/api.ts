@@ -199,7 +199,7 @@ const FORMAT_FALLBACK: Record<"small" | "medium" | "large", string[]> = {
   large: ["large", "medium", "small", "thumbnail"],
 };
 
-/** Media field Strapi REST — προτίμηση μικρότερων formats για LCP/PSI (κινητό). */
+/** Media field Strapi REST - προτίμηση μικρότερων formats για LCP/PSI (κινητό). */
 function strapiMediaUrl(media: unknown, prefer: "small" | "medium" | "large" = "medium"): string | undefined {
   const attrs = strapiMediaAttributes(media);
   if (!attrs) return undefined;
@@ -389,7 +389,7 @@ export type MovieGenreCatalog = {
 
 let movieGenreCatalogPromise: Promise<MovieGenreCatalog> | null = null;
 
-/** Λίστα ειδών μόνο — χωρίς populate[movies] (έσκαγε το payload / TTFB). */
+/** Λίστα ειδών μόνο - χωρίς populate[movies] (έσκαγε το payload / TTFB). */
 async function fetchMovieGenreCatalog(): Promise<MovieGenreCatalog> {
   if (movieGenreCatalogPromise) return movieGenreCatalogPromise;
   movieGenreCatalogPromise = (async () => {
@@ -1098,7 +1098,7 @@ function mapShowtime(
 }
 
 /**
- * Γρήγορο map για home-calendar (χωρίς genres/poster/pricing) — λιγότερο TBT στο parse.
+ * Γρήγορο map για home-calendar (χωρίς genres/poster/pricing) - λιγότερο TBT στο parse.
  */
 function mapHomeCalendarShowtime(rawS: any): StrapiShowtime[] {
   const s = unwrapStrapiEntry(rawS);
@@ -1293,7 +1293,7 @@ function mapVenue(raw: unknown): StrapiVenue {
     name: v.name,
     address: v.address,
     city: v.city,
-    /** Υποπεριοχή (enumeration Strapi) — κυρίως για φίλτρο Αθήνας. */
+    /** Υποπεριοχή (enumeration Strapi) - κυρίως για φίλτρο Αθήνας. */
     district: typeof v.district === "string" && v.district ? v.district : undefined,
     googleMapsUrl: v.google_maps_url,
     moreLink: typeof v.more_link === "string" ? v.more_link.trim() : "",
@@ -1316,9 +1316,9 @@ export interface StrapiMovie {
   id: number;
   documentId: string;
   slug: string;
-  /** Ελληνικός τίτλος — κύρια γραμμή εμφάνισης (δεν είναι μοναδικό κλειδί). */
+  /** Ελληνικός τίτλος - κύρια γραμμή εμφάνισης (δεν είναι μοναδικό κλειδί). */
   title: string;
-  /** Πρωτότυπος / διεθνής τίτλος — μοναδικό business key (εκτός id). Το slug προκύπτει από αυτό. */
+  /** Πρωτότυπος / διεθνής τίτλος - μοναδικό business key (εκτός id). Το slug προκύπτει από αυτό. */
   originalTitle: string;
   director: string;
   cast: string[];
@@ -1326,7 +1326,7 @@ export interface StrapiMovie {
   genre: string;
   /** slug πρώτου είδους (συμβατότητα) */
   genreSlug?: string;
-  /** Όλα τα slug ειδών από το CMS — φίλτρα / διακριτά chips. */
+  /** Όλα τα slug ειδών από το CMS - φίλτρα / διακριτά chips. */
   genreSlugs: string[];
   duration: number;
   language: string;
@@ -1336,7 +1336,7 @@ export interface StrapiMovie {
   synopsis: string;
   criticScore: number;
   imdbRating?: number;
-  /** CMS `most_talked_about` — pool για hero αρχικής. */
+  /** CMS `most_talked_about` - pool για hero αρχικής. */
   mostTalkedAbout: boolean;
   /** Όταν μπήκε στις «Πολυσυζητημένες» (CMS). */
   mostTalkedAboutAt?: string;
@@ -1362,7 +1362,7 @@ export interface StrapiTheaterShow {
   isPremiere?: boolean;
   isLastShows?: boolean;
   soldOut?: boolean;
-  /** Περιοδεία — τμήμα tours στην αρχική. */
+  /** Περιοδεία - τμήμα tours στην αρχική. */
   onTour: boolean;
   /** URL περιοδείας / κρατήσεων / site παράστασης. */
   moreLink: string;
@@ -1420,10 +1420,10 @@ export interface StrapiVenue {
   name: string;
   address: string;
   city: string;
-  /** Π.χ. center, north — από enumeration venue (κυρίως Αθήνα). */
+  /** Π.χ. center, north - από enumeration venue (κυρίως Αθήνα). */
   district?: string;
   googleMapsUrl: string;
-  /** ιστότοπος / κρατήσεις — εμφανίζεται ως «Περισσότερα» */
+  /** ιστότοπος / κρατήσεις - εμφανίζεται ως «Περισσότερα» */
   moreLink: string;
   seatsTotal: number;
   type: VenueKind;
@@ -1474,7 +1474,7 @@ export interface StrapiArticle {
     title: string;
     slug: string;
   };
-  /** Πολιτιστική εκδήλωση (Event) — πλήρη στοιχεία για panel στο άρθρο. */
+  /** Πολιτιστική εκδήλωση (Event) - πλήρη στοιχεία για panel στο άρθρο. */
   relatedEvent?: StrapiEvent;
   tags: string[];
   publishedAt: string;
@@ -1491,7 +1491,7 @@ export interface StrapiShowtime {
   venue: string;
   /** όταν η σχέση venue υπάρχει αλλά δεν ήρθαν attributes στο REST */
   venueId?: number;
-  /** Slug χώρου από populate venue — για σύνδεσμο «Πρόγραμμα» χωρίς πλήρη λίστα venues */
+  /** Slug χώρου από populate venue - για σύνδεσμο «Πρόγραμμα» χωρίς πλήρη λίστα venues */
   venueSlug?: string;
   /** CMS `summer_screening`: εξωτερική προβολή → ετικέτα «Θερινό» & φίλτρα θερινών */
   summerScreening: boolean;
@@ -1503,15 +1503,15 @@ export interface StrapiShowtime {
   movieId?: number;
   movieSlug?: string;
   movieTitle?: string;
-  /** Μοναδικό κλειδί ταινίας — από populate movie.original_title. */
+  /** Μοναδικό κλειδί ταινίας - από populate movie.original_title. */
   movieOriginalTitle?: string;
   /** Από `populate[movie]=*`: είδη όταν η γραμμή `/movies` δεν φέρνει σχέση ή χρησιμοποιούμε stub ταινίας. */
   movieGenre?: string;
   movieGenreSlugs?: string[];
-  /** Από populate poster στη σχέση movie — λίστες χωρίς πλήρες catalog. */
+  /** Από populate poster στη σχέση movie - λίστες χωρίς πλήρες catalog. */
   moviePosterUrl?: string | null;
   moviePosterSrcSet?: string;
-  /** Από populate movie — για αφίσες όταν λείπει catalog (/movies hard refresh). */
+  /** Από populate movie - για αφίσες όταν λείπει catalog (/movies hard refresh). */
   movieDuration?: number;
   movieImdbRating?: number;
   movieIsDubbed?: boolean;
@@ -1538,7 +1538,7 @@ export interface StrapiTheaterPerformance {
   theaterShowTitle?: string;
   theaterShowPosterUrl?: string | null;
   theaterShowSoldOut?: boolean;
-  /** Πότε μπήκε στο CMS — για σήμανση «Νέο» / «Νέες παραστάσεις» (7 ημέρες). */
+  /** Πότε μπήκε στο CMS - για σήμανση «Νέο» / «Νέες παραστάσεις» (7 ημέρες). */
   createdAt?: string;
 }
 
@@ -1610,7 +1610,7 @@ const MOVIE_PUBLIC_POPULATE: Record<string, string> = {
   "populate[cast]": "*",
 };
 
-/** Αρχική / λίστες — χωρίς cast (μικρότερο bootstrap & TBT). */
+/** Αρχική / λίστες - χωρίς cast (μικρότερο bootstrap & TBT). */
 const MOVIE_HOME_LIST_POPULATE: Record<string, string> = {
   "populate[movie_genres]": "*",
   "populate[poster]": "*",
@@ -1621,12 +1621,12 @@ const THEATER_SHOW_PUBLIC_QUERY: Record<string, string> = {
   "populate[cast]": "*",
 };
 
-/** Αρχική / λίστες — χωρίς cast (μικρότερο TBT). */
+/** Αρχική / λίστες - χωρίς cast (μικρότερο TBT). */
 const THEATER_SHOW_HOME_QUERY: Record<string, string> = {
   "populate[poster]": "*",
 };
 
-/** Χωρίς fields[] — μόνο έγκυρα πεδία schema (όχι editorial_review/author: δεν υπάρχουν στο Restaurant). */
+/** Χωρίς fields[] - μόνο έγκυρα πεδία schema (όχι editorial_review/author: δεν υπάρχουν στο Restaurant). */
 const RESTAURANT_PUBLIC_QUERY: Record<string, string> = {
   "populate[poster][fields][0]": "url",
   "populate[poster][fields][1]": "formats",
@@ -1885,7 +1885,7 @@ export const api = {
       fetchAPIPagedEntries("/movies", { ...MOVIE_PUBLIC_POPULATE }),
     ]).then(([catalog, rows]) => rows.map((x) => mapMovie(x, catalog.hydrate, catalog.linkIndex))),
 
-  /** Ελαφρύτερο payload για αρχική — χωρίς cast · χωρίς ξεχωριστό /movie-genres (είδη από populate). */
+  /** Ελαφρύτερο payload για αρχική - χωρίς cast · χωρίς ξεχωριστό /movie-genres (είδη από populate). */
   getMoviesForHome: () =>
     fetchAPIPagedEntries("/movies", { ...MOVIE_HOME_LIST_POPULATE }).then((rows) =>
       rows.map((x) => mapMovie(x)),
@@ -1930,7 +1930,7 @@ export const api = {
       return out;
     }),
 
-  /** Αρχική — χωρίς cast populate. */
+  /** Αρχική - χωρίς cast populate. */
   getTheaterShowsForHome: () =>
     fetchAPIPagedEntries("/theater-shows", THEATER_SHOW_HOME_QUERY).then((rows) => {
       const out: StrapiTheaterShow[] = [];
@@ -1972,7 +1972,7 @@ export const api = {
   getVenues: () =>
     fetchAPIPagedEntries("/venues", VENUE_PUBLIC_QUERY).then((rows) => rows.map((x) => mapVenue(x))),
 
-  /** Χώροι για λίστα προβολών — χωρίς day_prices και χωρίς populate=* (μικρότερο payload). */
+  /** Χώροι για λίστα προβολών - χωρίς day_prices και χωρίς populate=* (μικρότερο payload). */
   getVenuesForProgram: () =>
     fetchAPIPagedEntries("/venues", VENUE_PROGRAM_QUERY, { noPopulate: true }).then((rows) =>
       rows.map((x) => mapVenue(x)),
@@ -2051,7 +2051,7 @@ export const api = {
       return row ? mapEvent(row) : undefined;
     }),
 
-  /** Ελαφρύ πρόγραμμα — όλες οι επερχόμενες προβολές (χωρίς ανώτατο όριο ημερομηνίας). */
+  /** Ελαφρύ πρόγραμμα - όλες οι επερχόμενες προβολές (χωρίς ανώτατο όριο ημερομηνίας). */
   getShowtimesForHome: () => fetchShowtimesCalendar(),
 
   getShowtimes: (options?: { venueSlug?: string }) => {

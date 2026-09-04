@@ -12,7 +12,7 @@ import { crawlPosterForPath } from "@/lib/crawlEnrichment";
 import { seoCopyForPath } from "@/lib/jsonLdPage";
 import { shouldNoIndexPath } from "@/lib/seoPathRules";
 
-/** Next.js metadata ανά path — canonical, og:url, αφίσα entity στο αρχικό HTML. */
+/** Next.js metadata ανά path - canonical, og:url, αφίσα entity στο αρχικό HTML. */
 export function buildMetadataForPath(path: string): Metadata {
   const normalized = path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const { title, description, ogTitle, ogDescription } = seoCopyForPath(normalized);
@@ -27,7 +27,7 @@ export function buildMetadataForPath(path: string): Metadata {
     /^\/(movies|theater|dining)\/[^/]+/.test(normalized) ||
     /^\/(reviews|articles|events)\/[^/]+/.test(normalized);
   const imageSize = isDetailWithPoster && posterUrl ? posterOgImageSize : { width: 1200, height: 630 };
-  const ogAlt = posterUrl ? `${title} — αφίσα` : siteSeo.ogImageAlt;
+  const ogAlt = posterUrl ? `${title} - αφίσα` : siteSeo.ogImageAlt;
   const noIndex = shouldNoIndexPath(normalized);
 
   return {

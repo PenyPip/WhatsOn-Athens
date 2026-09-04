@@ -21,7 +21,7 @@ export function buildCulturalEventJsonLd(
   const description = truncateDescription(
     ev.synopsis?.trim() ||
       ev.metaDescription?.trim() ||
-      `${title} — πολιτιστική εκδήλωση · ${siteSeo.siteName}`,
+      `${title} - πολιτιστική εκδήλωση · ${siteSeo.siteName}`,
   );
 
   const endDate = eventSchemaStartEnd(ev.endDate, ev.endTime);

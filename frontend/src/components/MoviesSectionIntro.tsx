@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 
-/** Crawlable intro κάτω από hero — λίστες `/movies/today` κ.λπ. */
+/** Crawlable intro κάτω από hero - λίστες `/movies/today` κ.λπ. */
 export default function MoviesSectionIntro({
   sectionLabel,
   intro,

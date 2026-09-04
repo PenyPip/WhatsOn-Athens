@@ -20,7 +20,7 @@ function sendPageView(pagePath: string) {
 }
 
 /**
- * Google Analytics 4 — μόνο όταν ο χρήστης έχει επιλέξει «Αποδοχή όλων».
+ * Google Analytics 4 - μόνο όταν ο χρήστης έχει επιλέξει «Αποδοχή όλων».
  */
 export default function GoogleAnalytics() {
   const { pathname, search } = useLocation();

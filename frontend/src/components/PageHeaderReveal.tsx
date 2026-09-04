@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils";
 
-/** Αντικατάσταση framer-motion σε headers λίστας — CSS μόνο. */
+/** Αντικατάσταση framer-motion σε headers λίστας - CSS μόνο. */
 export default function PageHeaderReveal({
   children,
   className,

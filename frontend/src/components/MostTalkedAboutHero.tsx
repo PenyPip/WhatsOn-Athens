@@ -74,7 +74,7 @@ export function MostTalkedAboutHeroShell() {
   );
 }
 
-/** Κρατάει 380/580px στο overlap main όσο το static LCP είναι ενεργό — αποφυγή CLS όταν φορτώνει το live hero. */
+/** Κρατάει 380/580px στο overlap main όσο το static LCP είναι ενεργό - αποφυγή CLS όταν φορτώνει το live hero. */
 export { HomeHeroLayoutReserve } from "@/components/HomeHeroLayoutReserve";
 
 type MostTalkedAboutHeroProps = {
@@ -114,7 +114,7 @@ function heroSynopsisText(movie: StrapiMovie): string {
 function heroMetaLine(movie: StrapiMovie): string {
   const parts: string[] = [];
   const director = (movie.director ?? "").trim();
-  if (director && director !== "—") parts.push(`Σκηνοθεσία: ${director}`);
+  if (director && director !== "-") parts.push(`Σκηνοθεσία: ${director}`);
   return parts.join(" · ");
 }
 
@@ -170,7 +170,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
     const staticEl = document.getElementById("home-static-lcp");
     const isMobileViewport = window.matchMedia("(max-width: 767px)").matches;
 
-    /** Mobile: overlay από HomeStaticLcpHandoff — μην περιμένεις loading/poster εδώ. */
+    /** Mobile: overlay από HomeStaticLcpHandoff - μην περιμένεις loading/poster εδώ. */
     if (staticEl && isMobileViewport) {
       if (document.documentElement.classList.contains("spa-lcp-done")) return;
       return;
@@ -294,7 +294,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
       <div
         className={cn(
           "relative z-10 container flex max-w-7xl items-center py-6 md:py-10",
-          /** Χώρος για dots κάτω — αλλιώς το CTA κόβεται από overflow-hidden + font swap. */
+          /** Χώρος για dots κάτω - αλλιώς το CTA κόβεται από overflow-hidden + font swap. */
           hasCarousel ? "px-4 pb-10 md:px-16 md:pb-14" : "px-4 md:px-8",
         )}
       >

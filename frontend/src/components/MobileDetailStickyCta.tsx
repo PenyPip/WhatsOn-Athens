@@ -12,7 +12,7 @@ type MobileDetailStickyCtaProps = {
   className?: string;
 };
 
-/** Σταθερό CTA πάνω από το mobile tab bar — περισσότερα taps σε προβολές/κράτηση. */
+/** Σταθερό CTA πάνω από το mobile tab bar - περισσότερα taps σε προβολές/κράτηση. */
 export default function MobileDetailStickyCta({
   kind,
   scheduleHref,

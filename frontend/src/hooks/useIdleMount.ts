@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 
-/** Client-only mount μετά idle — μικρότερο SSR HTML και λιγότερο TBT στο πρώτο paint. */
+/** Client-only mount μετά idle - μικρότερο SSR HTML και λιγότερο TBT στο πρώτο paint. */
 export function useIdleMount(timeoutMs = 2000): boolean {
   const [ready, setReady] = useState(false);
 

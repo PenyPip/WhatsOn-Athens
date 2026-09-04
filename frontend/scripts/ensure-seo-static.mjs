@@ -20,25 +20,25 @@ for (const name of REQUIRED) {
   }
 
   if (!existsSync(outPath)) {
-    console.error(`[ensure-seo-static] FAIL — missing out/${name} (τρέξε generate-sitemap πριν το build)`);
+    console.error(`[ensure-seo-static] FAIL - missing out/${name} (τρέξε generate-sitemap πριν το build)`);
     process.exit(1);
   }
 }
 
 const robots = readFileSync(join(OUT, "robots.txt"), "utf8");
 if (!/User-agent:/i.test(robots)) {
-  console.error("[ensure-seo-static] FAIL — invalid robots.txt");
+  console.error("[ensure-seo-static] FAIL - invalid robots.txt");
   process.exit(1);
 }
 if (!/Sitemap:\s*https?:\/\//i.test(robots)) {
-  console.error("[ensure-seo-static] FAIL — robots.txt χωρίς Sitemap URL");
+  console.error("[ensure-seo-static] FAIL - robots.txt χωρίς Sitemap URL");
   process.exit(1);
 }
 
 const sitemap = readFileSync(join(OUT, "sitemap.xml"), "utf8");
 if (!/<urlset[\s>]/i.test(sitemap)) {
-  console.error("[ensure-seo-static] FAIL — invalid sitemap.xml");
+  console.error("[ensure-seo-static] FAIL - invalid sitemap.xml");
   process.exit(1);
 }
 
-console.log("[ensure-seo-static] OK — robots.txt + sitemap.xml στο out/");
+console.log("[ensure-seo-static] OK - robots.txt + sitemap.xml στο out/");

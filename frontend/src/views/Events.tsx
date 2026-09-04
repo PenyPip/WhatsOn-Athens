@@ -37,7 +37,7 @@ export default function Events() {
       <PageListHeader>
         <h1 className={PAGE_LIST_TITLE_CLASS}>Events</h1>
         <p className={PAGE_LIST_SUBTITLE_CLASS}>
-          Πολιτιστικές εκδηλώσεις στην Αθήνα — κινηματογράφος, θέατρο, μουσική, τέχνη και περισσότερα.
+          Πολιτιστικές εκδηλώσεις στην Αθήνα - κινηματογράφος, θέατρο, μουσική, τέχνη και περισσότερα.
         </p>
       </PageListHeader>
 

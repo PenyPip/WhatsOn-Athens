@@ -2,7 +2,7 @@ import type { StrapiMovie } from "@/lib/api";
 
 export type MovieImdbFields = Pick<StrapiMovie, "imdbRating" | "criticScore">;
 
-/** IMDb βαθμός — προτεραιότητα στο πεδίο imdb_rating, fallback critic_score. */
+/** IMDb βαθμός - προτεραιότητα στο πεδίο imdb_rating, fallback critic_score. */
 export function resolveImdbRating(movie: MovieImdbFields | null | undefined): number | null {
   if (!movie) return null;
   const raw = movie.imdbRating ?? movie.criticScore;

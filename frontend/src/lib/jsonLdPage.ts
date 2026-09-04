@@ -102,42 +102,42 @@ export function seoCopyForPath(path: string): PageSeoCopy {
     if (section === "movies" && parts.length === 2 && !isMoviesReservedSegment(parts[1])) {
       return {
         title: name,
-        description: truncateDescription(`Προβολές, ώρες και σινεμά για ${name} — ${siteSeo.siteName}.`),
+        description: truncateDescription(`Προβολές, ώρες και σινεμά για ${name} - ${siteSeo.siteName}.`),
       };
     }
     if (section === "theater") {
       return {
         title: name,
-        description: truncateDescription(`Παράσταση ${name} — χώρος, είδος και πληροφορίες θεάτρου.`),
+        description: truncateDescription(`Παράσταση ${name} - χώρος, είδος και πληροφορίες θεάτρου.`),
       };
     }
     if (section === "dining") {
       return {
         title: name,
-        description: truncateDescription(`${name} — εστιατόριο, κουζίνα και τοποθεσία στην Αθήνα.`),
+        description: truncateDescription(`${name} - εστιατόριο, κουζίνα και τοποθεσία στην Αθήνα.`),
       };
     }
     if (section === "reviews") {
       return {
         title: name,
-        description: truncateDescription(`Κριτική: ${name} — ${siteSeo.siteName}.`),
+        description: truncateDescription(`Κριτική: ${name} - ${siteSeo.siteName}.`),
       };
     }
     if (section === "articles") {
       return {
         title: name,
-        description: truncateDescription(`Άρθρο: ${name} — ${siteSeo.siteName}.`),
+        description: truncateDescription(`Άρθρο: ${name} - ${siteSeo.siteName}.`),
       };
     }
     if (section === "events") {
       return {
         title: name,
-        description: truncateDescription(`Εκδήλωση: ${name} — ${siteSeo.siteName}.`),
+        description: truncateDescription(`Εκδήλωση: ${name} - ${siteSeo.siteName}.`),
       };
     }
     return {
       title: name,
-      description: truncateDescription(`${name} — ${sectionLabel} στο ${siteSeo.siteName}.`),
+      description: truncateDescription(`${name} - ${sectionLabel} στο ${siteSeo.siteName}.`),
     };
   }
 
@@ -197,7 +197,7 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
     return stripEmpty({
       "@type": "MovieTheater",
       "@id": `${pageUrl}#cinema`,
-      name: venue?.name ?? pageName.split(" — ")[0] ?? pageName,
+      name: venue?.name ?? pageName.split(" - ")[0] ?? pageName,
       url: pageUrl,
       ...(seo?.description ? { description: seo.description } : {}),
       ...(venue?.address ? { address: { "@type": "PostalAddress", streetAddress: venue.address } } : {}),
@@ -209,7 +209,7 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
     return stripEmpty({
       "@type": "PerformingArtsTheater",
       "@id": `${pageUrl}#theater`,
-      name: venue?.name ?? pageName.split(" — ")[0] ?? pageName,
+      name: venue?.name ?? pageName.split(" - ")[0] ?? pageName,
       url: pageUrl,
       ...(seo?.description ? { description: seo.description } : {}),
       ...(venue?.address ? { address: { "@type": "PostalAddress", streetAddress: venue.address } } : {}),
@@ -271,7 +271,7 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
     const authorPerson = stripEmpty({
       "@type": "Person",
       "@id": `${pageUrl}#author`,
-      name: `${siteSeo.siteName} — Συντακτική ομάδα`,
+      name: `${siteSeo.siteName} - Συντακτική ομάδα`,
       worksFor: { "@id": `${absolutePageUrl("/")}#organization` },
     });
     return [
@@ -293,7 +293,7 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
     const authorPerson = stripEmpty({
       "@type": "Person",
       "@id": `${pageUrl}#author`,
-      name: `${siteSeo.siteName} — Συντακτική ομάδα`,
+      name: `${siteSeo.siteName} - Συντακτική ομάδα`,
       worksFor: { "@id": `${absolutePageUrl("/")}#organization` },
     });
     return [

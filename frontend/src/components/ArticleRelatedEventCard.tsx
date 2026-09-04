@@ -81,7 +81,7 @@ export default function ArticleRelatedEventCard({
               {typeLabel}
             </span>
           </div>
-          {schedule !== "—" ? (
+          {schedule !== "-" ? (
             <p className="font-article-ui relative mt-4 text-sm font-medium text-white/70">{schedule}</p>
           ) : null}
           {event.tags.length > 0 ? (

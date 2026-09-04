@@ -37,7 +37,7 @@ function CrawlMovieList({ title, eyebrow, movies, moreHref }: {
   );
 }
 
-/** Server HTML — πλούσιο crawlable περιεχόμενο αρχικής (κρύβεται μετά hydrate). */
+/** Server HTML - πλούσιο crawlable περιεχόμενο αρχικής (κρύβεται μετά hydrate). */
 export default function HomeCrawlableBody({ data }: { data: HomeCrawlSnapshot }) {
   const hasContent =
     data.today.length > 0 || data.week.length > 0 || data.summer.length > 0 || data.summerVenues.length > 0;
@@ -67,7 +67,7 @@ export default function HomeCrawlableBody({ data }: { data: HomeCrawlSnapshot })
         <section className="seo-crawl-section border-b border-white/10 py-8 md:py-10">
           <div className="container max-w-7xl">
             <p className="mb-2 font-body text-[10px] uppercase tracking-[0.22em] text-white/55">Χώροι</p>
-            <h2 className="font-display text-xl font-bold text-white md:text-2xl">Θερινά σινεμά — πρόγραμμα</h2>
+            <h2 className="font-display text-xl font-bold text-white md:text-2xl">Θερινά σινεμά - πρόγραμμα</h2>
             <ul className="mt-4 grid list-none gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {data.summerVenues.map((v) => (
                 <li key={v.slug}>

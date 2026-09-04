@@ -35,7 +35,7 @@ export default function CulturalEventDetail() {
         event.metaDescription?.trim() ||
         event.synopsisEl?.trim() ||
         event.synopsisEn?.trim() ||
-        `${title} — ${eventTypeLabels[event.eventType]}.`;
+        `${title} - ${eventTypeLabels[event.eventType]}.`;
       return {
         title,
         description: truncateDescription(desc),

@@ -49,7 +49,7 @@ export default function MobileNavDrawer({
 }: MobileNavDrawerProps) {
   useEffect(() => {
     onOpenChange(false);
-    // Κλείσιμο μετά από navigation — μόνο όταν αλλάζει path
+    // Κλείσιμο μετά από navigation - μόνο όταν αλλάζει path
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
 

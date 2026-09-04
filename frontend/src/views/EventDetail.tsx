@@ -97,7 +97,7 @@ import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import { TheaterTicketHeroPreview } from "@/components/TheaterTicketPrices";
 import ScheduleCompactRow from "@/components/ScheduleCompactRow";
-import { groupTheaterPerformancesByVenue, isTheaterPerformanceNewlyAddedHighlight, theaterShowHasNewlyAddedPerformances } from "@/lib/theaterPerformances";
+import { groupTheaterPerformancesByVenue, isTheaterPerformanceNewlyAddedHighlight, theaterShowHasNewlyAddedPerformances, theaterShowHasUpcomingPerformances } from "@/lib/theaterPerformances";
 import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
 import {
   cinemaGroupKey,
@@ -383,7 +383,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const [movieAreaFilter, setMovieAreaFilter] = useState<VenueAreaKey | null>(null);
   const [movieDistrictFilter, setMovieDistrictFilter] = useState<AthensDistrictKey | null>(null);
   const [theaterCastOpen, setTheaterCastOpen] = useState(false);
-  const [theaterPosterOpen, setTheaterPosterOpen] = useState(false);
+  const [posterLightboxOpen, setPosterLightboxOpen] = useState(false);
 
   const movieShowtimeFilterOptions = useMemo(
     () => movieDetailShowtimeFilterOptions(eventShowtimes, venues ?? []),
@@ -674,7 +674,20 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     if (isMovie && movie) {
       const currentSlugs = new Set((movie.genreSlugs ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean));
       const currentGenre = (movie.genre ?? "").trim().toLowerCase();
-      const candidates = (moviesEnriched ?? []).filter((m) => m.slug !== slug);
+      const withShowtimes = new Set(
+        (showtimes ?? [])
+          .filter((st) => showtimeIsUpcoming(st))
+          .flatMap((st) => {
+            const keys: string[] = [];
+            if (st.movieId != null) keys.push(`id:${Number(st.movieId)}`);
+            if (st.movieSlug?.trim()) keys.push(`slug:${st.movieSlug.trim()}`);
+            return keys;
+          }),
+      );
+      const candidates = (moviesEnriched ?? []).filter((m) => {
+        if (m.slug === slug) return false;
+        return withShowtimes.has(`id:${m.id}`) || withShowtimes.has(`slug:${m.slug}`);
+      });
       return pickRelatedSuggestions(candidates, {
         seed: `movie:${relatedSeed}`,
         limit: 4,
@@ -690,7 +703,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     }
     if (theaterShow) {
       const currentGenre = (theaterShow.genre ?? "").trim().toLowerCase();
-      const candidates = (theaterShows ?? []).filter((s) => s.slug !== slug);
+      const candidates = (theaterShows ?? []).filter((s) => {
+        if (s.slug === slug) return false;
+        const perfs = (theaterPerformances ?? []).filter((p) => p.theaterShowSlug?.trim() === s.slug);
+        return theaterShowHasUpcomingPerformances(perfs);
+      });
       return pickRelatedSuggestions(candidates, {
         seed: `theater:${relatedSeed}`,
         limit: 4,
@@ -779,7 +796,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     <aside
       className={cn(
         "card-elevated h-fit w-full rounded-xl px-4 py-5",
-        /* Edge-to-edge χωρίς transform/100vw — αποφεύγει «zoom» στο scroll (iOS Safari). */
+        /* Edge-to-edge χωρίς transform/100vw - αποφεύγει «zoom» στο scroll (iOS Safari). */
         "max-md:-mx-6 max-md:rounded-none max-md:border-x-0 max-md:px-6",
         "md:sticky md:top-28 md:rounded-2xl md:p-5 lg:top-32",
       )}
@@ -794,7 +811,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
           ) : genreLabel ? (
             <span className="line-clamp-3 text-sm leading-snug">{genreLabel}</span>
           ) : (
-            <span className="text-muted-foreground">—</span>
+            <span className="text-muted-foreground">-</span>
           ),
         )}
         {hasDuration ? infoField("Διάρκεια", `${event.duration}′`) : null}
@@ -1062,9 +1079,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               <figure className="mx-auto mb-2 w-full max-w-[min(100%,26rem)] shrink-0 sm:max-w-lg md:hidden">
                 <button
                   type="button"
-                  onClick={() => setTheaterPosterOpen(true)}
+                  onClick={() => setPosterLightboxOpen(true)}
                   className="block w-full cursor-zoom-in rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-                  aria-label={`Μεγέθυνση αφίσας — ${theaterShow.title}`}
+                  aria-label={`Μεγέθυνση αφίσας - ${theaterShow.title}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -1211,29 +1228,36 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </div>
 
             {isMovie && movie?.posterUrl ? (
-              <figure className="mx-auto w-[8.5rem] shrink-0 sm:w-36 md:mx-0 md:w-44 lg:w-48">
-                <div className="relative aspect-[2/3] overflow-hidden rounded-xl bg-[#1a1844]/90 shadow-2xl shadow-black/45 ring-1 ring-white/20">
-                  <PosterPicture
-                    src={movie.posterUrl}
-                    srcSet={movie.posterSrcSet}
-                    alt={posterAltForMovie(movie)}
-                    width={512}
-                    height={768}
-                    fetchPriority="high"
-                    loading="eager"
-                    sizes="(max-width: 768px) 152px, 240px"
-                    className="h-full w-full object-contain object-center"
-                  />
-                  <MoviePosterMeta movie={movie} />
-                </div>
+              <figure className="mx-auto w-[11.5rem] shrink-0 sm:w-52 md:mx-0 md:w-60 lg:w-72">
+                <button
+                  type="button"
+                  onClick={() => setPosterLightboxOpen(true)}
+                  className="relative block w-full cursor-zoom-in overflow-hidden rounded-xl bg-[#1a1844]/90 text-left shadow-2xl shadow-black/45 ring-1 ring-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                  aria-label={`Μεγέθυνση αφίσας - ${headline.primary}`}
+                >
+                  <div className="relative aspect-[2/3]">
+                    <PosterPicture
+                      src={movie.posterUrl}
+                      srcSet={movie.posterSrcSet}
+                      alt={posterAltForMovie(movie)}
+                      width={640}
+                      height={960}
+                      fetchPriority="high"
+                      loading="eager"
+                      sizes="(max-width: 640px) 184px, (max-width: 768px) 208px, (max-width: 1024px) 240px, 288px"
+                      className="h-full w-full object-contain object-center"
+                    />
+                    <MoviePosterMeta movie={movie} />
+                  </div>
+                </button>
               </figure>
             ) : !isMovie && theaterShow?.posterUrl ? (
               <figure className="mx-auto hidden w-full max-w-xl shrink-0 md:mx-0 md:block md:max-w-2xl lg:max-w-[36rem]">
                 <button
                   type="button"
-                  onClick={() => setTheaterPosterOpen(true)}
+                  onClick={() => setPosterLightboxOpen(true)}
                   className="block w-full cursor-zoom-in rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-                  aria-label={`Μεγέθυνση αφίσας — ${theaterShow.title}`}
+                  aria-label={`Μεγέθυνση αφίσας - ${theaterShow.title}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
@@ -1253,8 +1277,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         </div>
       </section>
 
-      {!isMovie && theaterShow?.posterUrl ? (
-        <Dialog open={theaterPosterOpen} onOpenChange={setTheaterPosterOpen}>
+      {(isMovie && movie?.posterUrl) || (!isMovie && theaterShow?.posterUrl) ? (
+        <Dialog open={posterLightboxOpen} onOpenChange={setPosterLightboxOpen}>
           <DialogContent
             className={cn(
               "fixed inset-0 left-0 top-0 flex h-[100dvh] w-screen max-w-none translate-x-0 translate-y-0",
@@ -1264,23 +1288,34 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               "[&>button]:hover:bg-black/90 [&>button]:hover:opacity-100 md:[&>button]:right-5 md:[&>button]:top-5",
             )}
           >
-            <DialogTitle className="sr-only">Αφίσα — {theaterShow.title}</DialogTitle>
+            <DialogTitle className="sr-only">
+              Αφίσα - {isMovie ? headline.primary : theaterShow?.title}
+            </DialogTitle>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={theaterShow.posterUrl}
+              src={(isMovie ? movie?.posterUrl : theaterShow?.posterUrl) || ""}
               alt=""
               aria-hidden
               className="pointer-events-none absolute inset-0 h-full w-full scale-110 object-cover opacity-45 blur-2xl"
             />
-            <div className="absolute inset-0 bg-black/45" aria-hidden />
+            <div className="absolute inset-0 bg-black/50 backdrop-blur-md" aria-hidden />
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
-              src={theaterShow.posterUrl}
-              alt={posterAltForTheater(theaterShow.title)}
-              width={2000}
-              height={1250}
+              src={(isMovie ? movie?.posterUrl : theaterShow?.posterUrl) || ""}
+              alt={
+                isMovie && movie
+                  ? posterAltForMovie(movie)
+                  : posterAltForTheater(theaterShow?.title ?? "")
+              }
+              width={isMovie ? 1200 : 2000}
+              height={isMovie ? 1800 : 1250}
               decoding="async"
-              className="relative z-10 max-h-[min(94dvh,960px)] w-auto max-w-[min(96vw,1400px)] rounded-lg object-contain shadow-2xl"
+              className={cn(
+                "relative z-10 rounded-lg object-contain shadow-2xl",
+                isMovie
+                  ? "max-h-[min(94dvh,920px)] w-auto max-w-[min(92vw,560px)]"
+                  : "max-h-[min(94dvh,960px)] w-auto max-w-[min(96vw,1400px)]",
+              )}
             />
           </DialogContent>
         </Dialog>
@@ -1322,7 +1357,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     <div className="aspect-video max-w-xl overflow-hidden rounded-xl border border-border/80 bg-black shadow-sm md:max-w-none">
                       {trailerPlaying ? (
                         <iframe
-                          title={`Τρέιλερ — ${headline.primary}`}
+                          title={`Τρέιλερ - ${headline.primary}`}
                           src={`${trailerEmbedUrl}${trailerEmbedUrl.includes("?") ? "&" : "?"}autoplay=1`}
                           className="h-full w-full"
                           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -1334,7 +1369,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                           type="button"
                           onClick={() => setTrailerPlaying(true)}
                           className="group relative flex h-full w-full items-center justify-center bg-[#13143E]"
-                          aria-label={`Αναπαραγωγή τρέιλερ — ${headline.primary}`}
+                          aria-label={`Αναπαραγωγή τρέιλερ - ${headline.primary}`}
                         >
                           {movie?.posterUrl ? (
                             <PosterPicture
@@ -1408,7 +1443,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 </div>
                 <h3 className="font-display font-semibold text-lg mb-2">{r.title}</h3>
                 <p className="text-muted-foreground text-base">{r.body}</p>
-                <p className="text-sm text-muted-foreground mt-3">— {r.author}</p>
+                <p className="text-sm text-muted-foreground mt-3">- {r.author}</p>
               </div>
             ))}
           </section>

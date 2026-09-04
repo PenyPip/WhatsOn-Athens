@@ -7,7 +7,7 @@ import { lazyWithChunkReload } from "@/lib/lazyWithChunkReload";
 const CookieConsentBanner = lazyWithChunkReload(() => import("@/components/CookieConsentBanner"));
 
 /**
- * Μετά το πρώτο paint — δεν μπαίνει στο critical path (κινητό PSI).
+ * Μετά το πρώτο paint - δεν μπαίνει στο critical path (κινητό PSI).
  * Portal στο `document.body` (όχι μέσα στο `<main>`) ώστε το late mount να μην
  * μετράει ως layout shift του main (CLS ~1 στα Lighthouse audits).
  */

@@ -1,4 +1,4 @@
-/** Placeholder πλέγματος ταινιών — header/φίλτρα μένουν ορατά. */
+/** Placeholder πλέγματος ταινιών - header/φίλτρα μένουν ορατά. */
 export default function MoviesGridSkeleton({ sections = 1 }: { sections?: number }) {
   return (
     <div className="space-y-10" aria-hidden="true">

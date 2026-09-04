@@ -11,7 +11,7 @@ export const eventTypeLabels: Record<StrapiEventType, string> = {
 
 export function formatEventDateEl(raw: string): string {
   const d = new Date(`${raw.trim().slice(0, 10)}T12:00:00`);
-  if (!Number.isFinite(d.getTime())) return raw.trim() || "—";
+  if (!Number.isFinite(d.getTime())) return raw.trim() || "-";
   return d.toLocaleDateString("el-GR", { day: "numeric", month: "long", year: "numeric" });
 }
 
@@ -26,10 +26,10 @@ export function formatEventTimeEl(raw: string | undefined): string {
 
 export function formatEventDateRange(event: Pick<StrapiEvent, "startDate" | "endDate">): string {
   const start = event.startDate?.trim();
-  if (!start) return "—";
+  if (!start) return "-";
   const end = event.endDate?.trim();
   if (!end || end === start) return formatEventDateEl(start);
-  return `${formatEventDateEl(start)} — ${formatEventDateEl(end)}`;
+  return `${formatEventDateEl(start)} - ${formatEventDateEl(end)}`;
 }
 
 export function formatEventScheduleLine(

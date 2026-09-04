@@ -15,7 +15,7 @@ export function showtimeIsWeekBlock(st: Pick<ScheduleSlot, "scheduleKind">): boo
  * Τοπική ημερολογιακή μέρα 00:00.
  * - `YYYY-MM-DD` (π.χ. week_end): ως ημερολογική ημερομηνία, χωρίς UTC offset.
  * - ISO datetime (π.χ. datetime από Strapi): ημέρα στο timezone του browser (Ελλάδα),
- *   όχι slice του UTC prefix — αλλιώς 28/5 00:00 → 27/5 στο site.
+ *   όχι slice του UTC prefix - αλλιώς 28/5 00:00 → 27/5 στο site.
  */
 export function parseShowtimeLocalDay(raw: string | undefined): Date | null {
   const s = typeof raw === "string" ? raw.trim() : "";
@@ -152,7 +152,7 @@ export type MoviesDaySectionMeta = {
   sectionDate: Date;
 };
 
-/** Ομαδοποίηση προβολής σε «Σήμερα» / «Αύριο» / ημερομηνία — τοπική μέρα, όχι UTC. */
+/** Ομαδοποίηση προβολής σε «Σήμερα» / «Αύριο» / ημερομηνία - τοπική μέρα, όχι UTC. */
 export function moviesDaySectionMeta(
   st: ScheduleSlot & { venue?: string; venueId?: number; venueSlug?: string },
   now = new Date(),

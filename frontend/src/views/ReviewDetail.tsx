@@ -23,7 +23,7 @@ const ReviewDetail = () => {
       return {
         title: review.title,
         description: truncateDescription(
-          (review.body ?? "").trim() || `Κριτική για ${review.contentTitle} — ${review.author}.`,
+          (review.body ?? "").trim() || `Κριτική για ${review.contentTitle} - ${review.author}.`,
         ),
         path: `/reviews/${review.slug}`,
       };

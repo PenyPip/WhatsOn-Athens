@@ -11,7 +11,7 @@ import {
 } from "@/lib/cookieConsent";
 
 /**
- * Banner συναίνεσης cookies — δωρεάν, χωρίς τρίτο CMP.
+ * Banner συναίνεσης cookies - δωρεάν, χωρίς τρίτο CMP.
  * Σταθερό κάτω· δεν εμφανίζεται αν υπάρχει ήδη αποθηκευμένη επιλογή.
  */
 export default function CookieConsentBanner() {

@@ -40,7 +40,7 @@ export function showtimeMatchesTomorrow(st: ScheduleSlot, now = new Date()): boo
   return showtimeMatchesLocalDay(st, tomorrowStart, now);
 }
 
-/** Επερχόμενο Σαββατοκύριακο (Σάββατο + Κυριακή) — τοπική μέρα. */
+/** Επερχόμενο Σαββατοκύριακο (Σάββατο + Κυριακή) - τοπική μέρα. */
 export function upcomingWeekendDays(now = new Date()): Date[] {
   const todayStart = startOfLocalDay(now);
   const dow = todayStart.getDay();

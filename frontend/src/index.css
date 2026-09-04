@@ -151,7 +151,7 @@
     color: rgba(240, 237, 248, 0.6);
   }
 
-  /* Λευκές κάρτες περιοδειών στην αρχική — σκούρο κείμενο (όχι χρώματα section-black). */
+  /* Λευκές κάρτες περιοδειών στην αρχική - σκούρο κείμενο (όχι χρώματα section-black). */
   .section-black .home-tour-card h3 {
     color: #13143e;
   }
@@ -178,7 +178,7 @@
   }
 
   /**
-   * Radix dialog — κεντράρισμα viewport & z-index.
+   * Radix dialog - κεντράρισμα viewport & z-index.
    * Τα arbitrary Tailwind (top-[50%], z-[200], translate-y-[-50%]) δεν μπαίνουν στο purged bundle.
    */
   .ui-dialog-overlay {
@@ -195,7 +195,7 @@
     transform: translate(-50%, -50%);
   }
 
-  /** Κάτω tab bar — σταθερό ύψος (safe-area κλειδωμένο στο --mobile-safe-bottom-fixed). */
+  /** Κάτω tab bar - σταθερό ύψος (safe-area κλειδωμένο στο --mobile-safe-bottom-fixed). */
   .mobile-bottom-nav {
     position: fixed;
     left: 0;
@@ -311,7 +311,7 @@
     hyphens: auto;
   }
 
-  /** Σελίδα άρθρου — πλήρης στοίχιση (justify) · CKEditor div/p. */
+  /** Σελίδα άρθρου - πλήρης στοίχιση (justify) · CKEditor div/p. */
   .article-detail-prose {
     @apply w-full max-w-none text-[#13143E];
     box-sizing: border-box;
@@ -449,7 +449,7 @@
   }
 }
 
-/* Crawlable SEO blocks — στο DOM για crawlers, πάντα off-screen (χωρίς CLS). */
+/* Crawlable SEO blocks - στο DOM για crawlers, πάντα off-screen (χωρίς CLS). */
 #seo-crawl-shell {
   position: absolute;
   width: 1px;

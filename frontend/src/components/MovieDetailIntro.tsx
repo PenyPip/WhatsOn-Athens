@@ -1,4 +1,4 @@
-/** Crawlable κείμενο κάτω από το hero — λεπτομέρεια ταινίας (on-page SEO). */
+/** Crawlable κείμενο κάτω από το hero - λεπτομέρεια ταινίας (on-page SEO). */
 export default function MovieDetailIntro({ movieName, intro }: { movieName: string; intro: string }) {
   return (
     <section

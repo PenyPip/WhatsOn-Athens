@@ -81,14 +81,14 @@ async function prefetchHomeBundle(qc: QueryClient) {
   }
   await Promise.all(tasks);
   finalizeBootstrapCache(qc, {
-    /** Μην κόβεις movies στο home — αλλιώς stubs χωρίς posterUrl (κενές αφίσες). */
+    /** Μην κόβεις movies στο home - αλλιώς stubs χωρίς posterUrl (κενές αφίσες). */
     trimHomeShowtimes: true,
     trimHomeMovies: false,
     slimHomepage: true,
   });
 }
 
-/** Λίστα /movies — showtimes + ταινίες στο bootstrap (crawlable JSON + γρηγορότερο client). */
+/** Λίστα /movies - showtimes + ταινίες στο bootstrap (crawlable JSON + γρηγορότερο client). */
 async function prefetchMoviesList(qc: QueryClient) {
   await Promise.all([
     qc.prefetchQuery({
@@ -102,7 +102,7 @@ async function prefetchMoviesList(qc: QueryClient) {
   finalizeBootstrapCache(qc, { trimVenuesForShowtimes: true });
 }
 
-/** Πρόγραμμα ενός σινεμά — showtimes venue μόνο · ταινίες client-side. */
+/** Πρόγραμμα ενός σινεμά - showtimes venue μόνο · ταινίες client-side. */
 async function prefetchTheaterVenueProgram(qc: QueryClient, venueSlug: string) {
   await Promise.all([
     qc.prefetchQuery({
@@ -267,7 +267,7 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
         qc.prefetchQuery({ queryKey: ["articles", 100], queryFn: () => api.getArticles(100) }),
       ]);
     } else if (normalized === "/privacy") {
-      /* στατική σελίδα — χωρίς API */
+      /* στατική σελίδα - χωρίς API */
     }
   } catch (err) {
     console.warn(`[ssrPrefetch] ${normalized}:`, err);

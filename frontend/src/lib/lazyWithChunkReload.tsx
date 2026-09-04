@@ -30,7 +30,7 @@ export function tryReloadForStaleChunk(error?: unknown): boolean {
     if (sessionStorage.getItem(RELOAD_KEY)) return false;
     sessionStorage.setItem(RELOAD_KEY, "1");
   } catch {
-    /* private mode — προσπάθούμε reload ούτως ή άλλως */
+    /* private mode - προσπάθούμε reload ούτως ή άλλως */
   }
   window.location.reload();
   return true;

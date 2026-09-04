@@ -2,7 +2,7 @@ import { useLayoutEffect } from "react";
 
 const CSS_VAR = "--mobile-safe-bottom-fixed";
 
-/** Κλειδώνει το safe-area inset κάτω στην πρώτη μέτρηση — αποφεύγει resize της tab bar στο scroll (iOS Safari). */
+/** Κλειδώνει το safe-area inset κάτω στην πρώτη μέτρηση - αποφεύγει resize της tab bar στο scroll (iOS Safari). */
 export function useStableMobileSafeArea() {
   useLayoutEffect(() => {
     if (typeof window === "undefined" || !window.matchMedia("(max-width: 767px)").matches) return;

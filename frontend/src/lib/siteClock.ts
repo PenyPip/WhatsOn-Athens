@@ -1,6 +1,6 @@
 import type { DehydratedState, QueryClient } from "@tanstack/react-query";
 
-/** Frozen «τώρα» από build-time prefetch — ίδιο SSR + πρώτο client render (χωρίς hydration mismatch). */
+/** Frozen «τώρα» από build-time prefetch - ίδιο SSR + πρώτο client render (χωρίς hydration mismatch). */
 export const BOOTSTRAP_NOW_QUERY_KEY = ["bootstrapNow"] as const;
 
 export function stampBootstrapNow(qc: QueryClient): void {

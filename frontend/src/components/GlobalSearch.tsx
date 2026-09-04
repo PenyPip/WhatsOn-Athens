@@ -14,12 +14,13 @@ import {
 import { createPortal } from "react-dom";
 import { useLocation, useNavigate } from "react-router-dom";
 import { Building2, Clapperboard, Loader2, Search, Theater } from "lucide-react";
-import { useMovies, useTheaterShows, useVenues, useShowtimes } from "@/hooks/useStrapi";
+import { useMovies, useTheaterShows, useTheaterPerformances, useVenues, useShowtimes } from "@/hooks/useStrapi";
 import { useClientMounted } from "@/hooks/useClientMounted";
 import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import type { StrapiMovie, StrapiTheaterShow, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre, showtimeIsUpcoming } from "@/lib/homeMovieFilters";
+import { theaterShowHasUpcomingPerformances } from "@/lib/theaterPerformances";
 import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
 import { sortMoviesPrioritizingFavorites } from "@/lib/favoriteSort";
 import { useFavoriteIds } from "@/hooks/useFavoriteIds";
@@ -134,6 +135,7 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
     isLoading: theaterLoading,
     isError: theaterError,
   } = useTheaterShows(searchActive);
+  const { data: theaterPerformances } = useTheaterPerformances(searchActive);
 
   const moviesEnriched = useMemo(() => {
     const list = movies ?? [];
@@ -255,13 +257,25 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
 
   const movieHits = useMemo(() => {
     const list = moviesEnriched ?? [];
+    const upcoming = showtimes ?? [];
+    const withShowtime =
+      upcoming.length > 0
+        ? list.filter((m) =>
+            upcoming.some(
+              (st) =>
+                showtimeIsUpcoming(st) &&
+                (Number(st.movieId) === m.id ||
+                  (typeof st.movieSlug === "string" && st.movieSlug.trim() === m.slug)),
+            ),
+          )
+        : [];
     const trimmed = search.trim();
     let out = trimmed
       ? sortMoviesPrioritizingFavorites(
-          list.filter((m) => movieMatches(m, trimmed)),
+          withShowtime.filter((m) => movieMatches(m, trimmed)),
           favoriteIds,
         )
-      : sortMoviesByCinemaCount(list, showtimes ?? [], venues, (st) => showtimeIsUpcoming(st), favoriteIds);
+      : sortMoviesByCinemaCount(withShowtime, upcoming, venues, (st) => showtimeIsUpcoming(st), favoriteIds);
     if (!trimmed) out = out.slice(0, CAP_EMPTY);
     return out.slice(0, 50);
   }, [moviesEnriched, search, showtimes, venues, favoriteIds]);
@@ -276,11 +290,17 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
 
   const theaterHits = useMemo(() => {
     const list = theaterShows ?? [];
+    const perfs = theaterPerformances ?? [];
+    const withPerf = list.filter((s) =>
+      theaterShowHasUpcomingPerformances(
+        perfs.filter((p) => p.theaterShowSlug?.trim() === s.slug),
+      ),
+    );
     const trimmed = search.trim();
-    let out = trimmed ? list.filter((s) => theaterShowMatches(s, trimmed)) : [...list].sort(cmpShowTitles);
+    let out = trimmed ? withPerf.filter((s) => theaterShowMatches(s, trimmed)) : [...withPerf].sort(cmpShowTitles);
     if (!trimmed) out = out.slice(0, CAP_EMPTY);
     return out.slice(0, 50);
-  }, [theaterShows, search]);
+  }, [theaterShows, theaterPerformances, search]);
 
   const hasHits = movieHits.length > 0 || venueHits.length > 0 || theaterHits.length > 0;
   const showPanel = panelOpen;

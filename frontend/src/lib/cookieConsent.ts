@@ -1,4 +1,4 @@
-/** Όνομα cookie συναίνεσης (αποθηκεύεται στον browser, δωρεάν — χωρίς εξωτερικό CMP). */
+/** Όνομα cookie συναίνεσης (αποθηκεύεται στον browser, δωρεάν - χωρίς εξωτερικό CMP). */
 export const COOKIE_CONSENT_COOKIE = "whatson_cc";
 export const COOKIE_CONSENT_STORAGE_KEY = "whatson_cookie_consent";
 

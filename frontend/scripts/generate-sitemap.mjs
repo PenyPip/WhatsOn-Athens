@@ -93,7 +93,7 @@ function pickString(attrs, key) {
   return typeof v === "string" && v.trim() ? v.trim() : "";
 }
 
-/** Ίδια λογική με frontend theaterRunDates — run_start / run_end (ημερολόγιο). */
+/** Ίδια λογική με frontend theaterRunDates - run_start / run_end (ημερολόγιο). */
 function theaterShowVisibleInAttrs(attrs, now = new Date()) {
   const start = pickString(attrs, "run_start").slice(0, 10);
   const end = pickString(attrs, "run_end").slice(0, 10);
@@ -594,7 +594,7 @@ async function main() {
   if (SITEMAP_STRICT_MODE) {
     if (sitemapApiCollectionsOk === 0) {
     throw new Error(
-      "[sitemap] strict: Strapi API unreachable — ξεκίνα πρώτα Strapi (deploy-production.sh) ή SITEMAP_STRICT_MODE=0",
+      "[sitemap] strict: Strapi API unreachable - ξεκίνα πρώτα Strapi (deploy-production.sh) ή SITEMAP_STRICT_MODE=0",
     );
   }
     if (criticalDynamicCount === 0) {
@@ -604,7 +604,7 @@ async function main() {
     }
     if (criticalDynamicCount < SITEMAP_STRICT_MIN_DYNAMIC) {
       console.warn(
-        `[sitemap] strict warning: λίγες δυναμικές URLs (${criticalDynamicCount} < ${SITEMAP_STRICT_MIN_DYNAMIC}) — συνεχίζουμε`,
+        `[sitemap] strict warning: λίγες δυναμικές URLs (${criticalDynamicCount} < ${SITEMAP_STRICT_MIN_DYNAMIC}) - συνεχίζουμε`,
       );
     }
   } else if (criticalDynamicCount < SITEMAP_STRICT_MIN_DYNAMIC) {

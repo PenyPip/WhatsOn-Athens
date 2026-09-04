@@ -1,4 +1,4 @@
-/** Τμήματα λίστας ταινιών — path segment (όχι query). */
+/** Τμήματα λίστας ταινιών - path segment (όχι query). */
 export const MOVIES_SECTION_SEGMENTS = ["today", "week", "summer", "new", "soon"] as const;
 export type MoviesSectionSegment = (typeof MOVIES_SECTION_SEGMENTS)[number];
 

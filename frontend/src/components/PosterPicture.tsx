@@ -20,7 +20,7 @@ type PosterPictureProps = {
   fit?: "cover" | "contain";
 };
 
-/** Αφίσα με WebP όταν υπάρχει στο srcset — width/height για LCP/CLS. */
+/** Αφίσα με WebP όταν υπάρχει στο srcset - width/height για LCP/CLS. */
 export default function PosterPicture({
   src,
   srcSet,
@@ -44,7 +44,7 @@ export default function PosterPicture({
     className,
   );
 
-  /** Cached images συχνά δεν ξαναπυροδοτούν onLoad — έλεγχος complete στο mount. */
+  /** Cached images συχνά δεν ξαναπυροδοτούν onLoad - έλεγχος complete στο mount. */
   const imgRef = useCallback(
     (node: HTMLImageElement | null) => {
       if (!node || !onLoad) return;

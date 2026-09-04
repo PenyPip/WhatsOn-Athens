@@ -5,12 +5,12 @@ import { cn } from "@/lib/utils";
 type ActionHintTooltipProps = {
   label: string;
   children: ReactNode;
-  /** Σκούρο hero — ανοιχτό tooltip. */
+  /** Σκούρο hero - ανοιχτό tooltip. */
   dark?: boolean;
   side?: "top" | "bottom" | "left" | "right";
 };
 
-/** Ελαφρύ hover hint για εικονίδια (καρδιά / μάτι) — χωρίς extra bundle στο critical path πέρα από Radix Tooltip. */
+/** Ελαφρύ hover hint για εικονίδια (καρδιά / μάτι) - χωρίς extra bundle στο critical path πέρα από Radix Tooltip. */
 export default function ActionHintTooltip({
   label,
   children,

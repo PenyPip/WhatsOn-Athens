@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 import { lcpImageSrc } from "@/lib/lcpImageSrc";
 
-/** Server LCP μέσα στο #home-hero-slot — absolute overlay, χωρίς negative-margin handoff (CLS). */
+/** Server LCP μέσα στο #home-hero-slot - absolute overlay, χωρίς negative-margin handoff (CLS). */
 type HomeStaticLcpProps = {
   posterHref: string;
   title: string;
@@ -15,7 +15,7 @@ export default function HomeStaticLcp({ posterHref, title, synopsis }: HomeStati
 
   /**
    * Το critical CSS (hero + spacer) είναι ήδη στο <head> (`layout.tsx`).
-   * Κρατάμε εδώ μόνο το markup — αποφεύγουμε διπλό ~4KB style στο body.
+   * Κρατάμε εδώ μόνο το markup - αποφεύγουμε διπλό ~4KB style στο body.
    */
   return (
     <div id="home-hero-slot">

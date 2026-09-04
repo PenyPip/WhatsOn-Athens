@@ -28,7 +28,7 @@ function genreLabel(pm: ProfileMovie, catalog: StrapiMovie | null): string {
 }
 
 type HomePersonalizedSectionsProps = {
-  /** Προαιρετικό — πλούσια αφίσα/srcset όταν η ταινία είναι και στο home catalog. */
+  /** Προαιρετικό - πλούσια αφίσα/srcset όταν η ταινία είναι και στο home catalog. */
   movies?: StrapiMovie[];
   showtimes: StrapiShowtime[];
 };
@@ -65,7 +65,7 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
     return map;
   }, [favoriteMovieIds, showtimes, favoriteVenueIds, now]);
 
-  /** Πάντα από profile — όχι το trimmed home `movieList` (λείπουν ταινίες χωρίς προβολή στην αρχική). */
+  /** Πάντα από profile - όχι το trimmed home `movieList` (λείπουν ταινίες χωρίς προβολή στην αρχική). */
   const favoriteMoviesDisplay = useMemo(() => {
     const fromProfile = profile?.favoriteMovies ?? [];
     if (!fromProfile.length) return [];
@@ -139,7 +139,7 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
                   Για σένα
                 </span>
                 <h2 className="font-display text-2xl font-bold text-[#13143E] md:text-3xl">Οι ταινίες σου</h2>
-                <p className="mt-1 font-body text-sm text-[#13143E]/65">Αγαπημένες ταινίες — επόμενη προβολή</p>
+                <p className="mt-1 font-body text-sm text-[#13143E]/65">Αγαπημένες ταινίες - επόμενη προβολή</p>
                 <div className="mt-6 flex gap-4 overflow-x-auto pb-2 scrollbar-hide">
                   {favoriteMoviesDisplay.map(({ profile: pm, catalog, nextShowtime }) => {
                     const tl = movieTitleLines({

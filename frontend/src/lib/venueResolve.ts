@@ -2,7 +2,7 @@ import type { StrapiShowtime, StrapiTheaterPerformance, StrapiVenue } from "@/li
 import { cinemaPathSlugFromMoreLink, moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { isCinemaVenue, programHrefForVenue } from "@/lib/venueType";
 
-/** Κανονικοποίηση ονόματος — ίδιο σινεμά αν υπάρχουν «Θερινό» / θερινό σινεμά κ.λπ. */
+/** Κανονικοποίηση ονόματος - ίδιο σινεμά αν υπάρχουν «Θερινό» / θερινό σινεμά κ.λπ. */
 export function normalizeCinemaGroupName(name: string): string {
   let n = name.trim();
   if (!n) return "";
@@ -55,7 +55,7 @@ export function mergeVenueGroup(venueList: StrapiVenue[]): StrapiVenue | undefin
 }
 
 /**
- * Ένα κλειδί ανά φυσικό σινεμά — θερινές και κλειστές προβολές στο ίδιο block.
+ * Ένα κλειδί ανά φυσικό σινεμά - θερινές και κλειστές προβολές στο ίδιο block.
  */
 export function cinemaGroupKey(st: StrapiShowtime, venues?: StrapiVenue[]): string {
   const list = venues ?? [];
@@ -271,7 +271,7 @@ function moviesHrefFromVenueSlug(slug: string | undefined): string | undefined {
   return s ? moviesVenueProgramPath(s) : undefined;
 }
 
-/** Σύνδεσμος λίστας ταινιών για χώρο — δοκιμή από όλες τις προβολές της ομάδας. */
+/** Σύνδεσμος λίστας ταινιών για χώρο - δοκιμή από όλες τις προβολές της ομάδας. */
 export function moviesHrefForShowtimes(
   slots: StrapiShowtime[],
   venues?: StrapiVenue[],
@@ -308,7 +308,7 @@ export function normalizeHttpUrl(raw: string | undefined | null): string | null 
   return null;
 }
 
-/** Σύνδεσμος Google Maps — CMS URL (με https αν λείπει) ή αναζήτηση από διεύθυνση. */
+/** Σύνδεσμος Google Maps - CMS URL (με https αν λείπει) ή αναζήτηση από διεύθυνση. */
 export function resolveGoogleMapsHref(
   googleMapsUrl: string | undefined | null,
   address?: string | undefined | null,
@@ -320,7 +320,7 @@ export function resolveGoogleMapsHref(
   return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(addr)}`;
 }
 
-/** URL για ενσωμάτωση χάρτη (iframe) — CMS embed/share ή αναζήτηση από κείμενο τοποθεσίας. */
+/** URL για ενσωμάτωση χάρτη (iframe) - CMS embed/share ή αναζήτηση από κείμενο τοποθεσίας. */
 export function resolveGoogleMapsEmbedSrc(
   googleMapsUrl: string | undefined | null,
   searchQuery?: string | undefined | null,

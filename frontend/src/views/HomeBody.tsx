@@ -11,7 +11,7 @@ import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { useDeferUntilIdleAfterLcp } from "@/hooks/useDeferUntilIdleAfterLcp";
 import { useSiteNow } from "@/hooks/useSiteNow";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMovies, useShowtimes, useRestaurants, useVenuesForProgram, useTheaterShows, useArticles, useEvents } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useRestaurants, useVenuesForProgram, useTheaterShows, useTheaterPerformances, useArticles, useEvents } from "@/hooks/useStrapi";
 import {
   homeNeedsArticles,
   homeNeedsDining,
@@ -54,11 +54,11 @@ import { filterTouringShowsForHome } from "@/lib/theaterTours";
 import { useFavoriteIds } from "@/hooks/useFavoriteIds";
 import { sortMoviesPrioritizingFavorites } from "@/lib/favoriteSort";
 
-/** Ίδια τάξη μεγέθους με HomeSectionsPlaceholder — αποφυγή CLS στο mount. */
+/** Ίδια τάξη μεγέθους με HomeSectionsPlaceholder - αποφυγή CLS στο mount. */
 const MOVIE_ROW_MIN_H = "min-h-[32rem] md:min-h-[36rem]";
 const MOVIE_ROW_SPOTLIGHT_MIN_H = "min-h-[38rem] md:min-h-[42rem]";
 const MOVIE_ROW_GRID_MIN_H = "min-h-[26rem] md:min-h-[28rem]";
-/** Όριο καρτών στην αρχική — «Δες όλες» καλύπτει το υπόλοιπο. */
+/** Όριο καρτών στην αρχική - «Δες όλες» καλύπτει το υπόλοιπο. */
 const HOME_MOVIE_SCROLL_CAP = 10;
 const HOME_MOVIE_GRID_CAP = 12;
 
@@ -159,7 +159,7 @@ function MovieRowScroll({
     /**
      * Όλες οι ορατές κάρτες αρχικής: eager (cap ≤10/12).
      * Native lazy μέσα σε overflow-x / κάτω από fold συχνά δεν φορτώνει ποτέ.
-     * high μόνο στις 2 πρώτες — χωρίς LCP steal από δεκάδες high.
+     * high μόνο στις 2 πρώτες - χωρίς LCP steal από δεκάδες high.
      */
     const posterPriority = i < 2;
     return (
@@ -370,15 +370,15 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsEvents = homeNeedsEvents(sections);
   const needsShowtimes = homeNeedsShowtimes(sections);
   const deferSecondary = useDeferUntilLcpDone();
-  /** Below-fold (venues/theater/articles/…) μετά idle — μικρότερο TBT· δεν αγγίζει movies/showtimes. */
+  /** Below-fold (venues/theater/articles/…) μετά idle - μικρότερο TBT· δεν αγγίζει movies/showtimes. */
   const idleAfterLcp = useDeferUntilIdleAfterLcp(deferSecondary);
   const deferHomeExtra = idleAfterLcp;
-  /** Mobile: αναβολή catalog/API μέχρι το static LCP — λιγότερο TBT στο πρώτο paint. */
+  /** Mobile: αναβολή catalog/API μέχρι το static LCP - λιγότερο TBT στο πρώτο paint. */
   const deferProgramData = !isMobile || deferSecondary;
   const favoriteIds = useFavoriteIds();
 
   const { data: movies, isPending: moviesPending, isError: moviesError } = useMovies(deferProgramData, {
-    /** Αρχική: πάντα lean catalog — όχι full populate (cast κ.λπ.) που φουσκώνει TBT. */
+    /** Αρχική: πάντα lean catalog - όχι full populate (cast κ.λπ.) που φουσκώνει TBT. */
     fullCatalog: false,
   });
   const { data: showtimes, isPending: showtimesPending, isFetching: showtimesFetching, isError: showtimesError } = useShowtimes(
@@ -408,7 +408,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const awaitingShowtimeProgram =
     awaitingShowtimes ||
     (showtimesFetching && (showtimes?.length ?? 0) === 0 && !showtimesError);
-  /** Κάρτες ταινιών χρειάζονται catalog (αφίσες) — όχι μόνο showtimes. */
+  /** Κάρτες ταινιών χρειάζονται catalog (αφίσες) - όχι μόνο showtimes. */
   const awaitingMovieCards = awaitingShowtimeProgram || awaitingMovies;
   const { data: venues, isLoading: venuesLoading, isError: venuesError } = useVenuesForProgram(
     needsVenues && deferHomeExtra,
@@ -435,6 +435,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     isError: theaterError,
     isFetched: theaterFetched,
   } = useTheaterShows(needsTheater && deferHomeExtra, { home: true });
+  const { data: theaterPerformances } = useTheaterPerformances(needsTheater && deferHomeExtra);
   const theaterAwaiting = needsTheater && !theaterFetched && (theaterPending || theaterFetching);
   const theaterLoadFailed = needsTheater && theaterFetched && theaterError && theaterShows === undefined;
   const apiSectionFailed = moviesError || showtimesError || venuesError || restaurantsError;
@@ -447,7 +448,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const movieList = useMemo(() => {
     const cat = movies ?? [];
     if (cat.length) return enrichMoviesWithShowtimeGenre(cat, stList);
-    // Stubs από home-calendar δεν έχουν poster — μην τα δείχνεις όσο φορτώνει το catalog.
+    // Stubs από home-calendar δεν έχουν poster - μην τα δείχνεις όσο φορτώνει το catalog.
     if (movies === undefined) return [];
     if (stList.length) return moviesFromUpcomingShowtimes([], stList);
     return [];
@@ -473,8 +474,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     [venueList, stList],
   );
   const touringShowsForHome = useMemo(
-    () => filterTouringShowsForHome(theaterShows ?? []),
-    [theaterShows],
+    () => filterTouringShowsForHome(theaterShows ?? [], theaterPerformances),
+    [theaterShows, theaterPerformances],
   );
   const summerMoviesForHome = useMemo(
     () =>
@@ -608,7 +609,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                     muted
                     eyebrow="Θερινά"
                     title="Θερινά σινεμά αυτή την εβδομάδα"
-                    subtitle="Υπαίθριες προβολές — δες όλες για πλήρες πρόγραμμα"
+                    subtitle="Υπαίθριες προβολές - δες όλες για πλήρες πρόγραμμα"
                     moviesMoreHref={moviesSectionPath("summer")}
                     moviesMoreLabel="Όλα τα θερινά →"
                     nextShowtimeLabels={nextShowtimeLabels}

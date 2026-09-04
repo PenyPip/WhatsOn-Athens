@@ -1,11 +1,11 @@
 import { movieGenreSlugsToDisplayLine, type StrapiMovie, type StrapiShowtime, type StrapiVenue } from "@/lib/api";
 import { normalizeMovieOriginalTitle } from "@/lib/movieTitles";
-import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
+import { sortMoviesByCinemaCount, buildMovieCinemaCountMap, getCinemaCountForMovie } from "@/lib/movieCinemaSort";
 import { showtimeIsUpcoming as showtimeIsUpcomingCore, showtimeOverlapsRange } from "@/lib/showtimeSchedule";
 import { isCinemaVenue } from "@/lib/venueType";
 
 /**
- * Εξωτερική/θερινή προβολή — μόνο το πεδίο «θερινή προβολή» στην εγγραφή προβολής (CMS).
+ * Εξωτερική/θερινή προβολή - μόνο το πεδίο «θερινή προβολή» στην εγγραφή προβολής (CMS).
  * Το «Θερινό» στο site δεν κληρονομείται από τον χώρο.
  */
 export function showtimeIsSummerOutdoor(_showtime: StrapiShowtime, _venues?: StrapiVenue[] | undefined): boolean {
@@ -41,7 +41,7 @@ export function summerVenuesWithShowtimesOrAll(venues: StrapiVenue[], showtimes:
   return withShows.length > 0 ? withShows : summerVenues;
 }
 
-/** Σταθερό id για stubs όταν λείπει movieId — αποφυγή διπλότυπων React keys (παλιά: όλα 0). */
+/** Σταθερό id για stubs όταν λείπει movieId - αποφυγή διπλότυπων React keys (παλιά: όλα 0). */
 function stubNumericIdFromSlug(slug: string): number {
   let h = 0;
   for (let i = 0; i < slug.length; i++) h = Math.imul(31, h) + slug.charCodeAt(i);
@@ -66,7 +66,7 @@ export function mergeMovieWithShowtimeFields(movie: StrapiMovie, st: StrapiShowt
 }
 
 /** Όταν η γραμμή `/movies` λείπει (π.χ. draft ταινία) αλλά η προβολή φέρνει slug + τίτλο + είδος από `populate[movie]`. */
-/** Όταν το catalog δεν είναι ακόμα στο client — stub από πεδία προβολής. */
+/** Όταν το catalog δεν είναι ακόμα στο client - stub από πεδία προβολής. */
 export function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefined): StrapiMovie | null {
   if (!st) return null;
   const title =
@@ -88,7 +88,7 @@ export function movieStubFromShowtime(slug: string, st: StrapiShowtime | undefin
     slug,
     title,
     originalTitle,
-    director: "—",
+    director: "-",
     cast: [],
     genre: genreLine || (slugs.length ? movieGenreSlugsToDisplayLine(slugs) : ""),
     genreSlugs: slugs,
@@ -291,7 +291,7 @@ export function moviesWithSummerOutdoorShowtime(
 
 /**
  * Όπως παραπάνω, αλλά μόνο αν η προβολή πέφτει μέσα στην τρέχουσα «εβδομάδα σινεμά»
- * (Πέμπτη 00:00 έως Τετάρτη τέλος ημέρας — τοπικά).
+ * (Πέμπτη 00:00 έως Τετάρτη τέλος ημέρας - τοπικά).
  */
 export function moviesWithSummerOutdoorShowtimeThisCinemaWeek(
   movies: StrapiMovie[],
@@ -418,8 +418,15 @@ export function moviesReleasedInLastDays(
   }
   withParsed.sort((a, b) => b.release.getTime() - a.release.getTime());
   const result = withParsed.map((x) => x.movie);
-  if (!showtimes.length) return result;
-  return sortMoviesByCinemaCount(result, showtimes, venues, (st) => showtimeIsUpcoming(st, now));
+  if (!showtimes.length) return [];
+  const withUpcoming = sortMoviesByCinemaCount(
+    result,
+    showtimes,
+    venues,
+    (st) => showtimeIsUpcoming(st, now),
+  );
+  const counts = buildMovieCinemaCountMap(showtimes, venues, (st) => showtimeIsUpcoming(st, now));
+  return withUpcoming.filter((m) => getCinemaCountForMovie(m, counts) > 0);
 }
 
 /** Ταινίες με ημερομηνία κυκλοφορίας αυστηρά μετά τη σήμερα (τοπικά). Σειρά: πιο κοντινή πρώτη. */
@@ -496,7 +503,7 @@ export function moviesForUpcomingCinemaWeek(
 }
 
 /**
- * /movies/week — μόνο ταινίες με καταχωρημένες προβολές στην επόμενη εβδομάδα κινηματογράφου.
+ * /movies/week - μόνο ταινίες με καταχωρημένες προβολές στην επόμενη εβδομάδα κινηματογράφου.
  * (Όχι ταινίες που εμφανίζονται μόνο λόγω ημερομηνίας κυκλοφορίας· «Προσεχώς» μέσα στη σελίδα ταινίας.)
  */
 export function moviesWithShowtimesInUpcomingCinemaWeek(
@@ -533,8 +540,11 @@ export function moviesComingAfterUpcomingCinemaWeek(
   }
   withParsed.sort((a, b) => a.release.getTime() - b.release.getTime());
   const result = withParsed.map((x) => x.movie);
-  if (!showtimes.length) return result;
-  return sortMoviesByCinemaCount(result, showtimes, venues, (st) => showtimeIsUpcoming(st, now));
+  if (!showtimes.length) return [];
+  const counts = buildMovieCinemaCountMap(showtimes, venues, (st) => showtimeIsUpcoming(st, now));
+  return sortMoviesByCinemaCount(result, showtimes, venues, (st) => showtimeIsUpcoming(st, now)).filter(
+    (m) => getCinemaCountForMovie(m, counts) > 0,
+  );
 }
 
 export function formatUpcomingCinemaWeekRange(now = new Date()): string {

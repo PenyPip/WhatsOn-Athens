@@ -37,7 +37,7 @@ const Privacy = lazyWithChunkReload(() => import(/* webpackChunkName: "privacy" 
 const Profile = lazyWithChunkReload(() => import(/* webpackChunkName: "profile" */ "./views/Profile"));
 const NotFound = lazyWithChunkReload(() => import(/* webpackChunkName: "not-found" */ "./views/NotFound"));
 
-/** Suspense μόνο για lazy routes — η αρχική δεν αντικαθίσταται από placeholder (CLS). */
+/** Suspense μόνο για lazy routes - η αρχική δεν αντικαθίσταται από placeholder (CLS). */
 function LazyPage({ children }: { children: ReactNode }) {
   return (
     <ChunkLoadErrorBoundary>
@@ -83,7 +83,7 @@ type AppShellProps = Record<string, never>;
 
 function AppShell(_props: AppShellProps) {
   const { pathname } = useLocation();
-  /** Πάντα από το τρέχον path — το SSR `homeMainOverlap` της `/` δεν πρέπει να «κολλάει» στις ταινίες. */
+  /** Πάντα από το τρέχον path - το SSR `homeMainOverlap` της `/` δεν πρέπει να «κολλάει» στις ταινίες. */
   const overlapHome = pathname === "/";
 
   useEffect(() => {
