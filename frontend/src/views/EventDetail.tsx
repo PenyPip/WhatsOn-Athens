@@ -1056,7 +1056,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 ? cn(
                     "flex flex-col md:flex-row md:justify-between",
                     isMovie
-                      ? "md:items-center gap-4 md:gap-8 lg:gap-10"
+                      ? "md:items-start gap-3 md:gap-8 lg:gap-10"
                       : "md:items-center gap-3 md:gap-5 lg:gap-6",
                   )
                 : "flex h-full items-end",
@@ -1074,6 +1074,32 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             >
               <ArrowLeft className="w-4 h-4" /> Πίσω στις {isMovie ? "Ταινίες" : "Παραστάσεις"}
             </Link>
+
+            {isMovie && movie?.posterUrl ? (
+              <figure className="mx-auto mb-3 w-[min(100%,14.5rem)] shrink-0 sm:w-60 md:hidden">
+                <button
+                  type="button"
+                  onClick={() => setPosterLightboxOpen(true)}
+                  className="relative block w-full cursor-zoom-in overflow-hidden rounded-xl bg-[#1a1844]/90 text-left shadow-2xl shadow-black/45 ring-1 ring-white/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
+                  aria-label={`Μεγέθυνση αφίσας - ${headline.primary}`}
+                >
+                  <div className="relative aspect-[2/3]">
+                    <PosterPicture
+                      src={movie.posterUrl}
+                      srcSet={movie.posterSrcSet}
+                      alt={posterAltForMovie(movie)}
+                      width={640}
+                      height={960}
+                      fetchPriority="high"
+                      loading="eager"
+                      sizes="(max-width: 640px) 232px, 240px"
+                      className="h-full w-full object-cover object-center"
+                    />
+                    <MoviePosterMeta movie={movie} />
+                  </div>
+                </button>
+              </figure>
+            ) : null}
 
             {!isMovie && theaterShow?.posterUrl ? (
               <figure className="mx-auto mb-2 w-full max-w-[min(100%,26rem)] shrink-0 sm:max-w-lg md:hidden">
@@ -1228,7 +1254,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </div>
 
             {isMovie && movie?.posterUrl ? (
-              <figure className="mx-auto w-[11.5rem] shrink-0 sm:w-52 md:mx-0 md:w-60 lg:w-72">
+              <figure className="hidden w-64 shrink-0 md:mx-0 md:block lg:w-80 xl:w-[22rem]">
                 <button
                   type="button"
                   onClick={() => setPosterLightboxOpen(true)}
@@ -1244,8 +1270,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                       height={960}
                       fetchPriority="high"
                       loading="eager"
-                      sizes="(max-width: 640px) 184px, (max-width: 768px) 208px, (max-width: 1024px) 240px, 288px"
-                      className="h-full w-full object-contain object-center"
+                      sizes="(max-width: 1024px) 256px, (max-width: 1280px) 320px, 352px"
+                      className="h-full w-full object-cover object-center"
                     />
                     <MoviePosterMeta movie={movie} />
                   </div>

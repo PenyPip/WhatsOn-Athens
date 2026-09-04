@@ -42,10 +42,13 @@ export const PAGE_DETAIL_HERO_INNER_CLASS = cn(
   PAGE_DETAIL_NAV_CLEARANCE_CLASS,
 );
 
-/** Hero σελίδας ταινίας - ίδιο compact clearance με θέατρο. */
+/**
+ * Hero σελίδας ταινίας: ελάχιστο κενό κάτω από το nav ώστε η αφίσα
+ * να ξεκινά ψηλά και να «τρώει» το μπλε band (όχι επιπλέον pt πάνω από το content).
+ */
 export const PAGE_MOVIE_DETAIL_HERO_INNER_CLASS = cn(
-  "relative z-10 container pb-4 md:pb-5",
-  PAGE_DETAIL_NAV_CLEARANCE_CLASS,
+  "relative z-10 container pb-3 md:pb-4",
+  "pt-[max(calc(env(safe-area-inset-top,0px)+3.5rem),4rem)] md:pt-28",
 );
 
 /** Loading / not-found states κάτω από navbar. */
