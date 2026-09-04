@@ -8,9 +8,10 @@ import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { toggleFollowTheaterShow } from "@/lib/userProfile";
-import { useState, type MouseEvent } from "react";
+import { useState, type MouseEvent, type ReactElement } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import ActionHintTooltip from "@/components/ActionHintTooltip";
 
 type TheaterFollowButtonProps = {
   theaterShowId: number;
@@ -36,8 +37,22 @@ export default function TheaterFollowButton({
   const active = (profile?.followedTheaterShows ?? []).some((s) => s.id === theaterShowId);
   const iconSize = size === "sm" ? "w-4 h-4" : "w-5 h-5";
   const label = active ? THEATER_LIKE_BUTTON_LABEL_ACTIVE : THEATER_LIKE_BUTTON_LABEL;
+  const hint = !isAuthenticated
+    ? "Σύνδεση — κάνε like για νέες ημερομηνίες"
+    : active
+      ? THEATER_LIKE_BUTTON_HINT_ACTIVE
+      : THEATER_LIKE_BUTTON_HINT;
   const heroMode = variant === "hero";
   const showText = showLabel && !heroMode;
+
+  const wrap = (node: ReactElement) =>
+    showText ? (
+      node
+    ) : (
+      <ActionHintTooltip label={hint} dark={heroMode}>
+        {node}
+      </ActionHintTooltip>
+    );
 
   if (!isAuthenticated) {
     if (showLabel) {
@@ -54,19 +69,26 @@ export default function TheaterFollowButton({
         </Link>
       );
     }
-    return (
+    return wrap(
       <Link
         to="/profile"
         className={cn(
-          "inline-flex items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground transition-colors hover:text-foreground",
-          size === "sm" ? "h-8 w-8" : "h-10 w-10",
+          "inline-flex items-center justify-center rounded-full border transition-colors",
+          heroMode
+            ? cn(
+                size === "sm" ? "h-9 w-9" : "h-10 w-10",
+                "border-white/35 bg-black/45 text-white/95 hover:border-white/55 hover:bg-black/60",
+              )
+            : cn(
+                size === "sm" ? "h-8 w-8" : "h-10 w-10",
+                "border-border bg-background/80 text-muted-foreground hover:text-foreground",
+              ),
           className,
         )}
-        title="Σύνδεση — κάνε like για νέες ημερομηνίες"
-        aria-label="Σύνδεση — κάνε like για νέες ημερομηνίες"
+        aria-label={hint}
       >
         <Heart className={iconSize} />
-      </Link>
+      </Link>,
     );
   }
 
@@ -122,17 +144,16 @@ export default function TheaterFollowButton({
     );
   }
 
-  return (
+  return wrap(
     <button
       type="button"
       onClick={onToggle}
       disabled={pending}
       className={buttonClass}
-      title={active ? THEATER_LIKE_BUTTON_HINT_ACTIVE : THEATER_LIKE_BUTTON_HINT}
-      aria-label={active ? THEATER_LIKE_BUTTON_HINT_ACTIVE : THEATER_LIKE_BUTTON_HINT}
+      aria-label={hint}
       aria-pressed={active}
     >
       <Heart className={cn(iconSize, active && "fill-current")} />
-    </button>
+    </button>,
   );
 }

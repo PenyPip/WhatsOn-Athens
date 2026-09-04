@@ -2,7 +2,7 @@ import { useParams, Link, useSearchParams } from "react-router-dom";
 import { Suspense, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
-import { ArrowLeft, MapPin, Play, ChevronDown } from "lucide-react";
+import { ArrowLeft, Clock, MapPin, Play, ChevronDown } from "lucide-react";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import SharePageButton from "@/components/SharePageButton";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
@@ -60,6 +60,7 @@ import FavoriteButton from "@/components/FavoriteButton";
 import SeenButton from "@/components/SeenButton";
 import TheaterFollowButton from "@/components/TheaterFollowButton";
 import TheaterLikePromo from "@/components/TheaterLikePromo";
+import MovieLikePromo from "@/components/MovieLikePromo";
 import RateReminderBanner from "@/components/RateReminderBanner";
 import PopularBadge from "@/components/PopularBadge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1039,7 +1040,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 ? cn(
                     "flex flex-col md:flex-row md:justify-between",
                     isMovie
-                      ? "md:items-end gap-4 md:gap-8 lg:gap-10"
+                      ? "md:items-center gap-4 md:gap-8 lg:gap-10"
                       : "md:items-center gap-3 md:gap-5 lg:gap-6",
                   )
                 : "flex h-full items-end",
@@ -1048,7 +1049,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             <div
               className={cn(
                 "min-w-0 max-w-3xl",
-                (isMovie && movie?.posterUrl) || (!isMovie && theaterShow?.posterUrl) ? "md:flex-1 md:pb-1" : "",
+                (isMovie && movie?.posterUrl) || (!isMovie && theaterShow?.posterUrl) ? "md:flex-1" : "",
               )}
             >
             <Link
@@ -1112,7 +1113,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               </div>
             ) : null}
             </div>
-            {theaterShow?.id ? (
+            {isMovie && movie?.id ? (
+              <MovieLikePromo variant="hero" className="mb-3" />
+            ) : theaterShow?.id ? (
               <TheaterLikePromo variant="hero" className="mb-3" />
             ) : null}
             {headline.secondary ? (
@@ -1120,18 +1123,35 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             ) : null}
 
             {(
-              (!isMovie && genreLabel) ||
+              genreLabel ||
+              (isMovie && hasDirector) ||
+              (isMovie && hasDuration) ||
               movie?.isDubbed ||
               (theaterShow && isTouringTheaterShow(theaterShow)) ||
               (theaterShow && formatTheaterRunPeriod(theaterShow))
             ) ? (
               <div
                 className={cn(
-                  "flex flex-wrap items-center gap-3 text-sm text-white/60 md:text-base",
+                  "flex flex-wrap items-center gap-x-3 gap-y-1.5 text-sm text-white/70 md:text-base",
                   isMovie ? "mb-3" : "mb-2",
                 )}
               >
-                {!isMovie && genreLabel ? <span>{genreLabel}</span> : null}
+                {genreLabel ? (
+                  isMovie && genreLinkItems.length ? (
+                    <GenreLinks items={genreLinkItems} variant="hero" />
+                  ) : (
+                    <span>{genreLabel}</span>
+                  )
+                ) : null}
+                {isMovie && hasDirector ? (
+                  <span className="text-white/65">{directorLabel}</span>
+                ) : null}
+                {isMovie && hasDuration ? (
+                  <span className="inline-flex items-center gap-1 text-white/65">
+                    <Clock className="h-3.5 w-3.5 shrink-0 opacity-80" aria-hidden />
+                    {event.duration}′
+                  </span>
+                ) : null}
                 {movie?.isDubbed ? (
                   <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
                     Μεταγλωτισμένη

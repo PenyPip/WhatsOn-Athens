@@ -2,8 +2,9 @@ import { Heart } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { toggleFavoriteMovie, toggleFavoriteVenue } from "@/lib/userProfile";
-import { useState, type MouseEvent } from "react";
+import { useState, type MouseEvent, type ReactElement } from "react";
 import { Link } from "react-router-dom";
+import ActionHintTooltip from "@/components/ActionHintTooltip";
 
 type FavoriteButtonProps = {
   kind: "movie" | "venue";
@@ -32,12 +33,19 @@ export default function FavoriteButton({
   const iconSize = size === "sm" ? "w-4 h-4" : "w-5 h-5";
   const heroMode = variant === "hero";
   const hintIdle =
-    kind === "movie" ? "Κάνε like — πρόσθεσε στα αγαπημένα" : "Προσθήκη στα αγαπημένα";
+    kind === "movie" ? "Like — πρόσθεσε στα αγαπημένα σου" : "Προσθήκη στα αγαπημένα";
   const hintActive =
-    kind === "movie" ? "Στα αγαπημένα σου" : "Αφαίρεση από αγαπημένα";
+    kind === "movie" ? "Στα αγαπημένα — πάτα για αφαίρεση" : "Αφαίρεση από αγαπημένα";
+  const hint = !isAuthenticated ? "Σύνδεση για αγαπημένα" : active ? hintActive : hintIdle;
+
+  const wrap = (node: ReactElement) => (
+    <ActionHintTooltip label={hint} dark={heroMode}>
+      {node}
+    </ActionHintTooltip>
+  );
 
   if (!isAuthenticated) {
-    return (
+    return wrap(
       <Link
         to="/profile"
         className={cn(
@@ -53,11 +61,10 @@ export default function FavoriteButton({
               ),
           className,
         )}
-        title="Σύνδεση για αγαπημένα"
-        aria-label="Σύνδεση για αγαπημένα"
+        aria-label={hint}
       >
         <Heart className={iconSize} />
-      </Link>
+      </Link>,
     );
   }
 
@@ -74,13 +81,13 @@ export default function FavoriteButton({
       setProfile(result.profile);
       await refreshProfile();
     } catch {
-      /* ignore — μπορεί να εμφανιστεί toast αργότερα */
+      /* ignore */
     } finally {
       setPending(false);
     }
   };
 
-  return (
+  return wrap(
     <button
       type="button"
       onClick={onToggle}
@@ -103,11 +110,10 @@ export default function FavoriteButton({
         pending && "opacity-60",
         className,
       )}
-      title={active ? hintActive : hintIdle}
-      aria-label={active ? hintActive : hintIdle}
+      aria-label={hint}
       aria-pressed={active}
     >
       <Heart className={cn(iconSize, active && "fill-current")} />
-    </button>
+    </button>,
   );
 }

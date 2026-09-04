@@ -1,10 +1,11 @@
-import { Eye, EyeOff } from "lucide-react";
+import { Eye } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
 import { toggleSeenMovie, toggleSeenTheaterShow } from "@/lib/userProfile";
-import { useState } from "react";
+import { useState, type MouseEvent, type ReactElement } from "react";
 import { Link } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
+import ActionHintTooltip from "@/components/ActionHintTooltip";
 
 type SeenButtonProps = {
   kind: "movie" | "theater";
@@ -36,8 +37,26 @@ export default function SeenButton({
 
   const iconSize = size === "sm" ? "w-4 h-4" : "w-5 h-5";
   const label = active ? "Το είδα" : "Σημείωσε ότι το είδες";
+  const hint = !isAuthenticated
+    ? "Σύνδεση για «Το είδα»"
+    : active
+      ? kind === "movie"
+        ? "Το είδες — πάτα για αναίρεση (βγαίνει και από αγαπημένα)"
+        : "Το είδες — πάτα για αναίρεση"
+      : kind === "movie"
+        ? "Το είδα — σημείωσε ότι την έχεις δει"
+        : "Το είδα — σημείωσε ότι την έχεις δει";
   const heroMode = variant === "hero";
   const showText = showLabel && !heroMode;
+
+  const wrap = (node: ReactElement) =>
+    showText ? (
+      node
+    ) : (
+      <ActionHintTooltip label={hint} dark={heroMode}>
+        {node}
+      </ActionHintTooltip>
+    );
 
   if (!isAuthenticated) {
     if (showLabel) {
@@ -54,23 +73,32 @@ export default function SeenButton({
         </Link>
       );
     }
-    return (
+    return wrap(
       <Link
         to="/profile"
         className={cn(
-          "inline-flex items-center justify-center rounded-full border border-border bg-background/80 text-muted-foreground transition-colors hover:text-foreground",
-          size === "sm" ? "h-8 w-8" : "h-10 w-10",
+          "inline-flex items-center justify-center rounded-full border transition-colors",
+          heroMode
+            ? cn(
+                size === "sm" ? "h-9 w-9" : "h-10 w-10",
+                "border-white/35 bg-black/45 text-white/95 hover:border-white/55 hover:bg-black/60",
+              )
+            : cn(
+                size === "sm" ? "h-8 w-8" : "h-10 w-10",
+                "border-border bg-background/80 text-muted-foreground hover:text-foreground",
+              ),
           className,
         )}
-        title="Σύνδεση για «Το είδα»"
-        aria-label="Σύνδεση για «Το είδα»"
+        aria-label={hint}
       >
         <Eye className={iconSize} />
-      </Link>
+      </Link>,
     );
   }
 
-  const onToggle = async () => {
+  const onToggle = async (event?: MouseEvent) => {
+    event?.preventDefault();
+    event?.stopPropagation();
     if (pending) return;
     setPending(true);
     try {
@@ -119,27 +147,22 @@ export default function SeenButton({
         aria-pressed={active}
         aria-label={label}
       >
-        {active ? <Eye className={iconSize} aria-hidden /> : <EyeOff className={iconSize} aria-hidden />}
+        <Eye className={iconSize} aria-hidden />
         {label}
       </button>
     );
   }
 
-  return (
+  return wrap(
     <button
       type="button"
       onClick={onToggle}
       disabled={pending}
       className={buttonClass}
-      title={label}
-      aria-label={label}
+      aria-label={hint}
       aria-pressed={active}
     >
-      {active ? (
-        <Eye className={cn(iconSize, heroMode ? undefined : "fill-current/20")} />
-      ) : (
-        <Eye className={iconSize} />
-      )}
-    </button>
+      <Eye className={cn(iconSize, heroMode ? undefined : active ? "fill-current/20" : undefined)} />
+    </button>,
   );
 }
