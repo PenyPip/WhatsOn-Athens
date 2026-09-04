@@ -171,6 +171,16 @@ module.exports = createCoreController('api::user-profile.user-profile', ({ strap
 
     const profile = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
     const toggle = await strapi.service('api::user-profile.user-profile').toggleSeenMovie(profile.id, movieId);
+
+    // Ίδια λογική με θέατρο: «Το είδα» → βγάζει από αγαπημένα / like.
+    if (toggle.active) {
+      try {
+        await strapi.service('api::user-profile.user-profile').removeFavoriteMovie(profile.id, movieId);
+      } catch (err) {
+        strapi.log.warn('[user-profile] remove favorite on seen movie:', err?.message || err);
+      }
+    }
+
     const refreshed = await strapi.service('api::user-profile.user-profile').findOrCreateForUser(user.id);
 
     ctx.body = { data: { ...toggle, profile: await enrichProfile(strapi, user.id, refreshed) } };

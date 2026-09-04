@@ -127,7 +127,7 @@ const TheaterVenueProgram = () => {
                 <FavoriteButton
                   kind="venue"
                   entityId={venue.id}
-                  className="border-white/20 bg-black/30 text-white hover:text-rose-300"
+                  variant="hero"
                 />
               </div>
             ) : null}

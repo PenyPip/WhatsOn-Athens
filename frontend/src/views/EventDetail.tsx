@@ -1102,8 +1102,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             </h1>
             {isMovie && movie?.id ? (
               <div className="flex shrink-0 items-center gap-2">
+                <FavoriteButton kind="movie" entityId={movie.id} variant="hero" />
                 <SeenButton kind="movie" entityId={movie.id} variant="hero" />
-                <FavoriteButton kind="movie" entityId={movie.id} className="shrink-0 border-white/35 bg-black/45 text-white/95 hover:border-white/55 hover:bg-black/60 hover:text-rose-200" />
               </div>
             ) : theaterShow?.id ? (
               <div className="flex shrink-0 items-center gap-2">

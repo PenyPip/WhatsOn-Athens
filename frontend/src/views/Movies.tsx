@@ -19,6 +19,7 @@ import MoviesSectionIntro from "@/components/MoviesSectionIntro";
 import PageBreadcrumbs from "@/components/PageBreadcrumbs";
 import { VenueDayPricesTable } from "@/components/VenueDayPricesTable";
 import EventCard from "@/components/EventCard";
+import FavoriteButton from "@/components/FavoriteButton";
 import MoviesGridSkeleton from "@/components/MoviesGridSkeleton";
 import Footer from "@/components/Footer";
 import PageListHeader, {
@@ -924,6 +925,11 @@ const Movies = () => {
             <h1 className={PAGE_MOVIES_LIST_TITLE_CLASS}>
               {pageH1}
             </h1>
+            {venueFilter && venueFilter.id > 0 ? (
+              <div className="mt-3">
+                <FavoriteButton kind="venue" entityId={venueFilter.id} variant="hero" />
+              </div>
+            ) : null}
             {venueFilter ? (
               <p className={PAGE_LIST_SUBTITLE_CLASS}>{listSeo.subtitle}</p>
             ) : pathFilters.section && "subtitle" in listSeo && listSeo.subtitle ? (

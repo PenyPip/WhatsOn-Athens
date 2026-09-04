@@ -64,6 +64,20 @@ module.exports = createCoreService('api::user-profile.user-profile', ({ strapi }
     return this.toggleRelation(profileId, 'seen_theater_shows', theaterShowId);
   },
 
+  /** Αφαίρεση από αγαπημένα αν υπάρχει (χωρίς toggle). */
+  async removeFavoriteMovie(profileId, movieId) {
+    const profile = await strapi.entityService.findOne('api::user-profile.user-profile', profileId, {
+      populate: ['favorite_movies'],
+    });
+    const numericId = Number(movieId);
+    const current = (profile?.favorite_movies || []).map((row) => Number(row.id));
+    if (!current.includes(numericId)) return { removed: false };
+    await strapi.entityService.update('api::user-profile.user-profile', profileId, {
+      data: { favorite_movies: current.filter((id) => id !== numericId) },
+    });
+    return { removed: true };
+  },
+
   async toggleRelation(profileId, field, entityId) {
     const profile = await strapi.entityService.findOne('api::user-profile.user-profile', profileId, {
       populate: [field],
