@@ -3,7 +3,7 @@ export const THEATER_LIKE_TAGLINE =
   "Κάνε like στην παράσταση που θες να δεις και θα μάθεις πρώτος για νέες ημερομηνίες!";
 
 export const THEATER_LIKE_TAGLINE_SHORT =
-  "Like στην παράσταση — μαθαίνεις πρώτος για νέες ημερομηνίες.";
+  "Like στην παράσταση και μαθαίνεις πρώτος για νέες ημερομηνίες.";
 
 export const THEATER_LIKE_BUTTON_LABEL = "Like";
 

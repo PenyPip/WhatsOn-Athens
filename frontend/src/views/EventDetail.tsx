@@ -60,7 +60,6 @@ import FavoriteButton from "@/components/FavoriteButton";
 import SeenButton from "@/components/SeenButton";
 import TheaterFollowButton from "@/components/TheaterFollowButton";
 import TheaterLikePromo from "@/components/TheaterLikePromo";
-import MovieLikePromo from "@/components/MovieLikePromo";
 import RateReminderBanner from "@/components/RateReminderBanner";
 import PopularBadge from "@/components/PopularBadge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -1113,9 +1112,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               </div>
             ) : null}
             </div>
-            {isMovie && movie?.id ? (
-              <MovieLikePromo variant="hero" className="mb-3" />
-            ) : theaterShow?.id ? (
+            {theaterShow?.id ? (
               <TheaterLikePromo variant="hero" className="mb-3" />
             ) : null}
             {headline.secondary ? (

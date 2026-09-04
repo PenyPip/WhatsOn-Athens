@@ -24,7 +24,7 @@ export default function TheaterLikePromo({
         <Heart className="mr-1.5 inline h-4 w-4 shrink-0 fill-rose-400/80 text-rose-300 align-[-2px]" aria-hidden />
         <span className="font-semibold text-white">Κάνε like</span>
         {" "}
-        στην παράσταση που θες να δεις — θα μάθεις πρώτος για νέες ημερομηνίες.
+        στην παράσταση που θες να δεις και θα μάθεις πρώτος για νέες ημερομηνίες.
       </p>
     );
   }
