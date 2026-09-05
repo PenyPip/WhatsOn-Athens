@@ -261,20 +261,28 @@ const EventCard = ({
                     : "min-h-[5.5rem]"
                   : theaterHomeCompact
                     ? "min-h-[2.5rem]"
-                    : "min-h-0",
+                    : "min-h-[4.75rem]",
             )}
           >
-            <h3
-              className={cn(
-                "font-display font-semibold leading-tight transition-colors",
-                titleClass,
-                isMovie ? "line-clamp-2 text-base" : "line-clamp-2 text-base",
-                isMovie && "min-h-[2.5rem]",
-                uniformScrollCard && "min-h-[2.5rem]",
-              )}
-            >
-              {title}
-            </h3>
+            <div className={cn("flex gap-2", isTheater && !theaterHomeCompact && "h-[2.5rem] items-start")}>
+              <h3
+                className={cn(
+                  "min-w-0 flex-1 font-display font-semibold leading-tight transition-colors",
+                  titleClass,
+                  "line-clamp-2 text-base",
+                  (isMovie || uniformScrollCard) && "min-h-[2.5rem]",
+                  isTheater && !theaterHomeCompact && "h-[2.5rem]",
+                )}
+              >
+                {title}
+              </h3>
+              {!isMovie && showDuration && !theaterHomeCompact ? (
+                <div className={cn("mt-0.5 flex shrink-0 items-center gap-1 text-sm", metaClass)}>
+                  <Clock className="h-3.5 w-3.5 shrink-0" />
+                  <span>{duration}&nbsp;′</span>
+                </div>
+              ) : null}
+            </div>
             {theaterHomeCompact && subtitleLine !== "\u00a0" ? (
               <p className={cn("mt-0.5 line-clamp-1 text-sm font-medium leading-snug", metaClass)}>{subtitleLine}</p>
             ) : null}
@@ -286,7 +294,7 @@ const EventCard = ({
                 {secondaryLine || "\u00a0"}
               </p>
             ) : titleSecondary ? (
-              <p className={cn("mt-0.5 text-sm font-medium leading-snug line-clamp-2", metaClass)}>{titleSecondary}</p>
+              <p className={cn("mt-0.5 line-clamp-2 text-sm font-medium leading-snug", metaClass)}>{titleSecondary}</p>
             ) : null}
             {isMovie && movieListingMeta ? (
               <p
@@ -323,7 +331,7 @@ const EventCard = ({
           ) : null}
           {movieListingMeta || theaterHomeCompact ? null : (
             <>
-              <p className={cn("mb-1 mt-1 min-h-0 shrink-0 text-sm leading-snug line-clamp-1", metaClass)}>
+              <p className={cn("mb-1 mt-1 min-h-[1.25rem] shrink-0 text-sm leading-snug line-clamp-1", metaClass)}>
                 {subtitleLine}
               </p>
               <div
@@ -343,7 +351,7 @@ const EventCard = ({
                     {genreTrimmed || "\u00a0"}
                   </span>
                 ) : null}
-                {!isMovie && showDuration ? (
+                {!isMovie && showDuration && theaterHomeCompact ? (
                   <div className={cn("flex shrink-0 items-center gap-1 text-sm", metaClass)}>
                     <Clock className="h-3.5 w-3.5 shrink-0" />
                     <span>{duration}&nbsp;′</span>
@@ -365,7 +373,7 @@ const EventCard = ({
                   {theaterScheduleLine ? (
                     <p
                       className={cn(
-                        "line-clamp-2",
+                        "line-clamp-2 min-h-[2.5rem]",
                         darkSectionCard ? "text-[#13143E]/75" : "text-muted-foreground",
                       )}
                     >
