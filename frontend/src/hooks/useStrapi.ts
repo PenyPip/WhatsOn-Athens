@@ -83,10 +83,14 @@ export const useTheaterShows = (enabled = true, options?: { home?: boolean }) =>
     retry: 2,
     enabled,
     placeholderData: keepPreviousData,
-    // Home: μην ξανατραβάς μετά το LCP (TBT). Άλλες σελίδες: επιτρέπεται remount refresh.
+    // Home: μην ξανατραβάς μετά το LCP (TBT). Λίστα/detail: φρέσκο αρκετά για author/ηλικίες, όχι always.
     ...(options?.home
       ? {}
-      : { refetchOnMount: "always" as const, refetchOnWindowFocus: true as const }),
+      : {
+          staleTime: 60_000,
+          refetchOnMount: true as const,
+          refetchOnWindowFocus: true as const,
+        }),
   });
 
 export const useTheaterShowBySlug = (slug: string) =>
@@ -94,7 +98,7 @@ export const useTheaterShowBySlug = (slug: string) =>
     queryKey: ["theaterShow", slug],
     queryFn: () => api.getTheaterShowBySlug(slug),
     staleTime: 60_000,
-    refetchOnMount: "always",
+    refetchOnMount: true,
     throwOnError: false,
     enabled: !!slug,
   });

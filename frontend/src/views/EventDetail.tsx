@@ -276,7 +276,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   }, [slug]);
 
   const { data: movies } = useMovies(isMovieRoute && loadRelatedMovies);
-  const { data: theaterShows, isLoading: theaterListLoading } = useTheaterShows(isTheaterRoute);
+  /** Λίστα μόνο για «σχετικά» - μετά idle, όχι στο critical path λεπτομέρειας. */
+  const { data: theaterShows } = useTheaterShows(isTheaterRoute && deferSecondary);
   const { data: theaterBySlug, isLoading: theaterBySlugLoading } = useTheaterShowBySlug(
     isTheaterRoute && slug ? slug : "",
   );
@@ -323,12 +324,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const event =
     type === "movie"
       ? movieBySlug ?? movieFromList
-      : theaterBySlug ?? theaterShows?.find((s) => s.slug === slug);
+      : theaterBySlug;
 
   const isLoading =
     type === "movie"
       ? !!slug && !movieBySlug && !movieFromList && movieBySlugLoading
-      : !!slug && !theaterBySlug && !theaterShows?.find((s) => s.slug === slug) && (theaterBySlugLoading || theaterListLoading);
+      : !!slug && !theaterBySlug && theaterBySlugLoading;
   const eventShowtimes = useMemo((): StrapiShowtime[] => {
     const list = showtimes ?? [];
     if (!slug || type !== "movie") return [];
