@@ -1,10 +1,13 @@
 import type { StrapiTheaterShow } from "@/lib/api";
 
-type TheaterAgeFields = Pick<StrapiTheaterShow, "ageFrom" | "ageTo">;
+type TheaterAgeFields = Pick<StrapiTheaterShow, "ageFrom" | "ageTo" | "ageRange">;
 type TheaterCreditFields = Pick<StrapiTheaterShow, "author" | "director">;
 
-/** Εμφάνιση εύρους ηλικίας: «4–10 ετών», «από 5 ετών», «έως 12 ετών». */
+/** Εμφάνιση εύρους ηλικίας: ελεύθερο κείμενο ή «4–10 ετών» / «από 5 ετών». */
 export function formatTheaterAgeRange(show: TheaterAgeFields): string | null {
+  const free = (show.ageRange ?? "").trim();
+  if (free) return free;
+
   const from =
     typeof show.ageFrom === "number" && Number.isFinite(show.ageFrom) ? Math.round(show.ageFrom) : null;
   const to = typeof show.ageTo === "number" && Number.isFinite(show.ageTo) ? Math.round(show.ageTo) : null;

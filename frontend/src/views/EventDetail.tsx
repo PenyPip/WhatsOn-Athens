@@ -15,6 +15,7 @@ import {
 import {
   useMovies,
   useTheaterShows,
+  useTheaterShowBySlug,
   useEditorialReviews,
   useUserReviews,
   useShowtimes,
@@ -275,7 +276,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   }, [slug]);
 
   const { data: movies } = useMovies(isMovieRoute && loadRelatedMovies);
-  const { data: theaterShows, isLoading: theaterLoading } = useTheaterShows(isTheaterRoute);
+  const { data: theaterShows, isLoading: theaterListLoading } = useTheaterShows(isTheaterRoute);
+  const { data: theaterBySlug, isLoading: theaterBySlugLoading } = useTheaterShowBySlug(
+    isTheaterRoute && slug ? slug : "",
+  );
   const { data: editorialReviews } = useEditorialReviews(deferSecondary);
   const { data: userReviews } = useUserReviews(deferSecondary);
   const { isAuthenticated, profile } = useAuth();
@@ -319,12 +323,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const event =
     type === "movie"
       ? movieBySlug ?? movieFromList
-      : theaterShows?.find((s) => s.slug === slug);
+      : theaterBySlug ?? theaterShows?.find((s) => s.slug === slug);
 
   const isLoading =
     type === "movie"
       ? !!slug && !movieBySlug && !movieFromList && movieBySlugLoading
-      : theaterLoading && !event;
+      : !!slug && !theaterBySlug && !theaterShows?.find((s) => s.slug === slug) && (theaterBySlugLoading || theaterListLoading);
   const eventShowtimes = useMemo((): StrapiShowtime[] => {
     const list = showtimes ?? [];
     if (!slug || type !== "movie") return [];
@@ -784,10 +788,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const hasDirector = directorLabel.length > 0;
   const authorLabel = !isMovie && theaterShow ? (theaterShow.author ?? "").trim() : "";
   const hasAuthor = authorLabel.length > 0;
-  const ageRangeLabel =
-    !isMovie && theaterShow && isKidsTheaterShow(theaterShow)
-      ? formatTheaterAgeRange(theaterShow)
-      : null;
+  const ageRangeLabel = !isMovie && theaterShow ? formatTheaterAgeRange(theaterShow) : null;
   const hasDuration = typeof event.duration === "number" && Number.isFinite(event.duration) && event.duration > 0;
   /** Για ταινίες: πάντα τμήμα «Πληροφορίες» ώστε να εμφανίζεται έστω και μόνο το είδος. */
   const hasInfoBlock =

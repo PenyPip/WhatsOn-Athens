@@ -703,6 +703,7 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     moreLink,
     ageFrom: parseOptionalInt(s.age_from),
     ageTo: parseOptionalInt(s.age_to),
+    ageRange: typeof s.age_range === "string" ? s.age_range.trim() : "",
     runStart: parseTheaterRunDate(s.run_start) ?? undefined,
     runEnd: parseTheaterRunDate(s.run_end) ?? undefined,
     ticketPrice: parseOptionalDecimal(s.ticket_price),
@@ -1388,6 +1389,8 @@ export interface StrapiTheaterShow {
   ageFrom?: number;
   /** Παιδικές: ανώτατη ηλικία (έτη). */
   ageTo?: number;
+  /** Παιδικές: ελεύθερο κείμενο εύρους (π.χ. «4–10 ετών»). */
+  ageRange?: string;
   /** URL περιοδείας / κρατήσεων / site παράστασης. */
   moreLink: string;
   /** Περίοδος εμφάνισης (YYYY-MM-DD). Κενό = χωρίς όριο. */

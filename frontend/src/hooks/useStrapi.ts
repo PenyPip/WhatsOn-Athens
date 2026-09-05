@@ -86,11 +86,18 @@ export const useTheaterShows = (enabled = true, options?: { home?: boolean }) =>
     // Home: μην ξανατραβάς μετά το LCP (TBT). Άλλες σελίδες: επιτρέπεται remount refresh.
     ...(options?.home
       ? {}
-      : { refetchOnMount: true as const, refetchOnWindowFocus: true as const }),
+      : { refetchOnMount: "always" as const, refetchOnWindowFocus: true as const }),
   });
 
 export const useTheaterShowBySlug = (slug: string) =>
-  useQuery({ queryKey: ["theaterShow", slug], queryFn: () => api.getTheaterShowBySlug(slug), enabled: !!slug });
+  useQuery({
+    queryKey: ["theaterShow", slug],
+    queryFn: () => api.getTheaterShowBySlug(slug),
+    staleTime: 60_000,
+    refetchOnMount: "always",
+    throwOnError: false,
+    enabled: !!slug,
+  });
 
 export const useCuisines = (enabled = true) =>
   useQuery({

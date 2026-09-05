@@ -1066,6 +1066,7 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     author: Attribute.String;
     age_from: Attribute.Integer;
     age_to: Attribute.Integer;
+    age_range: Attribute.String;
     poster: Attribute.Media<'images'>;
     rejected_more_codes: Attribute.Component<
       'cinema.rejected-more-code',

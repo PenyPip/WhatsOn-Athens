@@ -29,6 +29,7 @@ const config = {
       'content-manager.content-types.api::theater-show.theater-show.author': 'Συγγραφέας',
       'content-manager.content-types.api::theater-show.theater-show.age_from': 'Ηλικία από',
       'content-manager.content-types.api::theater-show.theater-show.age_to': 'Ηλικία έως',
+      'content-manager.content-types.api::theater-show.theater-show.age_range': 'Εύρος ηλικίας (κείμενο)',
       'content-manager.enum.home.layout-section.section_key.kids_theater': 'Παιδικές παραστάσεις (αρχική)',
       'content-manager.enum.home.layout-section.section_key.tours': 'Περιοδείες (αρχική)',
       'content-manager.content-types.api::theater-performance.theater-performance.datetime': 'Ημερομηνία',

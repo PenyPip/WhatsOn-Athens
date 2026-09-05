@@ -108,6 +108,7 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         author: s.author,
         ageFrom: s.ageFrom,
         ageTo: s.ageTo,
+        ageRange: s.ageRange,
         posterUrl: s.posterUrl,
         onTour: s.onTour,
         isKids: s.isKids,
