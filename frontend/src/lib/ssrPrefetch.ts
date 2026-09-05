@@ -9,6 +9,7 @@ import {
 } from "@/config/home";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
 import { parseTheaterVenueProgramPath } from "@/lib/theaterVenuePath";
+import { isTheaterKidsPath, isTheaterReservedSegment } from "@/lib/theaterKids";
 import { SHOWTIMES_CALENDAR_QUERY_KEY, THEATER_PERFORMANCES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 import { finalizeBootstrapCache, minifyDehydratedState } from "@/lib/slimDehydrate";
 import { stampBootstrapNow } from "@/lib/siteClock";
@@ -25,8 +26,11 @@ function matchMovieSlug(path: string): string | null {
 
 function matchTheaterSlug(path: string): string | null {
   if (parseTheaterVenueProgramPath(path)) return null;
+  if (isTheaterKidsPath(path)) return null;
   const m = path.match(/^\/theater\/([^/]+)$/);
-  return m?.[1] ?? null;
+  const seg = m?.[1];
+  if (!seg || isTheaterReservedSegment(seg)) return null;
+  return seg;
 }
 
 function matchDiningSlug(path: string): string | null {
@@ -192,7 +196,7 @@ export async function prefetchRouteData(path: string): Promise<DehydratedState> 
       await prefetchTheaterVenueProgram(qc, parseTheaterVenueProgramPath(normalized)!);
     } else if (movieSlug) {
       await prefetchMovieDetail(qc, movieSlug);
-    } else if (normalized === "/theater") {
+    } else if (normalized === "/theater" || isTheaterKidsPath(normalized)) {
       await Promise.all([
         qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }),
         qc.prefetchQuery({

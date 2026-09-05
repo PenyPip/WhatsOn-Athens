@@ -41,6 +41,7 @@ const STATIC_ROUTES = [
     changefreq: "daily",
   })),
   { path: "/theater", priority: "0.9", changefreq: "weekly" },
+  { path: "/theater/kids", priority: "0.85", changefreq: "weekly" },
   { path: "/venues", priority: "0.7", changefreq: "weekly" },
   { path: "/dining", priority: "0.6", changefreq: "weekly" },
   { path: "/reviews", priority: "0.6", changefreq: "weekly" },

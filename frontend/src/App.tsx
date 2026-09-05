@@ -61,6 +61,7 @@ function AppRoutes() {
       <Route path="/movies/venue/:venueSlug" element={<LazyPage><Movies /></LazyPage>} />
       <Route path="/movies/:slug" element={<LazyPage><EventDetail type="movie" /></LazyPage>} />
       <Route path="/theater" element={<LazyPage><TheaterPage /></LazyPage>} />
+      <Route path="/theater/kids" element={<LazyPage><TheaterPage /></LazyPage>} />
       <Route path="/theater/venue/:venueSlug" element={<LazyPage><TheaterVenueProgram /></LazyPage>} />
       <Route path="/theater/:slug" element={<LazyPage><EventDetail type="theater" /></LazyPage>} />
       <Route path="/venues" element={<LazyPage><Venues /></LazyPage>} />

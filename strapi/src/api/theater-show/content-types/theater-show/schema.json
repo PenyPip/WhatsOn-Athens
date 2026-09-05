@@ -89,6 +89,11 @@
       "default": false,
       "description": "Περιοδεία — εμφανίζεται στο τμήμα tours της αρχικής. Οι χώροι ορίζονται στις Παραστάσεις."
     },
+    "is_kids": {
+      "type": "boolean",
+      "default": false,
+      "description": "Παιδική παράσταση — τμήμα kids_theater στην αρχική και /theater/kids."
+    },
     "more_link": {
       "type": "string",
       "description": "URL περιοδείας, κρατήσεων ή επίσημης σελίδας της παράστασης (όχι στον χώρο)."

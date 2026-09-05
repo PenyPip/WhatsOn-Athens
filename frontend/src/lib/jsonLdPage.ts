@@ -62,6 +62,7 @@ export function seoCopyForPath(path: string): PageSeoCopy {
     "/": staticPageSeo.home,
     "/movies": staticPageSeo.movies,
     "/theater": staticPageSeo.theater,
+    "/theater/kids": staticPageSeo.theaterKids,
     "/venues": staticPageSeo.venues,
     "/dining": staticPageSeo.dining,
     "/reviews": staticPageSeo.reviews,
@@ -246,6 +247,15 @@ function entityNodeForPath(path: string, pageName: string, pageUrl: string): Jso
       inLanguage: "el",
       ...(poster ? { image: poster, thumbnailUrl: poster } : {}),
       ...(seo?.description ? { description: seo.description } : {}),
+    });
+  }
+  if (parts[0] === "theater" && parts[1] === "kids" && parts.length === 2) {
+    return stripEmpty({
+      "@type": "CollectionPage",
+      "@id": `${pageUrl}#webpage`,
+      name: pageName,
+      url: pageUrl,
+      inLanguage: "el",
     });
   }
   if (parts[0] === "theater" && parts.length >= 2) {

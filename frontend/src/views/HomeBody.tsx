@@ -50,6 +50,7 @@ import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
+import { filterKidsShowsForHome, THEATER_KIDS_PATH } from "@/lib/theaterKids";
 import { filterTouringShowsForHome } from "@/lib/theaterTours";
 import { useFavoriteIds } from "@/hooks/useFavoriteIds";
 import { sortMoviesPrioritizingFavorites } from "@/lib/favoriteSort";
@@ -477,6 +478,10 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     () => filterTouringShowsForHome(theaterShows ?? [], theaterPerformances),
     [theaterShows, theaterPerformances],
   );
+  const kidsShowsForHome = useMemo(
+    () => filterKidsShowsForHome(theaterShows ?? [], theaterPerformances),
+    [theaterShows, theaterPerformances],
+  );
   const summerMoviesForHome = useMemo(
     () =>
       sortMoviesPrioritizingFavorites(
@@ -780,6 +785,91 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                           className="inline-flex items-center gap-1 text-sm font-semibold text-amber-200/95 transition-colors hover:text-amber-50"
                         >
                           Όλες οι παραστάσεις
+                          <span aria-hidden className="opacity-75">
+                            →
+                          </span>
+                        </a>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>,
+            );
+          case "kids_theater":
+            return sectionEl(
+              "kids_theater",
+              <div className="section-black relative overflow-hidden py-14 md:py-20">
+                <div aria-hidden className="pointer-events-none absolute -right-16 top-1/3 h-72 w-72 rounded-full bg-sky-400/10 blur-[90px]" />
+                <div className="container relative z-[1] max-w-7xl">
+                  <div>
+                    <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.24em] text-sky-200/85">
+                      Για παιδιά
+                    </span>
+                    <h2 className="font-display text-3xl font-bold leading-tight text-white md:text-5xl md:leading-[1.1]">
+                      Παιδικές παραστάσεις
+                    </h2>
+                  </div>
+                  {(needsTheater && !deferHomeExtra) || theaterAwaiting ? (
+                    <div className="mt-10 flex min-h-[14rem] gap-4 overflow-hidden pb-2">
+                      {[0, 1, 2, 3].map((i) => (
+                        <div
+                          key={i}
+                          className="h-[10.5rem] w-[15rem] shrink-0 animate-pulse rounded-lg bg-white/10 md:h-[11.5rem] md:w-[17rem]"
+                        />
+                      ))}
+                    </div>
+                  ) : theaterLoadFailed ? (
+                    <div className="mt-10 max-w-xl rounded-xl border border-sky-500/20 bg-sky-950/20 px-5 py-5 md:px-6 md:py-6">
+                      <p className="text-sm leading-relaxed text-sky-100/85 font-body">Δεν ήταν δυνατή η φόρτωση.</p>
+                    </div>
+                  ) : kidsShowsForHome.length === 0 ? (
+                    <div className="mt-10 max-w-2xl rounded-xl border border-white/10 bg-black/35 px-5 py-6 md:px-7 md:py-7">
+                      <p className="font-body text-sm leading-relaxed text-white/75 md:text-[0.9375rem]">
+                        Δεν υπάρχουν παιδικές παραστάσεις προς το παρόν.
+                      </p>
+                      <a
+                        href="/theater"
+                        className="mt-5 inline-flex text-sm font-semibold text-sky-200/95 transition-colors hover:text-sky-50"
+                      >
+                        Όλες οι παραστάσεις
+                        <span aria-hidden className="ml-1 opacity-75">
+                          →
+                        </span>
+                      </a>
+                    </div>
+                  ) : (
+                    <>
+                      <ul
+                        className="mt-10 flex list-none items-stretch gap-4 overflow-x-auto scrollbar-hide pb-2"
+                        aria-label="Παιδικές παραστάσεις"
+                      >
+                        {kidsShowsForHome.map((show, i) => (
+                          <li key={show.id} className="flex h-full min-h-0 shrink-0">
+                            <EventCard
+                              slug={show.slug}
+                              title={show.title}
+                              subtitle={show.director ?? ""}
+                              genre={theaterGenreLabel(show.genre)}
+                              duration={show.duration ?? 0}
+                              posterUrl={show.posterUrl}
+                              type="theater"
+                              badge={show.soldOut ? "SOLD OUT" : "Παιδική"}
+                              compactMovieMeta
+                              darkSectionCard
+                              className="w-[15rem] md:w-[17rem]"
+                              index={i}
+                              posterPriority={i < 2}
+                              posterEager
+                            />
+                          </li>
+                        ))}
+                      </ul>
+                      <div className="mt-10 border-t border-white/10 pt-8 text-center">
+                        <a
+                          href={THEATER_KIDS_PATH}
+                          className="inline-flex items-center gap-1 text-sm font-semibold text-sky-200/95 transition-colors hover:text-sky-50"
+                        >
+                          Όλες οι παιδικές παραστάσεις
                           <span aria-hidden className="opacity-75">
                             →
                           </span>

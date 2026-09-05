@@ -1168,6 +1168,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               (isMovie && hasDuration) ||
               movie?.isDubbed ||
               (theaterShow && isTouringTheaterShow(theaterShow)) ||
+              (theaterShow && theaterShow.isKids) ||
               (theaterShow && formatTheaterRunPeriod(theaterShow))
             ) ? (
               <div
@@ -1200,6 +1201,11 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                 {theaterShow && isTouringTheaterShow(theaterShow) ? (
                   <span className="rounded border border-amber-400/50 bg-amber-500/25 px-2 py-0.5 text-sm font-semibold text-amber-100">
                     Περιοδεία
+                  </span>
+                ) : null}
+                {theaterShow && theaterShow.isKids ? (
+                  <span className="rounded border border-sky-300/50 bg-sky-500/25 px-2 py-0.5 text-sm font-semibold text-sky-100">
+                    Παιδική
                   </span>
                 ) : null}
                 {theaterShow && formatTheaterRunPeriod(theaterShow) ? (

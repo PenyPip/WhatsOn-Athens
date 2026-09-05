@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
+import { Link, useLocation } from "react-router-dom";
 import EventCard from "@/components/EventCard";
 import PageListHeader, { PAGE_LIST_SHELL_CLASS, PAGE_LIST_SUBTITLE_CLASS, PAGE_LIST_TITLE_CLASS } from "@/components/PageListHeader";
 import LoadingState from "@/components/LoadingState";
@@ -26,9 +27,23 @@ import {
   theaterShowHasUpcomingPerformances,
   theaterShowListBadge,
 } from "@/lib/theaterPerformances";
+import {
+  filterKidsShowsForHome,
+  isKidsTheaterShow,
+  isTheaterKidsPath,
+  THEATER_KIDS_PATH,
+} from "@/lib/theaterKids";
 
 const TheaterPage = () => {
-  usePageSeo(staticPageSeo.theater);
+  const { pathname } = useLocation();
+  const kidsOnly = isTheaterKidsPath(pathname);
+  const pageSeo = kidsOnly ? staticPageSeo.theaterKids : staticPageSeo.theater;
+  usePageSeo({
+    title: pageSeo.title,
+    description: pageSeo.description,
+    path: pageSeo.path,
+    canonicalPath: pageSeo.path,
+  });
 
   const { data: theaterShows, isLoading: showsLoading } = useTheaterShows();
   const { data: theaterPerformances, isLoading: performancesLoading } = useTheaterPerformances();
@@ -62,10 +77,16 @@ const TheaterPage = () => {
     });
   }, [theaterShows, performancesByShowSlug]);
 
+  const kidsPreviewShows = useMemo(
+    () => (kidsOnly ? [] : filterKidsShowsForHome(theaterShows ?? [], theaterPerformances).slice(0, 6)),
+    [kidsOnly, theaterShows, theaterPerformances],
+  );
+
   const filteredShows = useMemo(() => {
     const venueList = venues ?? [];
     const cityFilterReady = venues !== undefined;
-    const filtered = upcomingShows.filter((show) => {
+    const base = kidsOnly ? upcomingShows.filter(isKidsTheaterShow) : upcomingShows;
+    const filtered = base.filter((show) => {
       const perfs = performancesByShowSlug.get(show.slug) ?? [];
       return theaterShowMatchesListFilters(show, perfs, venueList, {
         region: regionFilter,
@@ -81,7 +102,7 @@ const TheaterPage = () => {
       if (aNew === bNew) return 0;
       return aNew ? -1 : 1;
     });
-  }, [upcomingShows, regionFilter, appliedFrom, appliedTo, performancesByShowSlug, venues]);
+  }, [upcomingShows, kidsOnly, regionFilter, appliedFrom, appliedTo, performancesByShowSlug, venues]);
 
   const activeQuickFilter = useMemo(
     () => detectTheaterQuickDateFilter(appliedFrom, appliedTo),
@@ -104,16 +125,27 @@ const TheaterPage = () => {
     setAppliedTo(next.to);
   }, []);
 
-  const hasShows = upcomingShows.length > 0;
+  const hasShows = kidsOnly
+    ? upcomingShows.some(isKidsTheaterShow)
+    : upcomingShows.length > 0;
   const hasActiveFilters = regionFilter !== "all" || Boolean(appliedFrom || appliedTo);
 
   return (
     <div className={PAGE_LIST_SHELL_CLASS}>
       <PageListHeader>
-        <h1 className={PAGE_LIST_TITLE_CLASS}>Θέατρο</h1>
+        <h1 className={PAGE_LIST_TITLE_CLASS}>{kidsOnly ? "Παιδικές παραστάσεις" : "Θέατρο"}</h1>
         <p className={PAGE_LIST_SUBTITLE_CLASS}>
-          Παραστάσεις, πρόγραμμα και ημερομηνίες - κάνε like σε ό,τι θες να δεις.
+          {kidsOnly
+            ? "Παιδικό θέατρο - πρόγραμμα, χώροι και ημερομηνίες για όλη την οικογένεια."
+            : "Παραστάσεις, πρόγραμμα και ημερομηνίες - κάνε like σε ό,τι θες να δεις."}
         </p>
+        {kidsOnly ? (
+          <p className="mt-3">
+            <Link to="/theater" className="text-sm font-medium text-white/70 underline-offset-2 hover:text-white hover:underline">
+              ← Όλες οι παραστάσεις
+            </Link>
+          </p>
+        ) : null}
       </PageListHeader>
 
       <div className="container mb-6">
@@ -125,10 +157,66 @@ const TheaterPage = () => {
           <LoadingState message="Φόρτωση παραστάσεων..." />
         ) : !hasShows ? (
           <p className="text-sm text-muted-foreground">
-            Δεν υπάρχουν παραστάσεις προς το παρόν.
+            {kidsOnly
+              ? "Δεν υπάρχουν παιδικές παραστάσεις προς το παρόν."
+              : "Δεν υπάρχουν παραστάσεις προς το παρόν."}
           </p>
         ) : (
           <>
+            {!kidsOnly && kidsPreviewShows.length > 0 ? (
+              <section className="mb-10" aria-labelledby="theater-kids-heading">
+                <div className="mb-4 flex flex-wrap items-end justify-between gap-3">
+                  <div>
+                    <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">Για παιδιά</p>
+                    <h2 id="theater-kids-heading" className="font-display text-xl font-bold text-foreground md:text-2xl">
+                      Παιδικές παραστάσεις
+                    </h2>
+                  </div>
+                  <Link
+                    to={THEATER_KIDS_PATH}
+                    className="text-sm font-semibold text-[#13143E] underline-offset-2 hover:underline"
+                  >
+                    Όλες οι παιδικές →
+                  </Link>
+                </div>
+                <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-3">
+                  {kidsPreviewShows.map((show, i) => {
+                    const priceLine = theaterPriceLabel(resolveTheaterTicketPrices(show));
+                    const showPerformances = performancesByShowSlug.get(show.slug) ?? [];
+                    const scheduleLine = theaterPerformanceSummary(showPerformances);
+                    return (
+                      <EventCard
+                        key={show.id}
+                        slug={show.slug}
+                        title={show.title}
+                        subtitle={show.director}
+                        genre={theaterGenreLabel(show.genre)}
+                        duration={show.duration}
+                        posterUrl={show.posterUrl}
+                        type="theater"
+                        theaterPriceLine={priceLine ?? undefined}
+                        theaterScheduleLine={scheduleLine ?? undefined}
+                        index={i}
+                        badge={theaterShowListBadge(show, showPerformances) ?? "Παιδική"}
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            ) : null}
+
+            {!kidsOnly ? (
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <h2 className="font-display text-lg font-bold text-foreground md:text-xl">Όλες οι παραστάσεις</h2>
+                <Link
+                  to={THEATER_KIDS_PATH}
+                  className="rounded-full border border-border/80 bg-background px-3 py-1.5 text-sm font-medium text-foreground transition-colors hover:bg-muted/60"
+                >
+                  Παιδικές
+                </Link>
+              </div>
+            ) : null}
+
             <TheaterDateFilters
               className="mb-6"
               regionFilter={regionFilter}
@@ -145,7 +233,9 @@ const TheaterPage = () => {
               <p className="mb-6 text-sm text-muted-foreground">
                 {hasActiveFilters
                   ? "Δεν βρέθηκαν παραστάσεις με αυτά τα φίλτρα. Δοκίμασε άλλη περιοχή ή ημερομηνία."
-                  : "Δεν βρέθηκαν παραστάσεις με αυτά τα φίλτρα."}
+                  : kidsOnly
+                    ? "Δεν βρέθηκαν παιδικές παραστάσεις με αυτά τα φίλτρα."
+                    : "Δεν βρέθηκαν παραστάσεις με αυτά τα φίλτρα."}
               </p>
             ) : null}
             <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-3">
@@ -166,7 +256,10 @@ const TheaterPage = () => {
                     theaterPriceLine={priceLine ?? undefined}
                     theaterScheduleLine={scheduleLine ?? undefined}
                     index={i}
-                    badge={theaterShowListBadge(show, showPerformances)}
+                    badge={
+                      theaterShowListBadge(show, showPerformances) ??
+                      (show.isKids ? "Παιδική" : undefined)
+                    }
                   />
                 );
               })}

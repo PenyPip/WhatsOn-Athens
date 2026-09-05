@@ -687,6 +687,7 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     isLastShows: s.is_last_shows,
     soldOut: s.sold_out === true,
     onTour: s.on_tour === true,
+    isKids: s.is_kids === true,
     moreLink: typeof s.more_link === "string" ? s.more_link.trim() : "",
     runStart: parseTheaterRunDate(s.run_start) ?? undefined,
     runEnd: parseTheaterRunDate(s.run_end) ?? undefined,
@@ -1364,6 +1365,8 @@ export interface StrapiTheaterShow {
   soldOut?: boolean;
   /** Περιοδεία - τμήμα tours στην αρχική. */
   onTour: boolean;
+  /** Παιδική παράσταση - τμήμα kids_theater /theater/kids. */
+  isKids: boolean;
   /** URL περιοδείας / κρατήσεων / site παράστασης. */
   moreLink: string;
   /** Περίοδος εμφάνισης (YYYY-MM-DD). Κενό = χωρίς όριο. */
