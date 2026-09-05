@@ -50,6 +50,8 @@ interface EventCardProps {
   theaterPriceLine?: string;
   /** Θέατρο: σύντομο πρόγραμμα (π.χ. «Τετ 19:00 · Πέμ 20:30»). */
   theaterScheduleLine?: string;
+  /** Οριζόντια αφίσα χωρίς πλευρικό padding (λιγότερα κενά αριστερά/δεξιά). */
+  landscapeFlush?: boolean;
   /** Ο χρήστης το έχει σημειώσει ως «το είδα». */
   seen?: boolean;
   className?: string;
@@ -83,6 +85,7 @@ const EventCard = ({
   posterEager = false,
   theaterPriceLine,
   theaterScheduleLine,
+  landscapeFlush = false,
   seen = false,
   className = "",
   index: _index = 0,
@@ -159,7 +162,12 @@ const EventCard = ({
           className={cn(
             "relative w-full shrink-0 overflow-hidden",
             landscapePoster
-              ? "flex h-28 items-center justify-center bg-[#ebe8f2] px-2 py-2 sm:h-32 md:h-36"
+              ? cn(
+                  "flex items-center justify-center bg-[#ebe8f2]",
+                  landscapeFlush
+                    ? "h-28 px-0 py-1.5 sm:h-32 md:h-36"
+                    : "h-28 px-2 py-2 sm:h-32 md:h-36",
+                )
               : "aspect-[2/3] bg-secondary",
             !posterUrl && !showGradientFallback && !landscapePoster && "bg-secondary",
             !posterUrl && !showGradientFallback && landscapePoster && "bg-[#ebe8f2]",

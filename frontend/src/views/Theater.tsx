@@ -216,7 +216,7 @@ const TheaterPage = () => {
         className={cn(
           "container",
           kidsOnly &&
-            "relative overflow-hidden rounded-3xl border border-sky-200/55 bg-gradient-to-b from-sky-50/95 via-amber-50/45 to-rose-50/55 px-3 py-5 md:px-6 md:py-7",
+            "relative overflow-hidden rounded-3xl border border-sky-200/55 bg-gradient-to-b from-sky-50/95 via-amber-50/45 to-rose-50/55 px-2 py-5 md:px-4 md:py-7",
         )}
       >
         {kidsOnly ? (
@@ -260,7 +260,14 @@ const TheaterPage = () => {
                       : "Δεν βρέθηκαν παραστάσεις με αυτά τα φίλτρα."}
                 </p>
               ) : null}
-              <div className="grid grid-cols-1 items-start gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <div
+                className={cn(
+                  "grid items-start",
+                  kidsOnly
+                    ? "grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4 lg:grid-cols-4"
+                    : "grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3",
+                )}
+              >
                 {filteredShows.map((show, i) => {
                   const priceLine = theaterPriceLabel(resolveTheaterTicketPrices(show));
                   const showPerformances = performancesByShowSlug.get(show.slug) ?? [];
@@ -287,8 +294,9 @@ const TheaterPage = () => {
                       index={i}
                       badge={
                         theaterShowListBadge(show, showPerformances) ??
-                        (kidsOnly || isKidsTheaterShow(show) ? "Παιδική" : undefined)
+                        (kidsOnly ? undefined : isKidsTheaterShow(show) ? "Παιδική" : undefined)
                       }
+                      landscapeFlush={kidsOnly}
                     />
                   );
                 })}
