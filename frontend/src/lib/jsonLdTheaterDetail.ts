@@ -65,6 +65,9 @@ export function buildTheaterDetailJsonLd(input: TheaterDetailJsonLdInput): JsonL
     director: show.director?.trim()
       ? { "@type": "Person", name: show.director.trim() }
       : undefined,
+    author: show.author?.trim()
+      ? { "@type": "Person", name: show.author.trim() }
+      : undefined,
     performer: show.cast?.length
       ? show.cast.map((name) => ({ "@type": "Person", name: name.trim() })).filter((p) => (p as JsonLdObject).name)
       : undefined,

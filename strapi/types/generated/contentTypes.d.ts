@@ -1063,6 +1063,9 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     more_link: Attribute.String;
     on_tour: Attribute.Boolean & Attribute.DefaultTo<false>;
     is_kids: Attribute.Boolean & Attribute.DefaultTo<false>;
+    author: Attribute.String;
+    age_from: Attribute.Integer;
+    age_to: Attribute.Integer;
     poster: Attribute.Media<'images'>;
     rejected_more_codes: Attribute.Component<
       'cinema.rejected-more-code',

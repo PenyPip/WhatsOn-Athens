@@ -24,7 +24,24 @@
       "type": "text"
     },
     "director": {
-      "type": "string"
+      "type": "string",
+      "description": "Σκηνοθέτης της παράστασης."
+    },
+    "author": {
+      "type": "string",
+      "description": "Συγγραφέας / κείμενο του έργου (όχι ο σκηνοθέτης)."
+    },
+    "age_from": {
+      "type": "integer",
+      "min": 0,
+      "max": 99,
+      "description": "Παιδικές: κατώτατη ηλικία (έτη). Π.χ. 4."
+    },
+    "age_to": {
+      "type": "integer",
+      "min": 0,
+      "max": 99,
+      "description": "Παιδικές: ανώτατη ηλικία (έτη). Π.χ. 10. Κενό = μόνο «από»."
     },
     "cast": {
       "type": "component",

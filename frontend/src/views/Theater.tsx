@@ -36,6 +36,7 @@ import {
   isTheaterKidsPath,
   THEATER_KIDS_PATH,
 } from "@/lib/theaterKids";
+import { formatTheaterAgeRange, theaterCardSubtitle } from "@/lib/theaterShowMeta";
 import { cn } from "@/lib/utils";
 
 function TheaterSectionTabs({ kidsActive }: { kidsActive: boolean }) {
@@ -269,8 +270,15 @@ const TheaterPage = () => {
                       key={show.id}
                       slug={show.slug}
                       title={show.title}
-                      subtitle={show.director}
-                      genre={theaterGenreLabel(show.genre)}
+                      subtitle={theaterCardSubtitle(show)}
+                      genre={
+                        [
+                          theaterGenreLabel(show.genre),
+                          kidsOnly || isKidsTheaterShow(show) ? formatTheaterAgeRange(show) : null,
+                        ]
+                          .filter(Boolean)
+                          .join(" · ") || theaterGenreLabel(show.genre)
+                      }
                       duration={show.duration}
                       posterUrl={show.posterUrl}
                       type="theater"

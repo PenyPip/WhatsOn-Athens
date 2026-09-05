@@ -94,6 +94,7 @@ import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { formatTheaterRunPeriod } from "@/lib/theaterRunDates";
 import { isTouringTheaterShow } from "@/lib/theaterTours";
 import { isKidsTheaterShow } from "@/lib/theaterKids";
+import { formatTheaterAgeRange, theaterCardSubtitle } from "@/lib/theaterShowMeta";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import { TheaterTicketHeroPreview } from "@/components/TheaterTicketPrices";
@@ -781,9 +782,22 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const directorLabel = (event.director ?? "").trim();
   const hasDirector = directorLabel.length > 0;
+  const authorLabel = !isMovie && theaterShow ? (theaterShow.author ?? "").trim() : "";
+  const hasAuthor = authorLabel.length > 0;
+  const ageRangeLabel =
+    !isMovie && theaterShow && isKidsTheaterShow(theaterShow)
+      ? formatTheaterAgeRange(theaterShow)
+      : null;
   const hasDuration = typeof event.duration === "number" && Number.isFinite(event.duration) && event.duration > 0;
   /** Για ταινίες: πάντα τμήμα «Πληροφορίες» ώστε να εμφανίζεται έστω και μόνο το είδος. */
-  const hasInfoBlock = isMovie || hasDirector || hasCast || Boolean(genreLabel) || hasDuration;
+  const hasInfoBlock =
+    isMovie ||
+    hasDirector ||
+    hasAuthor ||
+    Boolean(ageRangeLabel) ||
+    hasCast ||
+    Boolean(genreLabel) ||
+    hasDuration;
   const trailerEmbedUrl = isMovie && movie ? youtubeEmbedUrl(movie.trailerUrl) : null;
 
   const infoField = (label: string, value: ReactNode) => (
@@ -866,7 +880,9 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
     >
       <h2 className="font-display mb-2 text-left text-base font-semibold">Πληροφορίες</h2>
       <div className="space-y-0">
+        {hasAuthor ? theaterCompactRow("Συγγραφέας", authorLabel) : null}
         {hasDirector ? theaterCompactRow("Σκηνοθεσία", directorLabel) : null}
+        {ageRangeLabel ? theaterCompactRow("Ηλικίες", ageRangeLabel) : null}
         {genreLabel ? theaterCompactRow("Είδος", genreLabel) : null}
         {hasDuration ? theaterCompactRow("Διάρκεια", `${event.duration}′`) : null}
       </div>
@@ -1170,6 +1186,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               movie?.isDubbed ||
               (theaterShow && isTouringTheaterShow(theaterShow)) ||
               (theaterShow && isKidsTheaterShow(theaterShow)) ||
+              (theaterShow && formatTheaterAgeRange(theaterShow)) ||
+              (theaterShow && (theaterShow.author ?? "").trim()) ||
               (theaterShow && formatTheaterRunPeriod(theaterShow))
             ) ? (
               <div
@@ -1209,6 +1227,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     Παιδική
                   </span>
                 ) : null}
+                {ageRangeLabel ? <span className="text-white/65">{ageRangeLabel}</span> : null}
+                {hasAuthor ? <span className="text-white/65">{authorLabel}</span> : null}
                 {theaterShow && formatTheaterRunPeriod(theaterShow) ? (
                   <span className="flex items-center gap-1">{formatTheaterRunPeriod(theaterShow)}</span>
                 ) : null}
@@ -1551,7 +1571,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     slug={item.slug}
                     title={itemTl.primary}
                     titleSecondary={itemTl.secondary}
-                    subtitle={isMovie ? "" : item.director}
+                    subtitle={isMovie ? "" : theaterCardSubtitle(item as StrapiTheaterShow)}
                     genre={isMovie ? "" : theaterGenreLabel((item as StrapiTheaterShow).genre)}
                     duration={item.duration}
                     imdbRating={isMovie ? resolveImdbRating(item as StrapiMovie) : undefined}

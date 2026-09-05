@@ -51,6 +51,7 @@ import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { filterKidsShowsForHome, THEATER_KIDS_PATH } from "@/lib/theaterKids";
+import { theaterCardSubtitle } from "@/lib/theaterShowMeta";
 import { filterTouringShowsForHome } from "@/lib/theaterTours";
 import { useFavoriteIds } from "@/hooks/useFavoriteIds";
 import { sortMoviesPrioritizingFavorites } from "@/lib/favoriteSort";
@@ -763,7 +764,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                             <EventCard
                               slug={show.slug}
                               title={show.title}
-                              subtitle={show.director ?? ""}
+                              subtitle={theaterCardSubtitle(show)}
                               genre={theaterGenreLabel(show.genre)}
                               duration={show.duration ?? 0}
                               posterUrl={show.posterUrl}
@@ -848,7 +849,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                             <EventCard
                               slug={show.slug}
                               title={show.title}
-                              subtitle={show.director ?? ""}
+                              subtitle={theaterCardSubtitle(show)}
                               genre={theaterGenreLabel(show.genre)}
                               duration={show.duration ?? 0}
                               posterUrl={show.posterUrl}

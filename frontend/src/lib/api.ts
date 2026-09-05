@@ -670,6 +670,15 @@ function mapMovie(
   };
 }
 
+function parseOptionalInt(raw: unknown): number | undefined {
+  if (typeof raw === "number" && Number.isFinite(raw)) return Math.round(raw);
+  if (typeof raw === "string" && raw.trim()) {
+    const n = Number(raw.trim());
+    if (Number.isFinite(n)) return Math.round(n);
+  }
+  return undefined;
+}
+
 function mapTheaterShow(raw: unknown): StrapiTheaterShow {
   const s = unwrapStrapiEntry(raw);
   const moreLink = typeof s.more_link === "string" ? s.more_link.trim() : "";
@@ -679,7 +688,8 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     documentId: s.documentId,
     slug: s.slug,
     title: s.title,
-    director: s.director,
+    director: typeof s.director === "string" ? s.director : "",
+    author: typeof s.author === "string" ? s.author.trim() : "",
     cast: normalizeCastFromStrapi(s.cast),
     genre: s.genre,
     duration: s.duration,
@@ -691,6 +701,8 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     onTour: s.on_tour === true,
     isKids: s.is_kids === true || moreTheaterLinkIsKids(moreLink),
     moreLink,
+    ageFrom: parseOptionalInt(s.age_from),
+    ageTo: parseOptionalInt(s.age_to),
     runStart: parseTheaterRunDate(s.run_start) ?? undefined,
     runEnd: parseTheaterRunDate(s.run_end) ?? undefined,
     ticketPrice: parseOptionalDecimal(s.ticket_price),
@@ -1356,7 +1368,10 @@ export interface StrapiTheaterShow {
   documentId: string;
   slug: string;
   title: string;
+  /** Σκηνοθέτης. */
   director: string;
+  /** Συγγραφέας / κείμενο του έργου. */
+  author: string;
   cast: string[];
   genre: string;
   duration: number;
@@ -1369,6 +1384,10 @@ export interface StrapiTheaterShow {
   onTour: boolean;
   /** Παιδική παράσταση - τμήμα kids_theater /theater/kids. */
   isKids: boolean;
+  /** Παιδικές: κατώτατη ηλικία (έτη). */
+  ageFrom?: number;
+  /** Παιδικές: ανώτατη ηλικία (έτη). */
+  ageTo?: number;
   /** URL περιοδείας / κρατήσεων / site παράστασης. */
   moreLink: string;
   /** Περίοδος εμφάνισης (YYYY-MM-DD). Κενό = χωρίς όριο. */
