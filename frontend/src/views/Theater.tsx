@@ -40,37 +40,47 @@ import { cn } from "@/lib/utils";
 
 function TheaterSectionTabs({ kidsActive }: { kidsActive: boolean }) {
   return (
-    <div
-      className="mb-6 grid grid-cols-2 gap-1 rounded-2xl border border-white/15 bg-black/20 p-1.5 shadow-inner"
-      role="tablist"
-      aria-label="Ενότητες θεάτρου"
-    >
+    <nav className="mb-5 flex flex-wrap items-end gap-6 md:gap-8" aria-label="Ενότητες θεάτρου">
       <Link
         to="/theater"
-        role="tab"
-        aria-selected={!kidsActive}
+        aria-current={!kidsActive ? "page" : undefined}
         className={cn(
-          "rounded-xl px-3 py-3.5 text-center text-sm font-semibold transition-colors md:py-4 md:text-base",
+          "border-b-2 pb-1.5 text-sm tracking-wide transition-colors md:text-[0.95rem]",
           !kidsActive
-            ? "bg-white text-[#13143E] shadow-sm"
-            : "text-white/75 hover:bg-white/10 hover:text-white",
+            ? "border-white font-medium text-white"
+            : "border-transparent text-white/55 hover:text-white/85",
         )}
       >
         Όλες οι παραστάσεις
       </Link>
       <Link
         to={THEATER_KIDS_PATH}
-        role="tab"
-        aria-selected={kidsActive}
+        aria-current={kidsActive ? "page" : undefined}
         className={cn(
-          "rounded-xl px-3 py-3.5 text-center text-sm font-semibold transition-colors md:py-4 md:text-base",
+          "border-b-2 pb-1.5 text-sm tracking-wide transition-colors md:text-[0.95rem]",
           kidsActive
-            ? "bg-gradient-to-br from-sky-200 via-amber-100 to-rose-200 text-[#13143E] shadow-sm"
-            : "text-white/75 hover:bg-white/10 hover:text-white",
+            ? "border-amber-200/90 font-medium text-amber-50"
+            : "border-transparent text-white/55 hover:text-white/85",
         )}
       >
         Παιδικές
       </Link>
+    </nav>
+  );
+}
+
+/** Διαφανείς φούσκες - πιο εμφανείς, χωρίς blur «λάσπη». */
+function KidsBubbleField({ className }: { className?: string }) {
+  return (
+    <div aria-hidden className={cn("pointer-events-none absolute inset-0 overflow-hidden", className)}>
+      <span className="absolute -left-6 top-4 h-36 w-36 rounded-full border border-white/35 bg-white/[0.12] shadow-[inset_0_0_24px_rgba(255,255,255,0.18)] md:h-44 md:w-44" />
+      <span className="absolute right-4 top-2 h-24 w-24 rounded-full border border-amber-100/40 bg-amber-200/20 shadow-[inset_0_0_18px_rgba(253,230,138,0.25)] md:h-28 md:w-28" />
+      <span className="absolute bottom-2 left-[28%] h-20 w-20 rounded-full border border-rose-100/35 bg-rose-200/18 md:h-24 md:w-24" />
+      <span className="absolute right-[22%] top-[42%] h-14 w-14 rounded-full border border-sky-100/45 bg-sky-100/15" />
+      <span className="absolute left-[8%] top-[58%] h-10 w-10 rounded-full border border-white/30 bg-white/10" />
+      <span className="absolute right-[12%] bottom-8 h-16 w-16 rounded-full border border-white/25 bg-white/[0.08]" />
+      <span className="absolute left-[55%] top-8 h-8 w-8 rounded-full border border-amber-50/50 bg-amber-100/20" />
+      <span className="absolute left-[40%] top-[30%] h-5 w-5 rounded-full border border-white/40 bg-white/15" />
     </div>
   );
 }
@@ -177,16 +187,7 @@ const TheaterPage = () => {
             : undefined
         }
       >
-        {kidsOnly ? (
-          <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden">
-            <span className="absolute -left-8 top-10 h-28 w-28 rounded-full bg-amber-300/25 blur-2xl" />
-            <span className="absolute right-8 top-6 h-20 w-20 rounded-full bg-rose-300/30 blur-xl" />
-            <span className="absolute bottom-0 left-1/3 h-24 w-24 rounded-full bg-sky-200/25 blur-2xl" />
-            <span className="absolute right-1/4 top-1/2 h-3 w-3 rounded-full bg-amber-200/70" />
-            <span className="absolute left-[12%] top-[55%] h-2.5 w-2.5 rounded-full bg-rose-200/80" />
-            <span className="absolute right-[18%] top-[38%] h-2 w-2 rounded-full bg-sky-100/80" />
-          </div>
-        ) : null}
+        {kidsOnly ? <KidsBubbleField /> : null}
         <div className="relative z-[1]">
           <TheaterSectionTabs kidsActive={kidsOnly} />
           <h1 className={PAGE_LIST_TITLE_CLASS}>{kidsOnly ? "Παιδικές παραστάσεις" : "Θέατρο"}</h1>
@@ -198,32 +199,32 @@ const TheaterPage = () => {
         </div>
       </PageListHeader>
 
-      <div
-        className={cn(
-          "container mb-6",
-          kidsOnly && "relative",
-        )}
-      >
+      <div className={cn("container mb-6", kidsOnly && "relative overflow-hidden")}>
         {kidsOnly ? (
-          <div
-            aria-hidden
-            className="pointer-events-none absolute -left-10 top-0 h-40 w-40 rounded-full bg-amber-200/40 blur-3xl"
-          />
+          <div aria-hidden className="pointer-events-none absolute inset-0">
+            <span className="absolute -left-4 top-2 h-28 w-28 rounded-full border border-sky-300/50 bg-sky-200/25" />
+            <span className="absolute right-6 top-0 h-16 w-16 rounded-full border border-amber-300/45 bg-amber-100/30" />
+          </div>
         ) : null}
-        <TheaterLikePromo />
+        <div className="relative z-[1]">
+          <TheaterLikePromo />
+        </div>
       </div>
 
       <div
         className={cn(
           "container",
           kidsOnly &&
-            "relative rounded-3xl border border-sky-200/50 bg-gradient-to-b from-sky-50/90 via-amber-50/40 to-rose-50/50 px-3 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,0.7)] md:px-6 md:py-7",
+            "relative overflow-hidden rounded-3xl border border-sky-200/55 bg-gradient-to-b from-sky-50/95 via-amber-50/45 to-rose-50/55 px-3 py-5 md:px-6 md:py-7",
         )}
       >
         {kidsOnly ? (
           <div aria-hidden className="pointer-events-none absolute inset-0 overflow-hidden rounded-3xl">
-            <span className="absolute -right-6 -top-6 h-24 w-24 rounded-full border-4 border-dashed border-sky-300/40" />
-            <span className="absolute -bottom-8 left-8 h-28 w-28 rounded-full border-4 border-dashed border-amber-300/35" />
+            <span className="absolute -right-10 -top-10 h-40 w-40 rounded-full border border-sky-400/35 bg-sky-200/30" />
+            <span className="absolute -bottom-12 -left-8 h-44 w-44 rounded-full border border-amber-400/30 bg-amber-100/35" />
+            <span className="absolute right-[30%] top-10 h-20 w-20 rounded-full border border-rose-300/35 bg-rose-100/25" />
+            <span className="absolute left-[45%] bottom-6 h-12 w-12 rounded-full border border-sky-300/40 bg-white/40" />
+            <span className="absolute right-16 bottom-16 h-8 w-8 rounded-full border border-amber-200/50 bg-amber-50/50" />
           </div>
         ) : null}
         <div className="relative z-[1]">
