@@ -49,6 +49,7 @@ const {
 } = require('./moreVenueProgramScrape');
 const { findBestCmsMatchByPlayTitle } = require('./morePlayTitleMatch');
 const { fetchMore, formatMoreNetworkError } = require('./moreHttp');
+const { moreTheaterLinkIsKids } = require('./moreTheaterKids');
 
 const CMS_LOOKUP_CONFIG = {
   movie: {
@@ -1738,6 +1739,7 @@ async function createCmsContentFromMoreCatalog(strapi, options = {}) {
       event_group_code: code,
       publishedAt: null,
     };
+    if (moreTheaterLinkIsKids(moreUrl)) data.is_kids = true;
     if (castComponents.length) data.cast = castComponents;
     if (posterId) data.poster = posterId;
     const created = await strapi.entityService.create(uid, { data });

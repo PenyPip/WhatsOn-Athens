@@ -93,6 +93,7 @@ import MobileDetailStickyCta from "@/components/MobileDetailStickyCta";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { formatTheaterRunPeriod } from "@/lib/theaterRunDates";
 import { isTouringTheaterShow } from "@/lib/theaterTours";
+import { isKidsTheaterShow } from "@/lib/theaterKids";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import { TheaterTicketHeroPreview } from "@/components/TheaterTicketPrices";
@@ -1168,7 +1169,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               (isMovie && hasDuration) ||
               movie?.isDubbed ||
               (theaterShow && isTouringTheaterShow(theaterShow)) ||
-              (theaterShow && theaterShow.isKids) ||
+              (theaterShow && isKidsTheaterShow(theaterShow)) ||
               (theaterShow && formatTheaterRunPeriod(theaterShow))
             ) ? (
               <div
@@ -1203,7 +1204,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     Περιοδεία
                   </span>
                 ) : null}
-                {theaterShow && theaterShow.isKids ? (
+                {theaterShow && isKidsTheaterShow(theaterShow) ? (
                   <span className="rounded border border-sky-300/50 bg-sky-500/25 px-2 py-0.5 text-sm font-semibold text-sky-100">
                     Παιδική
                   </span>

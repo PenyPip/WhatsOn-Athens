@@ -107,6 +107,14 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         director: s.director,
         posterUrl: s.posterUrl,
         onTour: s.onTour,
+        isKids: s.isKids,
+        soldOut: s.soldOut,
+        moreLink: s.moreLink,
+        ticketPrice: s.ticketPrice,
+        ticketPriceFrom: s.ticketPriceFrom,
+        ticketPriceTo: s.ticketPriceTo,
+        runStart: s.runStart,
+        runEnd: s.runEnd,
       })),
     );
   }

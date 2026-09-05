@@ -7,6 +7,7 @@ import { normalizeMovieOriginalTitle } from "@/lib/movieTitles";
 import { normalizeVenueKind, type VenueKind } from "@/lib/venueType";
 import { mapVenueDayPrices, resolveShowtimePricing, type VenueDayPrice } from "@/lib/venuePricing";
 import { parseTheaterRunDate } from "@/lib/theaterRunDates";
+import { moreTheaterLinkIsKids } from "@/lib/theaterKids";
 import { cinemaPathSlugFromMoreLink } from "@/lib/moviesVenuePath";
 
 const API_PREFIX = (process.env.NEXT_PUBLIC_API_URL || "/api").replace(/\/$/, "");
@@ -671,6 +672,7 @@ function mapMovie(
 
 function mapTheaterShow(raw: unknown): StrapiTheaterShow {
   const s = unwrapStrapiEntry(raw);
+  const moreLink = typeof s.more_link === "string" ? s.more_link.trim() : "";
 
   return {
     id: s.id,
@@ -687,8 +689,8 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     isLastShows: s.is_last_shows,
     soldOut: s.sold_out === true,
     onTour: s.on_tour === true,
-    isKids: s.is_kids === true,
-    moreLink: typeof s.more_link === "string" ? s.more_link.trim() : "",
+    isKids: s.is_kids === true || moreTheaterLinkIsKids(moreLink),
+    moreLink,
     runStart: parseTheaterRunDate(s.run_start) ?? undefined,
     runEnd: parseTheaterRunDate(s.run_end) ?? undefined,
     ticketPrice: parseOptionalDecimal(s.ticket_price),
