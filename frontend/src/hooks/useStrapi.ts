@@ -26,7 +26,10 @@ export const useHomepage = () =>
   useQuery({
     queryKey: ["homepage"],
     queryFn: api.getHomepage,
-    ...CONTENT_QUERY_OPTIONS,
+    /** CMS layout/banners αλλάζουν συχνά — μην κολλάνε στο static bootstrap για 6h. */
+    staleTime: 60_000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: false,
     retry: 1,
     throwOnError: false,
   });
@@ -140,7 +143,9 @@ export const useVenues = (enabled = true) =>
   useQuery({
     queryKey: ["venues"],
     queryFn: api.getVenues,
-    ...CONTENT_QUERY_OPTIONS,
+    staleTime: 60_000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     throwOnError: false,
     retry: 1,
     enabled,
@@ -150,7 +155,9 @@ export const useVenuesForProgram = (enabled = true) =>
   useQuery({
     queryKey: VENUES_PROGRAM_QUERY_KEY,
     queryFn: api.getVenuesForProgram,
-    ...CONTENT_QUERY_OPTIONS,
+    staleTime: 60_000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     throwOnError: false,
     retry: 1,
     enabled,
@@ -248,7 +255,9 @@ export const useShowtimes = (enabled = true, venueSlug?: string) => {
     queryKey: ["showtimes", scopeKey],
     queryFn: () =>
       venueSlug?.trim() ? api.getShowtimes({ venueSlug: venueSlug.trim() }) : api.getShowtimesForHome(),
-    ...PROGRAM_QUERY_OPTIONS,
+    staleTime: 60_000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     throwOnError: false,
     retry: 1,
     enabled,
@@ -263,7 +272,9 @@ export const useTheaterPerformances = (enabled = true, venueSlug?: string) => {
       venueSlug?.trim()
         ? api.getTheaterPerformances({ venueSlug: venueSlug.trim() })
         : api.getTheaterPerformancesForHome(),
-    ...PROGRAM_QUERY_OPTIONS,
+    staleTime: 60_000,
+    refetchOnMount: true,
+    refetchOnWindowFocus: true,
     throwOnError: false,
     retry: 1,
     enabled,

@@ -1,8 +1,7 @@
 /**
- * React Query - πρόγραμμα/προβολές.
- * Μεγάλο staleTime: το build bootstrap μένει «φρέσκο» στο πρώτο paint
- * (αλλιώς refetch ~2MB home-calendar μέσα στο TBT/LCP window).
- * Soft refresh γίνεται μετά το LCP μόνο όπου χρειάζεται - όχι invalidate στο HomeBody.
+ * React Query - πρόγραμμα/προβολές στο critical path (π.χ. home bootstrap).
+ * Τα hooks λίστας (/theater, /movies, venues) κάνουν override σε ~60s + refetchOnMount
+ * ώστε αλλαγές CMS να φαίνονται χωρίς να περιμένουν rebuild / 6h.
  */
 export const PROGRAM_QUERY_OPTIONS = {
   staleTime: 6 * 60 * 60 * 1000,
