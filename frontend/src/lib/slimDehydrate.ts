@@ -224,6 +224,46 @@ function slimHomepageBootstrap(qc: QueryClient): void {
   if (!homepage) return;
   qc.setQueryData(["homepage"], {
     sections: homepage.sections,
+    heroBanners: (homepage.heroBanners ?? []).map((b) => ({
+      id: b.id,
+      title: b.title,
+      description: b.description,
+      movie: b.movie
+        ? {
+            id: b.movie.id,
+            slug: b.movie.slug,
+            title: b.movie.title,
+            originalTitle: b.movie.originalTitle,
+            posterUrl: b.movie.posterUrl,
+            posterSrcSet: b.movie.posterSrcSet,
+            genre: b.movie.genre,
+            director: b.movie.director,
+            synopsis: b.movie.synopsis,
+            releaseDate: b.movie.releaseDate,
+          }
+        : undefined,
+      theaterShow: b.theaterShow
+        ? {
+            id: b.theaterShow.id,
+            slug: b.theaterShow.slug,
+            title: b.theaterShow.title,
+            posterUrl: b.theaterShow.posterUrl,
+            genre: b.theaterShow.genre,
+            director: b.theaterShow.director,
+            synopsis: b.theaterShow.synopsis,
+          }
+        : undefined,
+      event: b.event
+        ? {
+            id: b.event.id,
+            slug: b.event.slug,
+            titleEl: b.event.titleEl,
+            posterUrl: b.event.posterUrl,
+            posterSrcSet: b.event.posterSrcSet,
+            synopsisEl: b.event.synopsisEl,
+          }
+        : undefined,
+    })),
   });
 }
 

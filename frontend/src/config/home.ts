@@ -5,6 +5,8 @@
  * coming_soon (κυκλοφορίες μετά από αυτή την εβδομάδα) - διάλεξε ποια εμφανίζονται και με ποια σειρά.
  */
 
+import type { MappedHomeHeroBanner } from "@/lib/homeHeroBanners";
+
 export const HOME_SECTION_IDS = [
   "hero",
   "strip",
@@ -99,6 +101,8 @@ export function normalizeHomeSectionId(raw: string): HomeSectionId | null {
 /** Αποτέλεσμα mapping από το Strapi REST */
 export interface MappedHomepage {
   sections: HomeSectionId[];
+  /** CMS hero banners· αν μη κενά (με έγκυρο related), αντικαθιστούν τις πολυσυζητημένες. */
+  heroBanners: MappedHomeHeroBanner[];
 }
 
 export interface ResolvedHomepageLayout extends MappedHomepage {}
@@ -106,7 +110,10 @@ export interface ResolvedHomepageLayout extends MappedHomepage {}
 /** Ενοποίηση: κενές λίστες ή null → προεπιλογές */
 export function resolveHomepageLayout(mapped: MappedHomepage | null): ResolvedHomepageLayout {
   const base = mapped?.sections.length ? mapped.sections : [...FALLBACK_SECTIONS];
-  return { sections: ensureEventsAfterArticles(orderHomeSectionsForFirstLook(base)) };
+  return {
+    sections: ensureEventsAfterArticles(orderHomeSectionsForFirstLook(base)),
+    heroBanners: mapped?.heroBanners?.length ? mapped.heroBanners : [],
+  };
 }
 
 export function layoutShowsHero(layout: ResolvedHomepageLayout): boolean {

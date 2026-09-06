@@ -60,6 +60,25 @@ export interface CinemaRejectedMoreCode extends Schema.Component {
   };
 }
 
+export interface HomeHeroBanner extends Schema.Component {
+  collectionName: 'components_home_hero_banners';
+  info: {
+    description: '\u03A4\u03AF\u03C4\u03BB\u03BF\u03C2 + \u03C0\u03B5\u03C1\u03B9\u03B3\u03C1\u03B1\u03C6\u03AE + \u03C3\u03C5\u03C3\u03C7\u03B5\u03C4\u03B9\u03B6\u03CC\u03BC\u03B5\u03BD\u03BF \u03C0\u03B5\u03C1\u03B9\u03B5\u03C7\u03CC\u03BC\u03B5\u03BD\u03BF (\u03C4\u03B1\u03B9\u03BD\u03AF\u03B1 / \u03B8\u03AD\u03B1\u03C4\u03C1\u03BF / event) \u03B3\u03B9\u03B1 \u03B1\u03C6\u03AF\u03C3\u03B1 \u03BA\u03B1\u03B9 \u03C3\u03CD\u03BD\u03B4\u03B5\u03C3\u03BC\u03BF. \u0391\u03BD \u03C5\u03C0\u03AC\u03C1\u03C7\u03BF\u03C5\u03BD banners, \u03B1\u03BD\u03C4\u03B9\u03BA\u03B1\u03B8\u03B9\u03C3\u03C4\u03BF\u03CD\u03BD \u03C4\u03B9\u03C2 \u00AB\u03A0\u03BF\u03BB\u03C5\u03C3\u03C5\u03B6\u03B7\u03C4\u03B7\u03BC\u03AD\u03BD\u03B5\u03C2\u00BB \u03C3\u03C4\u03BF hero.';
+    displayName: 'Banner \u03B1\u03C1\u03C7\u03B9\u03BA\u03AE\u03C2 (hero)';
+  };
+  attributes: {
+    description: Attribute.Text;
+    event: Attribute.Relation<'home.hero-banner', 'oneToOne', 'api::event.event'>;
+    movie: Attribute.Relation<'home.hero-banner', 'oneToOne', 'api::movie.movie'>;
+    theater_show: Attribute.Relation<
+      'home.hero-banner',
+      'oneToOne',
+      'api::theater-show.theater-show'
+    >;
+    title: Attribute.String & Attribute.Required;
+  };
+}
+
 export interface HomeLayoutSection extends Schema.Component {
   collectionName: 'components_home_layout_sections';
   info: {
@@ -158,6 +177,7 @@ declare module '@strapi/types' {
       'cinema.more-event-group': CinemaMoreEventGroup;
       'cinema.more-event-id': CinemaMoreEventId;
       'cinema.rejected-more-code': CinemaRejectedMoreCode;
+      'home.hero-banner': HomeHeroBanner;
       'home.layout-section': HomeLayoutSection;
       'navigation.nav-item': NavigationNavItem;
       'scheduling.skip-day': SchedulingSkipDay;

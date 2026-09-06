@@ -1,5 +1,6 @@
 import type { MappedHomepage, HomeSectionId } from "@/config/home";
 import { FALLBACK_SECTIONS, normalizeHomeSectionId } from "@/config/home";
+import type { MappedHomeHeroBanner } from "@/lib/homeHeroBanners";
 import { DEFAULT_SITE_NAVIGATION, type MappedSiteNavigation } from "@/config/navigation";
 import { resolveSiteNavigation } from "@/lib/navigation";
 import { apiRequestBaseUrl } from "@/lib/apiRequestBase";
@@ -501,7 +502,92 @@ function mapHomeAttributes(attrs: Record<string, unknown>): MappedHomepage {
   const sections = mapHomepageLayoutSections(attrs.layout_sections);
   return {
     sections: sections.length > 0 ? sections : [...FALLBACK_SECTIONS],
+    heroBanners: mapHomeHeroBanners(attrs.hero_banners),
   };
+}
+
+function mapHomeHeroBannerMovie(rel: unknown): MappedHomeHeroBanner["movie"] | undefined {
+  const node = unwrapStrapiRelationNode(rel);
+  if (!node) return undefined;
+  const m = unwrapStrapiEntry(node);
+  const slug = typeof m.slug === "string" ? m.slug.trim() : "";
+  const title = typeof m.title === "string" ? m.title.trim() : "";
+  if (!slug || !title) return undefined;
+  const variants = strapiPosterSrcSet(m.poster);
+  const posterUrl = strapiMediaUrl(m.poster, "small") ?? variants?.src ?? null;
+  return {
+    id: typeof m.id === "number" ? m.id : Number(m.id) || 0,
+    slug,
+    title,
+    originalTitle: normalizeMovieOriginalTitle(typeof m.original_title === "string" ? m.original_title : ""),
+    posterUrl,
+    posterSrcSet: variants?.srcSet,
+    genre: typeof m.genre === "string" ? m.genre : "",
+    director: typeof m.director === "string" ? m.director : "",
+    synopsis: typeof m.synopsis === "string" ? m.synopsis : "",
+    releaseDate: typeof m.release_date === "string" ? m.release_date : "",
+  };
+}
+
+function mapHomeHeroBannerTheater(rel: unknown): MappedHomeHeroBanner["theaterShow"] | undefined {
+  const node = unwrapStrapiRelationNode(rel);
+  if (!node) return undefined;
+  const s = unwrapStrapiEntry(node);
+  const slug = typeof s.slug === "string" ? s.slug.trim() : "";
+  const title = typeof s.title === "string" ? s.title.trim() : "";
+  if (!slug || !title) return undefined;
+  return {
+    id: typeof s.id === "number" ? s.id : Number(s.id) || 0,
+    slug,
+    title,
+    posterUrl: strapiMediaUrl(s.poster, "medium") ?? undefined,
+    genre: typeof s.genre === "string" ? s.genre : "",
+    director: typeof s.director === "string" ? s.director : "",
+    synopsis: typeof s.synopsis === "string" ? s.synopsis : "",
+  };
+}
+
+function mapHomeHeroBannerEvent(rel: unknown): MappedHomeHeroBanner["event"] | undefined {
+  const node = unwrapStrapiRelationNode(rel);
+  if (!node) return undefined;
+  const mapped = mapEvent(node);
+  if (!mapped.slug?.trim()) return undefined;
+  return {
+    id: mapped.id,
+    slug: mapped.slug,
+    titleEl: mapped.titleEl,
+    posterUrl: mapped.posterUrl,
+    posterSrcSet: mapped.posterSrcSet,
+    synopsisEl: mapped.synopsisEl,
+  };
+}
+
+function mapHomeHeroBanners(raw: unknown): MappedHomeHeroBanner[] {
+  if (!Array.isArray(raw)) return [];
+  const out: MappedHomeHeroBanner[] = [];
+  for (let i = 0; i < raw.length; i++) {
+    const row = raw[i];
+    if (typeof row !== "object" || row === null || Array.isArray(row)) continue;
+    const o = row as Record<string, unknown>;
+    const title = typeof o.title === "string" ? o.title.trim() : "";
+    if (!title) continue;
+    const idRaw = o.id;
+    const id =
+      typeof idRaw === "number" && Number.isFinite(idRaw)
+        ? String(idRaw)
+        : typeof idRaw === "string" && idRaw.trim()
+          ? idRaw.trim()
+          : `idx-${i}`;
+    out.push({
+      id,
+      title,
+      description: typeof o.description === "string" ? o.description.trim() : "",
+      movie: mapHomeHeroBannerMovie(o.movie),
+      theaterShow: mapHomeHeroBannerTheater(o.theater_show),
+      event: mapHomeHeroBannerEvent(o.event),
+    });
+  }
+  return out;
 }
 
 /** Ετικέτες άρθρου (component shared.article-tag). */
@@ -1887,6 +1973,23 @@ async function fetchSiteNavigation(): Promise<MappedSiteNavigation | null> {
 async function fetchHomepage(): Promise<MappedHomepage | null> {
   const url = new URL(`${API_PREFIX}/homepage`, apiRequestBaseUrl());
   url.searchParams.set("populate[layout_sections]", "*");
+  url.searchParams.set("populate[hero_banners][populate][movie][populate][poster]", "*");
+  url.searchParams.set("populate[hero_banners][populate][movie][fields][0]", "title");
+  url.searchParams.set("populate[hero_banners][populate][movie][fields][1]", "slug");
+  url.searchParams.set("populate[hero_banners][populate][movie][fields][2]", "original_title");
+  url.searchParams.set("populate[hero_banners][populate][movie][fields][3]", "director");
+  url.searchParams.set("populate[hero_banners][populate][movie][fields][4]", "synopsis");
+  url.searchParams.set("populate[hero_banners][populate][movie][fields][5]", "release_date");
+  url.searchParams.set("populate[hero_banners][populate][theater_show][populate][poster]", "*");
+  url.searchParams.set("populate[hero_banners][populate][theater_show][fields][0]", "title");
+  url.searchParams.set("populate[hero_banners][populate][theater_show][fields][1]", "slug");
+  url.searchParams.set("populate[hero_banners][populate][theater_show][fields][2]", "director");
+  url.searchParams.set("populate[hero_banners][populate][theater_show][fields][3]", "synopsis");
+  url.searchParams.set("populate[hero_banners][populate][theater_show][fields][4]", "genre");
+  url.searchParams.set("populate[hero_banners][populate][event][populate][poster]", "*");
+  url.searchParams.set("populate[hero_banners][populate][event][fields][0]", "title_el");
+  url.searchParams.set("populate[hero_banners][populate][event][fields][1]", "slug");
+  url.searchParams.set("populate[hero_banners][populate][event][fields][2]", "synopsis_el");
   const res = await fetch(url.toString());
   if (res.status === 404 || res.status === 403) return null;
   if (!res.ok) throw new Error(`API error: ${res.status} ${res.statusText}`);

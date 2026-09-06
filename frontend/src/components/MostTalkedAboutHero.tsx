@@ -1,10 +1,13 @@
-import { useCallback, useEffect, useRef, useState, type TouchEvent } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type TouchEvent } from "react";
 import { Link } from "react-router-dom";
 import { useHomeStaticLcpOnPage } from "@/contexts/HomeStaticLcpContext";
 import type { StrapiMovie, StrapiShowtime } from "@/lib/api";
-import { heroMovieCta, resolveHeroScheduleDisplay } from "@/lib/heroScheduleLine";
-import { movieTitleLines, posterAltForMovie } from "@/lib/movieTitles";
-import { synopsisExcerpt } from "@/lib/synopsisExcerpt";
+import {
+  homeHeroSlidesFromBanners,
+  homeHeroSlidesFromMovies,
+  resolveHomeHeroBanners,
+  type MappedHomeHeroBanner,
+} from "@/lib/homeHeroBanners";
 import { HOME_HERO_COMPACT_SECTION_CLASS } from "@/lib/homeHeroLayout";
 import { useHomeLcpLayoutDone, useHomeLcpFullyDone } from "@/hooks/useHomeLcpDone";
 import { useSiteNow } from "@/hooks/useSiteNow";
@@ -14,7 +17,6 @@ import { posterLcpSrc } from "@/lib/posterDelivery";
 import { cn } from "@/lib/utils";
 
 const AUTO_ADVANCE_MS = 8000;
-const HERO_SYNOPSIS_MAX = 280;
 const HERO_SWIPE_MIN_PX = 48;
 
 function useHeroSwipe(
@@ -79,6 +81,8 @@ export { HomeHeroLayoutReserve } from "@/components/HomeHeroLayoutReserve";
 
 type MostTalkedAboutHeroProps = {
   movies: StrapiMovie[];
+  /** CMS banners· αν υπάρχουν έγκυρα, αντικαθιστούν τις πολυσυζητημένες. */
+  banners?: MappedHomeHeroBanner[];
   showtimes?: StrapiShowtime[];
   loading?: boolean;
   now?: Date;
@@ -98,7 +102,7 @@ function HeroNavButton({
       type="button"
       onClick={onClick}
       className={cn(navBtnClass, className)}
-      aria-label={direction === "prev" ? "Προηγούμενη ταινία" : "Επόμενη ταινία"}
+      aria-label={direction === "prev" ? "Προηγούμενο" : "Επόμενο"}
     >
       <svg className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
         {direction === "prev" ? <path d="m15 18-6-6 6-6" /> : <path d="m9 18 6-6-6-6" />}
@@ -107,18 +111,13 @@ function HeroNavButton({
   );
 }
 
-function heroSynopsisText(movie: StrapiMovie): string {
-  return synopsisExcerpt(movie.synopsis ?? "", HERO_SYNOPSIS_MAX);
-}
-
-function heroMetaLine(movie: StrapiMovie): string {
-  const parts: string[] = [];
-  const director = (movie.director ?? "").trim();
-  if (director && director !== "-") parts.push(`Σκηνοθεσία: ${director}`);
-  return parts.join(" · ");
-}
-
-const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: MostTalkedAboutHeroProps) => {
+const MostTalkedAboutHero = ({
+  movies,
+  banners,
+  showtimes = [],
+  loading,
+  now: nowProp,
+}: MostTalkedAboutHeroProps) => {
   const markLayoutDone = useHomeLcpLayoutDone();
   const markFullyDone = useHomeLcpFullyDone();
   const siteNow = useSiteNow();
@@ -126,28 +125,36 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
   const staticLcpOnPage = useHomeStaticLcpOnPage();
   const [activeIndex, setActiveIndex] = useState(0);
   const [heroPosterReady, setHeroPosterReady] = useState(false);
-  const activeMovieId = movies[activeIndex]?.id;
-  const activePosterUrl = movies[activeIndex]?.posterUrl;
+
+  const slides = useMemo(() => {
+    const fromBanners = homeHeroSlidesFromBanners(resolveHomeHeroBanners(banners));
+    if (fromBanners.length > 0) return fromBanners;
+    return homeHeroSlidesFromMovies(movies, showtimes, now);
+  }, [banners, movies, showtimes, now]);
+
+  const activeSlide = slides[activeIndex];
+  const activeKey = activeSlide?.key;
+  const activePosterUrl = activeSlide?.posterUrl;
 
   const goTo = useCallback(
     (index: number) => {
-      if (movies.length === 0) return;
-      setActiveIndex((index + movies.length) % movies.length);
+      if (slides.length === 0) return;
+      setActiveIndex((index + slides.length) % slides.length);
     },
-    [movies.length],
+    [slides.length],
   );
 
   useEffect(() => {
     setActiveIndex(0);
-  }, [movies.length, movies[0]?.id]);
+  }, [slides.length, slides[0]?.key]);
 
   useEffect(() => {
-    if (movies.length <= 1) return;
+    if (slides.length <= 1) return;
     if (typeof document !== "undefined" && document.visibilityState !== "visible") return;
     if (typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches) return;
     const timer = window.setInterval(() => goTo(activeIndex + 1), AUTO_ADVANCE_MS);
     return () => window.clearInterval(timer);
-  }, [activeIndex, movies.length, goTo]);
+  }, [activeIndex, slides.length, goTo]);
 
   useEffect(() => {
     setHeroPosterReady(false);
@@ -158,7 +165,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
       }
     });
     return () => cancelAnimationFrame(frame);
-  }, [activeMovieId, activeIndex]);
+  }, [activeKey, activeIndex]);
 
   const onHeroPosterLoad = useCallback(() => {
     setHeroPosterReady(true);
@@ -178,7 +185,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
 
     if (loading) return;
 
-    if (movies.length === 0) {
+    if (slides.length === 0) {
       markFullyDone();
       return;
     }
@@ -202,21 +209,21 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
       cancelled = true;
       cancelAnimationFrame(frame);
     };
-  }, [loading, movies.length, activePosterUrl, heroPosterReady, markFullyDone]);
+  }, [loading, slides.length, activePosterUrl, heroPosterReady, markFullyDone]);
 
   /** Desktop failsafe: αν η αφίσα δεν πυροδοτήσει onLoad, κλείσε το handoff. */
   useEffect(() => {
     if (typeof document === "undefined") return;
-    if (loading || movies.length === 0) return;
+    if (loading || slides.length === 0) return;
     if (document.documentElement.classList.contains("spa-lcp-layout-done")) return;
     if (window.matchMedia("(max-width: 767px)").matches) return;
     const t = window.setTimeout(() => markFullyDone(), 1200);
     return () => window.clearTimeout(t);
-  }, [loading, movies.length, markFullyDone]);
+  }, [loading, slides.length, markFullyDone]);
 
   useEffect(() => {
     if (typeof document === "undefined") return;
-    if (loading || movies.length === 0) return;
+    if (loading || slides.length === 0) return;
     if (document.documentElement.classList.contains("spa-lcp-layout-done")) return;
     if (!document.documentElement.classList.contains("spa-lcp-done")) return;
 
@@ -242,31 +249,27 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
       requestAnimationFrame(() => markLayoutDone());
     });
     return () => cancelAnimationFrame(frame);
-  }, [loading, movies.length, activeMovieId, activePosterUrl, heroPosterReady, markLayoutDone]);
+  }, [loading, slides.length, activeKey, activePosterUrl, heroPosterReady, markLayoutDone]);
 
   const hasStaticLcp = staticLcpOnPage;
   const prioritizePoster = activeIndex === 0;
-  const hasCarousel = movies.length > 1;
+  const hasCarousel = slides.length > 1;
   const heroSwipe = useHeroSwipe(hasCarousel, activeIndex, goTo);
+  const usingBanners = resolveHomeHeroBanners(banners).length > 0;
 
-  if (movies.length === 0) {
+  if (slides.length === 0) {
     if (hasStaticLcp) return null;
     if (loading) return <MostTalkedAboutHeroShell />;
     return null;
   }
 
-  const active = movies[activeIndex];
-  const titles = movieTitleLines(active);
-  const synopsis = heroSynopsisText(active);
-  const schedule = resolveHeroScheduleDisplay(active, showtimes, now);
-  const cta = heroMovieCta(active.slug);
-  const meta = heroMetaLine(active);
+  const active = slides[activeIndex]!;
   return (
     <section
       className={cn(HOME_HERO_COMPACT_SECTION_CLASS, hasCarousel && "touch-pan-y")}
       data-home-hero-live
       aria-roledescription="carousel"
-      aria-label="Πολυσυζητημένες ταινίες"
+      aria-label={usingBanners ? "Προτεινόμενα" : "Πολυσυζητημένες ταινίες"}
       onTouchStart={heroSwipe.onTouchStart}
       onTouchEnd={heroSwipe.onTouchEnd}
     >
@@ -301,16 +304,18 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
         <div className="grid w-full grid-cols-1 items-center gap-6 max-md:[&>*:first-child]:order-2 max-md:[&>*:last-child]:order-1 md:grid-cols-[minmax(0,1fr)_auto] md:gap-12 lg:gap-16">
           <div className="flex min-h-0 min-w-0 max-w-2xl flex-col lg:max-w-3xl max-md:text-center">
             <div className="min-h-0 min-w-0 shrink">
-              <div className="mb-4 md:mb-5">
-                <span className="inline-flex items-center rounded-full border border-amber-300/55 bg-gradient-to-r from-amber-400/30 via-amber-500/20 to-amber-600/10 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.22em] text-amber-50 shadow-[0_4px_28px_rgba(251,191,36,0.22)] ring-1 ring-amber-100/25 md:px-5 md:text-xs md:tracking-[0.24em]">
-                  Πολυσυζητημένες
-                </span>
-              </div>
-              <p className="font-display text-3xl font-bold leading-[1.08] text-white md:text-4xl lg:text-[2.75rem]">{titles.primary}</p>
-              {titles.secondary ? (
-                <p className="font-display mt-2 text-xl font-medium leading-tight text-white/90 md:text-2xl">{titles.secondary}</p>
+              {active.eyebrow ? (
+                <div className="mb-4 md:mb-5">
+                  <span className="inline-flex items-center rounded-full border border-amber-300/55 bg-gradient-to-r from-amber-400/30 via-amber-500/20 to-amber-600/10 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.22em] text-amber-50 shadow-[0_4px_28px_rgba(251,191,36,0.22)] ring-1 ring-amber-100/25 md:px-5 md:text-xs md:tracking-[0.24em]">
+                    {active.eyebrow}
+                  </span>
+                </div>
               ) : null}
-              {(active.genre ?? "").trim() ? (
+              <p className="font-display text-3xl font-bold leading-[1.08] text-white md:text-4xl lg:text-[2.75rem]">{active.title}</p>
+              {active.secondaryTitle ? (
+                <p className="font-display mt-2 text-xl font-medium leading-tight text-white/90 md:text-2xl">{active.secondaryTitle}</p>
+              ) : null}
+              {active.genre ? (
                 <span className="mt-3 inline-flex rounded border border-white/15 bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200/95">
                   {active.genre}
                 </span>
@@ -318,26 +323,26 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
               <p
                 className={cn(
                   "mt-3 font-body text-base leading-relaxed text-white md:mt-4 md:text-lg md:leading-[1.65]",
-                  synopsis ? "line-clamp-3 md:line-clamp-4" : "italic text-white/90",
+                  active.description ? "line-clamp-3 md:line-clamp-4" : "italic text-white/90",
                 )}
               >
-                {synopsis || "Δεν υπάρχει σύνοψη για αυτή την ταινία."}
+                {active.description || "Δεν υπάρχει περιγραφή."}
               </p>
-              {schedule.mode === "release" ? (
-                <p className="mt-2 font-body text-sm font-medium text-white md:text-base">{schedule.label}</p>
+              {active.scheduleLabel ? (
+                <p className="mt-2 font-body text-sm font-medium text-white md:text-base">{active.scheduleLabel}</p>
               ) : null}
-              {meta ? <p className="mt-2 font-body text-sm text-white/55">{meta}</p> : null}
+              {active.meta ? <p className="mt-2 font-body text-sm text-white/55">{active.meta}</p> : null}
             </div>
             <div className="mt-4 flex shrink-0 flex-wrap items-center justify-center gap-4 md:mt-6 md:justify-start">
               <Link
-                to={cta.to}
+                to={active.href}
                 className="inline-flex items-center rounded bg-white px-6 py-3 text-sm font-semibold text-[#13143E] transition-colors hover:bg-white/90"
               >
-                {cta.label}
+                {active.ctaLabel}
               </Link>
               {hasCarousel ? (
                 <span className="font-body text-xs font-medium tabular-nums tracking-wide text-amber-200/75">
-                  {activeIndex + 1} / {movies.length}
+                  {activeIndex + 1} / {slides.length}
                 </span>
               ) : null}
             </div>
@@ -348,10 +353,10 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
             <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-[#1a1844]/80 shadow-2xl shadow-black/45 ring-1 ring-white/20">
               {active.posterUrl ? (
                 <PosterPicture
-                  key={active.id}
+                  key={active.key}
                   src={posterLcpSrc(active.posterUrl, active.posterSrcSet) ?? active.posterUrl}
                   srcSet={active.posterSrcSet}
-                  alt={posterAltForMovie(active)}
+                  alt={active.posterAlt}
                   width={512}
                   height={768}
                   fetchPriority={prioritizePoster ? (hasStaticLcp ? "auto" : "high") : "auto"}
@@ -364,7 +369,7 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
               ) : (
                 <div className="flex h-full w-full items-center justify-center bg-[#2a2444] text-sm text-white/40">Χωρίς αφίσα</div>
               )}
-              <MoviePosterMeta movie={active} />
+              {active.movieMeta ? <MoviePosterMeta movie={active.movieMeta} /> : null}
             </div>
           </figure>
         </div>
@@ -374,14 +379,14 @@ const MostTalkedAboutHero = ({ movies, showtimes = [], loading, now: nowProp }: 
         <div
           className="relative z-10 flex justify-center gap-2 pb-5 pt-2 md:absolute md:bottom-7 md:left-0 md:right-0 md:pb-0 md:pt-0"
           role="tablist"
-          aria-label="Άλλες πολυσυζητημένες ταινίες"
+          aria-label={usingBanners ? "Άλλα banners" : "Άλλες πολυσυζητημένες ταινίες"}
         >
-          {movies.map((m, i) => (
+          {slides.map((slide, i) => (
             <button
-              key={m.id}
+              key={slide.key}
               type="button"
               onClick={() => goTo(i)}
-              aria-label={`Ταινία ${i + 1} από ${movies.length}: ${m.title}`}
+              aria-label={`${i + 1} από ${slides.length}: ${slide.title}`}
               aria-current={i === activeIndex ? "true" : undefined}
               className={cn(
                 "h-2 rounded-full transition-all",

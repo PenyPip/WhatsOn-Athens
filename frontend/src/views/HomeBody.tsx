@@ -47,6 +47,7 @@ import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
 import HomePersonalizedSections from "@/components/HomePersonalizedSections";
 import FavoriteTheaterUpdatesBanner from "@/components/FavoriteTheaterUpdatesBanner";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
+import { resolveHomeHeroBanners } from "@/lib/homeHeroBanners";
 import { moviesSectionPath } from "@/lib/moviesFilterPaths";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
@@ -517,6 +518,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     [movieList, stList, venueList, siteNow, favoriteIds],
   );
   const mostTalkedAboutList = useMemo(() => mostTalkedAboutMovies(movieList), [movieList]);
+  const heroFromBanners = resolveHomeHeroBanners(layout.heroBanners).length > 0;
 
   const sectionEl = (id: HomeSectionId, node: ReactNode) => (
     <Fragment key={id}>
@@ -550,8 +552,9 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                   "hero",
                   <MostTalkedAboutHero
                     movies={mostTalkedAboutList}
+                    banners={layout.heroBanners}
                     showtimes={stList}
-                    loading={awaitingMovies}
+                    loading={!heroFromBanners && awaitingMovies}
                     now={siteNow}
                   />,
                 )}

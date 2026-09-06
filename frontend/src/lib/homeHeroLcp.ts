@@ -2,12 +2,14 @@ import type { DehydratedState } from "@tanstack/react-query";
 import { layoutShowsHero, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
 import type { StrapiMovie } from "@/lib/api";
 import { mostTalkedAboutMovies } from "@/lib/homeHeroPick";
+import {
+  homeHeroSlidesFromBanners,
+  homeHeroSlidesFromMovies,
+  resolveHomeHeroBanners,
+} from "@/lib/homeHeroBanners";
 import { posterLcpSrc } from "@/lib/posterDelivery";
 import { lcpImageSrc } from "@/lib/lcpImageSrc";
-import { synopsisExcerpt } from "@/lib/synopsisExcerpt";
 import { resolvePublicAssetUrl } from "@/lib/siteMetadata";
-
-const HERO_SYNOPSIS_MAX = 280;
 
 function queryData<T>(state: DehydratedState, queryKey: string): T | undefined {
   const entry = state.queries.find(
@@ -33,26 +35,31 @@ export function homeLcpDisplay(path: string, dehydratedState?: DehydratedState):
   const movies = queryData<StrapiMovie[]>(dehydratedState, "movies") ?? [];
   const hasHeroSection = layoutShowsHero(layout);
 
+  const bannerSlides = homeHeroSlidesFromBanners(resolveHomeHeroBanners(layout.heroBanners));
   const talked = mostTalkedAboutMovies(movies);
-  const movie = talked[0] ?? movies.find((m) => m.posterUrl?.trim()) ?? null;
+  const movieSlides = homeHeroSlidesFromMovies(talked);
+  const slide = bannerSlides[0] ?? movieSlides[0] ?? null;
 
   let posterPath: string | null = null;
   let title = "";
   let synopsis = "";
 
-  if (movie) {
-    const href = posterLcpSrc(movie.posterUrl, movie.posterSrcSet) ?? movie.posterUrl?.trim();
+  if (slide) {
+    const href = posterLcpSrc(slide.posterUrl, slide.posterSrcSet) ?? slide.posterUrl?.trim();
     if (href) posterPath = href;
-    title = movie.title;
-    synopsis = synopsisExcerpt(movie.synopsis ?? "", HERO_SYNOPSIS_MAX);
+    title = slide.title;
+    synopsis = slide.description;
   }
 
-  if (!posterPath && !hasHeroSection) {
-    const fallback = movies.find((m) => m.posterUrl?.trim());
-    if (fallback) {
-      posterPath = posterLcpSrc(fallback.posterUrl, fallback.posterSrcSet) ?? fallback.posterUrl!.trim();
-      title = fallback.title;
-      synopsis = synopsisExcerpt(fallback.synopsis ?? "", HERO_SYNOPSIS_MAX);
+  if (!posterPath) {
+    const fallbackMovie =
+      talked.find((m) => m.posterUrl?.trim()) ?? movies.find((m) => m.posterUrl?.trim()) ?? null;
+    if (fallbackMovie) {
+      posterPath =
+        posterLcpSrc(fallbackMovie.posterUrl, fallbackMovie.posterSrcSet) ??
+        fallbackMovie.posterUrl!.trim();
+      if (!title) title = fallbackMovie.title;
+      if (!synopsis) synopsis = fallbackMovie.synopsis ?? "";
     }
   }
 

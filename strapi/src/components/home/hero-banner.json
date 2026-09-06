@@ -1,0 +1,31 @@
+{
+  "collectionName": "components_home_hero_banners",
+  "info": {
+    "displayName": "Banner αρχικής (hero)",
+    "description": "Τίτλος + περιγραφή + συσχετιζόμενο περιεχόμενο (ταινία / θέατρο / event) για αφίσα και σύνδεσμο. Αν υπάρχουν banners, αντικαθιστούν τις «Πολυσυζητημένες» στο hero."
+  },
+  "attributes": {
+    "title": {
+      "type": "string",
+      "required": true
+    },
+    "description": {
+      "type": "text"
+    },
+    "movie": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::movie.movie"
+    },
+    "theater_show": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::theater-show.theater-show"
+    },
+    "event": {
+      "type": "relation",
+      "relation": "oneToOne",
+      "target": "api::event.event"
+    }
+  }
+}
