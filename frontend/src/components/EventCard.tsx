@@ -261,17 +261,19 @@ const EventCard = ({
                     : "min-h-[5.5rem]"
                   : theaterHomeCompact
                     ? "min-h-[2.5rem]"
-                    : "min-h-[4.75rem]",
+                    : "min-h-[3rem]",
             )}
           >
-            <div className={cn("flex gap-2", isTheater && !theaterHomeCompact && "h-[2.5rem] items-start")}>
+            <div className={cn("flex gap-2", isTheater && !theaterHomeCompact && "h-[3rem] items-start")}>
               <h3
                 className={cn(
-                  "min-w-0 flex-1 font-display font-semibold leading-tight transition-colors",
+                  "min-w-0 flex-1 font-display font-semibold transition-colors",
                   titleClass,
                   "line-clamp-2 text-base",
+                  isTheater && !theaterHomeCompact
+                    ? "h-[3rem] leading-snug"
+                    : "leading-tight",
                   (isMovie || uniformScrollCard) && "min-h-[2.5rem]",
-                  isTheater && !theaterHomeCompact && "h-[2.5rem]",
                 )}
               >
                 {title}
