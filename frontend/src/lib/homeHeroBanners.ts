@@ -60,21 +60,34 @@ export function homeHeroSlidesFromBanners(banners: MappedHomeHeroBanner[]): Home
     const related = bannerRelated(banner);
     if (!related) continue;
     const title = banner.title.trim();
-    const description = synopsisExcerpt(banner.description.trim() || fallbackDescription(related), HERO_SYNOPSIS_MAX);
+    const bannerDesc = banner.description.trim();
+    const relatedSynopsis = fallbackDescription(related);
+    /** Σύντομο teaser CMS + σύνοψη related → πιο γεμάτο κείμενο στο hero. */
+    const richDescription = synopsisExcerpt(
+      bannerDesc && relatedSynopsis && bannerDesc.length < 120 && !relatedSynopsis.startsWith(bannerDesc)
+        ? `${bannerDesc} ${relatedSynopsis}`
+        : bannerDesc || relatedSynopsis,
+      HERO_SYNOPSIS_MAX,
+    );
 
     if (related.kind === "movie") {
       const m = related.movie;
       const titles = movieTitleLines({ title: m.title, originalTitle: m.originalTitle } as StrapiMovie);
+      const relatedPrimary = titles.primary.trim();
       out.push({
         key: `banner-${banner.id}`,
         title,
-        secondaryTitle: titles.secondary || undefined,
-        description,
+        secondaryTitle:
+          relatedPrimary && relatedPrimary.toLocaleLowerCase("el") !== title.toLocaleLowerCase("el")
+            ? relatedPrimary
+            : titles.secondary || undefined,
+        description: richDescription,
         href: heroMovieCta(m.slug).to,
         ctaLabel: "Περισσότερα",
         posterUrl: m.posterUrl ?? undefined,
         posterSrcSet: m.posterSrcSet,
         posterAlt: posterAltForMovie(m as StrapiMovie),
+        eyebrow: "Προτεινόμενο",
         genre: (m.genre ?? "").trim() || undefined,
         meta: directorMeta(m.director),
         movieMeta: m as StrapiMovie,
@@ -84,14 +97,20 @@ export function homeHeroSlidesFromBanners(banners: MappedHomeHeroBanner[]): Home
 
     if (related.kind === "theater") {
       const s = related.show;
+      const relatedPrimary = s.title.trim();
       out.push({
         key: `banner-${banner.id}`,
         title,
-        description,
+        secondaryTitle:
+          relatedPrimary && relatedPrimary.toLocaleLowerCase("el") !== title.toLocaleLowerCase("el")
+            ? relatedPrimary
+            : undefined,
+        description: richDescription,
         href: `/theater/${encodeURIComponent(s.slug)}`,
         ctaLabel: "Περισσότερα",
         posterUrl: s.posterUrl,
         posterAlt: s.title,
+        eyebrow: "Προτεινόμενο",
         genre: (s.genre ?? "").trim() || undefined,
         meta: directorMeta(s.director),
       });
@@ -99,15 +118,21 @@ export function homeHeroSlidesFromBanners(banners: MappedHomeHeroBanner[]): Home
     }
 
     const e = related.event;
+    const relatedPrimary = (e.titleEl ?? "").trim();
     out.push({
       key: `banner-${banner.id}`,
       title,
-      description,
+      secondaryTitle:
+        relatedPrimary && relatedPrimary.toLocaleLowerCase("el") !== title.toLocaleLowerCase("el")
+          ? relatedPrimary
+          : undefined,
+      description: richDescription,
       href: eventPath(e.slug),
       ctaLabel: "Περισσότερα",
       posterUrl: e.posterUrl,
       posterSrcSet: e.posterSrcSet,
       posterAlt: e.titleEl || title,
+      eyebrow: "Προτεινόμενο",
     });
   }
   return out;

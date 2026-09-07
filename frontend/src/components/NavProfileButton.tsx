@@ -28,8 +28,11 @@ export default function NavProfileButton({ variant, pathname }: NavProfileButton
   const isActive = pathname === "/profile";
 
   const onOpenChange = (next: boolean) => {
+    if (!next && open) {
+      /** Σήμανση διαβασμένων στο κλείσιμο - αλλιώς η λίστα αδειάζει πριν φανεί το panel. */
+      markRead();
+    }
     setOpen(next);
-    if (next && unreadCount > 0) markRead();
   };
 
   const badge =
@@ -82,13 +85,14 @@ export default function NavProfileButton({ variant, pathname }: NavProfileButton
       : undefined;
 
   return (
-    <Popover open={open} onOpenChange={onOpenChange}>
+    <Popover open={open} onOpenChange={onOpenChange} modal>
       <PopoverTrigger asChild>
         <button
           type="button"
           className={triggerClass}
           style={triggerStyle}
           aria-label={unreadCount > 0 ? `Προφίλ, ${unreadCount} νέες ειδοποιήσεις` : "Προφίλ και ειδοποιήσεις"}
+          aria-expanded={open}
         >
           <User
             className={variant === "desktop" ? "h-5 w-5 text-white/60" : undefined}
@@ -99,42 +103,49 @@ export default function NavProfileButton({ variant, pathname }: NavProfileButton
           {variant === "mobile-tab" ? <span>Προφίλ</span> : null}
         </button>
       </PopoverTrigger>
-      {open ? (
-        <PopoverContent
-          align={variant === "mobile-tab" ? "center" : "end"}
-          side={variant === "mobile-tab" ? "top" : "bottom"}
-          className="z-[70] w-[min(22rem,calc(100vw-1.5rem))] border-border bg-white p-0 text-[#13143E] shadow-xl"
-        >
-          <div className="border-b border-[#13143E]/10 bg-amber-50 px-4 py-3">
-            <p className="font-display text-base font-semibold text-[#13143E]">Ειδοποιήσεις</p>
-            <p className="mt-0.5 text-xs text-[#13143E]/70">
-              Like στην παράσταση → μαθαίνεις πρώτος για νέες ημερομηνίες.
-            </p>
-          </div>
-          <div className="bg-white max-h-[min(60vh,24rem)] overflow-y-auto px-4 py-3">
-            {isLoading ? (
-              <p className="text-sm text-[#13143E]/75">Φόρτωση…</p>
-            ) : (
-              <Suspense fallback={<p className="text-sm text-[#13143E]/75">Φόρτωση…</p>}>
-                <ProfileNotificationsPanel
-                  notifications={notifications}
-                  onNavigate={() => setOpen(false)}
-                  compact
-                />
-              </Suspense>
-            )}
-          </div>
-          <div className="border-t border-[#13143E]/10 bg-white px-4 py-3">
-            <Link
-              to="/profile"
-              onClick={() => setOpen(false)}
-              className="text-sm font-medium text-[#13143E] underline decoration-[#13143E]/30 underline-offset-2 hover:decoration-[#13143E]/60"
-            >
-              Όλο το προφίλ →
-            </Link>
-          </div>
-        </PopoverContent>
-      ) : null}
+      <PopoverContent
+        align={variant === "mobile-tab" ? "center" : "end"}
+        side={variant === "mobile-tab" ? "top" : "bottom"}
+        sideOffset={variant === "mobile-tab" ? 12 : 8}
+        collisionPadding={16}
+        className="z-[90] w-[min(22rem,calc(100vw-1.5rem))] border-border bg-white p-0 text-[#13143E] shadow-xl"
+        onOpenAutoFocus={(e) => e.preventDefault()}
+      >
+        <div className="border-b border-[#13143E]/10 bg-amber-50 px-4 py-3">
+          <p className="font-display text-base font-semibold text-[#13143E]">Ειδοποιήσεις</p>
+          <p className="mt-0.5 text-xs text-[#13143E]/70">
+            Like στην παράσταση → μαθαίνεις πρώτος για νέες ημερομηνίες.
+          </p>
+        </div>
+        <div className="max-h-[min(60vh,24rem)] overflow-y-auto bg-white px-4 py-3">
+          {isLoading ? (
+            <p className="text-sm text-[#13143E]/75">Φόρτωση…</p>
+          ) : (
+            <Suspense fallback={<p className="text-sm text-[#13143E]/75">Φόρτωση…</p>}>
+              <ProfileNotificationsPanel
+                notifications={notifications}
+                onNavigate={() => {
+                  markRead();
+                  setOpen(false);
+                }}
+                compact
+              />
+            </Suspense>
+          )}
+        </div>
+        <div className="border-t border-[#13143E]/10 bg-white px-4 py-3">
+          <Link
+            to="/profile"
+            onClick={() => {
+              markRead();
+              setOpen(false);
+            }}
+            className="text-sm font-medium text-[#13143E] underline decoration-[#13143E]/30 underline-offset-2 hover:decoration-[#13143E]/60"
+          >
+            Όλο το προφίλ →
+          </Link>
+        </div>
+      </PopoverContent>
     </Popover>
   );
 }

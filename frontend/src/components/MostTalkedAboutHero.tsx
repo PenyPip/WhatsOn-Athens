@@ -264,6 +264,10 @@ const MostTalkedAboutHero = ({
   }
 
   const active = slides[activeIndex]!;
+  const backdropSrc = active.posterUrl
+    ? posterLcpSrc(active.posterUrl, active.posterSrcSet) ?? active.posterUrl
+    : null;
+
   return (
     <section
       className={cn(HOME_HERO_COMPACT_SECTION_CLASS, hasCarousel && "touch-pan-y")}
@@ -274,10 +278,28 @@ const MostTalkedAboutHero = ({
       onTouchEnd={heroSwipe.onTouchEnd}
     >
       <div className="absolute inset-0 bg-gradient-to-br from-[#1c1a52] via-[#13143E] to-[#0d0c24]" />
-      <div
-        className="pointer-events-none absolute -right-8 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-amber-500/12 blur-3xl md:right-[10%]"
-        aria-hidden
-      />
+      {backdropSrc ? (
+        <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden>
+          <img
+            key={`bg-${active.key}`}
+            src={backdropSrc}
+            alt=""
+            width={512}
+            height={768}
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
+            className="absolute inset-0 h-full w-full scale-110 object-cover opacity-[0.28] blur-2xl saturate-125"
+          />
+          <div className="absolute inset-0 bg-gradient-to-r from-[#13143E] via-[#13143E]/85 to-[#13143E]/35" />
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0d0c24]/90 via-transparent to-[#13143E]/50" />
+        </div>
+      ) : (
+        <div
+          className="pointer-events-none absolute -right-8 top-1/2 h-72 w-72 -translate-y-1/2 rounded-full bg-amber-500/12 blur-3xl md:right-[10%]"
+          aria-hidden
+        />
+      )}
 
       {hasCarousel ? (
         <>
@@ -301,19 +323,19 @@ const MostTalkedAboutHero = ({
           hasCarousel ? "px-4 pb-10 md:px-16 md:pb-14" : "px-4 md:px-8",
         )}
       >
-        <div className="grid w-full grid-cols-1 items-center gap-6 max-md:[&>*:first-child]:order-2 max-md:[&>*:last-child]:order-1 md:grid-cols-[minmax(0,1fr)_auto] md:gap-12 lg:gap-16">
-          <div className="flex min-h-0 min-w-0 max-w-2xl flex-col lg:max-w-3xl max-md:text-center">
+        <div className="grid w-full grid-cols-1 items-center gap-5 max-md:[&>*:first-child]:order-2 max-md:[&>*:last-child]:order-1 md:grid-cols-[minmax(0,1.15fr)_auto] md:gap-10 lg:gap-14">
+          <div className="flex min-h-0 min-w-0 max-w-3xl flex-col lg:max-w-4xl max-md:text-center">
             <div className="min-h-0 min-w-0 shrink">
               {active.eyebrow ? (
-                <div className="mb-4 md:mb-5">
-                  <span className="inline-flex items-center rounded-full border border-amber-300/55 bg-gradient-to-r from-amber-400/30 via-amber-500/20 to-amber-600/10 px-4 py-2.5 font-body text-[11px] font-bold uppercase tracking-[0.22em] text-amber-50 shadow-[0_4px_28px_rgba(251,191,36,0.22)] ring-1 ring-amber-100/25 md:px-5 md:text-xs md:tracking-[0.24em]">
+                <div className="mb-3 md:mb-4">
+                  <span className="inline-flex items-center rounded-full border border-amber-300/55 bg-gradient-to-r from-amber-400/30 via-amber-500/20 to-amber-600/10 px-4 py-2 font-body text-[11px] font-bold uppercase tracking-[0.22em] text-amber-50 shadow-[0_4px_28px_rgba(251,191,36,0.22)] ring-1 ring-amber-100/25 md:px-5 md:text-xs md:tracking-[0.24em]">
                     {active.eyebrow}
                   </span>
                 </div>
               ) : null}
-              <p className="font-display text-3xl font-bold leading-[1.08] text-white md:text-4xl lg:text-[2.75rem]">{active.title}</p>
+              <p className="font-display text-3xl font-bold leading-[1.08] text-white md:text-4xl lg:text-[2.85rem]">{active.title}</p>
               {active.secondaryTitle ? (
-                <p className="font-display mt-2 text-xl font-medium leading-tight text-white/90 md:text-2xl">{active.secondaryTitle}</p>
+                <p className="font-display mt-1.5 text-lg font-medium leading-tight text-white/85 md:mt-2 md:text-2xl">{active.secondaryTitle}</p>
               ) : null}
               {active.genre ? (
                 <span className="mt-3 inline-flex rounded border border-white/15 bg-white/[0.08] px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wider text-amber-200/95">
@@ -322,14 +344,14 @@ const MostTalkedAboutHero = ({
               ) : null}
               <p
                 className={cn(
-                  "mt-3 font-body text-base leading-relaxed text-white md:mt-4 md:text-lg md:leading-[1.65]",
-                  active.description ? "line-clamp-3 md:line-clamp-4" : "italic text-white/90",
+                  "mt-3 font-body text-base leading-relaxed text-white/95 md:mt-4 md:text-lg md:leading-[1.65]",
+                  active.description ? "line-clamp-4 md:line-clamp-5" : "italic text-white/90",
                 )}
               >
                 {active.description || "Δεν υπάρχει περιγραφή."}
               </p>
               {active.scheduleLabel ? (
-                <p className="mt-2 font-body text-sm font-medium text-white md:text-base">{active.scheduleLabel}</p>
+                <p className="mt-2 font-body text-sm font-medium text-amber-100/90 md:text-base">{active.scheduleLabel}</p>
               ) : null}
               {active.meta ? <p className="mt-2 font-body text-sm text-white/55">{active.meta}</p> : null}
             </div>
@@ -348,9 +370,9 @@ const MostTalkedAboutHero = ({
             </div>
           </div>
 
-          <figure className="relative mx-auto w-40 shrink-0 sm:w-44 md:mx-0 md:w-60 lg:w-64">
-            <div className="pointer-events-none absolute -inset-4 rounded-2xl bg-amber-400/18 blur-2xl" aria-hidden />
-            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-[#1a1844]/80 shadow-2xl shadow-black/45 ring-1 ring-white/20">
+          <figure className="relative mx-auto w-44 shrink-0 sm:w-48 md:mx-0 md:w-64 lg:w-72">
+            <div className="pointer-events-none absolute -inset-5 rounded-2xl bg-amber-400/20 blur-2xl" aria-hidden />
+            <div className="relative aspect-[2/3] w-full overflow-hidden rounded-xl bg-[#1a1844]/80 shadow-2xl shadow-black/50 ring-1 ring-white/25">
               {active.posterUrl ? (
                 <PosterPicture
                   key={active.key}
@@ -362,7 +384,7 @@ const MostTalkedAboutHero = ({
                   fetchPriority={prioritizePoster ? (hasStaticLcp ? "auto" : "high") : "auto"}
                   loading={prioritizePoster ? "eager" : "lazy"}
                   decoding={prioritizePoster ? "async" : "async"}
-                  sizes="(max-width: 768px) 192px, 256px"
+                  sizes="(max-width: 768px) 192px, 288px"
                   className="h-full w-full object-contain object-center"
                   onLoad={active.posterUrl ? onHeroPosterLoad : undefined}
                 />
