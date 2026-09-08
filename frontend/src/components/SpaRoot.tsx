@@ -4,13 +4,11 @@ import { useMemo } from "react";
 import SpaProviders from "@/components/SpaProviders";
 import App from "@/App";
 import { HomeStaticLcpContext } from "@/contexts/HomeStaticLcpContext";
-import type { DehydratedState } from "@tanstack/react-query";
 import { readRqBootstrapState } from "@/lib/rqBootstrap";
+
 type SpaRootProps = {
   /** Pathname χωρίς query (π.χ. `/movies/foo`). */
   ssrPath: string;
-  /** React Query bootstrap από build-time prefetch (όταν υπάρχει στο flight· αλλιώς `#__RQ_STATE__`). */
-  bootstrapState?: DehydratedState;
   /** Αρχική: main επικαλύπτει το #home-hero-slot (ίδιο ύψος, χωρίς CLS). */
   homeMainOverlap?: boolean;
   /** Server HTML έχει HomeStaticLcp - το live hero δεν σχεδιάζει loading shell στο SSR. */
@@ -18,21 +16,17 @@ type SpaRootProps = {
   suppressHydrationWarning?: boolean;
 };
 
-/** Client boundary - bootstrap από `#__RQ_STATE__` (το flight row συγχρονίζεται στο build). */
+/**
+ * Client boundary - bootstrap ΜΟΝΟ από `#__RQ_STATE__`.
+ * Μην περνάς DehydratedState ως prop: το Next το ξαναγράφει στο RSC flight (~2× HTML).
+ */
 export default function SpaRoot({
   ssrPath,
-  bootstrapState,
   homeMainOverlap,
   homeStaticLcp = false,
   suppressHydrationWarning,
 }: SpaRootProps) {
-  const dehydratedState = useMemo(() => {
-    // Client: προτίμησε το inline `#__RQ_STATE__` (ίδιο JSON με το static HTML).
-    if (typeof document !== "undefined") {
-      return readRqBootstrapState() ?? bootstrapState;
-    }
-    return bootstrapState;
-  }, [bootstrapState]);
+  const dehydratedState = useMemo(() => readRqBootstrapState(), []);
 
   return (
     <div suppressHydrationWarning={suppressHydrationWarning}>

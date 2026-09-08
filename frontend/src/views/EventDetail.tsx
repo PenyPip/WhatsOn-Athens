@@ -23,7 +23,7 @@ import {
   useMovieBySlug,
   useMovieGenreCatalog,
   useMovieGenres,
-  useVenues,
+  useVenuesForProgram,
   useArticlesForMovie,
   useArticlesForTheater,
 } from "@/hooks/useStrapi";
@@ -295,7 +295,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
   const { data: theaterPerformances, isLoading: performancesLoading } = useTheaterPerformances(isTheaterRoute);
   const { data: genreCatalog } = useMovieGenreCatalog(isMovieRoute && loadRelatedMovies);
   const { data: movieGenresList } = useMovieGenres(isMovieRoute && deferSecondary);
-  const { data: venues } = useVenues(isMovieRoute || isTheaterRoute);
+  const { data: venues } = useVenuesForProgram(isMovieRoute || isTheaterRoute);
 
   const moviesEnriched = useMemo(
     () => enrichMoviesWithShowtimeGenre(movies ?? [], showtimes ?? []),

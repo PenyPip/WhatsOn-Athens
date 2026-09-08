@@ -97,10 +97,10 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
       ) : null}
       {pageCrawl ? <PageCrawlableBody data={pageCrawl} /> : null}
       <ServerJsonLd path={path} homeCrawl={homeCrawl} moviesCrawl={moviesCrawl} detailCrawl={detailCrawl} />
+      {/* Μόνο `#__RQ_STATE__` - ΟΧΙ bootstrapState prop στο SpaRoot (τριπλή αντιγραφή JSON → PageSpeed). */}
       <RqBootstrapScript state={dehydratedState} />
       <SpaRoot
         ssrPath={path}
-        bootstrapState={dehydratedState}
         homeMainOverlap={showStaticLcp}
         homeStaticLcp={showStaticLcp}
         suppressHydrationWarning={showStaticLcp}

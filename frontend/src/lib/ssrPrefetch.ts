@@ -142,7 +142,11 @@ async function prefetchMovieDetail(qc: QueryClient, slug: string) {
       queryFn: () => api.getShowtimesForMovieSlug(slug),
       ...queryDefaults,
     }),
-    qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
+    qc.prefetchQuery({
+      queryKey: VENUES_PROGRAM_QUERY_KEY,
+      queryFn: api.getVenuesForProgram,
+      ...queryDefaults,
+    }),
   ]);
   for (const r of settled) {
     if (r.status === "rejected") {
@@ -179,7 +183,11 @@ async function prefetchTheaterDetail(qc: QueryClient, slug: string) {
       queryFn: () => api.getTheaterPerformancesForShowSlug(slug),
       ...queryDefaults,
     }),
-    qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
+    qc.prefetchQuery({
+      queryKey: VENUES_PROGRAM_QUERY_KEY,
+      queryFn: api.getVenuesForProgram,
+      ...queryDefaults,
+    }),
     qc.prefetchQuery({
       queryKey: ["articles", "theater", slug],
       queryFn: () => api.getArticlesByTheaterSlug(slug),
