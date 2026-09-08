@@ -5,10 +5,11 @@ import type {
   StrapiMovieGenre,
   StrapiRestaurant,
   StrapiShowtime,
+  StrapiTheaterPerformance,
   StrapiTheaterShow,
   StrapiVenue,
 } from "@/lib/api";
-import { SHOWTIMES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
+import { SHOWTIMES_CALENDAR_QUERY_KEY, THEATER_PERFORMANCES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 
 const SHOWTIME_CACHE_KEYS: readonly (readonly [string, ...string[]])[] = [
   SHOWTIMES_CALENDAR_QUERY_KEY,
@@ -301,6 +302,18 @@ export function trimShowtimesForMovieSlug(qc: QueryClient, movieSlug: string): v
   );
 }
 
+/** Μόνο εμφανίσεις μίας παράστασης στο bootstrap λεπτομέρειας. */
+export function trimPerformancesForTheaterShowSlug(qc: QueryClient, showSlug: string): void {
+  const slug = showSlug.trim();
+  if (!slug) return;
+  const rows = qc.getQueryData<StrapiTheaterPerformance[]>(THEATER_PERFORMANCES_CALENDAR_QUERY_KEY);
+  if (!rows?.length) return;
+  qc.setQueryData(
+    THEATER_PERFORMANCES_CALENDAR_QUERY_KEY,
+    rows.filter((p) => p.theaterShowSlug === slug),
+  );
+}
+
 /** Αρχική: μόνο ταινίες που εμφανίζονται στις προβολές + πολυσυζητημένες (όχι ολόκληρο catalog). */
 export function trimMoviesForHomeBootstrap(qc: QueryClient): void {
   const movies = qc.getQueryData<StrapiMovie[]>(["movies"]);
@@ -373,6 +386,7 @@ export function finalizeBootstrapCache(
   qc: QueryClient,
   options?: {
     movieSlug?: string;
+    theaterShowSlug?: string;
     trimHomeShowtimes?: boolean;
     trimHomeMovies?: boolean;
     trimVenuesForShowtimes?: boolean;
@@ -390,6 +404,9 @@ export function finalizeBootstrapCache(
   if (options?.movieSlug) {
     trimShowtimesForMovieSlug(qc, options.movieSlug);
     trimVenuesForShowtimes(qc);
+  }
+  if (options?.theaterShowSlug) {
+    trimPerformancesForTheaterShowSlug(qc, options.theaterShowSlug);
   }
 }
 

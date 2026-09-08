@@ -134,26 +134,49 @@ async function prefetchMoviesVenueProgram(qc: QueryClient, venueSlug: string) {
 }
 
 async function prefetchMovieDetail(qc: QueryClient, slug: string) {
-  // Critical path μόνο: ταινία + showtimes (trim ανά slug) + venues. Articles/genres στο client μετά idle.
-  await Promise.all([
-    qc.prefetchQuery({ queryKey: ["movie", slug], queryFn: () => api.getMovieBySlug(slug) }),
+  await qc.prefetchQuery({ queryKey: ["movie", slug], queryFn: () => api.getMovieBySlug(slug) });
+
+  const settled = await Promise.allSettled([
     qc.prefetchQuery({
       queryKey: SHOWTIMES_CALENDAR_QUERY_KEY,
-      queryFn: () => api.getShowtimesForHome(),
+      queryFn: () => api.getShowtimesForMovieSlug(slug),
       ...queryDefaults,
     }),
     qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
   ]);
+  for (const r of settled) {
+    if (r.status === "rejected") {
+      console.warn(`[ssrPrefetch] /movies/${slug}:`, r.reason);
+    }
+  }
+
+  const showtimes = qc.getQueryData(SHOWTIMES_CALENDAR_QUERY_KEY) as unknown[] | undefined;
+  if (!showtimes?.length) {
+    try {
+      await qc.prefetchQuery({
+        queryKey: SHOWTIMES_CALENDAR_QUERY_KEY,
+        queryFn: () => api.getShowtimesForHome(),
+        ...queryDefaults,
+      });
+    } catch (err) {
+      console.warn(`[ssrPrefetch] /movies/${slug} showtimes fallback:`, err);
+    }
+  }
+
   finalizeBootstrapCache(qc, { movieSlug: slug });
 }
 
 async function prefetchTheaterDetail(qc: QueryClient, slug: string) {
-  await Promise.all([
-    qc.prefetchQuery({ queryKey: ["theaterShow", slug], queryFn: () => api.getTheaterShowBySlug(slug) }),
+  await qc.prefetchQuery({
+    queryKey: ["theaterShow", slug],
+    queryFn: () => api.getTheaterShowBySlug(slug),
+  });
+
+  const settled = await Promise.allSettled([
     qc.prefetchQuery({ queryKey: ["theaterShows"], queryFn: api.getTheaterShows, ...queryDefaults }),
     qc.prefetchQuery({
       queryKey: THEATER_PERFORMANCES_CALENDAR_QUERY_KEY,
-      queryFn: () => api.getTheaterPerformancesForHome(),
+      queryFn: () => api.getTheaterPerformancesForShowSlug(slug),
       ...queryDefaults,
     }),
     qc.prefetchQuery({ queryKey: ["venues"], queryFn: api.getVenues, ...queryDefaults }),
@@ -163,7 +186,26 @@ async function prefetchTheaterDetail(qc: QueryClient, slug: string) {
       ...queryDefaults,
     }),
   ]);
-  finalizeBootstrapCache(qc);
+  for (const r of settled) {
+    if (r.status === "rejected") {
+      console.warn(`[ssrPrefetch] /theater/${slug}:`, r.reason);
+    }
+  }
+
+  const performances = qc.getQueryData(THEATER_PERFORMANCES_CALENDAR_QUERY_KEY) as unknown[] | undefined;
+  if (!performances?.length) {
+    try {
+      await qc.prefetchQuery({
+        queryKey: THEATER_PERFORMANCES_CALENDAR_QUERY_KEY,
+        queryFn: () => api.getTheaterPerformancesForHome(),
+        ...queryDefaults,
+      });
+    } catch (err) {
+      console.warn(`[ssrPrefetch] /theater/${slug} performances fallback:`, err);
+    }
+  }
+
+  finalizeBootstrapCache(qc, { theaterShowSlug: slug });
 }
 
 /** Prefetch React Query cache για static export / SSR ανά path. */

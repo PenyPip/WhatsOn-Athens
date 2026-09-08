@@ -11,8 +11,9 @@ import { detailPosterPreloadHref } from "@/lib/detailPosterPreload";
 import { layoutShowsHero, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
 import { slimHomeBootstrapState } from "@/lib/rqBootstrap";
 import { prefetchRouteData } from "@/lib/ssrPrefetch";
-import HomeCrawlableBody from "@/components/server/HomeCrawlableBody";
-import MoviesCrawlableList from "@/components/server/MoviesCrawlableList";
+import PageCrawlableBody from "@/components/server/PageCrawlableBody";
+import { buildSeoCrawlForPath } from "@/lib/pageCrawlFromDehydrated";
+import { buildDetailCrawlFromDehydrated } from "@/lib/detailCrawlFromDehydrated";
 import { buildHomeCrawlFromDehydrated } from "@/lib/homeCrawlFromDehydrated";
 import { buildMoviesListCrawlFromDehydrated } from "@/lib/moviesListCrawlFromDehydrated";
 import { isMoviesFilterListPath } from "@/lib/moviesFilterPaths";
@@ -55,6 +56,9 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
   let dehydratedState = dehydratedStateRaw;
   let homepageData: MappedHomepage | undefined;
 
+  /** Crawl shell για ΚΑΘΕ δημόσια σελίδα (όχι μόνο home/movies). */
+  const pageCrawl = buildSeoCrawlForPath(path, dehydratedStateRaw);
+  const detailCrawl = buildDetailCrawlFromDehydrated(path, dehydratedStateRaw);
   const homeCrawl = path === "/" ? buildHomeCrawlFromDehydrated(dehydratedStateRaw) : null;
   const moviesCrawl =
     path === "/movies" || isMoviesFilterListPath(path)
@@ -67,7 +71,6 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
       homepageEntry?.state.status === "success"
         ? (homepageEntry.state.data as MappedHomepage | undefined)
         : undefined;
-    const homeLayout = resolveHomepageLayout(homepageData ?? null);
     dehydratedState = slimHomeBootstrapState(dehydratedState);
     dehydratedState = {
       ...dehydratedState,
@@ -92,9 +95,8 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
       {showStaticLcp && lcp ? (
         <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} synopsis={lcp.synopsis} />
       ) : null}
-      {homeCrawl ? <HomeCrawlableBody data={homeCrawl} /> : null}
-      {moviesCrawl ? <MoviesCrawlableList {...moviesCrawl} /> : null}
-      <ServerJsonLd path={path} homeCrawl={homeCrawl} moviesCrawl={moviesCrawl} />
+      {pageCrawl ? <PageCrawlableBody data={pageCrawl} /> : null}
+      <ServerJsonLd path={path} homeCrawl={homeCrawl} moviesCrawl={moviesCrawl} detailCrawl={detailCrawl} />
       <RqBootstrapScript state={dehydratedState} />
       <SpaRoot
         ssrPath={path}

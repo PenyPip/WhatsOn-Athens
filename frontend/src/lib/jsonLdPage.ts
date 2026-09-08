@@ -8,7 +8,7 @@ import { moviesSectionSeo } from "@/lib/moviesFilterSeo";
 import { theaterVenueProgramSeo } from "@/lib/theaterVenueProgramSeo";
 import { absolutePageUrl, resolvePublicAssetUrl, siteSeo, truncateDescription } from "@/lib/siteMetadata";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
-import type { HomeCrawlSnapshot, MoviesListCrawlSnapshot } from "@/lib/crawlTypes";
+import type { DetailCrawlSnapshot, HomeCrawlSnapshot, MoviesListCrawlSnapshot } from "@/lib/crawlTypes";
 
 type JsonLdNode = Record<string, unknown>;
 
@@ -391,7 +391,11 @@ function itemListFromRows(
  */
 export function buildPageJsonLd(
   path: string,
-  crawl?: { homeCrawl?: HomeCrawlSnapshot | null; moviesCrawl?: MoviesListCrawlSnapshot | null },
+  crawl?: {
+    homeCrawl?: HomeCrawlSnapshot | null;
+    moviesCrawl?: MoviesListCrawlSnapshot | null;
+    detailCrawl?: DetailCrawlSnapshot | null;
+  },
 ): JsonLdNode {
   const normalized = path === "" ? "/" : path.startsWith("/") ? path : `/${path}`;
   const { title, description } = seoCopyForPath(normalized);
@@ -433,10 +437,21 @@ export function buildPageJsonLd(
     breadcrumbList(normalized, title),
   ];
 
-  const entity = entityNodeForPath(normalized, title, pageUrl);
-  if (entity) {
-    if (Array.isArray(entity)) graph.push(...entity);
-    else graph.push(entity);
+  const detailGraph = crawl?.detailCrawl?.jsonLd;
+  if (detailGraph && typeof detailGraph === "object" && Array.isArray((detailGraph as JsonLdNode)["@graph"])) {
+    const nodes = (detailGraph as JsonLdNode)["@graph"] as JsonLdNode[];
+    for (const node of nodes) {
+      if (!node || typeof node !== "object") continue;
+      /** Αποφυγή διπλού BreadcrumbList - κρατάμε το γενικό της σελίδας. */
+      if (node["@type"] === "BreadcrumbList") continue;
+      graph.push(node);
+    }
+  } else {
+    const entity = entityNodeForPath(normalized, title, pageUrl);
+    if (entity) {
+      if (Array.isArray(entity)) graph.push(...entity);
+      else graph.push(entity);
+    }
   }
 
   if (normalized === "/" && crawl?.homeCrawl) {

@@ -1957,6 +1957,48 @@ async function fetchTheaterPerformancesVenueCalendar(
   }
 }
 
+/** Προβολές μίας ταινίας - μικρό payload για SSG detail (όχι ολόκληρο home-calendar). */
+async function fetchShowtimesForMovieSlug(movieSlug: string): Promise<StrapiShowtime[]> {
+  const slug = movieSlug.trim();
+  if (!slug) return [];
+  const [catalog, rows] = await Promise.all([
+    fetchMovieGenreCatalog(),
+    fetchAPIPagedEntries(
+      "/showtimes",
+      {
+        ...SHOWTIME_POPULATE,
+        ...upcomingShowtimeFilters(),
+        "filters[movie][slug][$eq]": slug,
+      },
+      { noStore: true },
+    ),
+  ]);
+  return rows.flatMap((x) => mapShowtime(x, catalog.hydrate, catalog.linkIndex));
+}
+
+/** Εμφανίσεις μίας παράστασης - μικρό payload για SSG detail. */
+async function fetchTheaterPerformancesForShowSlug(showSlug: string): Promise<StrapiTheaterPerformance[]> {
+  const slug = showSlug.trim();
+  if (!slug) return [];
+  const rows = await fetchAPIPagedEntries(
+    "/theater-performances",
+    {
+      "populate[theater_show][fields][0]": "slug",
+      "populate[theater_show][fields][1]": "title",
+      "populate[theater_show][fields][2]": "sold_out",
+      "populate[theater_show][populate][poster][fields][0]": "url",
+      "populate[theater_show][populate][poster][fields][1]": "formats",
+      "populate[venue][fields][0]": "slug",
+      "populate[venue][fields][1]": "name",
+      "populate[hall][fields][0]": "name",
+      "filters[theater_show][slug][$eq]": slug,
+      ...upcomingShowtimeFilters(),
+    },
+    { noStore: true },
+  );
+  return rows.flatMap((x) => mapTheaterPerformance(x));
+}
+
 async function fetchSiteNavigation(): Promise<MappedSiteNavigation | null> {
   const url = new URL(`${API_PREFIX}/site-navigation`, apiRequestBaseUrl());
   url.searchParams.set("populate[items]", "*");
@@ -2184,6 +2226,9 @@ export const api = {
   /** Ελαφρύ πρόγραμμα - όλες οι επερχόμενες προβολές (χωρίς ανώτατο όριο ημερομηνίας). */
   getShowtimesForHome: () => fetchShowtimesCalendar(),
 
+  /** Προβολές μίας ταινίας (SSG detail / SEO bootstrap). */
+  getShowtimesForMovieSlug: (movieSlug: string) => fetchShowtimesForMovieSlug(movieSlug),
+
   getShowtimes: (options?: { venueSlug?: string }) => {
     const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";
     if (venueSlug) {
@@ -2193,6 +2238,9 @@ export const api = {
   },
 
   getTheaterPerformancesForHome: () => fetchTheaterPerformancesCalendar(),
+
+  /** Εμφανίσεις μίας παράστασης (SSG detail / SEO bootstrap). */
+  getTheaterPerformancesForShowSlug: (showSlug: string) => fetchTheaterPerformancesForShowSlug(showSlug),
 
   getTheaterPerformances: (options?: { venueSlug?: string }) => {
     const venueSlug = typeof options?.venueSlug === "string" ? options.venueSlug.trim() : "";
