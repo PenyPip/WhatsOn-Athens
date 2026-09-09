@@ -80,7 +80,7 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         genreSlugs: m.genreSlugs,
         duration: m.duration,
         isDubbed: m.isDubbed,
-        criticScore: m.criticScore,
+        ...(m.criticScore != null ? { criticScore: m.criticScore } : {}),
         imdbRating: m.imdbRating,
         mostTalkedAbout: m.mostTalkedAbout,
         mostTalkedAboutAt: m.mostTalkedAbout ? m.mostTalkedAboutAt : undefined,
@@ -90,7 +90,8 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         director: m.mostTalkedAbout ? m.director : undefined,
         releaseDate: m.releaseDate,
         posterUrl: m.posterUrl,
-        posterSrcSet: m.posterSrcSet,
+        /** srcset μόνο για hero - αλλιώς ~56KB×2 στο HTML (PageSpeed). */
+        posterSrcSet: m.mostTalkedAbout ? m.posterSrcSet : undefined,
       })),
     );
   }

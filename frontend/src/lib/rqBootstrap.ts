@@ -1,12 +1,25 @@
 import type { DehydratedState } from "@tanstack/react-query";
 import type { StrapiMovie } from "@/lib/api";
 
+declare global {
+  interface Window {
+    /** Γεμίζει από `/_rq/*.js` (postbuild) - αποφεύγει διπλό RQ στο RSC flight. */
+    __RQ_BOOTSTRAP__?: DehydratedState;
+  }
+}
+
 export function readRqBootstrapState(): DehydratedState | undefined {
+  if (typeof window !== "undefined" && window.__RQ_BOOTSTRAP__) {
+    return window.__RQ_BOOTSTRAP__;
+  }
   if (typeof document === "undefined") return undefined;
   const el = document.getElementById("__RQ_STATE__");
   if (!el?.textContent) return undefined;
   try {
-    return JSON.parse(el.textContent) as DehydratedState;
+    const parsed = JSON.parse(el.textContent) as DehydratedState;
+    // `{}` placeholder μετά το externalize - αγνόησέ το
+    if (!parsed?.queries?.length) return undefined;
+    return parsed;
   } catch {
     return undefined;
   }
