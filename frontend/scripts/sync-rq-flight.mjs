@@ -8,30 +8,11 @@ import { join, dirname } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   collectInlineHtmlRowIds,
-  listFlightScriptPushes,
   readStaticInlineHtml,
-  replaceFlightPushAt,
+  syncFlightTRow,
 } from "./flight-push-utils.mjs";
 
 const OUT = join(dirname(fileURLToPath(import.meta.url)), "..", "out");
-
-function syncRow(html, rowId, content) {
-  const pushes = listFlightScriptPushes(html);
-  const declIdx = pushes.findIndex((p) => new RegExp(`^${rowId}:T[0-9a-f]+,$`).test(p.content));
-  if (declIdx === -1 || declIdx + 1 >= pushes.length) return { html, changed: false };
-
-  const newDecl = `${rowId}:T${Buffer.byteLength(content, "utf8").toString(16)},`;
-  const payload = pushes[declIdx + 1];
-  if (pushes[declIdx].content === newDecl && payload.content === content) {
-    return { html, changed: false };
-  }
-
-  let next = replaceFlightPushAt(html, payload, content);
-  const afterPayload = listFlightScriptPushes(next);
-  const decl = afterPayload[declIdx];
-  next = replaceFlightPushAt(next, decl, newDecl);
-  return { html: next, changed: true };
-}
 
 function fixHtml(html) {
   const rowIds = collectInlineHtmlRowIds(html);
@@ -44,7 +25,7 @@ function fixHtml(html) {
   for (const rowId of sorted) {
     const content = readStaticInlineHtml(next, rowId);
     if (content == null) continue;
-    const result = syncRow(next, rowId, content);
+    const result = syncFlightTRow(next, rowId, content);
     next = result.html;
     if (result.changed) changed = true;
   }

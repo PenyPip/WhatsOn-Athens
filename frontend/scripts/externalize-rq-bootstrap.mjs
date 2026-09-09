@@ -1,7 +1,6 @@
 /**
  * Βγάζει το `#__RQ_STATE__` JSON σε ξεχωριστό `/_rq/*.js`.
- * Το Next διπλογράφει το ίδιο payload στο RSC flight → HTML 400KB+ / TBT / mobile ~40.
- * Μετά από αυτό το sync-rq-flight συγχρονίζει T-row στο κενό `{}`.
+ * Το sync-rq-flight (μετά) μηδενίζει το RSC T-row στο `{}` (suffix-aware).
  */
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -41,7 +40,6 @@ function externalizeFile(htmlPath) {
   if (!m) return false;
   const json = m[2].trim();
   if (!json || json === "{}") return false;
-  // ήδη μικρό - μην εξωτερικοποιείς (π.χ. privacy)
   if (json.length < 2048) return false;
 
   const key = rqKeyFromHtml(htmlPath);
@@ -50,9 +48,7 @@ function externalizeFile(htmlPath) {
   const jsPath = join(RQ_DIR, `${key}.${hash}.js`);
   mkdirSync(dirname(jsPath), { recursive: true });
 
-  // Αυτόνομο blocking script - γεμίζει πριν hydrate το SpaRoot.
-  const jsBody = `self.__RQ_BOOTSTRAP__=${json};`;
-  writeFileSync(jsPath, jsBody);
+  writeFileSync(jsPath, `self.__RQ_BOOTSTRAP__=${json};`);
 
   const attrs = m[1] || "";
   const replacement =

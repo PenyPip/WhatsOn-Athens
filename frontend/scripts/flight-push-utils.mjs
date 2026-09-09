@@ -49,6 +49,57 @@ export function replaceFlightPushAt(html, push, content) {
   return html.slice(0, push.matchStart) + replacement + html.slice(push.matchEnd);
 }
 
+/**
+ * Βρίσκει δήλωση `N:Thex,` - είτε ολόκληρο push είτε suffix στο τέλος άλλου chunk
+ * (React Flight κολλάει συχνά το επόμενο T-row με `n` separator, όχι μόνο `\n`).
+ */
+export function findFlightTRowDecl(pushes, rowId) {
+  const whole = new RegExp(`^${rowId}:T[0-9a-f]+,$`);
+  let declIdx = pushes.findIndex((p) => whole.test(p.content));
+  if (declIdx !== -1) return { declIdx, kind: "whole" };
+
+  // suffix: "...n27:T1744f," ή "...\n27:T1744f,"
+  const suffix = new RegExp(`(?:^|[\\n])${rowId}:T[0-9a-f]+,$`);
+  // επίσης plain `n` ως flight record separator
+  const suffixFlightN = new RegExp(`${rowId}:T[0-9a-f]+,$`);
+  declIdx = pushes.findIndex(
+    (p) => !whole.test(p.content) && (suffix.test(p.content) || suffixFlightN.test(p.content)),
+  );
+  if (declIdx !== -1) return { declIdx, kind: "suffix" };
+
+  return null;
+}
+
+/** Ενημερώνει μήκος T-row + payload (content = νέο inline HTML/JSON). */
+export function syncFlightTRow(html, rowId, content) {
+  const pushes = listFlightScriptPushes(html);
+  const found = findFlightTRowDecl(pushes, rowId);
+  if (!found || found.declIdx + 1 >= pushes.length) return { html, changed: false };
+
+  const { declIdx, kind } = found;
+  const newDecl = `${rowId}:T${Buffer.byteLength(content, "utf8").toString(16)},`;
+  const payload = pushes[declIdx + 1];
+
+  let declContent = pushes[declIdx].content;
+  if (kind === "suffix") {
+    declContent = declContent.replace(
+      new RegExp(`${rowId}:T[0-9a-f]+,$`),
+      newDecl,
+    );
+  } else {
+    declContent = newDecl;
+  }
+
+  if (pushes[declIdx].content === declContent && payload.content === content) {
+    return { html, changed: false };
+  }
+
+  let next = replaceFlightPushAt(html, payload, content);
+  const after = listFlightScriptPushes(next);
+  next = replaceFlightPushAt(next, after[declIdx], declContent);
+  return { html: next, changed: true };
+}
+
 export function collectInlineHtmlRowIds(html) {
   const ids = new Set();
   const patterns = [
@@ -67,7 +118,7 @@ export function readStaticInlineHtml(html, rowId) {
     `\\\\"type\\\\":\\\\"application/ld\\+json\\\\"[^}]*(?:\\\\"children\\\\"|\\\\"__html\\\\"):\\\\"\\$${rowId}\\\\"`,
   ).test(html);
   if (ldRef) {
-    const m = html.match(/<script type="application\/ld\+json">([^<]*)<\/script>/);
+    const m = html.match(/<script type="application\/ld\+json"[^>]*>([^<]*)<\/script>/);
     if (m) return m[1];
   }
 
@@ -75,7 +126,10 @@ export function readStaticInlineHtml(html, rowId) {
     `\\\\"id\\\\":\\\\"__RQ_STATE__\\\\"[^}]*(?:\\\\"children\\\\"|\\\\"__html\\\\"):\\\\"\\$${rowId}\\\\"`,
   ).test(html);
   if (rqRef) {
-    const m = html.match(/<script id="__RQ_STATE__" type="application\/json">([^<]*)<\/script>/);
+    // Επιτρέπει attrs (π.χ. suppressHydrationWarning) μεταξύ type και >
+    const m = html.match(
+      /<script id="__RQ_STATE__" type="application\/json"[^>]*>([\s\S]*?)<\/script>/,
+    );
     if (m) return m[1];
   }
 
