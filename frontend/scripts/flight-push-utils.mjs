@@ -11,8 +11,13 @@ export function escapeFlightPushContent(content) {
 export function unescapeFlightPushContent(raw) {
   let content = "";
   for (let i = 0; i < raw.length; i += 1) {
-    if (raw[i] === "\\") {
-      content += raw[i + 1] ?? "";
+    if (raw[i] === "\\" && i + 1 < raw.length) {
+      const n = raw[i + 1];
+      if (n === "n") content += "\n";
+      else if (n === "r") content += "\r";
+      else if (n === "t") content += "\t";
+      else if (n === "\\" || n === '"') content += n;
+      else content += n;
       i += 1;
       continue;
     }
@@ -37,6 +42,10 @@ export function listFlightScriptPushes(html) {
       index: pushes.length,
       matchStart: m.index,
       matchEnd: m.index + m[0].length,
+      /** Raw escaped slice μέσα στο JS string - για χειρουργικά replaces χωρίς re-escape. */
+      rawEscaped: raw,
+      rawEscapedStart: m.index + "<script>".length + start + 4,
+      rawEscapedEnd: m.index + "<script>".length + rawEnd,
       content: unescapeFlightPushContent(raw),
     });
   }
@@ -51,26 +60,25 @@ export function replaceFlightPushAt(html, push, content) {
 
 /**
  * Βρίσκει δήλωση `N:Thex,` - είτε ολόκληρο push είτε suffix στο τέλος άλλου chunk
- * (React Flight κολλάει συχνά το επόμενο T-row με `n` separator, όχι μόνο `\n`).
+ * (React Flight κολλάει συχνά το επόμενο T-row με newline separator).
  */
 export function findFlightTRowDecl(pushes, rowId) {
   const whole = new RegExp(`^${rowId}:T[0-9a-f]+,$`);
   let declIdx = pushes.findIndex((p) => whole.test(p.content));
   if (declIdx !== -1) return { declIdx, kind: "whole" };
 
-  // suffix: "...n27:T1744f," ή "...\n27:T1744f,"
-  const suffix = new RegExp(`(?:^|[\\n])${rowId}:T[0-9a-f]+,$`);
-  // επίσης plain `n` ως flight record separator
-  const suffixFlightN = new RegExp(`${rowId}:T[0-9a-f]+,$`);
-  declIdx = pushes.findIndex(
-    (p) => !whole.test(p.content) && (suffix.test(p.content) || suffixFlightN.test(p.content)),
-  );
+  const suffix = new RegExp(`${rowId}:T[0-9a-f]+,$`);
+  declIdx = pushes.findIndex((p) => !whole.test(p.content) && suffix.test(p.content));
   if (declIdx !== -1) return { declIdx, kind: "suffix" };
 
   return null;
 }
 
-/** Ενημερώνει μήκος T-row + payload (content = νέο inline HTML/JSON). */
+/**
+ * Ενημερώνει μήκος T-row + payload.
+ * Για suffix δηλώσεις: ΧΕΙΡΟΥΡΓΙΚΟ replace του `N:Thex,` στο raw HTML —
+ * ΟΧΙ re-escape ολόκληρου του προηγούμενου chunk (έσπαγε `\n` → hydrate fail).
+ */
 export function syncFlightTRow(html, rowId, content) {
   const pushes = listFlightScriptPushes(html);
   const found = findFlightTRowDecl(pushes, rowId);
@@ -79,24 +87,35 @@ export function syncFlightTRow(html, rowId, content) {
   const { declIdx, kind } = found;
   const newDecl = `${rowId}:T${Buffer.byteLength(content, "utf8").toString(16)},`;
   const payload = pushes[declIdx + 1];
+  const declPush = pushes[declIdx];
+  const oldDeclMatch = declPush.content.match(new RegExp(`${rowId}:T[0-9a-f]+,$`));
+  if (!oldDeclMatch) return { html, changed: false };
+  const oldDecl = oldDeclMatch[0];
 
-  let declContent = pushes[declIdx].content;
-  if (kind === "suffix") {
-    declContent = declContent.replace(
-      new RegExp(`${rowId}:T[0-9a-f]+,$`),
-      newDecl,
-    );
-  } else {
-    declContent = newDecl;
-  }
-
-  if (pushes[declIdx].content === declContent && payload.content === content) {
+  if (oldDecl === newDecl && payload.content === content) {
     return { html, changed: false };
   }
 
-  let next = replaceFlightPushAt(html, payload, content);
+  // 1) Αντικατάσταση payload (συνήθως `{}` ή json-ld) - ασφαλές full replace
+  let next = payload.content === content ? html : replaceFlightPushAt(html, payload, content);
+
+  if (oldDecl === newDecl) return { html: next, changed: payload.content !== content };
+
+  // 2) Μόνο το `N:Thex,` στο raw escaped string - χωρίς touch στο υπόλοιπο chunk
   const after = listFlightScriptPushes(next);
-  next = replaceFlightPushAt(next, after[declIdx], declContent);
+  const declAfter = after[declIdx];
+  if (!declAfter?.rawEscaped?.includes(oldDecl)) {
+    // Fallback: plain replace στο rawEscaped window
+    const window = next.slice(declAfter.rawEscapedStart, declAfter.rawEscapedEnd);
+    if (!window.includes(oldDecl)) return { html: next, changed: true };
+  }
+  const start = declAfter.rawEscapedStart;
+  const end = declAfter.rawEscapedEnd;
+  const rawSlice = next.slice(start, end);
+  // oldDecl είναι [0-9A-Za-z:,] - ίδιο στο escaped και unescaped
+  if (!rawSlice.includes(oldDecl)) return { html: next, changed: true };
+  const fixedRaw = rawSlice.replace(oldDecl, newDecl);
+  next = next.slice(0, start) + fixedRaw + next.slice(end);
   return { html: next, changed: true };
 }
 

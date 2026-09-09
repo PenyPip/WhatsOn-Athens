@@ -1,9 +1,10 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useState } from "react";
 import SpaProviders from "@/components/SpaProviders";
 import App from "@/App";
 import { HomeStaticLcpContext } from "@/contexts/HomeStaticLcpContext";
+import type { DehydratedState } from "@tanstack/react-query";
 import { readRqBootstrapState } from "@/lib/rqBootstrap";
 
 type SpaRootProps = {
@@ -17,8 +18,8 @@ type SpaRootProps = {
 };
 
 /**
- * Client boundary - bootstrap ΜΟΝΟ από `#__RQ_STATE__`.
- * Μην περνάς DehydratedState ως prop: το Next το ξαναγράφει στο RSC flight (~2× HTML).
+ * Client boundary - bootstrap από `/_rq/*.js` → `window.__RQ_BOOTSTRAP__` (ή `#__RQ_STATE__`).
+ * Διαβάζουμε στο effect (όχι στο πρώτο render) ώστε SSR/hydrate να ταιριάζουν.
  */
 export default function SpaRoot({
   ssrPath,
@@ -26,7 +27,11 @@ export default function SpaRoot({
   homeStaticLcp = false,
   suppressHydrationWarning,
 }: SpaRootProps) {
-  const dehydratedState = useMemo(() => readRqBootstrapState(), []);
+  const [dehydratedState, setDehydratedState] = useState<DehydratedState | undefined>(undefined);
+
+  useEffect(() => {
+    setDehydratedState(readRqBootstrapState());
+  }, []);
 
   return (
     <div suppressHydrationWarning={suppressHydrationWarning}>
