@@ -1,6 +1,7 @@
 /**
- * Βγάζει το `#__RQ_STATE__` JSON σε ξεχωριστό `/_rq/*.js`.
- * Το sync-rq-flight (μετά) μηδενίζει το RSC T-row στο `{}` (suffix-aware).
+ * Βγάζει το `#__RQ_STATE__` JSON σε `/_rq/*.json` (όχι blocking script).
+ * Το SpaRoot το fetch-άρει μετά το LCP / hydrate → χαμηλότερο TBT.
+ * Το sync-rq-flight (μετά) μηδενίζει το RSC T-row στο `{}`.
  */
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
@@ -44,16 +45,19 @@ function externalizeFile(htmlPath) {
 
   const key = rqKeyFromHtml(htmlPath);
   const hash = createHash("sha256").update(json).digest("hex").slice(0, 10);
-  const jsRel = `/_rq/${key}.${hash}.js`;
-  const jsPath = join(RQ_DIR, `${key}.${hash}.js`);
-  mkdirSync(dirname(jsPath), { recursive: true });
-
-  writeFileSync(jsPath, `self.__RQ_BOOTSTRAP__=${json};`);
+  const jsonRel = `/_rq/${key}.${hash}.json`;
+  const jsonPath = join(RQ_DIR, `${key}.${hash}.json`);
+  mkdirSync(dirname(jsonPath), { recursive: true });
+  writeFileSync(jsonPath, json);
 
   const attrs = m[1] || "";
+  // data-rq-src: async fetch από SpaRoot. Preload ξεκινά download χωρίς να μπλοκάρει parse.
+  const preload =
+    key === "index"
+      ? `<link rel="preload" href="${jsonRel}" as="fetch" crossorigin="anonymous"/>`
+      : "";
   const replacement =
-    `<script id="__RQ_STATE__" type="application/json"${attrs}>{}</script>` +
-    `<script src="${jsRel}"></script>`;
+    `${preload}<script id="__RQ_STATE__" type="application/json" data-rq-src="${jsonRel}"${attrs}>{}</script>`;
 
   const next = raw.replace(RQ_SCRIPT_RE, replacement);
   if (next === raw) return false;
@@ -68,7 +72,7 @@ try {
   for (const f of files) {
     if (externalizeFile(f)) n += 1;
   }
-  console.log(`[externalize-rq-bootstrap] Externalized ${n} HTML file(s) → out/_rq/`);
+  console.log(`[externalize-rq-bootstrap] Externalized ${n} HTML file(s) → out/_rq/*.json`);
 } catch (e) {
   console.error("[externalize-rq-bootstrap] Failed:", e);
   process.exit(1);

@@ -5,7 +5,7 @@ import SpaProviders from "@/components/SpaProviders";
 import App from "@/App";
 import { HomeStaticLcpContext } from "@/contexts/HomeStaticLcpContext";
 import type { DehydratedState } from "@tanstack/react-query";
-import { readRqBootstrapState } from "@/lib/rqBootstrap";
+import { loadRqBootstrapState, runAfterHomeLcp } from "@/lib/rqBootstrap";
 
 type SpaRootProps = {
   /** Pathname χωρίς query (π.χ. `/movies/foo`). */
@@ -18,8 +18,8 @@ type SpaRootProps = {
 };
 
 /**
- * Client boundary - bootstrap από `/_rq/*.js` → `window.__RQ_BOOTSTRAP__` (ή `#__RQ_STATE__`).
- * Διαβάζουμε στο effect (όχι στο πρώτο render) ώστε SSR/hydrate να ταιριάζουν.
+ * Client boundary - RQ από `/_rq/*.json` (fetch), όχι blocking script.
+ * Στην αρχική με static LCP: φόρτωση μετά `spa-lcp-done` (χαμηλότερο TBT).
  */
 export default function SpaRoot({
   ssrPath,
@@ -30,8 +30,27 @@ export default function SpaRoot({
   const [dehydratedState, setDehydratedState] = useState<DehydratedState | undefined>(undefined);
 
   useEffect(() => {
-    setDehydratedState(readRqBootstrapState());
-  }, []);
+    let cancelled = false;
+
+    const apply = () => {
+      void loadRqBootstrapState().then((state) => {
+        if (!cancelled && state) setDehydratedState(state);
+      });
+    };
+
+    if (homeStaticLcp) {
+      const stop = runAfterHomeLcp(apply);
+      return () => {
+        cancelled = true;
+        stop();
+      };
+    }
+
+    apply();
+    return () => {
+      cancelled = true;
+    };
+  }, [homeStaticLcp]);
 
   return (
     <div suppressHydrationWarning={suppressHydrationWarning}>
