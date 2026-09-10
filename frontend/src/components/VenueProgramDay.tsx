@@ -16,6 +16,7 @@ import type { OtherVenueLink } from "@/lib/otherVenuesForMovie";
 import { sortMoviesPrioritizingFavorites } from "@/lib/favoriteSort";
 import { useFavoriteIds } from "@/hooks/useFavoriteIds";
 import { eachDayInclusiveInRange } from "@/lib/showtimeSchedule";
+import { countDistinctHalls, visibleHallName } from "@/lib/hallLabel";
 import { cn } from "@/lib/utils";
 
 type ShowingSlot = {
@@ -492,13 +493,16 @@ export default function VenueProgramLayout({
 
   const { availableMovies, programWeeks, totalLines } = useMemo(() => {
     const allEntries = sections.flatMap((s) => s.entries);
+    const allHallRows = allEntries.flatMap((e) => flattenShowingsToRows(e.showings));
+    const programHallCount = countDistinctHalls(allHallRows);
+    const venueHallCount = venue?.halls?.length ?? 0;
 
     const programLines: ProgramLine[] = allEntries
       .flatMap(({ movie, showings }) =>
         flattenShowingsToRows(showings).map((row) => ({
           key: `${movie.id}-${row.key}`,
           datetime: row.datetime,
-          hallName: row.hallName,
+          hallName: visibleHallName(row.hallName, { venueHallCount, programHallCount }),
           summerScreening: row.summerScreening,
           timesTba: row.timesTba,
           weekRangeLabel: row.weekRangeLabel,
@@ -530,7 +534,7 @@ export default function VenueProgramLayout({
       programWeeks: groupProgramByCinemaWeek(filteredLines, now),
       totalLines: filteredLines.length,
     };
-  }, [sections, now, selectedMovieId, favoriteIds]);
+  }, [sections, venue, now, selectedMovieId, favoriteIds]);
 
   useEffect(() => {
     if (selectedMovieId != null && !availableMovies.some((m) => m.id === selectedMovieId)) {

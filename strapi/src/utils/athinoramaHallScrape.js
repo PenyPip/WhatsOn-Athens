@@ -1,6 +1,12 @@
 'use strict';
 
 const { formatWeekLabel } = require('./cinemaWeek');
+const {
+  parseCinemaProgramText,
+  parseAuditoriumScheduleText,
+  normalizeHallName,
+  isSummerScreeningLabel,
+} = require('./programTextParser');
 
 const FETCH_TIMEOUT_MS = Number(process.env.ATHINORAMA_FETCH_TIMEOUT_MS || 25_000);
 const USER_AGENT =
@@ -79,6 +85,7 @@ function inWeekBounds(dt, weekBounds) {
 
 /**
  * Ομαδοποίηση ScreeningEvent → μορφή parser (title + showtimes).
+ * Το JSON-LD δεν έχει αίθουσα· ίδιες ώρες σε πολλές αίθουσες συγχωνεύονται.
  */
 function moviesFromScreeningEvents(events, { weekBounds = null } = {}) {
   const byTitle = new Map();
@@ -120,11 +127,144 @@ function moviesFromScreeningEvents(events, { weekBounds = null } = {}) {
   };
 }
 
+function stripTagsKeepText(raw) {
+  return String(raw || '')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/&nbsp;/gi, ' ')
+    .replace(/&amp;/gi, '&')
+    .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+    .replace(/\u00a0/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+/**
+ * Κάρτες προγράμματος Athinorama: τίτλος + room-box / schedule-box (χωρίς accordion).
+ * Επιστρέφει κείμενο catalog μορφής για textarea + λίστα { title, room, schedule }.
+ */
+function extractAthinoramaHallCards(html) {
+  let body = String(html || '');
+  body = body.replace(/<script[\s\S]*?<\/script>/gi, ' ');
+  body = body.replace(/<style[\s\S]*?<\/style>/gi, ' ');
+  body = body.replace(/<noscript[\s\S]*?<\/noscript>/gi, ' ');
+
+  const parts = body.split(/<div class="item\s+horizontal-dt[^"]*"[^>]*>/i);
+  const cards = [];
+
+  for (let i = 1; i < parts.length; i += 1) {
+    let part = parts[i];
+    const acc = part.search(/<div class="accordion"/i);
+    if (acc >= 0) part = part.slice(0, acc);
+
+    const linkBodies = [];
+    const linkRe = /<a[^>]+href="\/cinema\/movie\/[^"]+"[^>]*>([\s\S]*?)<\/a>/gi;
+    let lm;
+    while ((lm = linkRe.exec(part)) !== null) {
+      const t = stripTagsKeepText(lm[1]);
+      if (t && t.length > 1 && !/^https?:/i.test(t)) linkBodies.push(t);
+    }
+    const title = linkBodies[0] || null;
+    if (!title) continue;
+
+    const schedules = [];
+    const boxRe =
+      /class="room-box">\s*([\s\S]*?)\s*<\/strong>\s*([\s\S]*?)\s*<\/p>/gi;
+    let bm;
+    while ((bm = boxRe.exec(part)) !== null) {
+      const room = stripTagsKeepText(bm[1]);
+      const schedule = stripTagsKeepText(bm[2]);
+      if (!room || !schedule || !/\d{1,2}[.:]\d{2}/.test(schedule)) continue;
+      schedules.push({ room, schedule });
+    }
+    if (!schedules.length) continue;
+    cards.push({ title, schedules });
+  }
+
+  return cards;
+}
+
+function catalogTextFromHallCards(cards) {
+  const lines = [];
+  for (const card of cards || []) {
+    if (!card?.title) continue;
+    lines.push(card.title);
+    lines.push('Προβολές');
+    for (const row of card.schedules || []) {
+      const room = String(row.room || '').trim();
+      const schedule = String(row.schedule || '').trim();
+      if (!room || !schedule) continue;
+      lines.push(`${room} ${schedule}`.replace(/\s+/g, ' ').trim());
+    }
+    lines.push('');
+  }
+  return lines.join('\n').trim();
+}
+
+/**
+ * Από κάρτες HTML → movies με hallName ανά showtime (πρωτεύουσα πηγή για πολυαιθουσικά).
+ */
+function moviesFromAthinoramaHallCards(cards, { weekBounds = null, now = new Date() } = {}) {
+  if (!cards?.length || !weekBounds?.start || !weekBounds?.end) {
+    return { movies: [], stats: { cardCount: 0, scheduleLines: 0, showtimeCount: 0 } };
+  }
+
+  const movies = [];
+  let scheduleLines = 0;
+  let showtimeCount = 0;
+
+  for (const card of cards) {
+    const showtimes = [];
+    const scheduleTextLines = [];
+    for (const row of card.schedules || []) {
+      scheduleLines += 1;
+      const line = `${row.room} ${row.schedule}`.replace(/\s+/g, ' ').trim();
+      scheduleTextLines.push(line);
+      const summerScreening =
+        isSummerScreeningLabel(row.room) || isSummerScreeningLabel(row.schedule);
+      const hallName = summerScreening ? null : normalizeHallName(row.room);
+      showtimes.push(
+        ...parseAuditoriumScheduleText(row.schedule, weekBounds.start, weekBounds.end, {
+          summerScreening,
+          hallName,
+        }),
+      );
+    }
+    // dedupe by datetime+hall
+    const byKey = new Map();
+    for (const st of showtimes) {
+      const key = `${st.datetime.toISOString()}|${st.hallName || ''}`;
+      if (!byKey.has(key)) byKey.set(key, st);
+    }
+    const unique = [...byKey.values()].sort((a, b) => a.datetime - b.datetime);
+    showtimeCount += unique.length;
+    movies.push({
+      title: card.title,
+      scheduleText: scheduleTextLines.join('\n'),
+      showtimes: unique,
+    });
+  }
+
+  movies.sort((a, b) => a.title.localeCompare(b.title, 'el'));
+  return {
+    movies,
+    stats: {
+      cardCount: cards.length,
+      scheduleLines,
+      showtimeCount,
+      movieCount: movies.length,
+    },
+  };
+}
+
 /**
  * Εξαγωγή κειμένου «Ταινίες / Προβολές» για προβολή/επεξεργασία στο textarea.
- * Κρατά τίτλους + γραμμές Αίθουσα … (ίδια μορφή με manual paste).
+ * Προτιμά τις κάρτες room-box (καθαρό catalog)· αλλιώς fallback σε γενικό strip.
  */
 function extractAthinoramaProgramText(html) {
+  const cards = extractAthinoramaHallCards(html);
+  const fromCards = catalogTextFromHallCards(cards);
+  if (fromCards && cards.length >= 1) return fromCards;
+
   let body = String(html || '');
   body = body.replace(/<script[\s\S]*?<\/script>/gi, ' ');
   body = body.replace(/<style[\s\S]*?<\/style>/gi, ' ');
@@ -173,20 +313,27 @@ function extractAthinoramaProgramText(html) {
     'εμφάνιση χάρτη',
   ]);
   const out = [];
-  for (const line of lines) {
+  for (let i = 0; i < lines.length; i += 1) {
+    const line = lines[i];
     const low = line.toLocaleLowerCase('el');
     if (skipExact.has(low)) continue;
     if (/^ thriller|^θρίλερ$|^animation$|^περιπέτεια$/i.test(low) && line.length < 40) continue;
-    // Drop pure rating like "3" / "3,5"
     if (/^\d([.,]\d)?$/.test(line)) continue;
-    // Drop long synopses (no times, long)
     if (line.length > 160 && !/\d{1,2}[.:]\d{2}/.test(line) && !/^αίθουσα\s/i.test(line)) {
       continue;
+    }
+    // Συγχώνευση «Αίθουσα X» + επόμενη γραμμή ωραρίου
+    if (/^αίθουσα\s/i.test(line) && !/\d{1,2}[.:]\d{2}/.test(line) && i + 1 < lines.length) {
+      const next = lines[i + 1];
+      if (/\d{1,2}[.:]\d{2}/.test(next) && !/^αίθουσα\s/i.test(next)) {
+        out.push(`${line} ${next}`.replace(/\s+/g, ' ').trim());
+        i += 1;
+        continue;
+      }
     }
     out.push(line);
   }
 
-  // Prefer compact blocks: title then auditorium lines
   return out.join('\n').trim();
 }
 
@@ -230,30 +377,66 @@ async function fetchAthinoramaHallHtml(url, { timeoutMs } = {}) {
 
 /**
  * Fetch σελίδας αίθουσας Athinorama → parsed movies για program-import.
+ * Προτεραιότητα: HTML room-box (με αίθουσες) · fallback JSON-LD ScreeningEvent.
  */
-async function scrapeAthinoramaHallProgram(url, { weekBounds = null, timeoutMs } = {}) {
+async function scrapeAthinoramaHallProgram(url, { weekBounds = null, timeoutMs, now = new Date() } = {}) {
   const fetched = await fetchAthinoramaHallHtml(url, { timeoutMs });
   if (!fetched.ok) return fetched;
 
-  const blocks = parseLdJsonBlocks(fetched.html);
-  const events = screeningEventsFromLd(blocks);
-  const { movies, stats } = moviesFromScreeningEvents(events, { weekBounds });
-  const programText = extractAthinoramaProgramText(fetched.html);
+  const cards = extractAthinoramaHallCards(fetched.html);
+  const programText =
+    catalogTextFromHallCards(cards) || extractAthinoramaProgramText(fetched.html);
+  const fromCards = moviesFromAthinoramaHallCards(cards, { weekBounds, now });
 
   const warnings = [];
-  if (!events.length) {
-    warnings.push('Δεν βρέθηκαν ScreeningEvent στο JSON-LD της σελίδας.');
-  }
-  if (events.length && !movies.length) {
-    const weekHint = weekBounds
-      ? ` στην επιλεγμένη εβδομάδα (${formatWeekLabel(weekBounds.start, weekBounds.end)})`
-      : '';
-    warnings.push(`Βρέθηκαν ${stats.totalEvents} προβολές στο Athinorama, αλλά καμία${weekHint}.`);
-  }
-  if (stats.totalEvents > stats.inWeek && weekBounds) {
-    warnings.push(
-      `Φιλτράρισμα εβδομάδας: ${stats.inWeek}/${stats.totalEvents} προβολές μέσα στο εύρος.`,
-    );
+  let movies = [];
+  let stats = fromCards.stats;
+  let parseSource = 'athinorama-html-halls';
+
+  if (fromCards.movies.some((m) => (m.showtimes || []).length > 0)) {
+    movies = fromCards.movies.filter((m) => (m.showtimes || []).length > 0);
+    if (weekBounds) {
+      warnings.push(
+        `HTML αίθουσες: ${stats.scheduleLines} γραμμές → ${stats.showtimeCount} προβολές σε ${stats.movieCount} ταινίες.`,
+      );
+    }
+  } else {
+    // Fallback: catalog text parse (χειροκίνητο paste style)
+    if (programText) {
+      const parsed = parseCinemaProgramText(programText, { weekBounds, now });
+      const withSt = (parsed.movies || []).filter((m) => (m.showtimes || []).length > 0);
+      if (withSt.length) {
+        movies = withSt;
+        parseSource = 'athinorama-catalog-text';
+        warnings.push(...(parsed.warnings || []));
+      }
+    }
+
+    if (!movies.length) {
+      const blocks = parseLdJsonBlocks(fetched.html);
+      const events = screeningEventsFromLd(blocks);
+      const fromLd = moviesFromScreeningEvents(events, { weekBounds });
+      movies = fromLd.movies;
+      stats = fromLd.stats;
+      parseSource = 'athinorama-jsonld';
+      if (!events.length) {
+        warnings.push('Δεν βρέθηκαν ScreeningEvent στο JSON-LD της σελίδας.');
+      }
+      if (events.length && !movies.length) {
+        const weekHint = weekBounds
+          ? ` στην επιλεγμένη εβδομάδα (${formatWeekLabel(weekBounds.start, weekBounds.end)})`
+          : '';
+        warnings.push(`Βρέθηκαν ${stats.totalEvents} προβολές στο Athinorama, αλλά καμία${weekHint}.`);
+      }
+      if (stats.totalEvents > stats.inWeek && weekBounds) {
+        warnings.push(
+          `Φιλτράρισμα εβδομάδας: ${stats.inWeek}/${stats.totalEvents} προβολές μέσα στο εύρος.`,
+        );
+      }
+      warnings.push(
+        'Χωρίς αίθουσες από HTML — χρησιμοποιήθηκε JSON-LD (ίδιες ώρες σε πολλές αίθουσες συγχωνεύονται).',
+      );
+    }
   }
 
   return {
@@ -266,7 +449,7 @@ async function scrapeAthinoramaHallProgram(url, { weekBounds = null, timeoutMs }
     dateRange: weekBounds
       ? { start: weekBounds.start, end: weekBounds.end, inferred: true }
       : null,
-    parseSource: 'athinorama',
+    parseSource,
     error: movies.length ? null : warnings[0] || 'Δεν βρέθηκαν προβολές.',
   };
 }
@@ -275,5 +458,7 @@ module.exports = {
   normalizeAthinoramaHallUrl,
   scrapeAthinoramaHallProgram,
   extractAthinoramaProgramText,
+  extractAthinoramaHallCards,
   moviesFromScreeningEvents,
+  moviesFromAthinoramaHallCards,
 };

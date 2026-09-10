@@ -46,6 +46,7 @@ import SummerScreeningIndicator from "@/components/SummerScreeningIndicator";
 import VenueProgramLayout from "@/components/VenueProgramDay";
 import type { StrapiMovie, StrapiShowtime, StrapiVenue } from "@/lib/api";
 import { movieTitleLines } from "@/lib/movieTitles";
+import { visibleHallName } from "@/lib/hallLabel";
 import { buildOtherVenuesByMovieId } from "@/lib/otherVenuesForMovie";
 import {
   formatShowtimeWeekRangeLabel,
@@ -207,6 +208,13 @@ function MovieListShowtimeRow({
 }) {
   const venue = findVenueFromStableKey(venues, row.venueKey, row.venueLabel);
   const programHref = moviesHrefForVenue(venue);
+  const hallShown =
+    singleVenueFilter
+      ? visibleHallName(row.hallName, {
+          venueHallCount: venue?.halls?.length ?? 0,
+          programHallCount: venue?.halls && venue.halls.length > 0 ? venue.halls.length : 0,
+        })
+      : undefined;
 
   const timeBlock = row.timesTba ? (
     <span className="shrink-0 font-semibold text-foreground">
@@ -232,8 +240,8 @@ function MovieListShowtimeRow({
     <li className="font-body flex min-w-0 flex-nowrap items-center gap-1 leading-snug">
       {timeBlock}
       {singleVenueFilter ? (
-        row.hallName ? (
-          <span className="min-w-0 truncate text-muted-foreground">{` · ${row.hallName}`}</span>
+        hallShown ? (
+          <span className="min-w-0 truncate text-muted-foreground">{` · ${hallShown}`}</span>
         ) : null
       ) : (
         <>

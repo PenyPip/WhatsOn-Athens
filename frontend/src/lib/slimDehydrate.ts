@@ -178,6 +178,7 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         moreLink: v.moreLink,
         seatsTotal: v.seatsTotal,
         dayPrices: v.dayPrices,
+        halls: v.halls,
       })),
     );
   }

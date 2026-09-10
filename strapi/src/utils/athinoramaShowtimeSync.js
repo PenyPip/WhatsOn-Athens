@@ -143,6 +143,7 @@ function buildImportItemsFromScraped(scrapedMovies, cmsMovies, { summerDefault =
     const showtimes = (movie.showtimes || []).map((st) => ({
       datetime: st.datetime,
       note: st.note,
+      hallName: st.hallName || null,
       summer_screening: st.summer_screening === true || summerDefault === true,
       approved: true,
     }));

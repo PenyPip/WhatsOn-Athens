@@ -698,6 +698,7 @@ export default function App() {
       byTitle.get(p.parsedTitle).showtimes.push({
         datetime: p.datetime,
         note: p.note,
+        hallName: p.hallName || null,
         summer_screening: p.summer_screening === true,
         approved: p.approved,
       });
@@ -735,7 +736,8 @@ export default function App() {
       const createdKeys = new Set(
         (data.createdSlots || []).map((slot) => {
           const t = new Date(slot.datetime).getTime();
-          return `${Number(slot.movieId)}|${Math.round(t / 60_000)}`;
+          const hall = slot.hallName ? String(slot.hallName).trim() : '';
+          return `${Number(slot.movieId)}|${Math.round(t / 60_000)}|${hall}`;
         }),
       );
       setPreview((prev) => {
@@ -743,7 +745,8 @@ export default function App() {
         const nextProposals = (prev.proposals || []).map((p) => {
           const movieId = movieIdForTitle(p.parsedTitle, p.movieMatch) || p.movieId;
           const t = new Date(p.datetime).getTime();
-          const key = `${Number(movieId)}|${Math.round(t / 60_000)}`;
+          const hall = p.hallName ? String(p.hallName).trim() : '';
+          const key = `${Number(movieId)}|${Math.round(t / 60_000)}|${hall}`;
           if (movieId && createdKeys.has(key)) {
             return { ...p, exists: true, approved: false, status: 'exists' };
           }
@@ -1176,7 +1179,7 @@ export default function App() {
                     </Typography>
                   </Flex>
                 ) : null}
-                <Table colCount={6} rowCount={visibleProposals.length}>
+                <Table colCount={7} rowCount={visibleProposals.length}>
                   <Thead>
                     <Tr>
                       <Th>
@@ -1189,6 +1192,7 @@ export default function App() {
                       <Th>Ταινία (πηγή)</Th>
                       <Th>Ταινία CMS</Th>
                       <Th>Ημ/νία & ώρα</Th>
+                      <Th>Αίθουσα</Th>
                       <Th>Σημείωση</Th>
                       <Th>Κατάσταση</Th>
                     </Tr>
@@ -1232,6 +1236,11 @@ export default function App() {
                             </Typography>
                             {p.summer_screening ? <Badge>Θερινή</Badge> : null}
                           </Flex>
+                        </Td>
+                        <Td>
+                          <Typography variant="pi" textColor={p.hallName ? 'neutral800' : 'neutral500'}>
+                            {p.hallName || '—'}
+                          </Typography>
                         </Td>
                         <Td>
                           <Typography variant="pi" textColor="neutral600">

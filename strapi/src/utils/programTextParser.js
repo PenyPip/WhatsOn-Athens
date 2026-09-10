@@ -779,18 +779,48 @@ function isSummerScreeningLabel(text) {
   return /θεριν[οόςη]|therino|\bsummer\b/i.test(hay);
 }
 
+/** Κανονικό όνομα αίθουσας για CMS («Αίθουσα 7 IMAX»). Θερινές ετικέτες → null. */
+function normalizeHallName(room) {
+  const s = String(room || '')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!s) return null;
+  if (isSummerScreeningLabel(s)) return null;
+  const norm = normalizeGreek(s);
+  let rest = s;
+  if (norm.startsWith('αιθουσα ')) {
+    // κόψε το πρώτο token (Αίθουσα / ΑΙΘΟΥΣΑ / …)
+    rest = s.replace(/^\S+\s+/, '').trim();
+  } else if (norm === 'αιθουσα') {
+    return null;
+  }
+  if (!rest) return null;
+  // Αν ήδη ξεκινάει πάλι από αίθουσα μετά από κακό προηγούμενο normalize
+  while (normalizeGreek(rest).startsWith('αιθουσα ')) {
+    rest = rest.replace(/^\S+\s+/, '').trim();
+  }
+  if (!rest) return null;
+  return `Αίθουσα ${rest}`;
+}
+
 function dedupeShowtimes(showtimes) {
   const byKey = new Map();
   for (const st of showtimes) {
-    const key = st.datetime.toISOString();
+    const hallKey = st.hallName ? String(st.hallName) : '';
+    const key = `${st.datetime.toISOString()}|${hallKey}`;
     const prev = byKey.get(key);
     if (!prev) {
       byKey.set(key, st);
       continue;
     }
+    let next = prev;
     if (st.summer_screening && !prev.summer_screening) {
-      byKey.set(key, { ...prev, summer_screening: true });
+      next = { ...next, summer_screening: true };
     }
+    if (!next.hallName && st.hallName) {
+      next = { ...next, hallName: st.hallName };
+    }
+    byKey.set(key, next);
   }
   return [...byKey.values()].sort((a, b) => a.datetime.getTime() - b.datetime.getTime());
 }
@@ -2077,9 +2107,15 @@ function splitScheduleClauses(schedule) {
   return clauses;
 }
 
-function parseAuditoriumScheduleText(schedule, rangeStart, rangeEnd, { summerScreening = false } = {}) {
+function parseAuditoriumScheduleText(
+  schedule,
+  rangeStart,
+  rangeEnd,
+  { summerScreening = false, hallName = null } = {},
+) {
   const showtimes = [];
   if (!schedule || !rangeStart || !rangeEnd) return showtimes;
+  const hall = hallName ? normalizeHallName(hallName) : null;
 
   for (const clause of splitScheduleClauses(schedule)) {
     const colonIdx = clause.indexOf(':');
@@ -2111,6 +2147,7 @@ function parseAuditoriumScheduleText(schedule, rangeStart, rangeEnd, { summerScr
           datetime,
           note,
           summer_screening: summerScreening === true,
+          ...(hall ? { hallName: hall } : {}),
         });
       }
     }
@@ -2249,7 +2286,9 @@ function parseCatalogCinemaProgram(text, { refYear = new Date().getFullYear(), n
       'Δεν βρέθηκε ρητό εύρος ημερομηνιών — χρησιμοποιείται η τρέχουσα/επόμενη εβδομάδα κινηματογράφου.',
     );
   }
-  warnings.push('Οι αίθουσες αγνοήθηκαν — οι προβολές μπαίνουν στον επιλεγμένο κινηματογράφο.');
+  warnings.push(
+    'Οι γραμμές «Αίθουσα …» συνδέονται με αίθουσες του χώρου (δημιουργούνται αν λείπουν).',
+  );
   warnings.push('Γραμμές με «Θερινός» σημειώνονται ως θερινή προβολή — οι υπόλοιπες όχι.');
 
   const blocks = parseCatalogMoviesFromLines(lines);
@@ -2260,9 +2299,11 @@ function parseCatalogCinemaProgram(text, { refYear = new Date().getFullYear(), n
       if (!extracted?.schedule) continue;
       const summerScreening =
         isSummerScreeningLabel(extracted.room) || isSummerScreeningLabel(line);
+      const hallName = summerScreening ? null : normalizeHallName(extracted.room);
       showtimes.push(
         ...parseAuditoriumScheduleText(extracted.schedule, dateRange.start, dateRange.end, {
           summerScreening,
+          hallName,
         }),
       );
     }
@@ -2383,4 +2424,7 @@ module.exports = {
   splitMovieBlocks,
   buildAthensDatetime,
   GREEK_DOW_LABEL,
+  normalizeHallName,
+  parseAuditoriumScheduleText,
+  isSummerScreeningLabel,
 };

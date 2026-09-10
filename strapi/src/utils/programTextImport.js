@@ -20,6 +20,7 @@ const {
   scorePlayTitleMatch,
   MIN_PLAY_TITLE_MATCH,
 } = require('./morePlayTitleMatch');
+const { normalizeHallName: normalizeImportHallName } = require('./programTextParser');
 
 const PREVIEW_MIN_SCORE = Number(process.env.PROGRAM_IMPORT_MATCH_MIN || 0.72);
 const ALT_MATCH_LIMIT = 5;
@@ -66,10 +67,52 @@ function minuteKey(datetime) {
   return Math.round(t / 60_000);
 }
 
-function showtimeSlotKey(movieId, datetime) {
+function showtimeSlotKey(movieId, datetime, hallId = null) {
   const mk = minuteKey(datetime);
   if (mk == null || movieId == null) return null;
-  return `${Number(movieId)}|${mk}`;
+  const hallPart = hallId != null && Number.isFinite(Number(hallId)) ? Number(hallId) : 0;
+  return `${Number(movieId)}|${mk}|${hallPart}`;
+}
+
+/**
+ * Βρες ή δημιούργησε Hall για venue. Cache ανά όνομα μέσα στο import.
+ */
+async function ensureHallId(strapi, venueId, hallName, cache) {
+  const name = normalizeImportHallName(hallName);
+  if (!name || !venueId) return null;
+  if (cache?.has(name)) return cache.get(name);
+
+  const existing = await strapi.entityService.findMany('api::hall.hall', {
+    filters: {
+      venue: { id: venueId },
+      name,
+    },
+    fields: ['id', 'name'],
+    publicationState: 'preview',
+    limit: 5,
+  });
+  const hit = Array.isArray(existing) ? existing[0] : null;
+  if (hit?.id != null) {
+    cache?.set(name, hit.id);
+    return hit.id;
+  }
+
+  try {
+    const created = await strapi.entityService.create('api::hall.hall', {
+      data: {
+        name,
+        venue: venueId,
+        publishedAt: new Date().toISOString(),
+      },
+    });
+    const id = created?.id ?? null;
+    if (id != null) cache?.set(name, id);
+    return id;
+  } catch (e) {
+    strapi.log.warn(`[program-import] ensureHall «${name}»: ${e?.message || e}`);
+    cache?.set(name, null);
+    return null;
+  }
 }
 
 /**
@@ -97,14 +140,18 @@ async function loadExistingShowtimeKeySet(strapi, venueId, datetimes) {
         },
       },
       fields: ['id', 'datetime'],
-      populate: { movie: { fields: ['id'] } },
+      populate: {
+        movie: { fields: ['id'] },
+        hall: { fields: ['id'] },
+      },
       pagination: { page, pageSize },
     });
     const list = Array.isArray(batch) ? batch : [];
     if (!list.length) break;
     for (const row of list) {
       const movieId = row.movie?.id ?? row.movie;
-      const k = showtimeSlotKey(movieId, row.datetime);
+      const hallId = row.hall?.id ?? row.hall ?? null;
+      const k = showtimeSlotKey(movieId, row.datetime, hallId);
       if (k) keys.add(k);
     }
     if (list.length < pageSize) break;
@@ -222,7 +269,7 @@ function movieAlternatives(parsedTitle, cmsMovies, { limit = ALT_MATCH_LIMIT } =
 
 const { formatAthensWallClock } = require('./athensTime');
 
-async function findShowtimesAtSlot(strapi, { movieId, venueId, datetime }) {
+async function findShowtimesAtSlot(strapi, { movieId, venueId, datetime, hallId = undefined }) {
   const t = datetime instanceof Date ? datetime.getTime() : new Date(datetime).getTime();
   if (Number.isNaN(t)) return [];
   const rows = await strapi.entityService.findMany('api::showtime.showtime', {
@@ -235,10 +282,17 @@ async function findShowtimesAtSlot(strapi, { movieId, venueId, datetime }) {
       },
     },
     fields: ['id', 'datetime'],
+    populate: { hall: { fields: ['id'] } },
     sort: { id: 'desc' },
     limit: 50,
   });
-  return Array.isArray(rows) ? rows : [];
+  const list = Array.isArray(rows) ? rows : [];
+  if (hallId === undefined) return list;
+  if (hallId == null) {
+    return list.filter((row) => (row.hall?.id ?? row.hall) == null);
+  }
+  const want = Number(hallId);
+  return list.filter((row) => Number(row.hall?.id ?? row.hall) === want);
 }
 
 async function deleteOlderDuplicateShowtimes(strapi, rows) {
@@ -301,6 +355,18 @@ async function buildPreviewFromParsed(
   }
   const existingKeys = await loadExistingShowtimeKeySet(strapi, venue.id, allDatetimes);
 
+  const venueHalls = await strapi.entityService.findMany('api::hall.hall', {
+    filters: { venue: { id: venue.id } },
+    fields: ['id', 'name'],
+    publicationState: 'preview',
+    limit: 200,
+  });
+  const hallIdByName = new Map();
+  for (const h of Array.isArray(venueHalls) ? venueHalls : []) {
+    const n = normalizeImportHallName(h.name);
+    if (n && h.id != null) hallIdByName.set(n, h.id);
+  }
+
   const movies = [];
   const proposals = [];
   let totalShowtimes = 0;
@@ -321,7 +387,9 @@ async function buildPreviewFromParsed(
       const isPast = st.datetime < now;
       if (isPast) pastShowtimes += 1;
 
-      const slotKey = match?.cmsId ? showtimeSlotKey(match.cmsId, st.datetime) : null;
+      const hallName = normalizeImportHallName(st.hallName || st.hall || '');
+      const hallId = hallName ? hallIdByName.get(hallName) ?? null : null;
+      const slotKey = match?.cmsId ? showtimeSlotKey(match.cmsId, st.datetime, hallId) : null;
       const exists = Boolean(slotKey && existingKeys.has(slotKey));
       if (exists) existingShowtimes += 1;
 
@@ -342,6 +410,7 @@ async function buildPreviewFromParsed(
         timeLabel,
         dayLabel: st.dayLabel,
         note: st.note,
+        hallName: hallName || null,
         summer_screening: resolveSummerScreeningForShowtime(st, { summerScreeningDefault }),
         exists,
         isPast,
@@ -639,7 +708,17 @@ async function createProgramTextShowtimes(
         datetime,
         note: st.note,
         summer_screening: st.summer_screening === true,
+        hallName: st.hallName || st.hall || null,
       });
+    }
+  }
+
+  const hallCache = new Map();
+  for (const job of work) {
+    if (job.hallName) {
+      job.hallId = await ensureHallId(strapi, venue.id, job.hallName, hallCache);
+    } else {
+      job.hallId = null;
     }
   }
 
@@ -652,16 +731,39 @@ async function createProgramTextShowtimes(
   const outcomes = await mapPool(work, CREATE_CONCURRENCY, async (job) => {
     const inTargetWeek = inStatusWeek(job.datetime);
     try {
-      const slotKey = showtimeSlotKey(job.movieId, job.datetime);
+      const slotKey = showtimeSlotKey(job.movieId, job.datetime, job.hallId);
       if (slotKey && existingKeys.has(slotKey)) {
         return { type: 'exists', inTargetWeek };
       }
 
-      const matches = await findShowtimesAtSlot(strapi, {
+      let matches = await findShowtimesAtSlot(strapi, {
         movieId: job.movieId,
         venueId: venue.id,
         datetime: job.datetime,
+        hallId: job.hallId != null ? job.hallId : undefined,
       });
+
+      // Παλιά προβολή χωρίς αίθουσα → σύνδεσε αίθουσα αν υπάρχει ακριβώς μία αντιστοιχία.
+      if (job.hallId != null && matches.length === 0) {
+        const bare = await findShowtimesAtSlot(strapi, {
+          movieId: job.movieId,
+          venueId: venue.id,
+          datetime: job.datetime,
+          hallId: null,
+        });
+        if (bare.length === 1) {
+          try {
+            await strapi.entityService.update('api::showtime.showtime', bare[0].id, {
+              data: { hall: job.hallId },
+            });
+            if (slotKey) existingKeys.add(slotKey);
+            return { type: 'exists', inTargetWeek, hallAttached: true };
+          } catch (e) {
+            strapi.log.warn(`[program-import] attach hall failed: ${e?.message || e}`);
+          }
+        }
+      }
+
       if (matches.length > 0) {
         let dedupedSummer = 0;
         if (venue.summer_outdoor === true && matches.length > 1) {
@@ -672,24 +774,27 @@ async function createProgramTextShowtimes(
       }
 
       const note = job.note ? String(job.note).trim() : '';
+      const hallLabel = job.hallName ? normalizeImportHallName(job.hallName) : null;
       const traceParts = [
         importTracePrefix,
         `venue=${venue.name}`,
         job.parsedTitle ? `title=${job.parsedTitle}` : null,
+        hallLabel ? `hall=${hallLabel}` : null,
         note ? `note=${note}` : null,
       ].filter(Boolean);
 
-      await strapi.entityService.create('api::showtime.showtime', {
-        data: {
-          schedule_kind: 'exact',
-          datetime: job.datetime.toISOString(),
-          movie: job.movieId,
-          venue: venue.id,
-          summer_screening: job.summer_screening === true,
-          import_source: 'manual',
-          import_trace: traceParts.join(' · '),
-        },
-      });
+      const data = {
+        schedule_kind: 'exact',
+        datetime: job.datetime.toISOString(),
+        movie: job.movieId,
+        venue: venue.id,
+        summer_screening: job.summer_screening === true,
+        import_source: 'manual',
+        import_trace: traceParts.join(' · '),
+      };
+      if (job.hallId != null) data.hall = job.hallId;
+
+      await strapi.entityService.create('api::showtime.showtime', { data });
       if (slotKey) existingKeys.add(slotKey);
       return {
         type: 'created',
@@ -698,6 +803,7 @@ async function createProgramTextShowtimes(
           movieId: job.movieId,
           datetime: job.datetime.toISOString(),
           parsedTitle: job.parsedTitle,
+          hallName: hallLabel,
         },
       };
     } catch (e) {

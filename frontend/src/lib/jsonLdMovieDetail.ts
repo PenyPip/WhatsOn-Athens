@@ -3,6 +3,7 @@ import { absolutePageUrl, resolvePublicAssetUrl } from "@/lib/siteMetadata";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { findVenueForShowtime, isValidExternalUrl, resolveGoogleMapsHref } from "@/lib/venueResolve";
 import { resolvePricingForShowtime } from "@/lib/venuePricing";
+import { countDistinctHalls, shouldShowHallName } from "@/lib/hallLabel";
 
 type JsonLdObject = Record<string, unknown>;
 
@@ -45,6 +46,7 @@ function screeningEvent(
   movie: StrapiMovie,
   movieUrl: string,
   venues: StrapiVenue[] | undefined,
+  programHallCountByVenueKey: Map<string, number>,
 ): JsonLdObject | null {
   const startDate = isoDateTime(st.datetime);
   if (!startDate) return null;
@@ -53,6 +55,12 @@ function screeningEvent(
   const venueName = venueRecord?.name?.trim() || (st.venue ?? "").trim() || "Σινεμά";
   const tl = movieTitleLines(movie);
   const mapsUrl = resolveGoogleMapsHref(venueRecord?.googleMapsUrl, venueRecord?.address);
+  const venueKey =
+    venueRecord?.id != null
+      ? `id:${venueRecord.id}`
+      : venueRecord?.slug
+        ? `slug:${venueRecord.slug}`
+        : `name:${venueName}`;
 
   const location: JsonLdObject = {
     "@type": "MovieTheater",
@@ -80,10 +88,15 @@ function screeningEvent(
     },
   };
 
-  if (st.hallName?.trim()) {
+  if (
+    shouldShowHallName(st.hallName, {
+      venueHallCount: venueRecord?.halls?.length ?? 0,
+      programHallCount: programHallCountByVenueKey.get(venueKey) ?? 0,
+    })
+  ) {
     (event.location as JsonLdObject).containsPlace = {
       "@type": "Place",
-      name: st.hallName.trim(),
+      name: st.hallName!.trim(),
     };
   }
 
@@ -167,8 +180,26 @@ export function buildMovieDetailJsonLd(input: MovieDetailJsonLdInput): JsonLdObj
     ],
   };
 
+  const hallCountByVenue = new Map<string, number>();
+  const showtimesByVenueKey = new Map<string, StrapiShowtime[]>();
+  for (const st of showtimes) {
+    const venueRecord = findVenueForShowtime(venues, st);
+    const venueName = venueRecord?.name?.trim() || (st.venue ?? "").trim() || "Σινεμά";
+    const venueKey =
+      venueRecord?.id != null
+        ? `id:${venueRecord.id}`
+        : venueRecord?.slug
+          ? `slug:${venueRecord.slug}`
+          : `name:${venueName}`;
+    if (!showtimesByVenueKey.has(venueKey)) showtimesByVenueKey.set(venueKey, []);
+    showtimesByVenueKey.get(venueKey)!.push(st);
+  }
+  for (const [key, rows] of showtimesByVenueKey) {
+    hallCountByVenue.set(key, countDistinctHalls(rows));
+  }
+
   const screenings = showtimes
-    .map((st) => screeningEvent(st, movie, movieUrl, venues))
+    .map((st) => screeningEvent(st, movie, movieUrl, venues, hallCountByVenue))
     .filter((e): e is JsonLdObject => e !== null);
 
   const graph: JsonLdObject[] = [

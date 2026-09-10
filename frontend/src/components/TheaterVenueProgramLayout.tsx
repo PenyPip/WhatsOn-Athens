@@ -9,6 +9,7 @@ import { groupPerformancesByShowAtVenue, isTheaterPerformanceNewlyAddedHighlight
 import { resolveTheaterTicketPrices, theaterPriceLabel } from "@/lib/theaterPricing";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { isValidExternalUrl } from "@/lib/venueResolve";
+import { countDistinctHalls, visibleHallName } from "@/lib/hallLabel";
 
 function performancePriceLabel(
   p: StrapiTheaterPerformance,
@@ -33,6 +34,8 @@ export default function TheaterVenueProgramLayout({
   showsBySlug?: Map<string, StrapiTheaterShow>;
 }) {
   const groups = useMemo(() => groupPerformancesByShowAtVenue(performances), [performances]);
+  const programHallCount = useMemo(() => countDistinctHalls(performances), [performances]);
+  const venueHallCount = venue?.halls?.length ?? 0;
 
   const allSoldOut = useMemo(() => {
     if (!groups.length) return false;
@@ -139,7 +142,7 @@ export default function TheaterVenueProgramLayout({
                     <ScheduleCompactRow
                       key={p.id}
                       slot={p}
-                      hallName={p.hallName}
+                      hallName={visibleHallName(p.hallName, { venueHallCount, programHallCount })}
                       priceLabel={performancePriceLabel(p, show)}
                       soldOut={Boolean(p.soldOut || soldOut)}
                       newlyAdded={isTheaterPerformanceNewlyAddedHighlight(p, group.slots)}

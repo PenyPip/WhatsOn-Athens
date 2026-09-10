@@ -1403,6 +1403,7 @@ function mapVenue(raw: unknown): StrapiVenue {
     type: normalizeVenueKind(v.type) ?? "cinema",
     summerOutdoor,
     dayPrices: mapVenueDayPrices(v.day_prices),
+    halls: mapVenueHalls(v.halls),
   };
 }
 
@@ -1543,6 +1544,8 @@ export interface StrapiVenue {
   summerOutdoor: boolean;
   /** Τιμές ανά ημέρα εβδομάδας (από CMS). */
   dayPrices?: VenueDayPrice[];
+  /** Αίθουσες χώρου (CMS)· >1 → εμφάνιση ετικέτας στην προβολή. */
+  halls?: StrapiHallSummary[];
 }
 
 export interface StrapiEditorialReview {
@@ -1777,6 +1780,7 @@ const VENUE_PROGRAM_QUERY: Record<string, string> = {
   "fields[6]": "more_link",
   "fields[7]": "type",
   "fields[8]": "summer_outdoor",
+  "populate[halls][fields][0]": "name",
 };
 
 const VENUE_PUBLIC_QUERY: Record<string, string> = {

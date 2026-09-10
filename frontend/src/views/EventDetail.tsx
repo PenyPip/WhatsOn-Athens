@@ -41,6 +41,7 @@ import {
 import { ShowtimePriceLabels } from "@/components/ShowtimePriceLabels";
 import { VenueDayPricesTable } from "@/components/VenueDayPricesTable";
 import { resolvePricingForShowtime } from "@/lib/venuePricing";
+import { countDistinctHalls, hallCaption, visibleHallName } from "@/lib/hallLabel";
 import { movieTitleLines, posterAltForMovie, posterAltForTheater } from "@/lib/movieTitles";
 import {
   showtimeIsUpcoming,
@@ -132,14 +133,21 @@ const EventCard = lazyWithChunkReload(
 function ShowtimeCompactRow({
   st,
   venue,
+  programHallCount = 0,
   emphasized = false,
   highlighted = false,
 }: {
   st: StrapiShowtime;
   venue?: StrapiVenue | null;
+  /** Distinct αίθουσες στο πρόγραμμα αυτού του χώρου (fallback αν δεν έχει φορτωθεί venue.halls). */
+  programHallCount?: number;
   emphasized?: boolean;
   highlighted?: boolean;
 }) {
+  const hallLine = hallCaption(st.hallName, {
+    venueHallCount: venue?.halls?.length ?? 0,
+    programHallCount,
+  });
   if (showtimeIsWeekBlock(st)) {
     const weekLabel = formatShowtimeWeekRangeLabel(st);
     return (
@@ -155,7 +163,7 @@ function ShowtimeCompactRow({
           {weekLabel ?? "Εβδομάδα προβολών"}
           <span className="text-muted-foreground"> · ώρες σύντομα</span>
         </p>
-        {st.hallName ? <p className="text-muted-foreground">Αίθουσα · {st.hallName}</p> : null}
+        {hallLine ? <p className="text-muted-foreground">{hallLine}</p> : null}
       </li>
     );
   }
@@ -195,9 +203,7 @@ function ShowtimeCompactRow({
         </div>
         <ShowtimePriceLabels regular={pricing.regular} student={pricing.student} />
       </div>
-      {st.hallName ? (
-        <p className="text-muted-foreground">Αίθουσα · {st.hallName}</p>
-      ) : null}
+      {hallLine ? <p className="text-muted-foreground">{hallLine}</p> : null}
     </li>
   );
 }
@@ -636,6 +642,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
           {performancesByVenue.map(({ key, venueName, slots, venue }) => {
             if (!slots.length) return null;
+            const programHallCount = countDistinctHalls(slots);
             return (
               <div
                 key={key}
@@ -655,7 +662,10 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     <ScheduleCompactRow
                       key={p.id}
                       slot={p}
-                      hallName={p.hallName}
+                      hallName={visibleHallName(p.hallName, {
+                        venueHallCount: venue?.halls?.length ?? 0,
+                        programHallCount,
+                      })}
                       priceLabel={theaterPerformancePriceLabel(p)}
                       soldOut={Boolean(p.soldOut || theaterShow?.soldOut)}
                       newlyAdded={isTheaterPerformanceNewlyAddedHighlight(p, eventPerformances)}
@@ -983,6 +993,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 lg:gap-4">
           {filteredShowtimesByVenue.map(({ key, venueName, slots, venue }) => {
             if (!slots.length) return null;
+            const programHallCount = countDistinctHalls(slots);
             return (
               <div
                 key={key}
@@ -1006,6 +1017,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                       key={st.id}
                       st={st}
                       venue={venue}
+                      programHallCount={programHallCount}
                       emphasized
                       highlighted={focusedShowtime?.id != null && st.id === focusedShowtime.id}
                     />
