@@ -32,6 +32,8 @@ const config = {
       'content-manager.content-types.api::theater-show.theater-show.age_range': 'Εύρος ηλικίας (κείμενο)',
       'content-manager.enum.home.layout-section.section_key.kids_theater': 'Παιδικές παραστάσεις (αρχική)',
       'content-manager.enum.home.layout-section.section_key.tours': 'Περιοδείες (αρχική)',
+      'content-manager.enum.home.layout-section.section_key.weekend_events': 'Τι να κάνω το ΣΚ (events)',
+      'content-manager.enum.home.layout-section.section_key.events': 'Events (αρχική)',
       'content-manager.components.home.hero-banner.title': 'Τίτλος banner',
       'content-manager.components.home.hero-banner.description': 'Περιγραφή',
       'content-manager.components.home.hero-banner.movie': 'Σχετική ταινία',

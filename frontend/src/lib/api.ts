@@ -2217,6 +2217,26 @@ export const api = {
       "pagination[pageSize]": String(Math.max(1, limit)),
     }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapEvent(x))),
 
+  /**
+   * Events που επικαλύπτουν [from, to] (YYYY-MM-DD) — για ΣΚ στην αρχική.
+   * start ≤ to και (end ≥ from ή χωρίς end με start ≥ from).
+   */
+  getEventsOverlappingRange: (from: string, to: string, limit = 24) => {
+    const f = from.trim().slice(0, 10);
+    const t = to.trim().slice(0, 10);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(f) || !/^\d{4}-\d{2}-\d{2}$/.test(t)) {
+      return Promise.resolve([] as StrapiEvent[]);
+    }
+    return fetchAPI<any[]>("/events", {
+      ...EVENT_PUBLIC_QUERY,
+      "filters[$and][0][start_date][$lte]": t,
+      "filters[$and][1][$or][0][end_date][$gte]": f,
+      "filters[$and][1][$or][1][$and][0][end_date][$null]": "true",
+      "filters[$and][1][$or][1][$and][1][start_date][$gte]": f,
+      "pagination[pageSize]": String(Math.max(1, limit)),
+    }).then((d) => (Array.isArray(d) ? d : []).map((x) => mapEvent(x)));
+  },
+
   getEventBySlug: (slug: string) =>
     fetchAPI<any[]>("/events", {
       ...EVENT_PUBLIC_QUERY,

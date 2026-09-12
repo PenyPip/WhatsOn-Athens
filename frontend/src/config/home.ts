@@ -1,7 +1,8 @@
 /**
  * Το layout της αρχικής έρχεται από Strapi Single Type «Homepage».
  * Έτοιμα τμήματα: hero, movies_today, summer_cinema, summer_venues, tours (παραστάσεις με on_tour),
- * kids_theater (παιδικές με is_kids), events (πολιτιστικά events), new_movies (τελευταίες 10 ημέρες release date), movies_week (ερχόμενη εβδομάδα κινηματογράφου Πέμ–Τετ),
+ * kids_theater (παιδικές με is_kids), events (πολιτιστικά events), weekend_events (events τρέχοντος/επερχόμενου ΣΚ),
+ * new_movies (τελευταίες 10 ημέρες release date), movies_week (ερχόμενη εβδομάδα κινηματογράφου Πέμ–Τετ),
  * coming_soon (κυκλοφορίες μετά από αυτή την εβδομάδα) - διάλεξε ποια εμφανίζονται και με ποια σειρά.
  */
 
@@ -18,6 +19,7 @@ export const HOME_SECTION_IDS = [
   "new_movies",
   "new_articles",
   "events",
+  "weekend_events",
   "movies_week",
   "coming_soon",
   "dining",
@@ -43,6 +45,7 @@ export const FALLBACK_SECTIONS: HomeSectionId[] = [
   "strip",
   "movies_today",
   "summer_cinema",
+  "weekend_events",
   "summer_venues",
   "movies_week",
   "tours",
@@ -80,6 +83,17 @@ function ensureEventsAfterArticles(sections: HomeSectionId[]): HomeSectionId[] {
   return next;
 }
 
+/** «Τι να κάνω το ΣΚ» μετά τα θερινά (ή μετά «σήμερα») αν λείπει από το CMS layout. */
+function ensureWeekendEventsSection(sections: HomeSectionId[]): HomeSectionId[] {
+  if (sections.includes("weekend_events")) return sections;
+  const next = [...sections];
+  const afterSummer = next.indexOf("summer_cinema");
+  const afterToday = next.indexOf("movies_today");
+  const anchor = afterSummer >= 0 ? afterSummer : afterToday;
+  next.splice(anchor >= 0 ? anchor + 1 : Math.min(3, next.length), 0, "weekend_events");
+  return next;
+}
+
 /** Παλιά κλειδιά πριν το split σε summer_cinema / tours */
 const LEGACY_SECTION_MAP: Record<string, HomeSectionId> = {
   movies: "summer_cinema",
@@ -111,7 +125,9 @@ export interface ResolvedHomepageLayout extends MappedHomepage {}
 export function resolveHomepageLayout(mapped: MappedHomepage | null): ResolvedHomepageLayout {
   const base = mapped?.sections.length ? mapped.sections : [...FALLBACK_SECTIONS];
   return {
-    sections: ensureEventsAfterArticles(orderHomeSectionsForFirstLook(base)),
+    sections: ensureEventsAfterArticles(
+      ensureWeekendEventsSection(orderHomeSectionsForFirstLook(base)),
+    ),
     heroBanners: mapped?.heroBanners?.length ? mapped.heroBanners : [],
   };
 }
@@ -129,7 +145,7 @@ export function homeNeedsTheater(sections: readonly HomeSectionId[]): boolean {
 }
 
 export function homeNeedsEvents(sections: readonly HomeSectionId[]): boolean {
-  return sections.includes("events");
+  return sections.includes("events") || sections.includes("weekend_events");
 }
 
 export function homeNeedsDining(sections: readonly HomeSectionId[]): boolean {

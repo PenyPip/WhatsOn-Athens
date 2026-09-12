@@ -9,6 +9,7 @@ const SECTION_MIN_H: Partial<Record<HomeSectionId, string>> = {
   tours: "min-h-[32rem]",
   new_articles: "min-h-[28rem]",
   events: "min-h-[28rem]",
+  weekend_events: "min-h-[28rem]",
   new_movies: "min-h-[32rem] md:min-h-[36rem]",
   movies_week: "min-h-[26rem] md:min-h-[28rem]",
   coming_soon: "min-h-[32rem] md:min-h-[36rem]",

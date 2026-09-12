@@ -11,11 +11,10 @@ import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { useDeferUntilIdleAfterLcp } from "@/hooks/useDeferUntilIdleAfterLcp";
 import { useSiteNow } from "@/hooks/useSiteNow";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMovies, useShowtimes, useRestaurants, useVenuesForProgram, useTheaterShows, useTheaterPerformances, useArticles, useEvents } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useRestaurants, useVenuesForProgram, useTheaterShows, useTheaterPerformances, useArticles, useEvents, useWeekendEvents } from "@/hooks/useStrapi";
 import {
   homeNeedsArticles,
   homeNeedsDining,
-  homeNeedsEvents,
   homeNeedsShowtimes,
   homeNeedsTheater,
   homeNeedsVenues,
@@ -43,6 +42,7 @@ import {
   eventTypeLabels,
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
+import { formatWeekendRangeLabel } from "@/lib/eventDateFilters";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
 import HomePersonalizedSections from "@/components/HomePersonalizedSections";
 import FavoriteTheaterUpdatesBanner from "@/components/FavoriteTheaterUpdatesBanner";
@@ -370,7 +370,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsTheater = homeNeedsTheater(sections);
   const needsDining = homeNeedsDining(sections);
   const needsArticles = homeNeedsArticles(sections);
-  const needsEvents = homeNeedsEvents(sections);
+  const needsEventsList = sections.includes("events");
+  const needsWeekendEvents = sections.includes("weekend_events");
   const needsShowtimes = homeNeedsShowtimes(sections);
   const deferSecondary = useDeferUntilLcpDone();
   /** Below-fold (venues/theater/articles/…) μετά idle - μικρότερο TBT· δεν αγγίζει movies/showtimes. */
@@ -430,7 +431,17 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     }
   }, [needsArticles, deferHomeExtra]);
 
-  const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(needsEvents && deferHomeExtra, 6);
+  const eventsFetchLimit = 6;
+  const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(
+    needsEventsList && deferHomeExtra,
+    eventsFetchLimit,
+  );
+  const {
+    data: weekendEvents = [],
+    isLoading: weekendEventsLoading,
+    isError: weekendEventsError,
+    isFetched: weekendEventsFetched,
+  } = useWeekendEvents(needsWeekendEvents && deferHomeExtra, siteNow, 6);
   const {
     data: theaterShows,
     isPending: theaterPending,
@@ -465,11 +476,14 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const latestArticles = useMemo(() => articles ?? [], [articles]);
   const latestEvents = useMemo(() => {
     const list = events ?? [];
-    return [...list].sort((a, b) => {
-      if (a.featured !== b.featured) return a.featured ? -1 : 1;
-      return (a.startDate || "").localeCompare(b.startDate || "");
-    });
+    return [...list]
+      .sort((a, b) => {
+        if (a.featured !== b.featured) return a.featured ? -1 : 1;
+        return (a.startDate || "").localeCompare(b.startDate || "");
+      })
+      .slice(0, 6);
   }, [events]);
+  const weekendRangeLabel = useMemo(() => formatWeekendRangeLabel(siteNow), [siteNow]);
   const summerVenuesAwaiting = needsVenues && deferHomeExtra && venues === undefined && venuesLoading;
   const awaitingSummerMovies = awaitingMovieCards || summerVenuesAwaiting;
   const summerVenuesForHome = useMemo(
@@ -995,7 +1009,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
           case "events":
             return sectionEl(
               "events",
-              (needsEvents && !deferHomeExtra) || (eventsLoading && latestEvents.length === 0) ? (
+              (needsEventsList && !deferHomeExtra) || (eventsLoading && latestEvents.length === 0) ? (
                 <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10 min-h-[22rem]">
                   <div className="container max-w-7xl">
                     <div className="mb-2 h-3 w-20 animate-pulse rounded bg-[#1C1D62]/10" />
@@ -1087,6 +1101,92 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 </section>
               ),
             );
+          case "weekend_events": {
+            if ((needsWeekendEvents && !deferHomeExtra) || (weekendEventsLoading && !weekendEventsFetched)) {
+              return sectionEl(
+                "weekend_events",
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10 min-h-[22rem]">
+                  <div className="container max-w-7xl">
+                    <div className="mb-2 h-3 w-20 animate-pulse rounded bg-[#1C1D62]/10" />
+                    <div className="h-8 w-64 animate-pulse rounded bg-[#1C1D62]/10" />
+                    <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {[0, 1, 2].map((i) => (
+                        <li key={i} className="h-36 animate-pulse rounded-xl border border-border/60 bg-background/70" />
+                      ))}
+                    </ul>
+                  </div>
+                </section>,
+              );
+            }
+            if (weekendEventsError || weekendEvents.length === 0) return null;
+            return sectionEl(
+              "weekend_events",
+              <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+                <div className="container max-w-7xl">
+                  <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-muted-foreground opacity-75">
+                    Σαββατοκύριακο · {weekendRangeLabel}
+                  </span>
+                  <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">
+                    Τι να κάνω το ΣΚ
+                  </h2>
+                  <ul
+                    className="mt-6 grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+                    aria-label="Events σαββατοκύριακου"
+                  >
+                    {weekendEvents.map((event, i) => (
+                      <li key={`wk-${event.id}-${event.slug}`}>
+                        <Link
+                          to={eventPath(event.slug)}
+                          className="group flex h-full gap-4 rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background"
+                        >
+                          {event.posterUrl ? (
+                            <img
+                              src={event.posterThumbUrl || event.posterUrl}
+                              alt={eventDisplayTitle(event)}
+                              className="h-24 w-16 shrink-0 rounded-md object-cover ring-1 ring-border/40"
+                              loading={i < 6 ? "eager" : "lazy"}
+                            />
+                          ) : null}
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
+                              {eventTypeLabels[event.eventType]}
+                              {event.featured ? (
+                                <span className="ml-2 text-[#7C2B76]">· Featured</span>
+                              ) : null}
+                            </p>
+                            <p className="mt-1 text-[11px] text-muted-foreground/90">
+                              {formatEventScheduleLine(event)}
+                            </p>
+                            <h3 className="mt-1.5 font-display text-lg font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
+                              {eventDisplayTitle(event)}
+                            </h3>
+                            {event.venue?.name ? (
+                              <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{event.venue.name}</p>
+                            ) : event.onlineLink ? (
+                              <p className="mt-1 text-sm text-muted-foreground">Online</p>
+                            ) : null}
+                            {event.synopsisEl ? (
+                              <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                {event.synopsisEl}
+                              </p>
+                            ) : null}
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5 text-center">
+                    <Link
+                      to="/events"
+                      className="inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
+                    >
+                      Όλα τα Events →
+                    </Link>
+                  </div>
+                </div>
+              </section>,
+            );
+          }
           case "movies_week":
             return sectionEl(
               "movies_week",

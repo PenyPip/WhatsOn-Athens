@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { api } from "@/lib/api";
 import { findArticleInListCache } from "@/lib/articlePrefetch";
 import { CONTENT_QUERY_OPTIONS } from "@/lib/contentQuery";
+import { filterEventsForWeekend, upcomingWeekendYmdRange } from "@/lib/eventDateFilters";
 import { PROGRAM_QUERY_OPTIONS, SHOWTIMES_CALENDAR_QUERY_KEY, THEATER_PERFORMANCES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 import { resolveHomepageLayout } from "@/config/home";
 import { DEFAULT_SITE_NAVIGATION } from "@/config/navigation";
@@ -238,6 +239,20 @@ export const useEvents = (enabled = true, limit = 6) =>
     throwOnError: false,
     enabled,
   });
+
+/** Events για τρέχον/επερχόμενο ΣΚ (server-side date overlap). */
+export const useWeekendEvents = (enabled = true, now = new Date(), limit = 6) => {
+  const { from, to } = upcomingWeekendYmdRange(now);
+  return useQuery({
+    queryKey: ["events", "weekend", from, to, limit],
+    queryFn: () => api.getEventsOverlappingRange(from, to, Math.max(limit, 24)),
+    ...CONTENT_QUERY_OPTIONS,
+    retry: 1,
+    throwOnError: false,
+    enabled,
+    select: (rows) => filterEventsForWeekend(rows, now, limit),
+  });
+};
 
 export const useEventBySlug = (slug: string) =>
   useQuery({
