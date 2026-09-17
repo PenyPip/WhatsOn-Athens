@@ -45,8 +45,25 @@ export function formatEventScheduleLine(
 
 export function formatEventTicketPrice(price: number | undefined): string | null {
   if (price == null || !Number.isFinite(price)) return null;
+  if (price === 0) return "Δωρεάν";
   const rounded = Math.round(price * 100) % 100 === 0 ? price.toFixed(0) : price.toFixed(2);
   return `${rounded} €`;
+}
+
+/** Δωρεάν όταν τιμή=0 ή tag «δωρεάν» / «free». */
+export function eventIsFree(
+  event: Pick<StrapiEvent, "ticketPrice" | "tags">,
+): boolean {
+  if (event.ticketPrice === 0) return true;
+  return (event.tags || []).some((tag) => {
+    const t = String(tag || "")
+      .normalize("NFD")
+      .replace(/\p{M}/gu, "")
+      .toLowerCase()
+      .replace(/\s+/g, "")
+      .trim();
+    return t === "δωρεαν" || t === "free" || t === "δωρεαν/free" || t.startsWith("δωρεαν");
+  });
 }
 
 /** Ανάγνωση τίτλου από slug (π.χ. παλιά events χωρίς title_el στο CMS). */

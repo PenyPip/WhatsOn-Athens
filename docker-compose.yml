@@ -57,8 +57,8 @@ services:
       URL: https://the37n.gr
       STRAPI_ADMIN_BACKEND_URL: https://the37n.gr
       PUBLIC_URL: https://the37n.gr
-      # Email ειδοποιήσεις θεάτρου (νέες παραστάσεις) — συμπλήρωσε SMTP στο production
-      THEATER_ALERT_EMAIL_ENABLED: "false"
+      # Email ειδοποιήσεις θεάτρου (νέες παραστάσεις) — SMTP ρυθμισμένο
+      THEATER_ALERT_EMAIL_ENABLED: "true"
       SMTP_HOST: smtp.the37n.gr
       SMTP_PORT: "587"
       SMTP_USER: "hi@the37n.gr"

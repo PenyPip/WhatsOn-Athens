@@ -164,6 +164,29 @@ function buildEmail({ showTitle, showSlug, lines }) {
   return { subject, text, html, url };
 }
 
+function buildVenueFavoriteEmail({ venueName, venueSlug, lines }) {
+  const url = `${siteBaseUrl()}${theaterVenueProgramPath(venueSlug)}`;
+  const subject = `Νέες παραστάσεις — ${venueName}`;
+  const listText = lines.map((l) => `• ${l}`).join('\n');
+  const text =
+    `Γεια σου!\n\n` +
+    `Στο αγαπημένο σου θέατρο «${venueName}» προστέθηκαν νέες ημερομηνίες:\n\n` +
+    `${listText}\n\n` +
+    `Δες το πρόγραμμα: ${url}\n\n` +
+    `— 37°N Athens\n` +
+    `Για να σταματήσεις τα email, αφαίρεσε το θέατρο από τα αγαπημένα σου στο the37n.gr.`;
+
+  const listHtml = lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('');
+  const html =
+    `<p>Γεια σου!</p>` +
+    `<p>Στο αγαπημένο σου θέατρο <strong>${escapeHtml(venueName)}</strong> προστέθηκαν νέες ημερομηνίες:</p>` +
+    `<ul>${listHtml}</ul>` +
+    `<p><a href="${escapeHtml(url)}">Δες το πρόγραμμα στο 37°N</a></p>` +
+    `<p style="color:#666;font-size:12px">Για να σταματήσεις τα email, αφαίρεσε το θέατρο από τα αγαπημένα σου στο the37n.gr.</p>`;
+
+  return { subject, text, html, url };
+}
+
 function escapeHtml(raw) {
   return String(raw)
     .replace(/&/g, '&amp;')
@@ -426,6 +449,111 @@ async function notifySubscribersForShow(strapi, theaterShowId, performanceIds, {
   return { sent, performances: upcoming.length, subscribers: subscriptions.length };
 }
 
+/**
+ * Email σε χρήστες με αγαπημένο θέατρο-χώρο όταν μπαίνουν νέες παραστάσεις εκεί.
+ * Ίδιο dedupe (theater-alert-sent) με τις liked παραστάσεις — όχι διπλό mail για την ίδια ημερομηνία.
+ */
+async function notifyFavoriteVenueUsersForPerformances(
+  strapi,
+  performanceIds,
+  { now = new Date() } = {},
+) {
+  if (!mailEnabled()) return { sent: 0, skipped: 'mail_disabled' };
+  const perfIds = [...new Set(performanceIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))];
+  if (!perfIds.length) return { sent: 0 };
+
+  const performances = await strapi.entityService.findMany('api::theater-performance.theater-performance', {
+    filters: { id: { $in: perfIds } },
+    fields: ['id', 'datetime', 'week_end', 'schedule_kind', 'import_source', 'createdAt'],
+    populate: {
+      venue: { fields: ['id', 'name', 'slug', 'type'] },
+      theater_show: { fields: ['id', 'title', 'slug'] },
+    },
+    sort: { datetime: 'asc' },
+    limit: 100,
+  });
+
+  const eligible = (performances || []).filter((p) => {
+    if (p?.import_source === 'repeat_expand') return false;
+    if (!performanceIsUpcoming(p, now)) return false;
+    const venue = p.venue;
+    if (!venue?.id || !venue?.slug) return false;
+    if (String(venue.type || '').trim().toLowerCase() === 'cinema') return false;
+    return true;
+  });
+  if (!eligible.length) return { sent: 0 };
+
+  const byVenue = new Map();
+  for (const p of eligible) {
+    const venueId = Number(p.venue.id);
+    if (!byVenue.has(venueId)) {
+      byVenue.set(venueId, {
+        venueId,
+        venueName: p.venue.name || 'Θέατρο',
+        venueSlug: p.venue.slug,
+        perfs: [],
+      });
+    }
+    byVenue.get(venueId).perfs.push(p);
+  }
+
+  let sent = 0;
+  for (const group of byVenue.values()) {
+    const profiles = await strapi.db.query('api::user-profile.user-profile').findMany({
+      where: {
+        favorite_venues: { id: group.venueId },
+      },
+      select: ['id'],
+      populate: { user: { select: ['id'] } },
+      limit: 500,
+    });
+    if (!profiles?.length) continue;
+
+    const lines = group.perfs.map((p) => {
+      const showTitle = p.theater_show?.title?.trim();
+      const base = formatPerformanceLine(p);
+      return showTitle ? `${showTitle} — ${base}` : base;
+    });
+    const emailContent = buildVenueFavoriteEmail({
+      venueName: group.venueName,
+      venueSlug: group.venueSlug,
+      lines,
+    });
+
+    for (const profile of profiles) {
+      const userId = profile.user?.id ?? profile.user;
+      if (!userId) continue;
+
+      const pending = [];
+      for (const perf of group.perfs) {
+        const already = await wasAlertSent(strapi, userId, perf.id);
+        if (!already) pending.push(perf.id);
+      }
+      if (!pending.length) continue;
+
+      const recipient = await loadUserEmail(strapi, userId);
+      if (!recipient) continue;
+
+      try {
+        await sendMail({
+          to: recipient.email,
+          subject: emailContent.subject,
+          text: emailContent.text,
+          html: emailContent.html,
+        });
+        await markAlertSent(strapi, userId, pending);
+        sent += 1;
+      } catch (err) {
+        strapi.log.warn(
+          `[theater-alert] venue email failed user=${userId} venue=${group.venueId}: ${err?.message || err}`,
+        );
+      }
+    }
+  }
+
+  return { sent, venues: byVenue.size };
+}
+
 async function processRecentTheaterPerformances(strapi, { sinceMs = LOOKBACK_MS, now = new Date() } = {}) {
   const since = new Date(now.getTime() - sinceMs);
   const rows = await strapi.entityService.findMany('api::theater-performance.theater-performance', {
@@ -438,11 +566,13 @@ async function processRecentTheaterPerformances(strapi, { sinceMs = LOOKBACK_MS,
   });
 
   const byShow = new Map();
+  const allPerfIds = [];
   for (const row of rows || []) {
     const showId = row.theater_show?.id ?? row.theater_show;
     if (!showId) continue;
     if (!byShow.has(showId)) byShow.set(showId, []);
     byShow.get(showId).push(row.id);
+    allPerfIds.push(row.id);
   }
 
   let totalSent = 0;
@@ -450,7 +580,9 @@ async function processRecentTheaterPerformances(strapi, { sinceMs = LOOKBACK_MS,
     const result = await notifySubscribersForShow(strapi, showId, perfIds, { now });
     totalSent += result.sent || 0;
   }
-  return { shows: byShow.size, emailsSent: totalSent };
+  const venueResult = await notifyFavoriteVenueUsersForPerformances(strapi, allPerfIds, { now });
+  totalSent += venueResult.sent || 0;
+  return { shows: byShow.size, emailsSent: totalSent, venueEmails: venueResult.sent || 0 };
 }
 
 function deferNotifyPerformance(strapi, performanceId) {
@@ -461,8 +593,10 @@ function deferNotifyPerformance(strapi, performanceId) {
         populate: { theater_show: { fields: ['id'] } },
       });
       const showId = perf?.theater_show?.id ?? perf?.theater_show;
-      if (!showId) return;
-      await notifySubscribersForShow(strapi, showId, [performanceId]);
+      if (showId) {
+        await notifySubscribersForShow(strapi, showId, [performanceId]);
+      }
+      await notifyFavoriteVenueUsersForPerformances(strapi, [performanceId]);
     })().catch((err) => {
       strapi.log.warn(`[theater-alert] deferred notify id=${performanceId}:`, err?.message || err);
     });
@@ -474,6 +608,7 @@ module.exports = {
   deactivateSubscription,
   findSubscription,
   notifySubscribersForShow,
+  notifyFavoriteVenueUsersForPerformances,
   processRecentTheaterPerformances,
   deferNotifyPerformance,
   getProfileNotifications,

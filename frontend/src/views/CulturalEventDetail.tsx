@@ -15,6 +15,7 @@ import {
   eventTypeLabels,
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
+import EventFreeBadge from "@/components/EventFreeBadge";
 import { truncateDescription } from "@/lib/siteMetadata";
 import { cn } from "@/lib/utils";
 import { PAGE_BELOW_NAV_CLASS, PAGE_DETAIL_HERO_INNER_CLASS } from "@/components/PageListHeader";
@@ -106,9 +107,12 @@ export default function CulturalEventDetail() {
             <p className="mt-2 max-w-2xl font-article text-lg italic text-white/80 md:text-xl">{secondary}</p>
           ) : null}
           <p className="font-article-ui mt-4 text-sm text-white/65">{formatEventScheduleLine(event)}</p>
-          {event.tags.length > 0 ? (
-            <p className="mt-3 text-sm text-white/55">{event.tags.join(" · ")}</p>
-          ) : null}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <EventFreeBadge event={event} tone="dark" />
+            {event.tags.length > 0 ? (
+              <p className="text-sm text-white/55">{event.tags.join(" · ")}</p>
+            ) : null}
+          </div>
           <div className="mt-6">
             <SharePageButton variant="hero" path={eventPath(event.slug)} title={title} />
           </div>

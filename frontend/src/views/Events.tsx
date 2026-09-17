@@ -14,6 +14,7 @@ import {
   eventTypeLabels,
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
+import EventFreeBadge from "@/components/EventFreeBadge";
 
 const eventTypes = ["all", "cinema", "theater", "music", "art", "food", "other"] as const;
 type EventFilterType = (typeof eventTypes)[number];
@@ -93,10 +94,13 @@ export default function Events() {
                       <div className="aspect-[16/10] w-full bg-gradient-to-br from-[#13143E]/10 to-[#7C2B76]/15" />
                     )}
                     <div className="flex flex-1 flex-col p-4">
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
-                        {eventTypeLabels[event.eventType]}
-                        {event.featured ? <span className="ml-2 text-[#7C2B76]">· Featured</span> : null}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
+                          {eventTypeLabels[event.eventType]}
+                          {event.featured ? <span className="ml-2 text-[#7C2B76]">· Featured</span> : null}
+                        </p>
+                        <EventFreeBadge event={event} />
+                      </div>
                       <p className="mt-1 text-xs text-muted-foreground">{formatEventScheduleLine(event)}</p>
                       <h2 className="mt-2 font-display text-lg font-semibold leading-snug text-foreground transition-colors group-hover:text-[#7C2B76]">
                         {title}

@@ -43,6 +43,7 @@ import {
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
 import { formatWeekendRangeLabel } from "@/lib/eventDateFilters";
+import EventFreeBadge from "@/components/EventFreeBadge";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
 import HomePersonalizedSections from "@/components/HomePersonalizedSections";
 import FavoriteTheaterUpdatesBanner from "@/components/FavoriteTheaterUpdatesBanner";
@@ -1062,12 +1063,15 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               />
                             ) : null}
                             <div className="min-w-0 flex-1">
-                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
-                                {eventTypeLabels[event.eventType]}
-                                {event.featured ? (
-                                  <span className="ml-2 text-[#7C2B76]">· Featured</span>
-                                ) : null}
-                              </p>
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
+                                  {eventTypeLabels[event.eventType]}
+                                  {event.featured ? (
+                                    <span className="ml-2 text-[#7C2B76]">· Featured</span>
+                                  ) : null}
+                                </p>
+                                <EventFreeBadge event={event} />
+                              </div>
                               <p className="mt-1 text-[11px] text-muted-foreground/90">
                                 {formatEventScheduleLine(event)}
                               </p>
@@ -1148,12 +1152,15 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                             />
                           ) : null}
                           <div className="min-w-0 flex-1">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
-                              {eventTypeLabels[event.eventType]}
-                              {event.featured ? (
-                                <span className="ml-2 text-[#7C2B76]">· Featured</span>
-                              ) : null}
-                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
+                                {eventTypeLabels[event.eventType]}
+                                {event.featured ? (
+                                  <span className="ml-2 text-[#7C2B76]">· Featured</span>
+                                ) : null}
+                              </p>
+                              <EventFreeBadge event={event} />
+                            </div>
                             <p className="mt-1 text-[11px] text-muted-foreground/90">
                               {formatEventScheduleLine(event)}
                             </p>

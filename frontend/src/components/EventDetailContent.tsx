@@ -1,7 +1,8 @@
 import type { ReactNode } from "react";
 import { ExternalLink, Globe, MapPin, Ticket } from "lucide-react";
 import type { StrapiEvent } from "@/lib/api";
-import { formatEventScheduleLine, formatEventTicketPrice } from "@/lib/eventLabels";
+import { eventIsFree, formatEventScheduleLine, formatEventTicketPrice } from "@/lib/eventLabels";
+import EventFreeBadge from "@/components/EventFreeBadge";
 import { cn } from "@/lib/utils";
 
 function DetailRow({
@@ -80,10 +81,11 @@ export default function EventDetailContent({
 }: EventDetailContentProps) {
   const isArticlePanel = variant === "article-panel";
   const schedule = formatEventScheduleLine(event);
-  const priceLabel = formatEventTicketPrice(event.ticketPrice);
+  const isFree = eventIsFree(event);
+  const priceLabel = isFree ? null : formatEventTicketPrice(event.ticketPrice);
   const venue = event.venue;
   const hasWhere = Boolean(venue?.name?.trim() || event.onlineLink?.trim());
-  const hasTickets = Boolean(priceLabel || event.ticketUrl?.trim());
+  const hasTickets = Boolean(isFree || priceLabel || event.ticketUrl?.trim());
   const hasMeta = Boolean(event.languageSubtitles?.trim());
   const hasSynopsis = Boolean(event.synopsisEl?.trim() || event.synopsisEn?.trim());
   const hasEditorial = Boolean(event.editorialNoteEl?.trim() || event.editorialNoteEn?.trim());
@@ -140,7 +142,8 @@ export default function EventDetailContent({
               variant={variant}
               label="Εισιτήρια"
               value={
-                <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                  {isFree ? <EventFreeBadge event={event} /> : null}
                   {priceLabel ? (
                     <span className="inline-flex items-center gap-1 font-semibold tabular-nums">
                       <Ticket className="h-4 w-4 text-[#7C2B76]" aria-hidden />

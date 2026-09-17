@@ -10,6 +10,7 @@ import {
   eventTypeLabels,
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
+import EventFreeBadge from "@/components/EventFreeBadge";
 import { cn } from "@/lib/utils";
 
 type ArticleRelatedEventCardProps = {
@@ -77,9 +78,12 @@ export default function ArticleRelatedEventCard({
                 <p className="mt-1 font-article text-base italic text-white/75">{secondary}</p>
               ) : null}
             </div>
-            <span className="font-article-ui shrink-0 rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white/90">
-              {typeLabel}
-            </span>
+            <div className="flex shrink-0 flex-col items-end gap-2">
+              <span className="font-article-ui rounded-md border border-white/15 bg-white/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.12em] text-white/90">
+                {typeLabel}
+              </span>
+              <EventFreeBadge event={event} tone="dark" />
+            </div>
           </div>
           {schedule !== "-" ? (
             <p className="font-article-ui relative mt-4 text-sm font-medium text-white/70">{schedule}</p>
