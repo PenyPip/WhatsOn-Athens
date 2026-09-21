@@ -59,7 +59,8 @@ services:
       PUBLIC_URL: https://the37n.gr
       # Email ειδοποιήσεις θεάτρου (νέες παραστάσεις) — SMTP ρυθμισμένο
       THEATER_ALERT_EMAIL_ENABLED: "true"
-      SMTP_HOST: smtp.the37n.gr
+      # MX του domain = mail.the37n.gr (το smtp.the37n.gr δεν υπάρχει στο DNS)
+      SMTP_HOST: mail.the37n.gr
       SMTP_PORT: "587"
       SMTP_USER: "hi@the37n.gr"
       SMTP_PASS: "f9u!7O8x9"
