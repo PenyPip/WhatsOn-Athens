@@ -191,13 +191,15 @@ module.exports = {
   theaterShowPerformanceAlerts: {
     task: async ({ strapi }) => {
       try {
-        const { processRecentTheaterPerformances } = require('../src/utils/theaterShowNotifications');
-        const result = await processRecentTheaterPerformances(strapi);
-        if (result.emailsSent > 0) {
-          strapi.log.info(
-            `[cron] theaterShowPerformanceAlerts: ${result.emailsSent} email(s), ${result.shows} show(s)`,
-          );
+        const { processRecentTheaterPerformances, mailEnabled, mailStatus } = require('../src/utils/theaterShowNotifications');
+        if (!mailEnabled()) {
+          strapi.log.info(`[cron] theaterShowPerformanceAlerts skipped: ${JSON.stringify(mailStatus())}`);
+          return;
         }
+        const result = await processRecentTheaterPerformances(strapi);
+        strapi.log.info(
+          `[cron] theaterShowPerformanceAlerts: ${result.emailsSent} email(s), ${result.shows} show(s), venueEmails=${result.venueEmails || 0}`,
+        );
       } catch (e) {
         strapi.log.error('[cron] theaterShowPerformanceAlerts', e);
       }

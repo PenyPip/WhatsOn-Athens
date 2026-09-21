@@ -63,7 +63,9 @@ services:
       SMTP_PORT: "587"
       SMTP_USER: "hi@the37n.gr"
       SMTP_PASS: "f9u!7O8x9"
-      SMTP_FROM: "37°N <noreply@the37n.gr>"
+      # From = authenticated mailbox — πολλοί SMTP απορρίπτουν noreply@ αν δεν είναι alias
+      SMTP_FROM: "37°N <hi@the37n.gr>"
+      SMTP_REPLY_TO: "hi@the37n.gr"
     volumes:
       - strapi_uploads:/app/public/uploads
       - strapi_data:/app/data

@@ -1,6 +1,6 @@
 'use strict';
 
-const { sendMail, mailEnabled } = require('./sendMail');
+const { sendMail, mailEnabled, mailStatus } = require('./sendMail');
 
 const ATHENS_TZ = 'Europe/Athens';
 const LOOKBACK_MS = 25 * 60 * 1000;
@@ -378,7 +378,10 @@ async function getProfileNotifications(strapi, userId, { now = new Date() } = {}
 }
 
 async function notifySubscribersForShow(strapi, theaterShowId, performanceIds, { now = new Date() } = {}) {
-  if (!mailEnabled()) return { sent: 0, skipped: 'mail_disabled' };
+  if (!mailEnabled()) {
+    strapi.log.info(`[theater-alert] skip show=${theaterShowId}: mail_disabled ${JSON.stringify(mailStatus())}`);
+    return { sent: 0, skipped: 'mail_disabled' };
+  }
   const sid = Number(theaterShowId);
   const perfIds = [...new Set(performanceIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))];
   if (!Number.isFinite(sid) || sid <= 0 || !perfIds.length) return { sent: 0 };
@@ -403,7 +406,10 @@ async function notifySubscribersForShow(strapi, theaterShowId, performanceIds, {
     where: { theater_show: sid, active: true, source: 'follow' },
     select: ['id', 'user'],
   });
-  if (!subscriptions.length) return { sent: 0 };
+  if (!subscriptions.length) {
+    strapi.log.info(`[theater-alert] show=${sid}: no follow subscribers`);
+    return { sent: 0 };
+  }
 
   const lines = upcoming.map(formatPerformanceLine);
   const emailContent = buildEmail({
@@ -425,20 +431,30 @@ async function notifySubscribersForShow(strapi, theaterShowId, performanceIds, {
     if (!pending.length) continue;
 
     const recipient = await loadUserEmail(strapi, userId);
-    if (!recipient) continue;
+    if (!recipient) {
+      strapi.log.info(`[theater-alert] skip user=${userId}: no valid email`);
+      continue;
+    }
 
     try {
-      await sendMail({
+      const result = await sendMail({
         to: recipient.email,
         subject: emailContent.subject,
         text: emailContent.text,
         html: emailContent.html,
       });
+      if (result.skipped) {
+        strapi.log.warn(`[theater-alert] show mail skipped user=${userId}: ${result.reason}`);
+        continue;
+      }
       await markAlertSent(strapi, userId, pending);
       await strapi.entityService.update('api::theater-show-subscription.theater-show-subscription', sub.id, {
         data: { last_emailed_at: now.toISOString() },
       });
       sent += 1;
+      strapi.log.info(
+        `[theater-alert] show mail sent user=${userId} to=${recipient.email} show=${sid} messageId=${result.messageId || '-'}`,
+      );
     } catch (err) {
       strapi.log.warn(
         `[theater-alert] email failed user=${userId} show=${sid}: ${err?.message || err}`,
@@ -458,7 +474,10 @@ async function notifyFavoriteVenueUsersForPerformances(
   performanceIds,
   { now = new Date() } = {},
 ) {
-  if (!mailEnabled()) return { sent: 0, skipped: 'mail_disabled' };
+  if (!mailEnabled()) {
+    strapi.log.info(`[theater-alert] skip venue-fav: mail_disabled ${JSON.stringify(mailStatus())}`);
+    return { sent: 0, skipped: 'mail_disabled' };
+  }
   const perfIds = [...new Set(performanceIds.map((id) => Number(id)).filter((id) => Number.isFinite(id) && id > 0))];
   if (!perfIds.length) return { sent: 0 };
 
@@ -481,7 +500,10 @@ async function notifyFavoriteVenueUsersForPerformances(
     if (String(venue.type || '').trim().toLowerCase() === 'cinema') return false;
     return true;
   });
-  if (!eligible.length) return { sent: 0 };
+  if (!eligible.length) {
+    strapi.log.info(`[theater-alert] venue-fav: no eligible performances among ${perfIds.length}`);
+    return { sent: 0 };
+  }
 
   const byVenue = new Map();
   for (const p of eligible) {
@@ -499,15 +521,31 @@ async function notifyFavoriteVenueUsersForPerformances(
 
   let sent = 0;
   for (const group of byVenue.values()) {
-    const profiles = await strapi.db.query('api::user-profile.user-profile').findMany({
-      where: {
-        favorite_venues: { id: group.venueId },
+    let profiles = await strapi.entityService.findMany('api::user-profile.user-profile', {
+      filters: {
+        favorite_venues: {
+          id: { $eq: group.venueId },
+        },
       },
-      select: ['id'],
-      populate: { user: { select: ['id'] } },
+      populate: {
+        user: { fields: ['id', 'email', 'username', 'blocked'] },
+      },
       limit: 500,
     });
-    if (!profiles?.length) continue;
+    if (!Array.isArray(profiles) || !profiles.length) {
+      // Fallback: db.query manyToMany
+      profiles = await strapi.db.query('api::user-profile.user-profile').findMany({
+        where: {
+          favorite_venues: { id: group.venueId },
+        },
+        populate: { user: true },
+        limit: 500,
+      });
+    }
+    if (!profiles?.length) {
+      strapi.log.info(`[theater-alert] venue-fav venue=${group.venueId}: no favorite users`);
+      continue;
+    }
 
     const lines = group.perfs.map((p) => {
       const showTitle = p.theater_show?.title?.trim();
@@ -519,6 +557,10 @@ async function notifyFavoriteVenueUsersForPerformances(
       venueSlug: group.venueSlug,
       lines,
     });
+
+    strapi.log.info(
+      `[theater-alert] venue-fav venue=${group.venueId} fans=${profiles.length} perfs=${group.perfs.length}`,
+    );
 
     for (const profile of profiles) {
       const userId = profile.user?.id ?? profile.user;
@@ -532,17 +574,27 @@ async function notifyFavoriteVenueUsersForPerformances(
       if (!pending.length) continue;
 
       const recipient = await loadUserEmail(strapi, userId);
-      if (!recipient) continue;
+      if (!recipient) {
+        strapi.log.info(`[theater-alert] skip user=${userId}: no valid email`);
+        continue;
+      }
 
       try {
-        await sendMail({
+        const result = await sendMail({
           to: recipient.email,
           subject: emailContent.subject,
           text: emailContent.text,
           html: emailContent.html,
         });
+        if (result.skipped) {
+          strapi.log.warn(`[theater-alert] venue mail skipped user=${userId}: ${result.reason}`);
+          continue;
+        }
         await markAlertSent(strapi, userId, pending);
         sent += 1;
+        strapi.log.info(
+          `[theater-alert] venue mail sent user=${userId} to=${recipient.email} messageId=${result.messageId || '-'}`,
+        );
       } catch (err) {
         strapi.log.warn(
           `[theater-alert] venue email failed user=${userId} venue=${group.venueId}: ${err?.message || err}`,
@@ -613,4 +665,5 @@ module.exports = {
   deferNotifyPerformance,
   getProfileNotifications,
   mailEnabled,
+  mailStatus,
 };

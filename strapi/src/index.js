@@ -250,5 +250,27 @@ module.exports = {
       strapi.log.warn('[whatson bootstrap more-showtime-sync resume]', e);
     }
 
+    try {
+      const { mailStatus, verifySmtp } = require('./utils/sendMail');
+      const status = mailStatus();
+      strapi.log.info(`[theater-alert] mail bootstrap: ${JSON.stringify(status)}`);
+      if (status.enabled) {
+        setImmediate(() => {
+          verifySmtp()
+            .then((r) => {
+              if (r.ok) strapi.log.info('[theater-alert] SMTP verify OK');
+              else strapi.log.warn(`[theater-alert] SMTP verify FAIL: ${r.error || r.reason}`);
+            })
+            .catch((e) => strapi.log.warn(`[theater-alert] SMTP verify error: ${e?.message || e}`));
+        });
+      } else {
+        strapi.log.warn(
+          '[theater-alert] Emails OFF — βάλε THEATER_ALERT_EMAIL_ENABLED=true + SMTP_HOST και restart.',
+        );
+      }
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap theater-alert mail]', e);
+    }
+
   },
 };

@@ -62,6 +62,11 @@ const register = (app) => {
     name: 'Εκκαθάριση cache',
   });
 
+  app.registerPlugin({
+    id: 'theater-alerts',
+    name: 'Email ειδοποιήσεις θεάτρου',
+  });
+
   app.addMenuSection({
     id: 'whatson-venues',
     label: 'Χώροι',
@@ -156,6 +161,20 @@ const register = (app) => {
     },
     Component: async () => {
       const component = await import('./pages/ClearCachePage');
+      return component;
+    },
+    permissions: [],
+  });
+
+  app.addMenuLink({
+    to: '/plugins/theater-alerts',
+    icon: () => React.createElement('span', null, '✉️'),
+    intlLabel: {
+      id: 'theater-alerts.plugin.name',
+      defaultMessage: 'Email ειδοποιήσεις θεάτρου',
+    },
+    Component: async () => {
+      const component = await import('./pages/TheaterAlertsPage');
       return component;
     },
     permissions: [],
