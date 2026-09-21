@@ -1,0 +1,11 @@
+{
+  "name": "cache-clear",
+  "version": "1.0.0",
+  "private": true,
+  "strapi": {
+    "name": "cache-clear",
+    "displayName": "Εκκαθάριση cache",
+    "description": "Χειροκίνητη εκκαθάριση cache / purge webhook",
+    "kind": "plugin"
+  }
+}

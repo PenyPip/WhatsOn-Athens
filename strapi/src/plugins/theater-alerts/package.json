@@ -1,0 +1,11 @@
+{
+  "name": "theater-alerts",
+  "version": "1.0.0",
+  "private": true,
+  "strapi": {
+    "name": "theater-alerts",
+    "displayName": "Email ειδοποιήσεις θεάτρου",
+    "description": "Διάγνωση SMTP, δοκιμαστικό mail και catch-up για νέες παραστάσεις",
+    "kind": "plugin"
+  }
+}

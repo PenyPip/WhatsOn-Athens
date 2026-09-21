@@ -57,16 +57,6 @@ const config = {
 };
 
 const register = (app) => {
-  app.registerPlugin({
-    id: 'cache-clear',
-    name: 'Εκκαθάριση cache',
-  });
-
-  app.registerPlugin({
-    id: 'theater-alerts',
-    name: 'Email ειδοποιήσεις θεάτρου',
-  });
-
   app.addMenuSection({
     id: 'whatson-venues',
     label: 'Χώροι',
@@ -150,34 +140,6 @@ const register = (app) => {
     },
     permissions: [],
     position: 5,
-  });
-
-  app.addMenuLink({
-    to: '/plugins/cache-clear',
-    icon: () => React.createElement('span', null, '🧹'),
-    intlLabel: {
-      id: 'cache-clear.plugin.name',
-      defaultMessage: 'Εκκαθάριση cache',
-    },
-    Component: async () => {
-      const component = await import('./pages/ClearCachePage');
-      return component;
-    },
-    permissions: [],
-  });
-
-  app.addMenuLink({
-    to: '/plugins/theater-alerts',
-    icon: () => React.createElement('span', null, '✉️'),
-    intlLabel: {
-      id: 'theater-alerts.plugin.name',
-      defaultMessage: 'Email ειδοποιήσεις θεάτρου',
-    },
-    Component: async () => {
-      const component = await import('./pages/TheaterAlertsPage');
-      return component;
-    },
-    permissions: [],
   });
 };
 
