@@ -41,11 +41,15 @@ ENV SITEMAP_STRICT_MODE=$SITEMAP_STRICT_MODE
 ENV NODE_OPTIONS=--max-old-space-size=${NODE_HEAP_MB}
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN chmod +x /front/scripts/docker-prod-build.sh && /front/scripts/docker-prod-build.sh
+RUN chmod +x /front/scripts/docker-prod-build.sh && /front/scripts/docker-prod-build.sh \
+  && test -f /front/out/index.html \
+  && cp -a /front/out /front/static-export
 
 FROM nginx:alpine
 
-COPY --from=builder /front/out /usr/share/nginx/html
+# static-export (όχι out/) — το `out` είναι στο .dockerignore και σε ορισμένα BuildKit
+# setups το COPY --from=.../out αποτυγχάνει ακόμα κι αν το RUN το δημιούργησε.
+COPY --from=builder /front/static-export /usr/share/nginx/html
 
 COPY --from=builder /front/nginx-spa.conf /etc/nginx/conf.d/default.conf
 COPY --from=builder /front/nginx-security-headers.conf /etc/nginx/nginx-security-headers.conf

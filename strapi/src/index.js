@@ -194,7 +194,6 @@ module.exports = {
       strapi.log.warn('[whatson bootstrap showtime repeat]', e);
     }
 
-<<<<<<< HEAD
     try {
       const { migrateLegacyVenueTypes } = require('./utils/cinemaVenueType');
       await migrateLegacyVenueTypes(strapi);
@@ -215,52 +214,6 @@ module.exports = {
     } catch (e) {
       strapi.log.warn('[whatson bootstrap restaurant categories]', e);
     }
-=======
-  const monthStart = new Date();
-  const premiereThisMonth = (day) => {
-    const d = new Date(monthStart.getFullYear(), monthStart.getMonth(), day);
-    return d.toISOString().slice(0, 10);
-  };
-
-  const show1 = await strapi.query('api::theater-show.theater-show').create({
-    data: {
-      title: 'Μήδεια', slug: 'medea-national-theatre',
-      synopsis: 'Η κλασική τραγωδία του Ευριπίδη σε μια σύγχρονη σκηνοθετική προσέγγιση.',
-      director: 'Στάθης Λιβαθινός', cast: ['Μαρία Ναυπλιώτου', 'Γιώργος Κιμούλης'],
-      genre: 'drama', duration: 150, tags: ['Drama', 'Classic', 'Greek Tragedy'],
-      gradient_from: '#2c3e50', gradient_to: '#8e44ad',
-      premiere_date: premiereThisMonth(5),
-      is_new: true,
-      venue: venue2.id, publishedAt: new Date(),
-    },
-  });
-
-  const show2 = await strapi.query('api::theater-show.theater-show').create({
-    data: {
-      title: 'Mamma Mia!', slug: 'mamma-mia',
-      synopsis: 'Το αγαπημένο μιούζικαλ με τα τραγούδια των ABBA.',
-      director: 'Phyllida Lloyd', cast: ['Δέσποινα Βανδή', 'Νίκος Μουτσινάς'],
-      genre: 'musical', duration: 155, tags: ['Musical', 'Comedy', 'Feel-Good'],
-      gradient_from: '#e74c3c', gradient_to: '#f39c12',
-      premiere_date: premiereThisMonth(12),
-      is_new: true,
-      venue: venue1.id, publishedAt: new Date(),
-    },
-  });
-
-  const show3 = await strapi.query('api::theater-show.theater-show').create({
-    data: {
-      title: 'Swan Lake', slug: 'swan-lake',
-      synopsis: "Tchaikovsky's timeless ballet reimagined with breathtaking choreography.",
-      director: 'Matthew Bourne', cast: ['Royal Ballet Company'],
-      genre: 'dance', duration: 140, tags: ['Dance', 'Ballet', 'Classic'],
-      gradient_from: '#2c3e50', gradient_to: '#3498db',
-      premiere_date: premiereThisMonth(20),
-      is_new: false,
-      venue: venue2.id, publishedAt: new Date(),
-    },
-  });
->>>>>>> 00e3471 (theater hp section)
 
     try {
       const { migrateLegacyEvents } = require('./utils/migrateLegacyEvents');
