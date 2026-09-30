@@ -123,11 +123,26 @@
       "type": "string",
       "description": "More.com eventGroupCode (π.χ. evg_takouniastonbalto_1254_5019). Βρες με More lookup."
     },
+<<<<<<< HEAD
     "more_event_groups": {
       "type": "component",
       "repeatable": true,
       "component": "cinema.more-event-group",
       "description": "Επιπλέον More κωδικοί για το ίδιο θέατρο."
+=======
+    "premiere_date": {
+      "type": "date"
+    },
+    "is_new": {
+      "type": "boolean",
+      "default": false
+    },
+    "venue": {
+      "type": "relation",
+      "relation": "manyToOne",
+      "target": "api::venue.venue",
+      "inversedBy": "theater_shows"
+>>>>>>> 00e3471 (theater hp section)
     },
     "more_event_ids": {
       "type": "component",
