@@ -14,8 +14,12 @@ const USER_AGENT =
   'Mozilla/5.0 (compatible; WhatsOnProgramImport/1.0; +https://the37n.gr)';
 
 function normalizeAthinoramaHallUrl(raw) {
-  const s = String(raw || '').trim();
+  let s = String(raw || '').trim();
   if (!s) return null;
+  // Paste χωρίς πρωτόκολλο (π.χ. athinorama.gr/cinema/halls/…) — αλλιώς `new URL` αποτυγχάνει.
+  if (!/^https?:\/\//i.test(s)) {
+    s = `https://${s.replace(/^\/+/, '')}`;
+  }
   let url;
   try {
     url = new URL(s);
@@ -25,7 +29,10 @@ function normalizeAthinoramaHallUrl(raw) {
   const host = url.hostname.replace(/^www\./i, '').toLowerCase();
   if (host !== 'athinorama.gr') return null;
   if (!/\/cinema\/halls\//i.test(url.pathname)) return null;
+  url.protocol = 'https:';
+  url.hostname = 'www.athinorama.gr';
   url.hash = '';
+  url.search = '';
   return url.toString();
 }
 
