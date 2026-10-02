@@ -743,7 +743,7 @@ async function createProgramTextShowtimes(
         hallId: job.hallId != null ? job.hallId : undefined,
       });
 
-      // Παλιά προβολή χωρίς αίθουσα → σύνδεσε αίθουσα αν υπάρχει ακριβώς μία αντιστοιχία.
+      // Παλιά προβολή χωρίς αίθουσα → σύνδεσε αίθουσα (χειμερινά μετά από More sync χωρίς hall).
       if (job.hallId != null && matches.length === 0) {
         const bare = await findShowtimesAtSlot(strapi, {
           movieId: job.movieId,
@@ -751,11 +751,20 @@ async function createProgramTextShowtimes(
           datetime: job.datetime,
           hallId: null,
         });
-        if (bare.length === 1) {
+        if (bare.length >= 1) {
+          const [keep, ...dupes] = bare;
           try {
-            await strapi.entityService.update('api::showtime.showtime', bare[0].id, {
+            await strapi.entityService.update('api::showtime.showtime', keep.id, {
               data: { hall: job.hallId },
             });
+            for (const dupe of dupes) {
+              if (dupe?.id == null) continue;
+              try {
+                await strapi.entityService.delete('api::showtime.showtime', dupe.id);
+              } catch (e) {
+                strapi.log.warn(`[program-import] hall backfill dedupe #${dupe.id}: ${e?.message || e}`);
+              }
+            }
             if (slotKey) existingKeys.add(slotKey);
             return { type: 'exists', inTargetWeek, hallAttached: true };
           } catch (e) {

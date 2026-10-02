@@ -68,6 +68,8 @@ const HOME_SHOWTIME_POPULATE = {
   venue: {
     fields: ['id', 'slug', 'name', 'summer_outdoor'],
   },
+  /** Χειμερινά πολυαίθουσα — μικρό payload (μόνο id+name όταν υπάρχει). */
+  hall: { fields: ['id', 'name'] },
 };
 
 const HOME_SHOWTIME_FIELDS = [
@@ -87,7 +89,7 @@ const SHOWTIME_FIELDS = [
 ];
 
 /**
- * Flat-ish slim: κόβει hall/price/seats και περιττά nested keys.
+ * Flat-ish slim: κόβει price/seats· κρατά hall μόνο όταν υπάρχει (χειμερινά πολυαίθουσα).
  * Στόχος: <~400KB JSON αντί ~1MB (TBT από JSON.parse + mapShowtime).
  */
 function slimHomeCalendarRows(rows) {
@@ -95,6 +97,7 @@ function slimHomeCalendarRows(rows) {
   return rows.map((row) => {
     const m = row.movie && typeof row.movie === 'object' ? row.movie : null;
     const v = row.venue && typeof row.venue === 'object' ? row.venue : null;
+    const h = row.hall && typeof row.hall === 'object' ? row.hall : null;
     const out = {
       id: row.id,
       datetime: row.datetime,
@@ -127,6 +130,9 @@ function slimHomeCalendarRows(rows) {
       out.venue = { id: v.id, slug: v.slug };
       if (typeof v.name === 'string' && v.name.trim()) out.venue.name = v.name.trim();
       if (v.summer_outdoor) out.venue.summer_outdoor = true;
+    }
+    if (h && typeof h.name === 'string' && h.name.trim()) {
+      out.hall = { id: h.id, name: h.name.trim() };
     }
     return out;
   });

@@ -1236,6 +1236,15 @@ function mapHomeCalendarShowtime(rawS: any): StrapiShowtime[] {
     typeof (venue as { name?: string } | null)?.name === "string"
       ? (venue as { name: string }).name.trim()
       : "";
+  const hall = s.hall && typeof s.hall === "object" ? (s.hall as { id?: unknown; name?: unknown }) : null;
+  const hallName =
+    typeof hall?.name === "string" && hall.name.trim() ? hall.name.trim() : undefined;
+  const hallId =
+    typeof hall?.id === "number" && Number.isFinite(hall.id)
+      ? hall.id
+      : typeof hall?.id === "string" && hall.id.trim()
+        ? Number(hall.id)
+        : undefined;
   const posterNode =
     movie && typeof (movie as { poster?: unknown }).poster === "object"
       ? (movie as { poster: unknown }).poster
@@ -1261,6 +1270,8 @@ function mapHomeCalendarShowtime(rawS: any): StrapiShowtime[] {
   if (movieSlug) row.movieSlug = movieSlug;
   if (movieTitle) row.movieTitle = movieTitle;
   if (moviePosterUrl) row.moviePosterUrl = moviePosterUrl;
+  if (hallName) row.hallName = hallName;
+  if (hallId != null && Number.isFinite(hallId)) row.hallId = hallId;
   return [row];
 }
 

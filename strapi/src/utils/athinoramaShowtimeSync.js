@@ -87,16 +87,21 @@ async function findAllMovies(strapi) {
 }
 
 /**
- * Σινεμά με Athinorama link που δεν είναι ακόμα complete για την εβδομάδα.
+ * Σινεμά με Athinorama link που χρειάζονται sync για την τρέχουσα εβδομάδα:
+ * - όχι complete, ή
+ * - complete αλλά χωρίς επερχόμενες προβολές στην τρέχουσα εβδομάδα
+ *   (κολλημένα μετά από αποτυχημένο/κενό sync — αλλιώς το batch τα αγνοεί).
  */
-async function findPendingAthinoramaCinemas(strapi, { includeDrafts = false } = {}) {
+async function findPendingAthinoramaCinemas(
+  strapi,
+  { includeDrafts = false, now = new Date() } = {},
+) {
   const all = [];
   for (let page = 1; ; page += 1) {
     const rows = await strapi.entityService.findMany('api::venue.venue', {
       filters: {
         type: 'cinema',
         athinorama_link: { $notNull: true },
-        updated: { $ne: VENUE_UPDATED_STATUS.COMPLETE },
       },
       fields: ['id', 'name', 'slug', 'updated', 'publishedAt', 'summer_outdoor', 'athinorama_link'],
       publicationState: 'preview',
@@ -109,12 +114,53 @@ async function findPendingAthinoramaCinemas(strapi, { includeDrafts = false } = 
     if (list.length < 100) break;
   }
 
-  return all
+  const candidates = all.filter((row) => {
+    const link = normalizeAthinoramaHallUrl(row.athinorama_link);
+    if (!link) return false;
+    if (!includeDrafts && row.publishedAt == null) return false;
+    return true;
+  });
+
+  const weekBounds = getCurrentCinemaWeekBounds(now);
+  const rangeStart = new Date(Math.max(weekBounds.start.getTime(), now.getTime()));
+  const rangeEnd = weekBounds.end;
+
+  const completeIds = candidates
+    .filter((row) => row.updated === VENUE_UPDATED_STATUS.COMPLETE)
+    .map((row) => row.id);
+
+  const hasShowtimes = new Set();
+  if (completeIds.length) {
+    let page = 1;
+    while (page <= 20) {
+      const stRows = await strapi.entityService.findMany('api::showtime.showtime', {
+        filters: {
+          venue: { id: { $in: completeIds } },
+          datetime: {
+            $gte: rangeStart.toISOString(),
+            $lte: rangeEnd.toISOString(),
+          },
+        },
+        fields: ['id'],
+        populate: { venue: { fields: ['id'] } },
+        publicationState: 'preview',
+        pagination: { page, pageSize: 500 },
+      });
+      const list = Array.isArray(stRows) ? stRows : [];
+      if (!list.length) break;
+      for (const row of list) {
+        const vid = row?.venue?.id ?? row?.venue;
+        if (vid != null) hasShowtimes.add(Number(vid));
+      }
+      if (list.length < 500) break;
+      page += 1;
+    }
+  }
+
+  return candidates
     .filter((row) => {
-      const link = normalizeAthinoramaHallUrl(row.athinorama_link);
-      if (!link) return false;
-      if (!includeDrafts && row.publishedAt == null) return false;
-      return true;
+      if (row.updated !== VENUE_UPDATED_STATUS.COMPLETE) return true;
+      return !hasShowtimes.has(Number(row.id));
     })
     .map((row) => ({
       id: row.id,
@@ -125,6 +171,7 @@ async function findPendingAthinoramaCinemas(strapi, { includeDrafts = false } = 
       summerOutdoor: row.summer_outdoor === true,
       athinoramaLink: normalizeAthinoramaHallUrl(row.athinorama_link),
       published: row.publishedAt != null,
+      retryEmptyComplete: row.updated === VENUE_UPDATED_STATUS.COMPLETE,
     }));
 }
 
@@ -236,6 +283,18 @@ async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new 
     };
   }
 
+  const createdCount = created.summary?.created || 0;
+  const existsCount = created.summary?.skippedExists || 0;
+  const warnings = [...(scraped.warnings || [])];
+  if (createdCount === 0 && existsCount === 0 && (scraped.movies || []).length > 0) {
+    warnings.push(
+      `Το Athinorama είχε ${(scraped.movies || []).length} ταινίες, αλλά δεν δημιουργήθηκε καμία προβολή` +
+        (unmatchedMovies
+          ? ` (${unmatchedMovies} χωρίς ταύτιση CMS).`
+          : ' (πιθανόν όλες παρελθοντικές ή χωρίς movieId).'),
+    );
+  }
+
   return {
     ok: true,
     venueId: venue.id,
@@ -245,15 +304,15 @@ async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new 
     matchedMovies,
     unmatchedMovies,
     unmatchedTitles,
-    created: created.summary?.created || 0,
-    skippedExists: created.summary?.skippedExists || 0,
+    created: createdCount,
+    skippedExists: existsCount,
     weekExpected: created.summary?.weekExpected || 0,
     weekSynced: created.summary?.weekSynced || 0,
     weekFailed: created.summary?.weekFailed || 0,
     venueUpdated: created.venueUpdated || null,
     venueUpdatedLabel: created.venueUpdatedLabel || null,
     statusApplied: applyVenueStatus,
-    warnings: scraped.warnings || [],
+    warnings,
   };
 }
 
@@ -463,8 +522,10 @@ async function syncPendingAthinoramaVenues(
     const deferredNote = deferredPending.length
       ? ` · ${deferredPending.length} deferred μετά το batch`
       : '';
+    const retryEmpty = allPending.filter((v) => v.retryEmptyComplete).length;
+    const retryNote = retryEmpty ? ` · ${retryEmpty} complete χωρίς προβολές (retry)` : '';
     onProgress(
-      `Athinorama: ${pending.length} σινεμά batch${deferredNote} · εβδομάδα ${weekLabel}`,
+      `Athinorama: ${pending.length} σινεμά batch${deferredNote}${retryNote} · εβδομάδα ${weekLabel}`,
     );
   }
 
