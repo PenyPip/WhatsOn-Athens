@@ -95,6 +95,8 @@ export interface HomeLayoutSection extends Schema.Component {
         'summer_venues',
         'tours',
         'kids_theater',
+        'theater_new',
+        'theater_week',
         'new_movies',
         'new_articles',
         'events',

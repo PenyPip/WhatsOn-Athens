@@ -55,6 +55,11 @@ import { theaterGenreLabel } from "@/lib/theaterGenre";
 import { filterKidsShowsForHome, THEATER_KIDS_PATH } from "@/lib/theaterKids";
 import { theaterCardSubtitle } from "@/lib/theaterShowMeta";
 import { filterTouringShowsForHome } from "@/lib/theaterTours";
+import {
+  filterTheaterShowsNewlyAdded,
+  filterTheaterShowsStartingSoon,
+} from "@/lib/theaterHomeFilters";
+import { TheaterHomeDarkScroll } from "@/components/home/TheaterHomeDarkScroll";
 import { useFavoriteIds } from "@/hooks/useFavoriteIds";
 import { sortMoviesPrioritizingFavorites } from "@/lib/favoriteSort";
 
@@ -499,6 +504,14 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     () => filterKidsShowsForHome(theaterShows ?? [], theaterPerformances),
     [theaterShows, theaterPerformances],
   );
+  const newTheaterShowsForHome = useMemo(
+    () => filterTheaterShowsNewlyAdded(theaterShows ?? [], theaterPerformances, siteNow).slice(0, 12),
+    [theaterShows, theaterPerformances, siteNow],
+  );
+  const weekTheaterShowsForHome = useMemo(
+    () => filterTheaterShowsStartingSoon(theaterShows ?? [], theaterPerformances, siteNow).slice(0, 12),
+    [theaterShows, theaterPerformances, siteNow],
+  );
   const summerMoviesForHome = useMemo(
     () =>
       sortMoviesPrioritizingFavorites(
@@ -898,6 +911,40 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                   )}
                 </div>
               </div>,
+            );
+          case "theater_new":
+            return sectionEl(
+              "theater_new",
+              <TheaterHomeDarkScroll
+                eyebrow="Νέο στο πρόγραμμα"
+                title="Νέες παραστάσεις & listings"
+                accent="rose"
+                shows={newTheaterShowsForHome}
+                loading={(needsTheater && !deferHomeExtra) || theaterAwaiting}
+                failed={Boolean(theaterLoadFailed)}
+                emptyMessage="Δεν υπάρχουν νέες παραστάσεις ή listings προς το παρόν."
+                seeAllHref="/theater"
+                seeAllLabel="Όλες οι παραστάσεις"
+                listAriaLabel="Νέες παραστάσεις θεάτρου"
+                badgeForShow={() => "Νέο"}
+              />,
+            );
+          case "theater_week":
+            return sectionEl(
+              "theater_week",
+              <TheaterHomeDarkScroll
+                eyebrow="Κοντινές ημερομηνίες"
+                title="Ξεκινάνε αυτή την εβδομάδα"
+                accent="emerald"
+                shows={weekTheaterShowsForHome}
+                loading={(needsTheater && !deferHomeExtra) || theaterAwaiting}
+                failed={Boolean(theaterLoadFailed)}
+                emptyMessage="Δεν υπάρχουν παραστάσεις που να ξεκινούν τις επόμενες μέρες."
+                seeAllHref="/theater"
+                seeAllLabel="Όλες οι παραστάσεις"
+                listAriaLabel="Παραστάσεις που ξεκινάνε αυτή την εβδομάδα"
+                badgeForShow={() => "Πρεμιέρα"}
+              />,
             );
           case "new_movies":
             return sectionEl(

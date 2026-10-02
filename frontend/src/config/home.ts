@@ -1,7 +1,9 @@
 /**
  * Το layout της αρχικής έρχεται από Strapi Single Type «Homepage».
  * Έτοιμα τμήματα: hero, movies_today, summer_cinema, summer_venues, tours (παραστάσεις με on_tour),
- * kids_theater (παιδικές με is_kids), events (πολιτιστικά events), weekend_events (events τρέχοντος/επερχόμενου ΣΚ),
+ * kids_theater (παιδικές με is_kids), theater_new (νέες ημερομηνίες / καινούργια listings),
+ * theater_week (παραστάσεις που ξεκινάνε στις επόμενες 7 μέρες),
+ * events (πολιτιστικά events), weekend_events (events τρέχοντος/επερχόμενου ΣΚ),
  * new_movies (τελευταίες 10 ημέρες release date), movies_week (ερχόμενη εβδομάδα κινηματογράφου Πέμ–Τετ),
  * coming_soon (κυκλοφορίες μετά από αυτή την εβδομάδα) - διάλεξε ποια εμφανίζονται και με ποια σειρά.
  */
@@ -16,6 +18,8 @@ export const HOME_SECTION_IDS = [
   "summer_venues",
   "tours",
   "kids_theater",
+  "theater_new",
+  "theater_week",
   "new_movies",
   "new_articles",
   "events",
@@ -141,7 +145,12 @@ export function homeNeedsVenues(sections: readonly HomeSectionId[]): boolean {
 }
 
 export function homeNeedsTheater(sections: readonly HomeSectionId[]): boolean {
-  return sections.includes("tours") || sections.includes("kids_theater");
+  return (
+    sections.includes("tours") ||
+    sections.includes("kids_theater") ||
+    sections.includes("theater_new") ||
+    sections.includes("theater_week")
+  );
 }
 
 export function homeNeedsEvents(sections: readonly HomeSectionId[]): boolean {
