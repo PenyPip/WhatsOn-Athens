@@ -8,7 +8,8 @@ const {
   isSummerScreeningLabel,
 } = require('./programTextParser');
 
-const FETCH_TIMEOUT_MS = Number(process.env.ATHINORAMA_FETCH_TIMEOUT_MS || 25_000);
+/** Default 45s — Village/Cinobo σελίδες είναι συχνά >1–2MB· 25s έπεφτε σε VPS. */
+const FETCH_TIMEOUT_MS = Number(process.env.ATHINORAMA_FETCH_TIMEOUT_MS || 45_000);
 const USER_AGENT =
   process.env.ATHINORAMA_USER_AGENT ||
   'Mozilla/5.0 (compatible; WhatsOnProgramImport/1.0; +https://the37n.gr)';
@@ -440,7 +441,14 @@ async function scrapeAthinoramaHallProgram(url, { weekBounds = null, timeoutMs, 
       stats = fromLd.stats;
       parseSource = 'athinorama-jsonld';
       if (!events.length) {
-        warnings.push('Δεν βρέθηκαν ScreeningEvent στο JSON-LD της σελίδας.');
+        const html = String(fetched.html || '');
+        const hasSpecialOnly =
+          /ειδικ[έε]ς\s+προβολ/i.test(html) && !/horizontal-dt/i.test(html);
+        warnings.push(
+          hasSpecialOnly
+            ? 'Η σελίδα Athinorama δεν έχει εβδομαδιαίο πρόγραμμα ταινιών (μόνο ειδικές προβολές / φεστιβάλ).'
+            : 'Δεν βρέθηκε πρόγραμμα ταινιών στη σελίδα Athinorama (ούτε HTML κάρτες ούτε ScreeningEvent).',
+        );
       }
       if (events.length && !movies.length) {
         const weekHint = weekBounds
@@ -453,9 +461,11 @@ async function scrapeAthinoramaHallProgram(url, { weekBounds = null, timeoutMs, 
           `Φιλτράρισμα εβδομάδας: ${stats.inWeek}/${stats.totalEvents} προβολές μέσα στο εύρος.`,
         );
       }
-      warnings.push(
-        'Χωρίς αίθουσες από HTML — χρησιμοποιήθηκε JSON-LD (ίδιες ώρες σε πολλές αίθουσες συγχωνεύονται).',
-      );
+      if (events.length) {
+        warnings.push(
+          'Χωρίς αίθουσες από HTML — χρησιμοποιήθηκε JSON-LD (ίδιες ώρες σε πολλές αίθουσες συγχωνεύονται).',
+        );
+      }
     }
   }
 

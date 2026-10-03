@@ -19,9 +19,10 @@ const {
 } = require('../api/venue/services/venue-updated-status');
 
 const MATCH_MIN = Number(process.env.PROGRAM_IMPORT_MATCH_MIN || 0.72);
+/** 2 παράλληλα — Village κ.λπ. είναι 1–2MB HTML· 3+ timeout στο VPS. */
 const VENUE_CONCURRENCY = Math.max(
   1,
-  Number(process.env.ATHINORAMA_SYNC_CONCURRENCY || 3),
+  Number(process.env.ATHINORAMA_SYNC_CONCURRENCY || 2),
 );
 /**
  * Σινεμά που timeout-άρουν στο παράλληλο batch — τρέχουν μόνα τους μετά το βασικό sync.
@@ -559,12 +560,44 @@ async function syncPendingAthinoramaVenues(
     }
   }
 
-  const batchResults =
+  let batchResults =
     pending.length > 0
       ? await mapPool(pending, VENUE_CONCURRENCY, async (venue, index) =>
           runOne(venue, `Athinorama ${index + 1}/${pending.length}: ${venue.name}`),
         )
       : [];
+
+  // Timeout στο parallel batch → ένα serial retry με μεγαλύτερο timeout (Village/Cinobo).
+  const timeoutIdx = [];
+  for (let i = 0; i < batchResults.length; i += 1) {
+    const err = String(batchResults[i]?.error || '');
+    if (/timeout/i.test(err)) timeoutIdx.push(i);
+  }
+  if (timeoutIdx.length && typeof onProgress === 'function') {
+    onProgress(
+      `Athinorama: ${timeoutIdx.length} timeout → serial retry (${Math.round(DEFERRED_FETCH_TIMEOUT_MS / 1000)}s)…`,
+    );
+  }
+  for (const i of timeoutIdx) {
+    const venue = pending[i];
+    if (!venue) continue;
+    if (typeof onProgress === 'function') {
+      onProgress(`Athinorama timeout-retry: ${venue.name} (#${venue.id})`);
+    }
+    try {
+      batchResults[i] = await syncOneVenueFromAthinorama(strapi, venue, cmsMovies, {
+        now,
+        timeoutMs: DEFERRED_FETCH_TIMEOUT_MS,
+      });
+    } catch (e) {
+      batchResults[i] = {
+        ok: false,
+        venueId: venue.id,
+        venueName: venue.name,
+        error: e?.message || String(e),
+      };
+    }
+  }
 
   const deferredResults = [];
   for (let i = 0; i < deferredPending.length; i += 1) {
