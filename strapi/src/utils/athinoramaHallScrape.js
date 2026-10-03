@@ -146,8 +146,8 @@ function stripTagsKeepText(raw) {
 }
 
 /**
- * Κάρτες προγράμματος Athinorama: τίτλος + room-box / schedule-box (χωρίς accordion).
- * Επιστρέφει κείμενο catalog μορφής για textarea + λίστα { title, room, schedule }.
+ * Κάρτες προγράμματος Athinorama: τίτλος + schedule-box
+ * (με room-box σε πολυαίθουσα, ή σκέτο ωράριο σε μονή οθόνη όπως η Διάνα).
  */
 function extractAthinoramaHallCards(html) {
   let body = String(html || '');
@@ -174,14 +174,23 @@ function extractAthinoramaHallCards(html) {
     if (!title) continue;
 
     const schedules = [];
-    const boxRe =
-      /class="room-box">\s*([\s\S]*?)\s*<\/strong>\s*([\s\S]*?)\s*<\/p>/gi;
+    const boxRe = /<p class="summary schedule-box">([\s\S]*?)<\/p>/gi;
     let bm;
     while ((bm = boxRe.exec(part)) !== null) {
-      const room = stripTagsKeepText(bm[1]);
-      const schedule = stripTagsKeepText(bm[2]);
-      if (!room || !schedule || !/\d{1,2}[.:]\d{2}/.test(schedule)) continue;
-      schedules.push({ room, schedule });
+      const inner = bm[1] || '';
+      const withRoom =
+        /class="room-box">\s*([\s\S]*?)\s*<\/strong>\s*([\s\S]*)/i.exec(inner);
+      let room = '';
+      let schedule = '';
+      if (withRoom) {
+        room = stripTagsKeepText(withRoom[1]);
+        schedule = stripTagsKeepText(withRoom[2]);
+      } else {
+        // Μονή αίθουσα / χειμερινά χωρίς label «Αίθουσα N»
+        schedule = stripTagsKeepText(inner);
+      }
+      if (!schedule || !/\d{1,2}[.:]\d{2}/.test(schedule)) continue;
+      schedules.push({ room: room || '', schedule });
     }
     if (!schedules.length) continue;
     cards.push({ title, schedules });
@@ -199,8 +208,8 @@ function catalogTextFromHallCards(cards) {
     for (const row of card.schedules || []) {
       const room = String(row.room || '').trim();
       const schedule = String(row.schedule || '').trim();
-      if (!room || !schedule) continue;
-      lines.push(`${room} ${schedule}`.replace(/\s+/g, ' ').trim());
+      if (!schedule) continue;
+      lines.push((room ? `${room} ${schedule}` : schedule).replace(/\s+/g, ' ').trim());
     }
     lines.push('');
   }
@@ -208,7 +217,8 @@ function catalogTextFromHallCards(cards) {
 }
 
 /**
- * Από κάρτες HTML → movies με hallName ανά showtime (πρωτεύουσα πηγή για πολυαιθουσικά).
+ * Από κάρτες HTML → movies με hallName ανά showtime (πολυαίθουσα)·
+ * χωρίς room → χειμερινή μονή οθόνη, hallName null.
  */
 function moviesFromAthinoramaHallCards(cards, { weekBounds = null, now = new Date() } = {}) {
   if (!cards?.length || !weekBounds?.start || !weekBounds?.end) {
@@ -224,13 +234,16 @@ function moviesFromAthinoramaHallCards(cards, { weekBounds = null, now = new Dat
     const scheduleTextLines = [];
     for (const row of card.schedules || []) {
       scheduleLines += 1;
-      const line = `${row.room} ${row.schedule}`.replace(/\s+/g, ' ').trim();
+      const room = String(row.room || '').trim();
+      const schedule = String(row.schedule || '').trim();
+      if (!schedule) continue;
+      const line = (room ? `${room} ${schedule}` : schedule).replace(/\s+/g, ' ').trim();
       scheduleTextLines.push(line);
       const summerScreening =
-        isSummerScreeningLabel(row.room) || isSummerScreeningLabel(row.schedule);
-      const hallName = summerScreening ? null : normalizeHallName(row.room);
+        isSummerScreeningLabel(room) || isSummerScreeningLabel(schedule);
+      const hallName = summerScreening || !room ? null : normalizeHallName(room);
       showtimes.push(
-        ...parseAuditoriumScheduleText(row.schedule, weekBounds.start, weekBounds.end, {
+        ...parseAuditoriumScheduleText(schedule, weekBounds.start, weekBounds.end, {
           summerScreening,
           hallName,
         }),
