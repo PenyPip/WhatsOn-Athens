@@ -47,7 +47,7 @@ export default function ScheduleCompactRow({
           </span>
           {newMark}
         </p>
-        {hallName ? <p className="text-muted-foreground">Αίθουσα · {hallName}</p> : null}
+        {hallName ? <p className="text-muted-foreground">{hallName}</p> : null}
       </li>
     );
   }
@@ -91,7 +91,7 @@ export default function ScheduleCompactRow({
           <span className="shrink-0 text-sm font-semibold tabular-nums text-[#13143E]">{priceLabel}</span>
         ) : null}
       </div>
-      {hallName ? <p className="text-muted-foreground">Αίθουσα · {hallName}</p> : null}
+      {hallName ? <p className="text-muted-foreground">{hallName}</p> : null}
     </li>
   );
 }

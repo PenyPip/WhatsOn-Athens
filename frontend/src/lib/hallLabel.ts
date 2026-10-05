@@ -53,7 +53,7 @@ export function visibleHallName(
   return name;
 }
 
-/** Πλήρης λεζάντα «Αίθουσα · …» ή `undefined`. */
+/** Όνομα αίθουσας όπως είναι στο CMS (π.χ. «Αίθουσα 2»), χωρίς δεύτερη ετικέτα. */
 export function hallCaption(
   hallName: string | null | undefined,
   options?: {
@@ -61,6 +61,5 @@ export function hallCaption(
     programHallCount?: number;
   },
 ): string | undefined {
-  const name = visibleHallName(hallName, options);
-  return name ? `Αίθουσα · ${name}` : undefined;
+  return visibleHallName(hallName, options);
 }

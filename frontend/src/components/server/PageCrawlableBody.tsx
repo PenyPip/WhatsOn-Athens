@@ -2,7 +2,7 @@ import HomeCrawlableBody from "@/components/server/HomeCrawlableBody";
 import type { SeoCrawlSnapshot } from "@/lib/crawlTypes";
 import { absolutePageUrl } from "@/lib/siteMetadata";
 
-/** Server HTML για crawlers - κάθε δημόσια σελίδα (sr-only μέσω critical CSS). */
+/** Ορατό server HTML (τίτλοι + ώρες). Στην αρχική το H1 είναι στο HomeSeoIntro. */
 export default function PageCrawlableBody({ data }: { data: SeoCrawlSnapshot }) {
   if (data.kind === "home" && data.home) {
     const hasContent =
@@ -16,7 +16,11 @@ export default function PageCrawlableBody({ data }: { data: SeoCrawlSnapshot }) 
   return (
     <div id="seo-crawl-shell" className="seo-crawl-shell border-b border-border/40 bg-muted/20 py-8 md:py-10">
       <div className="container max-w-7xl">
-        <h1 className="font-display text-2xl font-bold text-foreground md:text-3xl">{data.h1}</h1>
+        {data.kind === "detail" ? (
+          <h1 className="font-display text-2xl font-bold text-foreground md:text-3xl">{data.h1}</h1>
+        ) : (
+          <h2 className="font-display text-2xl font-bold text-foreground md:text-3xl">{data.h1}</h2>
+        )}
         {data.intro ? (
           <p className="mt-3 max-w-3xl text-sm leading-relaxed text-muted-foreground">{data.intro}</p>
         ) : null}

@@ -11,9 +11,12 @@ export default function HomeSeoIntro() {
       aria-labelledby="home-page-title"
     >
       <div className="container max-w-7xl">
-        <h2 className="font-display text-xl font-bold tracking-tight text-white md:text-2xl">
+        <h1
+          id="home-page-title"
+          className="font-display text-xl font-bold tracking-tight text-white md:text-2xl"
+        >
           {home.h1}
-        </h2>
+        </h1>
         <p className="mt-3 max-w-3xl font-body text-sm leading-relaxed text-white/65 md:text-[0.9375rem]">
           Το <strong className="font-medium text-white/90">37Ν</strong> (
           <strong className="font-medium text-white/90">the37n.gr</strong>) είναι ο οδηγός σου για{" "}

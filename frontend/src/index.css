@@ -449,15 +449,4 @@
   }
 }
 
-/* Crawlable SEO blocks - στο DOM για crawlers, πάντα off-screen (χωρίς CLS). */
-#seo-crawl-shell {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  padding: 0;
-  margin: -1px;
-  overflow: hidden;
-  clip: rect(0, 0, 0, 0);
-  white-space: nowrap;
-  border: 0;
-}
+/* Crawl shell: ορατό κείμενο (ώρες, τίτλοι). Όχι clip 1px - η Google το αγνοεί. */

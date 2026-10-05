@@ -23,7 +23,7 @@ export default function HomeStaticLcp({ posterHref, title, synopsis }: HomeStati
         <div className="home-static-lcp__inner">
           <div className="home-static-lcp__copy">
             <span className="home-static-lcp__badge">Πολυσυζητημένες</span>
-            <h1 id="home-page-title" className="home-static-lcp__title">{displayTitle}</h1>
+            <h2 className="home-static-lcp__title">{displayTitle}</h2>
             {displaySynopsis ? <p className="home-static-lcp__synopsis">{displaySynopsis}</p> : null}
           </div>
           <div className="home-static-lcp__poster-wrap">

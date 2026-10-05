@@ -21,8 +21,14 @@ import { buildHomeCrawlFromDehydrated } from "@/lib/homeCrawlFromDehydrated";
 import { buildMoviesListCrawlFromDehydrated } from "@/lib/moviesListCrawlFromDehydrated";
 import { eventDisplayTitle, eventPath } from "@/lib/eventLabels";
 import { seoCopyForPath } from "@/lib/jsonLdPage";
+import { formatShowtimeShareLabel } from "@/lib/movieShowtimeShare";
 import { moviesVenueProgramPath } from "@/lib/moviesVenuePath";
 import { staticPageSeo } from "@/lib/pageSeoCopy";
+import {
+  formatShowtimeWeekRangeLabel,
+  showtimeIsUpcoming,
+  showtimeIsWeekBlock,
+} from "@/lib/showtimeSchedule";
 import { synopsisExcerpt } from "@/lib/synopsisExcerpt";
 import { isKidsTheaterShow, isTheaterKidsPath } from "@/lib/theaterKids";
 import { theaterVenueProgramPath } from "@/lib/theaterVenuePath";
@@ -46,6 +52,30 @@ function uniqueLinks(rows: SeoCrawlLink[], limit = LINK_CAP): SeoCrawlLink[] {
     if (!href || !title || seen.has(href)) continue;
     seen.add(href);
     out.push({ href, title });
+    if (out.length >= limit) break;
+  }
+  return out;
+}
+
+const SCHEDULE_CAP = 40;
+
+function showtimeScheduleLabels(
+  showtimes: StrapiShowtime[],
+  limit = SCHEDULE_CAP,
+): { label: string }[] {
+  const now = new Date();
+  const upcoming = showtimes
+    .filter((st) => showtimeIsUpcoming(st, now))
+    .sort((a, b) => Date.parse(a.datetime) - Date.parse(b.datetime));
+  const out: { label: string }[] = [];
+  for (const st of upcoming) {
+    const title = st.movieTitle?.trim() || "Ταινία";
+    const venueName = (st.venue ?? "").trim();
+    const when = showtimeIsWeekBlock(st)
+      ? formatShowtimeWeekRangeLabel(st) || formatShowtimeShareLabel(st.datetime)
+      : formatShowtimeShareLabel(st.datetime);
+    const place = venueName ? ` · ${venueName}` : "";
+    out.push({ label: `${title} · ${when}${place}` });
     if (out.length >= limit) break;
   }
   return out;
@@ -166,11 +196,14 @@ export function buildSeoCrawlForPath(path: string, state: DehydratedState): SeoC
       title,
     }));
     const seo = crawlSeoCopyForPath(normalized);
-    return listShell(
+    const shell = listShell(
       seo?.title ?? cinemaVenue.name,
       seo?.description ?? `Πρόγραμμα προβολών στο ${cinemaVenue.name}.`,
       links,
     );
+    const schedule = showtimeScheduleLabels(showtimes);
+    if (!schedule.length) return shell;
+    return { ...shell, scheduleHeading: "Προβολές", schedule };
   }
 
   const theaterVenue = crawlVenueByTheaterProgramPath(normalized);

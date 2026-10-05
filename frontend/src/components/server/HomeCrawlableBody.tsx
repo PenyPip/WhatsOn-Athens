@@ -37,7 +37,7 @@ function CrawlMovieList({ title, eyebrow, movies, moreHref }: {
   );
 }
 
-/** Server HTML - πλούσιο crawlable περιεχόμενο αρχικής (κρύβεται μετά hydrate). */
+/** Server HTML αρχικής - ορατές λίστες ταινιών (το H1 είναι στο HomeSeoIntro). */
 export default function HomeCrawlableBody({ data }: { data: HomeCrawlSnapshot }) {
   const hasContent =
     data.today.length > 0 || data.week.length > 0 || data.summer.length > 0 || data.summerVenues.length > 0;

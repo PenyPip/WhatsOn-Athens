@@ -47,7 +47,7 @@ export const HOME_HERO_CRITICAL_CSS =
 export const HOME_HERO_SPACER_LOCK_SCRIPT =
   "(function(){function l(){var s=document.getElementById('home-hero-ssr-spacer');if(!s)return;var d=window.matchMedia('(min-width:768px)').matches,h=d?'calc(580px - 7rem)':'calc(380px - 3.5rem)';s.style.setProperty('display','block','important');s.style.setProperty('height',h,'important');s.style.setProperty('min-height',h,'important');s.style.setProperty('max-height',h,'important')}l();if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',l);var n=0,iv=setInterval(function(){l();if(++n>40)clearInterval(iv)},50)})();";
 
-/** Πριν το async index.css - αποφυγή FOUC/CLS στο sr-only H1 και crawl shell. */
+/** Πριν το async index.css - hero spacer/overlay χωρίς FOUC/CLS. */
 export { ROOT_CRITICAL_CSS as HOME_PAGE_CRITICAL_CSS } from "@/lib/rootCriticalCss";
 
 /**

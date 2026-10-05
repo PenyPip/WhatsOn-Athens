@@ -5,7 +5,6 @@ import ServerJsonLd from "@/components/ServerJsonLd";
 import { pathFromSlugParam } from "@/lib/jsonLdPage";
 import { buildMetadataForPath } from "@/lib/pageMetadataServer";
 import HomeStaticLcp from "@/components/HomeStaticLcp";
-import HomePageH1 from "@/components/HomePageH1";
 import { homeLcpDisplay } from "@/lib/homeHeroLcp";
 import { detailPosterPreloadHref } from "@/lib/detailPosterPreload";
 import { layoutShowsHero, resolveHomepageLayout, type MappedHomepage } from "@/config/home";
@@ -88,14 +87,12 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
 
   return (
     <>
-      {path === "/" && !showStaticLcp ? <HomePageH1 /> : null}
       {preloadPoster ? (
         <link rel="preload" as="image" href={preloadPoster} fetchPriority="high" />
       ) : null}
       {showStaticLcp && lcp ? (
         <HomeStaticLcp posterHref={lcp.posterHref} title={lcp.title} synopsis={lcp.synopsis} />
       ) : null}
-      {pageCrawl ? <PageCrawlableBody data={pageCrawl} /> : null}
       <ServerJsonLd path={path} homeCrawl={homeCrawl} moviesCrawl={moviesCrawl} detailCrawl={detailCrawl} />
       {/* Μόνο `#__RQ_STATE__` - ΟΧΙ bootstrapState prop στο SpaRoot (τριπλή αντιγραφή JSON → PageSpeed). */}
       <RqBootstrapScript state={dehydratedState} />
@@ -105,6 +102,8 @@ export default async function SpaCatchAllPage({ params }: PageProps) {
         homeStaticLcp={showStaticLcp}
         suppressHydrationWarning={showStaticLcp}
       />
+      {/* Μετά το SPA: δεν σπρώχνει το hero/LCP. Ορατό πρόγραμμα για crawlers. */}
+      {pageCrawl ? <PageCrawlableBody data={pageCrawl} /> : null}
     </>
   );
 }

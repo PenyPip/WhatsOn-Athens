@@ -169,8 +169,11 @@ export function buildMoviesListCrawlData(
     list = moviesFromFilteredShowtimes(catalog, showtimes, (st) => showtimeMatchesHomeToday(st, now));
   }
 
-  /** Χωρίς showtimes στο bootstrap: μην αφήνεις κενό crawl shell - λίστα από catalog. */
-  if (!list.length && catalog.length) {
+  /**
+   * Μόνο η γενική /movies (χωρίς section, είδος ή περιοχή) πέφτει στον κατάλογο.
+   * today / week / summer δεν γεμίζουν με τις ίδιες ταινίες.
+   */
+  if (!list.length && catalog.length && !section && !genreSlug && !area) {
     list = catalog;
   }
 
