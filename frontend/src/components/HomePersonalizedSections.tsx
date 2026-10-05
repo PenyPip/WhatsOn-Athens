@@ -159,6 +159,7 @@ export default function HomePersonalizedSections({ movies, showtimes }: HomePers
                           genre={genreLabel(pm, catalog)}
                           duration={catalog?.duration ?? 0}
                           imdbRating={catalog ? resolveImdbRating(catalog) : pm.imdbRating ?? undefined}
+                          rottenTomatoes={catalog?.rottenTomatoes ?? pm.rottenTomatoes}
                           posterUrl={catalog?.posterUrl ?? pm.posterUrl ?? undefined}
                           posterSrcSet={catalog?.posterSrcSet}
                           isDubbed={catalog?.isDubbed ?? pm.isDubbed}

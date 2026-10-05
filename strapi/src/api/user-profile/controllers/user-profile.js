@@ -28,6 +28,7 @@ function mapMovie(row) {
     originalTitle: row.original_title,
     isDubbed: Boolean(row.is_dubbed),
     imdbRating: row.imdb_rating != null ? Number(row.imdb_rating) : null,
+    rottenTomatoes: row.rotten_tomatoes != null ? Number(row.rotten_tomatoes) : null,
     posterUrl,
     genres: Array.isArray(row.movie_genres)
       ? row.movie_genres.map((g) => ({ slug: g.slug, label: g.label }))

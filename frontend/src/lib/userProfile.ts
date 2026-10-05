@@ -7,6 +7,7 @@ export type ProfileMovie = {
   originalTitle: string;
   isDubbed: boolean;
   imdbRating: number | null;
+  rottenTomatoes: number | null;
   posterUrl: string | null;
   genres: { slug: string; label: string }[];
 };

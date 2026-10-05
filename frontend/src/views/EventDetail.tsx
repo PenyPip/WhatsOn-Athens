@@ -1178,7 +1178,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             <h1 className="font-display font-bold text-white text-2xl md:text-4xl">
               {isMovie && movieSeo ? movieSeo.h1 : headline.primary}
             </h1>
-            {rottenTomatoes != null ? <RottenTomatoesBadge score={rottenTomatoes} /> : null}
+            {rottenTomatoes != null ? <RottenTomatoesBadge score={rottenTomatoes} tone="onDark" /> : null}
             </div>
             {isMovie && movie?.id ? (
               <div className="flex shrink-0 items-center gap-2">
@@ -1595,6 +1595,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                     genre={isMovie ? "" : theaterGenreLabel((item as StrapiTheaterShow).genre)}
                     duration={item.duration}
                     imdbRating={isMovie ? resolveImdbRating(item as StrapiMovie) : undefined}
+                    rottenTomatoes={isMovie ? (item as StrapiMovie).rottenTomatoes : undefined}
                     posterUrl={isMovie ? (item as StrapiMovie).posterUrl : item.posterUrl}
                     posterSrcSet={isMovie ? (item as StrapiMovie).posterSrcSet : undefined}
                     isDubbed={isMovie ? (item as StrapiMovie).isDubbed : false}

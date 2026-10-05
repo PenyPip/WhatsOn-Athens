@@ -2,6 +2,8 @@ import { Link } from "react-router-dom";
 import { Clock } from "lucide-react";
 import PosterPicture from "@/components/PosterPicture";
 import MoviePosterMeta from "@/components/MoviePosterMeta";
+import RottenTomatoesBadge from "@/components/RottenTomatoesBadge";
+import { resolveRottenTomatoes } from "@/lib/movieRottenTomatoes";
 import { cn } from "@/lib/utils";
 import GenreLinks from "@/components/GenreLinks";
 import type { GenreLinkItem } from "@/lib/movieGenreLinks";
@@ -19,6 +21,8 @@ interface EventCardProps {
   duration: number;
   /** Βαθμολογία IMDb (ταινίες). */
   imdbRating?: number | null;
+  /** Tomatometer 0–100. Φαίνεται δίπλα στον τίτλο. */
+  rottenTomatoes?: number | null;
   /** @deprecated Χρησιμοποίησε imdbRating */
   score?: number;
   /** Fallback όταν λείπει poster (π.χ. θέατρο) · οι ταινίες χρησιμοποιούν μόνο poster ή ουδέτερο φόντο */
@@ -67,6 +71,7 @@ const EventCard = ({
   genreLinkItems,
   duration,
   imdbRating,
+  rottenTomatoes,
   score,
   gradientFrom,
   gradientTo,
@@ -103,6 +108,7 @@ const EventCard = ({
   const showDuration = typeof duration === "number" && Number.isFinite(duration) && duration > 0;
   const genreTrimmed = typeof genre === "string" ? genre.trim() : "";
   const isMovie = type === "movie";
+  const rottenScore = isMovie ? resolveRottenTomatoes(rottenTomatoes) : null;
   const isTheater = type === "theater";
   /** Αρχική (compact) + horizontal scroll: ποτέ native lazy - αλλιώς μένουν κενές αφίσες. */
   const useEagerPoster = posterPriority || posterEager || compactMovieMeta;
@@ -278,6 +284,9 @@ const EventCard = ({
               >
                 {title}
               </h3>
+              {rottenScore != null ? (
+                <RottenTomatoesBadge score={rottenScore} className="mt-0.5" />
+              ) : null}
               {!isMovie && showDuration && !theaterHomeCompact ? (
                 <div className={cn("mt-0.5 flex shrink-0 items-center gap-1 text-sm", metaClass)}>
                   <Clock className="h-3.5 w-3.5 shrink-0" />

@@ -1196,6 +1196,7 @@ const Movies = () => {
                             genreLinkItems={movieGenreLinkItems(movie, movieGenresList)}
                             duration={movie.duration}
                             imdbRating={resolveImdbRating(movie)}
+                            rottenTomatoes={movie.rottenTomatoes}
                             posterUrl={movie.posterUrl}
                             posterSrcSet={movie.posterSrcSet}
                             type="movie"

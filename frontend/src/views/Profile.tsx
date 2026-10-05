@@ -210,6 +210,7 @@ const Profile = () => {
                     genre=""
                     duration={0}
                     imdbRating={movie.imdbRating ?? undefined}
+                    rottenTomatoes={movie.rottenTomatoes}
                     posterUrl={movie.posterUrl ?? undefined}
                     isDubbed={movie.isDubbed}
                     type="movie"
@@ -311,6 +312,7 @@ const Profile = () => {
                         genre=""
                         duration={0}
                         imdbRating={movie.imdbRating ?? undefined}
+                    rottenTomatoes={movie.rottenTomatoes}
                         posterUrl={movie.posterUrl ?? undefined}
                         isDubbed={movie.isDubbed}
                         type="movie"

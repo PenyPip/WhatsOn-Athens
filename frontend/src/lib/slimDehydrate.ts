@@ -82,6 +82,7 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         isDubbed: m.isDubbed,
         ...(m.criticScore != null ? { criticScore: m.criticScore } : {}),
         imdbRating: m.imdbRating,
+        rottenTomatoes: m.rottenTomatoes,
         mostTalkedAbout: m.mostTalkedAbout,
         mostTalkedAboutAt: m.mostTalkedAbout ? m.mostTalkedAboutAt : undefined,
         updatedAt: m.mostTalkedAbout ? m.updatedAt : undefined,

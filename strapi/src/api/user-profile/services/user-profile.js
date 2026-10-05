@@ -4,7 +4,7 @@ const { createCoreService } = require('@strapi/strapi').factories;
 
 const PROFILE_POPULATE = {
   favorite_movies: {
-    fields: ['id', 'slug', 'title', 'original_title', 'is_dubbed', 'imdb_rating'],
+    fields: ['id', 'slug', 'title', 'original_title', 'is_dubbed', 'imdb_rating', 'rotten_tomatoes'],
     populate: {
       poster: { fields: ['url', 'formats'] },
       movie_genres: { fields: ['slug', 'label', 'sort_order'] },
@@ -14,7 +14,7 @@ const PROFILE_POPULATE = {
     fields: ['id', 'slug', 'name', 'summer_outdoor', 'type', 'city'],
   },
   seen_movies: {
-    fields: ['id', 'slug', 'title', 'original_title', 'is_dubbed', 'imdb_rating'],
+    fields: ['id', 'slug', 'title', 'original_title', 'is_dubbed', 'imdb_rating', 'rotten_tomatoes'],
     populate: {
       poster: { fields: ['url', 'formats'] },
       movie_genres: { fields: ['slug', 'label', 'sort_order'] },

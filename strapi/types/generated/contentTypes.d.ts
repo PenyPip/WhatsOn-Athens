@@ -746,14 +746,7 @@ export interface ApiMovieMovie extends Schema.CollectionType {
       'oneToMany',
       'api::user-review.user-review'
     >;
-    rotten_tomatoes: Attribute.Integer &
-      Attribute.SetMinMax<
-        {
-          min: 0;
-          max: 100;
-        },
-        number
-      >;
+    rotten_tomatoes: Attribute.Integer;
     showtimes: Attribute.Relation<
       'api::movie.movie',
       'oneToMany',

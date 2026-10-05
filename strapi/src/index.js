@@ -123,29 +123,36 @@ async function placeRottenTomatoesBesideTitle(strapi) {
       row.some((cell) => cell?.name === 'title') &&
       row.some((cell) => cell?.name === 'rotten_tomatoes'),
   );
-  if (besideTitle) return;
 
-  const cleaned = edit
-    .map((row) => (Array.isArray(row) ? row.filter((cell) => cell?.name !== 'rotten_tomatoes') : row))
-    .filter((row) => Array.isArray(row) && row.length > 0);
-  const titleIdx = cleaned.findIndex((row) => row.some((cell) => cell?.name === 'title'));
-  if (titleIdx < 0) return;
-
-  const row = cleaned[titleIdx];
-  const titleCell = row.find((cell) => cell?.name === 'title');
-  const rest = row.filter((cell) => cell?.name !== 'title');
-  cleaned[titleIdx] = [{ ...titleCell, size: 8 }, { name: 'rotten_tomatoes', size: 4 }];
-  if (rest.length) cleaned.splice(titleIdx + 1, 0, rest);
+  let nextEdit = edit;
+  if (!besideTitle) {
+    const cleaned = edit
+      .map((row) => (Array.isArray(row) ? row.filter((cell) => cell?.name !== 'rotten_tomatoes') : row))
+      .filter((row) => Array.isArray(row) && row.length > 0);
+    const titleIdx = cleaned.findIndex((row) => row.some((cell) => cell?.name === 'title'));
+    if (titleIdx >= 0) {
+      const row = cleaned[titleIdx];
+      const titleCell = row.find((cell) => cell?.name === 'title');
+      const rest = row.filter((cell) => cell?.name !== 'title');
+      cleaned[titleIdx] = [{ ...titleCell, size: 8 }, { name: 'rotten_tomatoes', size: 4 }];
+      if (rest.length) cleaned.splice(titleIdx + 1, 0, rest);
+      nextEdit = cleaned;
+    }
+  }
 
   const metadatas = { ...(config.metadatas || {}) };
   const current = metadatas.rotten_tomatoes || { edit: {}, list: {} };
+  const description = current.edit?.description || '';
+  const layoutChanged = nextEdit !== edit;
+  if (!layoutChanged && !description) return;
+
   metadatas.rotten_tomatoes = {
     ...current,
     edit: {
       ...(current.edit || {}),
       label: 'Rotten Tomatoes',
-      description: 'Tomatometer 0–100. Κενό = δεν εμφανίζεται δίπλα στον τίτλο.',
-      placeholder: '86',
+      description: '',
+      placeholder: '',
       editable: true,
       visible: true,
     },
@@ -162,7 +169,7 @@ async function placeRottenTomatoesBesideTitle(strapi) {
     value: {
       ...config,
       metadatas,
-      layouts: { ...config.layouts, edit: cleaned },
+      layouts: { ...config.layouts, edit: nextEdit },
     },
   });
   strapi.log.info('[whatson] Rotten Tomatoes δίπλα στον τίτλο στη φόρμα ταινίας.');
