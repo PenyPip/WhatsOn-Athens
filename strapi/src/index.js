@@ -109,6 +109,65 @@ async function enablePublicPermission(strapi, action, publicRoleId) {
   return enableRolePermission(strapi, action, publicRoleId, 'Public');
 }
 
+/** Φόρμα ταινίας: Rotten Tomatoes στην ίδια γραμμή με τον τίτλο. */
+async function placeRottenTomatoesBesideTitle(strapi) {
+  const store = strapi.store({ type: 'plugin', name: 'content_manager' });
+  const key = 'configuration_content_types::api::movie.movie';
+  const config = await store.get({ key });
+  const edit = config?.layouts?.edit;
+  if (!config || !Array.isArray(edit)) return;
+
+  const besideTitle = edit.some(
+    (row) =>
+      Array.isArray(row) &&
+      row.some((cell) => cell?.name === 'title') &&
+      row.some((cell) => cell?.name === 'rotten_tomatoes'),
+  );
+  if (besideTitle) return;
+
+  const cleaned = edit
+    .map((row) => (Array.isArray(row) ? row.filter((cell) => cell?.name !== 'rotten_tomatoes') : row))
+    .filter((row) => Array.isArray(row) && row.length > 0);
+  const titleIdx = cleaned.findIndex((row) => row.some((cell) => cell?.name === 'title'));
+  if (titleIdx < 0) return;
+
+  const row = cleaned[titleIdx];
+  const titleCell = row.find((cell) => cell?.name === 'title');
+  const rest = row.filter((cell) => cell?.name !== 'title');
+  cleaned[titleIdx] = [{ ...titleCell, size: 8 }, { name: 'rotten_tomatoes', size: 4 }];
+  if (rest.length) cleaned.splice(titleIdx + 1, 0, rest);
+
+  const metadatas = { ...(config.metadatas || {}) };
+  const current = metadatas.rotten_tomatoes || { edit: {}, list: {} };
+  metadatas.rotten_tomatoes = {
+    ...current,
+    edit: {
+      ...(current.edit || {}),
+      label: 'Rotten Tomatoes',
+      description: 'Tomatometer 0–100. Κενό = δεν εμφανίζεται δίπλα στον τίτλο.',
+      placeholder: '86',
+      editable: true,
+      visible: true,
+    },
+    list: {
+      ...(current.list || {}),
+      label: 'Rotten Tomatoes',
+      searchable: false,
+      sortable: true,
+    },
+  };
+
+  await store.set({
+    key,
+    value: {
+      ...config,
+      metadatas,
+      layouts: { ...config.layouts, edit: cleaned },
+    },
+  });
+  strapi.log.info('[whatson] Rotten Tomatoes δίπλα στον τίτλο στη φόρμα ταινίας.');
+}
+
 function serveCKEditorConfig(ctx) {
   const fs = require('fs');
   const path = require('path');
@@ -248,6 +307,12 @@ module.exports = {
       });
     } catch (e) {
       strapi.log.warn('[whatson bootstrap more-showtime-sync resume]', e);
+    }
+
+    try {
+      await placeRottenTomatoesBesideTitle(strapi);
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap rotten tomatoes layout]', e);
     }
 
     try {

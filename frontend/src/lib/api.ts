@@ -736,6 +736,7 @@ function mapMovie(
     synopsis: m.synopsis,
     criticScore: m.critic_score,
     imdbRating: parseOptionalDecimal(m.imdb_rating) ?? parseOptionalDecimal(m.critic_score),
+    rottenTomatoes: parseOptionalInt(m.rotten_tomatoes),
     mostTalkedAbout: m.most_talked_about === true,
     mostTalkedAboutAt:
       typeof m.most_talked_about_at === "string" && m.most_talked_about_at.trim()
@@ -1450,6 +1451,8 @@ export interface StrapiMovie {
   synopsis: string;
   criticScore: number;
   imdbRating?: number;
+  /** Tomatometer 0–100 από το CMS. Κενό = δεν εμφανίζεται. */
+  rottenTomatoes?: number;
   /** CMS `most_talked_about` - pool για hero αρχικής. */
   mostTalkedAbout: boolean;
   /** Όταν μπήκε στις «Πολυσυζητημένες» (CMS). */

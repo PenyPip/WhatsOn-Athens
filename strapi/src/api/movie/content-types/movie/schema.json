@@ -16,6 +16,12 @@
       "required": true,
       "description": "Ελληνικός τίτλος — κύρια εμφάνιση στο site (δεν είναι μοναδικό κλειδί)."
     },
+    "rotten_tomatoes": {
+      "type": "integer",
+      "min": 0,
+      "max": 100,
+      "description": "Tomatometer Rotten Tomatoes (0–100). Κενό = δεν εμφανίζεται δίπλα στον τίτλο."
+    },
     "original_title": {
       "type": "string",
       "required": true,

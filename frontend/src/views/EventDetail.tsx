@@ -78,7 +78,9 @@ import {
   parseMovieShowtimeDeepLink,
 } from "@/lib/movieShowtimeShare";
 import ImdbRatingBadge from "@/components/ImdbRatingBadge";
+import RottenTomatoesBadge from "@/components/RottenTomatoesBadge";
 import { resolveImdbRating } from "@/lib/movieImdb";
+import { resolveRottenTomatoes } from "@/lib/movieRottenTomatoes";
 import { buildMovieDetailJsonLd } from "@/lib/jsonLdMovieDetail";
 import { buildTheaterDetailJsonLd } from "@/lib/jsonLdTheaterDetail";
 import JsonLd from "@/components/JsonLd";
@@ -792,6 +794,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
       ];
 
   const imdbRating = movie ? resolveImdbRating(movie) : null;
+  const rottenTomatoes = movie ? resolveRottenTomatoes(movie.rottenTomatoes) : null;
 
   const hasCast = castList.length > 0;
 
@@ -1166,14 +1169,17 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             ) : null}
 
             <div className="flex items-start justify-between gap-3">
-            <h1
+            <div
               className={cn(
-                "font-display font-bold text-white text-2xl md:text-4xl",
+                "flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1",
                 headline.secondary ? "mb-1" : "mb-3",
               )}
             >
+            <h1 className="font-display font-bold text-white text-2xl md:text-4xl">
               {isMovie && movieSeo ? movieSeo.h1 : headline.primary}
             </h1>
+            {rottenTomatoes != null ? <RottenTomatoesBadge score={rottenTomatoes} /> : null}
+            </div>
             {isMovie && movie?.id ? (
               <div className="flex shrink-0 items-center gap-2">
                 <FavoriteButton kind="movie" entityId={movie.id} variant="hero" />
