@@ -34,6 +34,7 @@ const config = {
       'content-manager.enum.home.layout-section.section_key.tours': 'Περιοδείες (αρχική)',
       'content-manager.enum.home.layout-section.section_key.theater_new': 'Νέες παραστάσεις / listings (θέατρο)',
       'content-manager.enum.home.layout-section.section_key.theater_week': 'Ξεκινάνε αυτή την εβδομάδα (θέατρο)',
+      'content-manager.enum.home.layout-section.section_key.events_today': 'Events σήμερα',
       'content-manager.enum.home.layout-section.section_key.weekend_events': 'Τι να κάνω το ΣΚ (events)',
       'content-manager.enum.home.layout-section.section_key.events': 'Events (αρχική)',
       'content-manager.components.home.hero-banner.title': 'Τίτλος banner',

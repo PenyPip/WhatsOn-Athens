@@ -11,7 +11,7 @@ import { useDeferUntilLcpDone } from "@/hooks/useDeferUntilLcpDone";
 import { useDeferUntilIdleAfterLcp } from "@/hooks/useDeferUntilIdleAfterLcp";
 import { useSiteNow } from "@/hooks/useSiteNow";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useMovies, useShowtimes, useRestaurants, useVenuesForProgram, useTheaterShows, useTheaterPerformances, useArticles, useEvents, useWeekendEvents } from "@/hooks/useStrapi";
+import { useMovies, useShowtimes, useRestaurants, useVenuesForProgram, useTheaterShows, useTheaterPerformances, useArticles, useEvents, useTodayEvents, useWeekendEvents } from "@/hooks/useStrapi";
 import {
   homeNeedsArticles,
   homeNeedsDining,
@@ -42,7 +42,7 @@ import {
   eventTypeLabels,
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
-import { formatWeekendRangeLabel } from "@/lib/eventDateFilters";
+import { formatTodayLabel, formatWeekendRangeLabel } from "@/lib/eventDateFilters";
 import EventFreeBadge from "@/components/EventFreeBadge";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
 import HomePersonalizedSections from "@/components/HomePersonalizedSections";
@@ -378,6 +378,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   const needsDining = homeNeedsDining(sections);
   const needsArticles = homeNeedsArticles(sections);
   const needsEventsList = sections.includes("events");
+  const needsTodayEvents = sections.includes("events_today");
   const needsWeekendEvents = sections.includes("weekend_events");
   const needsShowtimes = homeNeedsShowtimes(sections);
   const deferSecondary = useDeferUntilLcpDone();
@@ -444,6 +445,12 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     eventsFetchLimit,
   );
   const {
+    data: todayEvents = [],
+    isLoading: todayEventsLoading,
+    isError: todayEventsError,
+    isFetched: todayEventsFetched,
+  } = useTodayEvents(needsTodayEvents && deferHomeExtra, siteNow, 6);
+  const {
     data: weekendEvents = [],
     isLoading: weekendEventsLoading,
     isError: weekendEventsError,
@@ -490,6 +497,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
       })
       .slice(0, 6);
   }, [events]);
+  const todayLabel = useMemo(() => formatTodayLabel(siteNow), [siteNow]);
   const weekendRangeLabel = useMemo(() => formatWeekendRangeLabel(siteNow), [siteNow]);
   const summerVenuesAwaiting = needsVenues && deferHomeExtra && venues === undefined && venuesLoading;
   const awaitingSummerMovies = awaitingMovieCards || summerVenuesAwaiting;
@@ -1153,6 +1161,93 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                 </section>
               ),
             );
+          case "events_today": {
+            if ((needsTodayEvents && !deferHomeExtra) || (todayEventsLoading && !todayEventsFetched)) {
+              return sectionEl(
+                "events_today",
+                <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10 min-h-[22rem]">
+                  <div className="container max-w-7xl">
+                    <div className="mb-2 h-3 w-20 animate-pulse rounded bg-[#1C1D62]/10" />
+                    <div className="h-8 w-56 animate-pulse rounded bg-[#1C1D62]/10" />
+                    <ul className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+                      {[0, 1, 2].map((i) => (
+                        <li key={i} className="h-36 animate-pulse rounded-xl border border-border/60 bg-background/70" />
+                      ))}
+                    </ul>
+                  </div>
+                </section>,
+              );
+            }
+            if (todayEventsError || todayEvents.length === 0) return null;
+            return sectionEl(
+              "events_today",
+              <section className="relative border-y border-border/40 bg-muted/20 py-8 md:py-10">
+                <div className="container max-w-7xl">
+                  <span className="mb-2 block font-body text-[10px] uppercase tracking-[0.22em] text-muted-foreground opacity-75">
+                    Σήμερα · {todayLabel}
+                  </span>
+                  <h2 className="font-display text-xl font-bold text-foreground md:text-2xl">Events σήμερα</h2>
+                  <ul
+                    className="mt-6 grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3"
+                    aria-label="Events σήμερα"
+                  >
+                    {todayEvents.map((event, i) => (
+                      <li key={`today-${event.id}-${event.slug}`}>
+                        <Link
+                          to={eventPath(event.slug)}
+                          className="group flex h-full gap-4 rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background"
+                        >
+                          {event.posterUrl ? (
+                            <img
+                              src={event.posterThumbUrl || event.posterUrl}
+                              alt={eventDisplayTitle(event)}
+                              className="h-24 w-16 shrink-0 rounded-md object-cover ring-1 ring-border/40"
+                              loading={i < 6 ? "eager" : "lazy"}
+                            />
+                          ) : null}
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
+                                {eventTypeLabels[event.eventType]}
+                                {event.featured ? (
+                                  <span className="ml-2 text-[#7C2B76]">· Featured</span>
+                                ) : null}
+                              </p>
+                              <EventFreeBadge event={event} />
+                            </div>
+                            <p className="mt-1 text-[11px] text-muted-foreground/90">
+                              {formatEventScheduleLine(event)}
+                            </p>
+                            <h3 className="mt-1.5 font-display text-lg font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
+                              {eventDisplayTitle(event)}
+                            </h3>
+                            {event.venue?.name ? (
+                              <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{event.venue.name}</p>
+                            ) : event.onlineLink ? (
+                              <p className="mt-1 text-sm text-muted-foreground">Online</p>
+                            ) : null}
+                            {event.synopsisEl ? (
+                              <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
+                                {event.synopsisEl}
+                              </p>
+                            ) : null}
+                          </div>
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                  <div className="mt-5 text-center">
+                    <Link
+                      to="/events"
+                      className="inline-flex text-sm font-semibold text-[#13143E] underline underline-offset-4 hover:text-[#13143E]/85 dark:text-white/85 dark:hover:text-white"
+                    >
+                      Όλα τα Events →
+                    </Link>
+                  </div>
+                </div>
+              </section>,
+            );
+          }
           case "weekend_events": {
             if ((needsWeekendEvents && !deferHomeExtra) || (weekendEventsLoading && !weekendEventsFetched)) {
               return sectionEl(

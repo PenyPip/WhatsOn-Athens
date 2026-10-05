@@ -32,6 +32,35 @@ export function eventOverlapsWeekend(
   return bounds.start <= to && bounds.end >= from;
 }
 
+/** Το event περιλαμβάνει τη σημερινή τοπική μέρα (και πολυήμερα που πέφτουν σήμερα). */
+export function eventOverlapsToday(
+  event: Pick<StrapiEvent, "startDate" | "endDate">,
+  now = new Date(),
+): boolean {
+  const bounds = eventDayBounds(event);
+  if (!bounds) return false;
+  const today = formatLocalYmd(now);
+  return bounds.start <= today && bounds.end >= today;
+}
+
+export function filterEventsForToday(
+  events: readonly StrapiEvent[],
+  now = new Date(),
+  limit = 6,
+): StrapiEvent[] {
+  return [...events]
+    .filter((event) => eventOverlapsToday(event, now))
+    .sort((a, b) => {
+      if (a.featured !== b.featured) return a.featured ? -1 : 1;
+      return (a.startDate || "").localeCompare(b.startDate || "");
+    })
+    .slice(0, Math.max(0, limit));
+}
+
+export function formatTodayLabel(now = new Date()): string {
+  return now.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
+}
+
 export function filterEventsForWeekend(
   events: readonly StrapiEvent[],
   now = new Date(),

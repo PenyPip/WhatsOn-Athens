@@ -3,7 +3,8 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { api } from "@/lib/api";
 import { findArticleInListCache } from "@/lib/articlePrefetch";
 import { CONTENT_QUERY_OPTIONS } from "@/lib/contentQuery";
-import { filterEventsForWeekend, upcomingWeekendYmdRange } from "@/lib/eventDateFilters";
+import { filterEventsForToday, filterEventsForWeekend, upcomingWeekendYmdRange } from "@/lib/eventDateFilters";
+import { formatLocalYmd } from "@/lib/theaterDateFilters";
 import { PROGRAM_QUERY_OPTIONS, SHOWTIMES_CALENDAR_QUERY_KEY, THEATER_PERFORMANCES_CALENDAR_QUERY_KEY, VENUES_PROGRAM_QUERY_KEY } from "@/lib/programQuery";
 import { resolveHomepageLayout } from "@/config/home";
 import { DEFAULT_SITE_NAVIGATION } from "@/config/navigation";
@@ -239,6 +240,20 @@ export const useEvents = (enabled = true, limit = 6) =>
     throwOnError: false,
     enabled,
   });
+
+/** Events που περιλαμβάνουν τη σημερινή μέρα. */
+export const useTodayEvents = (enabled = true, now = new Date(), limit = 6) => {
+  const day = formatLocalYmd(now);
+  return useQuery({
+    queryKey: ["events", "today", day, limit],
+    queryFn: () => api.getEventsOverlappingRange(day, day, Math.max(limit, 24)),
+    ...CONTENT_QUERY_OPTIONS,
+    retry: 1,
+    throwOnError: false,
+    enabled,
+    select: (rows) => filterEventsForToday(rows, now, limit),
+  });
+};
 
 /** Events για τρέχον/επερχόμενο ΣΚ (server-side date overlap). */
 export const useWeekendEvents = (enabled = true, now = new Date(), limit = 6) => {

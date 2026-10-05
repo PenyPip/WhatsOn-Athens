@@ -100,6 +100,7 @@ export interface HomeLayoutSection extends Schema.Component {
         'new_movies',
         'new_articles',
         'events',
+        'events_today',
         'weekend_events',
         'movies_week',
         'coming_soon',
