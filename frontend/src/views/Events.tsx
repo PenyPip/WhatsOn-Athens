@@ -130,14 +130,18 @@ export default function Events() {
           <div className="space-y-12">
             {upcoming.length > 0 ? <EventGrid events={upcoming} /> : null}
             {past.length > 0 ? (
-              <section>
-                <h2 className="mb-5 border-t border-border pt-8 font-display text-xl font-bold text-muted-foreground">
-                  Παρελθόντα
-                </h2>
-                <div className="opacity-80">
+              <details className="group border-t border-border pt-6">
+                <summary className="flex cursor-pointer list-none items-center gap-2 font-display text-lg font-semibold text-muted-foreground [&::-webkit-details-marker]:hidden">
+                  <span className="text-xs transition-transform group-open:rotate-90" aria-hidden>
+                    ▸
+                  </span>
+                  Αρχείο
+                  <span className="text-sm font-normal">{past.length}</span>
+                </summary>
+                <div className="mt-6 opacity-80">
                   <EventGrid events={past} />
                 </div>
-              </section>
+              </details>
             ) : null}
           </div>
         )}

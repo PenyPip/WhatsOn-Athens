@@ -42,6 +42,13 @@ export function eventHasPassed(
   return bounds.end < formatLocalYmd(now);
 }
 
+function compareEventsByStartAsc(
+  a: Pick<StrapiEvent, "startDate">,
+  b: Pick<StrapiEvent, "startDate">,
+): number {
+  return (a.startDate || "").localeCompare(b.startDate || "");
+}
+
 function compareEventsByStartDesc(
   a: Pick<StrapiEvent, "startDate">,
   b: Pick<StrapiEvent, "startDate">,
@@ -49,7 +56,7 @@ function compareEventsByStartDesc(
   return (b.startDate || "").localeCompare(a.startDate || "");
 }
 
-/** Τρέχοντα/προσεχή και παρελθόντα, και τα δύο σε φθίνουσα ημερομηνία έναρξης. */
+/** Τρέχοντα από το πιο κοντινό. Παρελθόντα από το πιο πρόσφατο, για το αρχείο. */
 export function splitEventsChronologically(
   events: readonly StrapiEvent[],
   now = new Date(),
@@ -60,7 +67,7 @@ export function splitEventsChronologically(
     if (eventHasPassed(event, now)) past.push(event);
     else upcoming.push(event);
   }
-  upcoming.sort(compareEventsByStartDesc);
+  upcoming.sort(compareEventsByStartAsc);
   past.sort(compareEventsByStartDesc);
   return { upcoming, past };
 }
@@ -83,7 +90,7 @@ export function filterEventsForToday(
 ): StrapiEvent[] {
   return [...events]
     .filter((event) => eventOverlapsToday(event, now))
-    .sort(compareEventsByStartDesc)
+    .sort(compareEventsByStartAsc)
     .slice(0, Math.max(0, limit));
 }
 
@@ -98,7 +105,7 @@ export function filterEventsForWeekend(
 ): StrapiEvent[] {
   return [...events]
     .filter((event) => eventOverlapsWeekend(event, now))
-    .sort(compareEventsByStartDesc)
+    .sort(compareEventsByStartAsc)
     .slice(0, Math.max(0, limit));
 }
 
