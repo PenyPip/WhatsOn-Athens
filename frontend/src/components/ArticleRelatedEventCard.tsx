@@ -8,8 +8,8 @@ import {
   eventPath,
   eventSecondaryTitle,
   eventTypeLabels,
-  formatEventScheduleLine,
 } from "@/lib/eventLabels";
+import EventWhenWhere from "@/components/EventWhenWhere";
 import EventFreeBadge from "@/components/EventFreeBadge";
 import { cn } from "@/lib/utils";
 
@@ -31,8 +31,6 @@ export default function ArticleRelatedEventCard({
   const secondary = eventSecondaryTitle(event);
   const typeLabel = eventTypeLabels[event.eventType] ?? eventTypeLabels.other;
   const href = event.slug?.trim() ? eventPath(event.slug) : undefined;
-  const schedule = formatEventScheduleLine(event);
-
   return (
     <aside
       className={cn("not-prose mt-14 w-full text-left", className)}
@@ -58,6 +56,7 @@ export default function ArticleRelatedEventCard({
                 <CalendarDays className="h-3.5 w-3.5 shrink-0" aria-hidden />
                 Σχετική εκδήλωση
               </p>
+              <EventWhenWhere event={event} tone="dark" className="mt-3" />
               {href ? (
                 <Link
                   id="article-related-event-heading"
@@ -85,9 +84,6 @@ export default function ArticleRelatedEventCard({
               <EventFreeBadge event={event} tone="dark" />
             </div>
           </div>
-          {schedule !== "-" ? (
-            <p className="font-article-ui relative mt-4 text-sm font-medium text-white/70">{schedule}</p>
-          ) : null}
           {event.tags.length > 0 ? (
             <p className="relative mt-2 text-xs text-white/50">{event.tags.join(" · ")}</p>
           ) : null}

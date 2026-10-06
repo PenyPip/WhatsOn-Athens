@@ -62,12 +62,15 @@
       "type": "time",
       "description": "Ώρα λήξης (προαιρετικό)."
     },
+    "location": {
+      "type": "string"
+    },
     "venue": {
       "type": "relation",
       "relation": "manyToOne",
       "target": "api::venue.venue",
       "inversedBy": "events",
-      "description": "Φυσικός χώρος — προαιρετικό αν είναι online-only."
+      "description": "Προαιρετική σύνδεση με σινεμά ή θέατρο."
     },
     "online_link": {
       "type": "string",

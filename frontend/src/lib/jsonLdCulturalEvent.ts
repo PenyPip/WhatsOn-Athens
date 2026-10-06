@@ -26,7 +26,9 @@ export function buildCulturalEventJsonLd(
 
   const endDate = eventSchemaStartEnd(ev.endDate, ev.endTime);
   const poster = ev.posterUrl ? resolvePublicAssetUrl(ev.posterUrl) : undefined;
-  const location = buildEventLocation(ev.venueName, ev.venueAddress);
+  const placeName = ev.location?.trim() || ev.venueName;
+  const placeAddress = ev.location?.trim() ? undefined : ev.venueAddress;
+  const location = buildEventLocation(placeName, placeAddress);
   const offers = buildEventOffers(ev.ticketUrl, ev.ticketPrice, pageUrl);
 
   return stripEventJsonLd({

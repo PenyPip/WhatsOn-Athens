@@ -32,6 +32,21 @@ export function formatEventDateRange(event: Pick<StrapiEvent, "startDate" | "end
   return `${formatEventDateEl(start)} - ${formatEventDateEl(end)}`;
 }
 
+/** Ελεύθερη τοποθεσία. Αν λείπει, όνομα/διεύθυνση συνδεδεμένου σινεμά ή θεάτρου, αλλιώς Online. */
+export function eventLocationLabel(
+  event: Pick<StrapiEvent, "location" | "venue" | "onlineLink">,
+): string {
+  const loc = event.location?.trim();
+  if (loc) return loc;
+  const name = event.venue?.name?.trim() || "";
+  const address = event.venue?.address?.trim() || "";
+  if (name && address && !name.includes(address)) return `${name} · ${address}`;
+  if (name) return name;
+  if (address) return address;
+  if (event.onlineLink?.trim()) return "Online";
+  return "";
+}
+
 export function formatEventScheduleLine(
   event: Pick<StrapiEvent, "startDate" | "endDate" | "startTime" | "endTime">,
 ): string {

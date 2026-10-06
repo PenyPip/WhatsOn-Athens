@@ -13,10 +13,10 @@ import {
   eventPath,
   eventSecondaryTitle,
   eventTypeLabels,
-  formatEventScheduleLine,
 } from "@/lib/eventLabels";
 import { splitEventsChronologically } from "@/lib/eventDateFilters";
 import EventFreeBadge from "@/components/EventFreeBadge";
+import EventWhenWhere from "@/components/EventWhenWhere";
 
 const eventTypes = ["all", "cinema", "theater", "music", "art", "food", "other"] as const;
 type EventFilterType = (typeof eventTypes)[number];
@@ -55,15 +55,12 @@ function EventGrid({ events }: { events: StrapiEvent[] }) {
                   </p>
                   <EventFreeBadge event={event} />
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">{formatEventScheduleLine(event)}</p>
+                <EventWhenWhere event={event} className="mt-2" />
                 <h2 className="mt-2 font-display text-lg font-semibold leading-snug text-foreground transition-colors group-hover:text-[#7C2B76]">
                   {title}
                 </h2>
                 {secondary ? (
                   <p className="mt-0.5 text-sm italic text-muted-foreground">{secondary}</p>
-                ) : null}
-                {event.venue?.name ? (
-                  <p className="mt-2 line-clamp-1 text-sm text-muted-foreground">{event.venue.name}</p>
                 ) : null}
                 {event.synopsisEl ? (
                   <p className="mt-2 line-clamp-3 flex-1 text-sm leading-relaxed text-muted-foreground">

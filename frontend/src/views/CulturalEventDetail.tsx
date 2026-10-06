@@ -13,9 +13,9 @@ import {
   eventPath,
   eventSecondaryTitle,
   eventTypeLabels,
-  formatEventScheduleLine,
 } from "@/lib/eventLabels";
 import EventFreeBadge from "@/components/EventFreeBadge";
+import EventWhenWhere from "@/components/EventWhenWhere";
 import { truncateDescription } from "@/lib/siteMetadata";
 import { cn } from "@/lib/utils";
 import { PAGE_BELOW_NAV_CLASS, PAGE_DETAIL_HERO_INNER_CLASS } from "@/components/PageListHeader";
@@ -100,13 +100,13 @@ export default function CulturalEventDetail() {
             {typeLabel}
             {event.featured ? <span className="ml-2 text-amber-200/90">· Featured</span> : null}
           </p>
+          <EventWhenWhere event={event} tone="dark" className="mt-3" />
           <h1 className="mt-3 max-w-3xl font-article text-3xl font-bold leading-tight text-white md:text-4xl lg:text-[2.75rem]">
             {title}
           </h1>
           {secondary ? (
             <p className="mt-2 max-w-2xl font-article text-lg italic text-white/80 md:text-xl">{secondary}</p>
           ) : null}
-          <p className="font-article-ui mt-4 text-sm text-white/65">{formatEventScheduleLine(event)}</p>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <EventFreeBadge event={event} tone="dark" />
             {event.tags.length > 0 ? (

@@ -175,6 +175,75 @@ async function placeRottenTomatoesBesideTitle(strapi) {
   strapi.log.info('[whatson] Rotten Tomatoes δίπλα στον τίτλο στη φόρμα ταινίας.');
 }
 
+/** Φόρμα event: Τοποθεσία ορατή, μετά τις ημερομηνίες. */
+async function placeEventLocationField(strapi) {
+  const store = strapi.store({ type: 'plugin', name: 'content_manager' });
+  const key = 'configuration_content_types::api::event.event';
+  const config = await store.get({ key });
+  const edit = config?.layouts?.edit;
+  if (!config || !Array.isArray(edit)) return;
+
+  const hasLocation = edit.some(
+    (row) => Array.isArray(row) && row.some((cell) => cell?.name === 'location'),
+  );
+
+  let nextEdit = edit;
+  if (!hasLocation) {
+    const cleaned = edit
+      .map((row) => (Array.isArray(row) ? row.filter((cell) => cell?.name !== 'location') : row))
+      .filter((row) => Array.isArray(row) && row.length > 0);
+    const afterIdx = cleaned.findIndex((row) =>
+      row.some((cell) => cell?.name === 'end_time' || cell?.name === 'start_time'),
+    );
+    const insertAt = afterIdx >= 0 ? afterIdx + 1 : cleaned.length;
+    cleaned.splice(insertAt, 0, [{ name: 'location', size: 12 }]);
+    nextEdit = cleaned;
+  }
+
+  const metadatas = { ...(config.metadatas || {}) };
+  const current = metadatas.location || { edit: {}, list: {} };
+  const venueMeta = metadatas.venue || { edit: {}, list: {} };
+  metadatas.location = {
+    ...current,
+    edit: {
+      ...(current.edit || {}),
+      label: 'Τοποθεσία',
+      description: '',
+      placeholder: '',
+      editable: true,
+      visible: true,
+    },
+    list: {
+      ...(current.list || {}),
+      label: 'Τοποθεσία',
+      searchable: true,
+      sortable: false,
+    },
+  };
+  metadatas.venue = {
+    ...venueMeta,
+    edit: {
+      ...(venueMeta.edit || {}),
+      label: 'Σινεμά / θέατρο',
+      description: '',
+    },
+    list: {
+      ...(venueMeta.list || {}),
+      label: 'Σινεμά / θέατρο',
+    },
+  };
+
+  await store.set({
+    key,
+    value: {
+      ...config,
+      metadatas,
+      layouts: { ...config.layouts, edit: nextEdit },
+    },
+  });
+  strapi.log.info('[whatson] Τοποθεσία στη φόρμα event.');
+}
+
 function serveCKEditorConfig(ctx) {
   const fs = require('fs');
   const path = require('path');
@@ -320,6 +389,12 @@ module.exports = {
       await placeRottenTomatoesBesideTitle(strapi);
     } catch (e) {
       strapi.log.warn('[whatson bootstrap rotten tomatoes layout]', e);
+    }
+
+    try {
+      await placeEventLocationField(strapi);
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap event location layout]', e);
     }
 
     try {

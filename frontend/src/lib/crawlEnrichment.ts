@@ -51,6 +51,7 @@ export type CrawlCulturalEvent = {
   endDate?: string;
   startTime?: string;
   endTime?: string;
+  location?: string;
   venueName?: string;
   venueAddress?: string;
   ticketPrice?: number;

@@ -40,8 +40,8 @@ import {
   eventDisplayTitle,
   eventPath,
   eventTypeLabels,
-  formatEventScheduleLine,
 } from "@/lib/eventLabels";
+import EventWhenWhere from "@/components/EventWhenWhere";
 import { formatTodayLabel, formatWeekendRangeLabel, splitEventsChronologically } from "@/lib/eventDateFilters";
 import EventFreeBadge from "@/components/EventFreeBadge";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
@@ -1122,17 +1122,10 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                                 </p>
                                 <EventFreeBadge event={event} />
                               </div>
-                              <p className="mt-1 text-[11px] text-muted-foreground/90">
-                                {formatEventScheduleLine(event)}
-                              </p>
+                              <EventWhenWhere event={event} className="mt-2" />
                               <h3 className="mt-1.5 font-display text-lg font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
                                 {eventDisplayTitle(event)}
                               </h3>
-                              {event.venue?.name ? (
-                                <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{event.venue.name}</p>
-                              ) : event.onlineLink ? (
-                                <p className="mt-1 text-sm text-muted-foreground">Online</p>
-                              ) : null}
                               {event.synopsisEl ? (
                                 <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                                   {event.synopsisEl}
@@ -1209,17 +1202,10 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               </p>
                               <EventFreeBadge event={event} />
                             </div>
-                            <p className="mt-1 text-[11px] text-muted-foreground/90">
-                              {formatEventScheduleLine(event)}
-                            </p>
+                            <EventWhenWhere event={event} className="mt-2" />
                             <h3 className="mt-1.5 font-display text-lg font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
                               {eventDisplayTitle(event)}
                             </h3>
-                            {event.venue?.name ? (
-                              <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{event.venue.name}</p>
-                            ) : event.onlineLink ? (
-                              <p className="mt-1 text-sm text-muted-foreground">Online</p>
-                            ) : null}
                             {event.synopsisEl ? (
                               <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                                 {event.synopsisEl}
@@ -1298,17 +1284,10 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               </p>
                               <EventFreeBadge event={event} />
                             </div>
-                            <p className="mt-1 text-[11px] text-muted-foreground/90">
-                              {formatEventScheduleLine(event)}
-                            </p>
+                            <EventWhenWhere event={event} className="mt-2" />
                             <h3 className="mt-1.5 font-display text-lg font-semibold leading-tight text-foreground transition-colors group-hover:text-primary">
                               {eventDisplayTitle(event)}
                             </h3>
-                            {event.venue?.name ? (
-                              <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">{event.venue.name}</p>
-                            ) : event.onlineLink ? (
-                              <p className="mt-1 text-sm text-muted-foreground">Online</p>
-                            ) : null}
                             {event.synopsisEl ? (
                               <p className="mt-2 line-clamp-2 text-sm leading-relaxed text-muted-foreground">
                                 {event.synopsisEl}

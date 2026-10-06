@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { ExternalLink, Globe, MapPin, Ticket } from "lucide-react";
 import type { StrapiEvent } from "@/lib/api";
-import { eventIsFree, formatEventScheduleLine, formatEventTicketPrice } from "@/lib/eventLabels";
+import { eventIsFree, eventLocationLabel, formatEventScheduleLine, formatEventTicketPrice } from "@/lib/eventLabels";
 import EventFreeBadge from "@/components/EventFreeBadge";
 import { cn } from "@/lib/utils";
 
@@ -84,7 +84,8 @@ export default function EventDetailContent({
   const isFree = eventIsFree(event);
   const priceLabel = isFree ? null : formatEventTicketPrice(event.ticketPrice);
   const venue = event.venue;
-  const hasWhere = Boolean(venue?.name?.trim() || event.onlineLink?.trim());
+  const place = eventLocationLabel(event);
+  const hasWhere = Boolean(place || venue?.googleMapsUrl?.trim() || event.onlineLink?.trim());
   const hasTickets = Boolean(isFree || priceLabel || event.ticketUrl?.trim());
   const hasMeta = Boolean(event.languageSubtitles?.trim());
   const hasSynopsis = Boolean(event.synopsisEl?.trim() || event.synopsisEn?.trim());
@@ -110,18 +111,13 @@ export default function EventDetailContent({
           {hasWhere ? (
             <DetailRow
               variant={variant}
-              label="Πού"
+              label="Τοποθεσία"
               value={
                 <div className="space-y-2">
-                  {venue?.name?.trim() ? (
+                  {place ? (
                     <p className="flex items-start gap-1.5 font-medium">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#7C2B76]" aria-hidden />
-                      <span>
-                        {venue.name.trim()}
-                        {venue.address?.trim() ? (
-                          <span className="mt-0.5 block font-normal text-[#13143E]/75">{venue.address.trim()}</span>
-                        ) : null}
-                      </span>
+                      <span>{place}</span>
                     </p>
                   ) : null}
                   {venue?.googleMapsUrl?.trim() ? (
