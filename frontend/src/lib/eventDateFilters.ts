@@ -32,6 +32,39 @@ export function eventOverlapsWeekend(
   return bounds.start <= to && bounds.end >= from;
 }
 
+/** Τέλος πριν από σήμερα (τοπική μέρα). Πολυήμερο που περιλαμβάνει σήμερα μένει ενεργό. */
+export function eventHasPassed(
+  event: Pick<StrapiEvent, "startDate" | "endDate">,
+  now = new Date(),
+): boolean {
+  const bounds = eventDayBounds(event);
+  if (!bounds) return false;
+  return bounds.end < formatLocalYmd(now);
+}
+
+function compareEventsByStartDesc(
+  a: Pick<StrapiEvent, "startDate">,
+  b: Pick<StrapiEvent, "startDate">,
+): number {
+  return (b.startDate || "").localeCompare(a.startDate || "");
+}
+
+/** Τρέχοντα/προσεχή και παρελθόντα, και τα δύο σε φθίνουσα ημερομηνία έναρξης. */
+export function splitEventsChronologically(
+  events: readonly StrapiEvent[],
+  now = new Date(),
+): { upcoming: StrapiEvent[]; past: StrapiEvent[] } {
+  const upcoming: StrapiEvent[] = [];
+  const past: StrapiEvent[] = [];
+  for (const event of events) {
+    if (eventHasPassed(event, now)) past.push(event);
+    else upcoming.push(event);
+  }
+  upcoming.sort(compareEventsByStartDesc);
+  past.sort(compareEventsByStartDesc);
+  return { upcoming, past };
+}
+
 /** Το event περιλαμβάνει τη σημερινή τοπική μέρα (και πολυήμερα που πέφτουν σήμερα). */
 export function eventOverlapsToday(
   event: Pick<StrapiEvent, "startDate" | "endDate">,
@@ -50,10 +83,7 @@ export function filterEventsForToday(
 ): StrapiEvent[] {
   return [...events]
     .filter((event) => eventOverlapsToday(event, now))
-    .sort((a, b) => {
-      if (a.featured !== b.featured) return a.featured ? -1 : 1;
-      return (a.startDate || "").localeCompare(b.startDate || "");
-    })
+    .sort(compareEventsByStartDesc)
     .slice(0, Math.max(0, limit));
 }
 
@@ -68,10 +98,7 @@ export function filterEventsForWeekend(
 ): StrapiEvent[] {
   return [...events]
     .filter((event) => eventOverlapsWeekend(event, now))
-    .sort((a, b) => {
-      if (a.featured !== b.featured) return a.featured ? -1 : 1;
-      return (a.startDate || "").localeCompare(b.startDate || "");
-    })
+    .sort(compareEventsByStartDesc)
     .slice(0, Math.max(0, limit));
 }
 

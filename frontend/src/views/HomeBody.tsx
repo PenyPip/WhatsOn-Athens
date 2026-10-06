@@ -42,7 +42,7 @@ import {
   eventTypeLabels,
   formatEventScheduleLine,
 } from "@/lib/eventLabels";
-import { formatTodayLabel, formatWeekendRangeLabel } from "@/lib/eventDateFilters";
+import { formatTodayLabel, formatWeekendRangeLabel, splitEventsChronologically } from "@/lib/eventDateFilters";
 import EventFreeBadge from "@/components/EventFreeBadge";
 import MostTalkedAboutHero from "@/components/MostTalkedAboutHero";
 import HomePersonalizedSections from "@/components/HomePersonalizedSections";
@@ -439,7 +439,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
     }
   }, [needsArticles, deferHomeExtra]);
 
-  const eventsFetchLimit = 6;
+  const eventsFetchLimit = 48;
   const { data: events, isLoading: eventsLoading, isError: eventsError } = useEvents(
     needsEventsList && deferHomeExtra,
     eventsFetchLimit,
@@ -489,14 +489,8 @@ export default function HomeBody({ layout }: HomeBodyProps) {
   }, [restaurants]);
   const latestArticles = useMemo(() => articles ?? [], [articles]);
   const latestEvents = useMemo(() => {
-    const list = events ?? [];
-    return [...list]
-      .sort((a, b) => {
-        if (a.featured !== b.featured) return a.featured ? -1 : 1;
-        return (a.startDate || "").localeCompare(b.startDate || "");
-      })
-      .slice(0, 6);
-  }, [events]);
+    return splitEventsChronologically(events ?? [], siteNow).upcoming.slice(0, 6);
+  }, [events, siteNow]);
   const todayLabel = useMemo(() => formatTodayLabel(siteNow), [siteNow]);
   const weekendRangeLabel = useMemo(() => formatWeekendRangeLabel(siteNow), [siteNow]);
   const summerVenuesAwaiting = needsVenues && deferHomeExtra && venues === undefined && venuesLoading;

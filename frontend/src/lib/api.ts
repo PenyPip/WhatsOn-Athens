@@ -1858,7 +1858,7 @@ const ARTICLE_PUBLIC_QUERY: Record<string, string> = {
 };
 
 const EVENT_PUBLIC_QUERY: Record<string, string> = {
-  "sort[0]": "start_date:asc",
+  "sort[0]": "start_date:desc",
   "populate[poster]": "*",
   "populate[venue][fields][0]": "name",
   "populate[venue][fields][1]": "slug",
