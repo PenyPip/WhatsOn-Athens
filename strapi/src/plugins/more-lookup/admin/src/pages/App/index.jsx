@@ -2096,7 +2096,7 @@ const App = () => {
             <Box paddingTop={4} padding={5} background="neutral0" shadow="filterShadow" hasRadius style={cardStyle}>
               <PanelHeader
                 title="Βήμα 2 — Συγχρονισμός προβολών"
-                subtitle="More API (Κυρ–Τρ 3×, Τετ 9×, Πέμ 10:00+14:00 · σινεμά) ή Athinorama (Πέμπτη) → προβολές"
+                subtitle="Το sync σινεμά διαβάζει και Thessaloniki Guide / Athinorama. More API: Κυρ–Τρ 3×, Τετ 9×, Πέμ 10:00+14:00"
                 action={
                   <Flex gap={2} wrap="wrap">
                     {showtimeSyncEnabled ? (
@@ -2116,7 +2116,7 @@ const App = () => {
                           loading={athinoramaSyncing}
                           onClick={syncAthinoramaPending}
                           disabled={syncLoading || loading || athinoramaSyncing}
-                          title="Εκκρεμή σινεμά με Athinorama link · μόνο τρέχουσα εβδομάδα Πέμ→Τετ"
+                          title="Εκκρεμή σινεμά με Thessaloniki Guide ή Athinorama · τρέχουσα εβδομάδα Πέμ→Τετ"
                         >
                           {athinoramaSyncing ? 'Athinorama…' : 'Sync Athinorama'}
                         </Button>
@@ -2124,7 +2124,7 @@ const App = () => {
                           variant="secondary"
                           onClick={syncShowtimesCinema}
                           disabled={syncLoading || loading || athinoramaSyncing}
-                          title="Μόνο προβολές σινεμά (ταινίες) — χαμηλότερο peak μνήμης"
+                          title="Μόνο σινεμά: More και, στο τέλος, Thessaloniki Guide / Athinorama"
                         >
                           Σινεμά
                         </Button>
@@ -2143,7 +2143,7 @@ const App = () => {
                         loading={athinoramaSyncing}
                         onClick={syncAthinoramaPending}
                         disabled={athinoramaSyncing}
-                        title="Εκκρεμή σινεμά με Athinorama link · μόνο τρέχουσα εβδομάδα Πέμ→Τετ"
+                        title="Εκκρεμή σινεμά με Thessaloniki Guide ή Athinorama · τρέχουσα εβδομάδα Πέμ→Τετ"
                       >
                         {athinoramaSyncing ? 'Athinorama…' : 'Sync Athinorama'}
                       </Button>
@@ -2173,8 +2173,8 @@ const App = () => {
                     </Typography>
                     <Typography variant="pi" textColor="neutral600" paddingTop={2} paddingBottom={3}>
                       CMS id του χώρου (ο αριθμός στην επεξεργασία σινεμά, π.χ. #42). Αν έχει
-                      Athinorama link, παίρνει πρόγραμμα από Athinorama — αλλιώς από More. Μετά το
-                      sync εμφανίζεται αναφορά «τι φταίει» αν δεν πέρασαν προβολές.
+                      Thessaloniki Guide, παίρνει πρόγραμμα από εκεί· αλλιώς από Athinorama· αλλιώς
+                      από More. Μετά το sync εμφανίζεται αναφορά «τι φταίει» αν δεν πέρασαν προβολές.
                     </Typography>
                     <Flex gap={3} alignItems="flex-end" wrap="wrap">
                       <Box style={{ minWidth: '10rem', flex: '0 1 12rem' }}>

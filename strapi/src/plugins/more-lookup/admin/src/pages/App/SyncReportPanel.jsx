@@ -202,6 +202,9 @@ function SyncReportPanel({
           </Typography>
           <Typography variant="pi" textColor="primary600">
             Προβολές ταινίας & παραστάσεις από More API
+            {report.programSource
+              ? ` · Thessaloniki Guide ${report.programSource.guideSynced || 0}/${report.programSource.guidePending || 0} · Athinorama ${report.programSource.athinoramaSynced || 0}/${report.programSource.athinoramaPending || 0}`
+              : ''}
           </Typography>
         </Flex>
         {durationSec ? (

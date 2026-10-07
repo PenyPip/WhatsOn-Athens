@@ -227,6 +227,14 @@ function combineSyncReports(reports) {
     0,
   );
 
+  const programSource = merged.programSource;
+  const programLine =
+    programSource && (programSource.pendingCount || programSource.synced || programSource.created)
+      ? ` · Thessaloniki Guide ${programSource.guideSynced || 0}/${programSource.guidePending || 0}` +
+        ` · Athinorama ${programSource.athinoramaSynced || 0}/${programSource.athinoramaPending || 0}` +
+        ` · +${Number(programSource.created || 0)} από πρόγραμμα`
+      : '';
+
   merged.message =
     `Νέες: ${merged.created} (ταινίες: ${merged.createdFromMovies} · σινεμά bundle: ${merged.createdFromVenues}` +
     ` · θέατρο: ${merged.createdFromTheaterShows} · θέατρο bundle: ${merged.createdFromTheaterVenues})` +
@@ -235,7 +243,8 @@ function combineSyncReports(reports) {
     (merged.createdTheaterVenues ? ` · νέοι χώροι θεάτρου: ${merged.createdTheaterVenues}` : '') +
     (merged.updatedSoldOut ? ` · sold out ενημ.: ${merged.updatedSoldOut}` : '') +
     ` · χωρίς venue_id: ${merged.skippedNoVenue}` +
-    ` · άγνωστο eventId: ${merged.skippedUnknownEventId}`;
+    ` · άγνωστο eventId: ${merged.skippedUnknownEventId}` +
+    programLine;
 
   return merged;
 }

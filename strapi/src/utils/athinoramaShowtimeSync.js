@@ -550,8 +550,13 @@ async function syncPendingAthinoramaVenues(
     results: [],
   };
 
+  const guidePendingAll = allPending.filter((venue) => venue.guideLink);
+  const athinoramaPendingAll = allPending.filter((venue) => !venue.guideLink);
+  report.guidePending = guidePendingAll.length;
+  report.athinoramaPending = athinoramaPendingAll.length;
+
   if (!allPending.length) {
-    report.message = `Κανένα εκκρεμές σινεμά με Athinorama link για ${weekLabel}.`;
+    report.message = `Κανένα εκκρεμές σινεμά με Thessaloniki Guide ή Athinorama για ${weekLabel}.`;
     return report;
   }
 
@@ -562,7 +567,8 @@ async function syncPendingAthinoramaVenues(
     const retryEmpty = allPending.filter((v) => v.retryEmptyComplete).length;
     const retryNote = retryEmpty ? ` · ${retryEmpty} complete χωρίς προβολές (retry)` : '';
     onProgress(
-      `Athinorama: ${pending.length} σινεμά batch${deferredNote}${retryNote} · εβδομάδα ${weekLabel}`,
+      `Thessaloniki Guide ${guidePendingAll.length} · Athinorama ${athinoramaPendingAll.length}` +
+        `${deferredNote}${retryNote} · εβδομάδα ${weekLabel}`,
     );
   }
 
@@ -599,7 +605,10 @@ async function syncPendingAthinoramaVenues(
   let batchResults =
     pending.length > 0
       ? await mapPool(pending, VENUE_CONCURRENCY, async (venue, index) =>
-          runOne(venue, `Athinorama ${index + 1}/${pending.length}: ${venue.name}`),
+          runOne(
+            venue,
+            `${venue.guideLink ? 'Thessaloniki Guide' : 'Athinorama'} ${index + 1}/${pending.length}: ${venue.name}`,
+          ),
         )
       : [];
 
@@ -609,16 +618,18 @@ async function syncPendingAthinoramaVenues(
     const err = String(batchResults[i]?.error || '');
     if (/timeout/i.test(err)) timeoutIdx.push(i);
   }
-  if (timeoutIdx.length && typeof onProgress === 'function') {
+    if (timeoutIdx.length && typeof onProgress === 'function') {
     onProgress(
-      `Athinorama: ${timeoutIdx.length} timeout → serial retry (${Math.round(DEFERRED_FETCH_TIMEOUT_MS / 1000)}s)…`,
+      `Πρόγραμμα σινεμά: ${timeoutIdx.length} timeout → serial retry (${Math.round(DEFERRED_FETCH_TIMEOUT_MS / 1000)}s)…`,
     );
   }
   for (const i of timeoutIdx) {
     const venue = pending[i];
     if (!venue) continue;
     if (typeof onProgress === 'function') {
-      onProgress(`Athinorama timeout-retry: ${venue.name} (#${venue.id})`);
+      onProgress(
+        `${venue.guideLink ? 'Thessaloniki Guide' : 'Athinorama'} timeout-retry: ${venue.name} (#${venue.id})`,
+      );
     }
     try {
       batchResults[i] = await syncOneVenueFromAthinorama(strapi, venue, cmsMovies, {
@@ -641,7 +652,7 @@ async function syncPendingAthinoramaVenues(
     deferredResults.push(
       await runOne(
         venue,
-        `Athinorama deferred ${i + 1}/${deferredPending.length} (μόνο): ${venue.name} (#${venue.id})`,
+        `${venue.guideLink ? 'Thessaloniki Guide' : 'Athinorama'} deferred ${i + 1}/${deferredPending.length} (μόνο): ${venue.name} (#${venue.id})`,
       ),
     );
   }
@@ -705,8 +716,19 @@ async function syncPendingAthinoramaVenues(
   report.weekExpected = weekExpectedTotal;
   report.source = 'athinorama';
 
+  const guideIds = new Set(guidePendingAll.map((venue) => Number(venue.id)));
+  let guideSynced = 0;
+  let athinoramaSynced = 0;
+  for (const row of results) {
+    if (!row?.ok) continue;
+    if (guideIds.has(Number(row.venueId))) guideSynced += 1;
+    else athinoramaSynced += 1;
+  }
+  report.guideSynced = guideSynced;
+  report.athinoramaSynced = athinoramaSynced;
+
   const deferredOk = deferredResults.filter((r) => r?.ok).length;
-  report.message = `Athinorama ${weekLabel}: ${report.synced}/${allPending.length} OK · +${report.createdTotal} νέες · ${alreadyExistsTotal} υπήρχαν · ${report.becameComplete} complete${
+  report.message = `Thessaloniki Guide ${guideSynced}/${guidePendingAll.length} · Athinorama ${athinoramaSynced}/${athinoramaPendingAll.length} · ${weekLabel}: +${report.createdTotal} νέες · ${alreadyExistsTotal} υπήρχαν · ${report.becameComplete} complete${
     report.failed ? ` · ${report.failed} αποτυχίες` : ''
   }${unmatchedMoviesTotal ? ` · ${unmatchedMoviesTotal} ταινίες χωρίς CMS` : ''}${
     deferredPending.length

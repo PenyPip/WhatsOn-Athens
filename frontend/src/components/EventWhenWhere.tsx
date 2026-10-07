@@ -1,6 +1,6 @@
 import { MapPin } from "lucide-react";
 import type { StrapiEvent } from "@/lib/api";
-import { eventLocationLabel, eventLocationMapsUrl, formatEventScheduleLine } from "@/lib/eventLabels";
+import { eventLocationLabel, eventLocationMapsUrl, formatEventWhenCompact } from "@/lib/eventLabels";
 import { cn } from "@/lib/utils";
 
 type EventWhenWhereProps = {
@@ -21,7 +21,7 @@ type EventWhenWhereProps = {
 
 /** Ημερομηνία και τοποθεσία — η πιο εμφανής πληροφορία πάνω από τον τίτλο. */
 export default function EventWhenWhere({ event, tone = "light", className }: EventWhenWhereProps) {
-  const when = formatEventScheduleLine(event);
+  const when = formatEventWhenCompact(event);
   const where = eventLocationLabel(event);
   const mapsUrl = eventLocationMapsUrl(event);
   const hasWhen = Boolean(when && when !== "-");
@@ -53,8 +53,8 @@ export default function EventWhenWhere({ event, tone = "light", className }: Eve
       {hasWhen ? (
         <p
           className={cn(
-            "font-display font-bold leading-tight tracking-tight",
-            dark ? "text-xl text-white md:text-2xl" : "text-lg text-[#7C2B76] sm:text-xl",
+            "inline-block max-w-full rounded-md px-2.5 py-1 font-body text-sm font-bold leading-snug tracking-tight",
+            dark ? "bg-white/15 text-white" : "bg-[#7C2B76]/10 text-[#7C2B76]",
           )}
         >
           {when}

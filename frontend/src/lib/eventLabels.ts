@@ -32,6 +32,33 @@ export function formatEventDateRange(event: Pick<StrapiEvent, "startDate" | "end
   return `${formatEventDateEl(start)} - ${formatEventDateEl(end)}`;
 }
 
+const EVENT_MONTHS_SHORT = ["Ιαν", "Φεβ", "Μαρ", "Απρ", "Μαΐ", "Ιουν", "Ιουλ", "Αυγ", "Σεπ", "Οκτ", "Νοε", "Δεκ"];
+
+function parseEventYmd(raw: string | undefined): { y: number; m: number; d: number } | null {
+  const match = String(raw || "").trim().slice(0, 10).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!match) return null;
+  const y = Number(match[1]);
+  const m = Number(match[2]);
+  const d = Number(match[3]);
+  if (m < 1 || m > 12 || d < 1 || d > 31) return null;
+  return { y, m, d };
+}
+
+/** Σύντομο εύρος για κάρτες: «9–11 Οκτ 2026», «30 Σεπ – 11 Οκτ 2026». */
+export function formatEventDateRangeCompact(event: Pick<StrapiEvent, "startDate" | "endDate">): string {
+  const start = parseEventYmd(event.startDate);
+  if (!start) return formatEventDateRange(event);
+  const end = parseEventYmd(event.endDate);
+  const startMonth = EVENT_MONTHS_SHORT[start.m - 1];
+  if (!end || (end.y === start.y && end.m === start.m && end.d === start.d)) {
+    return `${start.d} ${startMonth} ${start.y}`;
+  }
+  const endMonth = EVENT_MONTHS_SHORT[end.m - 1];
+  if (start.y === end.y && start.m === end.m) return `${start.d}–${end.d} ${startMonth} ${start.y}`;
+  if (start.y === end.y) return `${start.d} ${startMonth} – ${end.d} ${endMonth} ${start.y}`;
+  return `${start.d} ${startMonth} ${start.y} – ${end.d} ${endMonth} ${end.y}`;
+}
+
 function safeHttpUrl(raw: string | undefined): string {
   const t = typeof raw === "string" ? raw.trim() : "";
   if (!t) return "";
@@ -75,6 +102,18 @@ export function formatEventScheduleLine(
   const startT = formatEventTimeEl(event.startTime);
   const endT = formatEventTimeEl(event.endTime);
   if (!startT) return datePart;
+  if (endT) return `${datePart} · ${startT}–${endT}`;
+  return `${datePart} · ${startT}`;
+}
+
+/** Ίδιο με το αναλυτικό, αλλά με σύντομη ημερομηνία για τις κάρτες. */
+export function formatEventWhenCompact(
+  event: Pick<StrapiEvent, "startDate" | "endDate" | "startTime" | "endTime">,
+): string {
+  const datePart = formatEventDateRangeCompact(event);
+  const startT = formatEventTimeEl(event.startTime);
+  const endT = formatEventTimeEl(event.endTime);
+  if (!startT || datePart === "-") return datePart;
   if (endT) return `${datePart} · ${startT}–${endT}`;
   return `${datePart} · ${startT}`;
 }

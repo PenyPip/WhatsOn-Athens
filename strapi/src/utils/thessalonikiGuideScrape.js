@@ -1,10 +1,7 @@
 'use strict';
 
-const {
-  parseAuditoriumScheduleText,
-  normalizeHallName,
-  isSummerScreeningLabel,
-} = require('./programTextParser');
+const { normalizeHallName, isSummerScreeningLabel } = require('./programTextParser');
+const { buildAthensDatetime, formatAthensWallClock } = require('./athensTime');
 
 const FETCH_TIMEOUT_MS = Number(process.env.ATHINORAMA_FETCH_TIMEOUT_MS || 45_000);
 const USER_AGENT =
@@ -61,16 +58,114 @@ function rowCells(rowHtml) {
 
 function splitHallLabel(raw) {
   const text = String(raw || '').replace(/\s+/g, ' ').trim();
-  const wrapped = text.match(/^(.*?)\s*\(([^)]+)\)\s*$/);
+  const wrapped = text.match(/^(.*?)\s*\(([^)]+)\)\s*$/u);
   if (!wrapped) return { hall: text, note: null };
   const inner = wrapped[2].trim();
   if (/μεταγλ|υποτ/i.test(inner)) return { hall: wrapped[1].trim(), note: inner };
   return { hall: text, note: null };
 }
 
+function mergeNotes(...parts) {
+  const out = [];
+  for (const part of parts) {
+    const text = String(part || '').replace(/\s+/g, ' ').trim();
+    if (!text) continue;
+    if (out.some((item) => item.toLocaleLowerCase('el') === text.toLocaleLowerCase('el'))) continue;
+    out.push(text);
+  }
+  return out.length ? out.join(' · ') : null;
+}
+
+/**
+ * Κεφαλίδα πίνακα → αίθουσα ή σημείωση.
+ * «Αίθουσα 2 (Μεταγλ.)», «Αίθουσα 8 (Θερινή)», «Αίθουσα Τορνές | Ταινιοθήκη: …».
+ * Ετικέτες σαν «Horror week» ή σκέτο «(Μεταγλ.)» δεν είναι αίθουσα.
+ */
+function classifyHallHeader(raw) {
+  let text = String(raw || '').replace(/\s+/g, ' ').trim();
+  let seriesNote = null;
+  const pipeIdx = text.indexOf('|');
+  if (pipeIdx >= 0) {
+    seriesNote = text.slice(pipeIdx + 1).trim() || null;
+    text = text.slice(0, pipeIdx).trim();
+  }
+
+  let { hall, note } = splitHallLabel(text);
+  let summerFromLabel = false;
+  const summerWrap = String(hall || '').match(/^(.*?)\s*\(([^)]*θεριν[^)]*)\)\s*$/iu);
+  if (summerWrap) {
+    hall = summerWrap[1].trim();
+    summerFromLabel = true;
+  }
+
+  const isHall = /^α[ίι]θουσα(?=\s|$|\()/iu.test(hall);
+  if (!hall || !isHall) {
+    return {
+      hallName: null,
+      note: mergeNotes(note, hall && !isHall ? hall : null, seriesNote),
+      summerFromLabel,
+    };
+  }
+
+  return {
+    hallName: normalizeHallName(hall),
+    note: mergeNotes(note, seriesNote),
+    summerFromLabel,
+  };
+}
+
 function dayToken(label) {
   const m = String(label || '').match(/^(Δε|Τρ|Τε|Πε|Πα|Σα|Κυ)(?=\s|\d|$)/u);
   return m ? m[1] : '';
+}
+
+function athensYmd(date) {
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Europe/Athens',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(date instanceof Date ? date : new Date());
+  const num = (type) => Number(parts.find((p) => p.type === type)?.value);
+  return { year: num('year'), month: num('month'), day: num('day') };
+}
+
+/** «Πε 1/10» → ημερολογιακή μέρα. Χρονιά από το σήμερα· κύλιση αν η μέρα είναι πολύ πίσω ή πολύ μπροστά. */
+function guideDateFromLabel(label, now = new Date()) {
+  const m = String(label || '').match(/^(Δε|Τρ|Τε|Πε|Πα|Σα|Κυ)\s+(\d{1,2})\/(\d{1,2})/u);
+  if (!m) return null;
+  const day = Number(m[2]);
+  const month = Number(m[3]);
+  if (day < 1 || day > 31 || month < 1 || month > 12) return null;
+  const today = athensYmd(now);
+  let year = today.year;
+  const diffDays = (Date.UTC(year, month - 1, day) - Date.UTC(today.year, today.month - 1, today.day)) / 86400000;
+  if (diffDays < -45) year += 1;
+  else if (diffDays > 300) year -= 1;
+  return new Date(year, month - 1, day);
+}
+
+function clockFromLabel(label) {
+  const m = String(label || '').match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) return null;
+  const hour = Number(m[1]);
+  const minute = Number(m[2]);
+  if (hour > 23 || minute > 59) return null;
+  return { hour, minute };
+}
+
+function pageIsSummerCinema(html) {
+  const h1 = String(html || '').match(/<h1\b[^>]*>([\s\S]*?)<\/h1>/i);
+  if (!h1) return false;
+  const text = decodeEntities(h1[1].replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim();
+  return isSummerScreeningLabel(text);
+}
+
+function showtimeInWeek(datetime, weekBounds) {
+  if (!weekBounds?.start || !weekBounds?.end) return true;
+  const t = datetime instanceof Date ? datetime.getTime() : new Date(datetime).getTime();
+  if (Number.isNaN(t)) return false;
+  return t >= new Date(weekBounds.start).getTime() && t <= new Date(weekBounds.end).getTime();
 }
 
 function timesFromLines(lines) {
@@ -83,8 +178,9 @@ function timesFromLines(lines) {
 }
 
 function movieArticles(html) {
-  const start = String(html || '').search(/Ταινίες της Εβδομάδας/i);
-  const slice = start >= 0 ? html.slice(start) : String(html || '');
+  const source = String(html || '');
+  const start = source.search(/Ταινίες της [Εε]βδομάδας/);
+  const slice = start >= 0 ? source.slice(start) : source;
   return [...slice.matchAll(/<article\b[^>]*itemtype=["']https?:\/\/schema\.org\/Movie["'][^>]*>([\s\S]*?)<\/article>/gi)].map(
     (m) => m[1],
   );
@@ -103,19 +199,21 @@ function tablesFromArticle(articleHtml) {
   return [...String(articleHtml || '').matchAll(/<table\b[^>]*>([\s\S]*?)<\/table>/gi)].map((m) => m[1]);
 }
 
+function isDayRow(cells) {
+  const hits = cells.filter((cell) => dayToken(cellLines(cell).join(' ')));
+  return hits.length >= 3;
+}
+
 /**
  * HTML κινηματογράφου Thessaloniki Guide → movies με hallName ανά προβολή.
- * Πίνακας: αίθουσα, ημέρες (Πε 1/10 …), ώρες ανά ημέρα.
+ * Πίνακας multiplex: αίθουσα, ημέρες (Πε 1/10 …), ώρες.
+ * Θερινό χωρίς αίθουσα: κενή πρώτη γραμμή ή μόνο ημέρες + ώρες. Το «–» δεν είναι προβολή.
+ * Οι ημερομηνίες είναι αυτές που γράφει η σελίδα (και το «Προσεχώς»).
  */
-function moviesFromThessalonikiGuideHtml(html, { weekBounds = null } = {}) {
-  if (!weekBounds?.start || !weekBounds?.end) {
-    return { movies: [], programText: '', stats: { cardCount: 0, scheduleLines: 0, showtimeCount: 0, movieCount: 0 } };
-  }
-
+function moviesFromThessalonikiGuideHtml(html, { weekBounds = null, now = new Date() } = {}) {
+  const pageSummer = pageIsSummerCinema(html);
   const movies = [];
-  const textBlocks = [];
   let scheduleLines = 0;
-  let showtimeCount = 0;
 
   for (const article of movieArticles(html)) {
     const title = movieTitle(article);
@@ -125,30 +223,48 @@ function moviesFromThessalonikiGuideHtml(html, { weekBounds = null } = {}) {
 
     for (const table of tablesFromArticle(article)) {
       const rows = [...table.matchAll(/<tr\b[^>]*>([\s\S]*?)<\/tr>/gi)].map((m) => m[1]);
-      if (rows.length < 3) continue;
-      const hallRaw = cellLines(rowCells(rows[0])[0] || []).join(' ');
-      const { hall, note } = splitHallLabel(hallRaw);
-      if (!hall) continue;
-      const summerScreening = isSummerScreeningLabel(hall) || isSummerScreeningLabel(note);
-      const hallName = summerScreening ? null : normalizeHallName(hall);
-      const days = rowCells(rows[1]).map((cell) => dayToken(cellLines(cell).join(' ')));
-      const timeCells = rowCells(rows[2]).map((cell) => timesFromLines(cellLines(cell)));
-      const width = Math.min(days.length, timeCells.length);
+      if (rows.length < 2) continue;
+      const dayRowIndex = rows.findIndex((row) => isDayRow(rowCells(row)));
+      if (dayRowIndex < 0 || dayRowIndex + 1 >= rows.length) continue;
+
+      const hallRaw = dayRowIndex > 0 ? cellLines(rowCells(rows[dayRowIndex - 1])[0] || []).join(' ') : '';
+      const classified = classifyHallHeader(hallRaw);
+      const note = classified.note;
+      const hallName = classified.hallName;
+      const summerScreening =
+        pageSummer || classified.summerFromLabel || isSummerScreeningLabel(hallName) || isSummerScreeningLabel(note);
+      const dayCells = rowCells(rows[dayRowIndex]);
+      const timeCells = rowCells(rows[dayRowIndex + 1]).map((cell) => timesFromLines(cellLines(cell)));
+      const width = Math.min(dayCells.length, timeCells.length);
 
       for (let i = 0; i < width; i += 1) {
-        const day = days[i];
+        const dayLabel = cellLines(dayCells[i]).join(' ');
         const times = timeCells[i];
-        if (!day || !times.length) continue;
+        const date = guideDateFromLabel(dayLabel, now);
+        if (!dayToken(dayLabel) || !date || !times.length) continue;
         scheduleLines += 1;
-        const schedule = note ? `${day}: ${times.join(' / ')} (${note})` : `${day}: ${times.join(' / ')}`;
-        const roomLabel = hallName || hall;
-        scheduleTextLines.push(`${roomLabel} ${schedule}`);
-        showtimes.push(
-          ...parseAuditoriumScheduleText(schedule, weekBounds.start, weekBounds.end, {
-            summerScreening,
-            hallName,
-          }),
-        );
+        const clocks = times.map(clockFromLabel).filter(Boolean);
+        if (!clocks.length) continue;
+        const printed = `${dayToken(dayLabel)} ${date.getDate()}/${date.getMonth() + 1}`;
+        const schedule = note
+          ? `${printed}: ${clocks.map((c) => `${c.hour}:${String(c.minute).padStart(2, '0')}`).join(' / ')} (${note})`
+          : `${printed}: ${clocks.map((c) => `${c.hour}:${String(c.minute).padStart(2, '0')}`).join(' / ')}`;
+        const roomLabel = hallName || (summerScreening ? 'Θερινό' : '');
+        scheduleTextLines.push(roomLabel ? `${roomLabel} ${schedule}` : schedule);
+
+        for (const clock of clocks) {
+          const datetime = buildAthensDatetime(date, clock.hour, clock.minute);
+          if (!(datetime instanceof Date) || Number.isNaN(datetime.getTime())) continue;
+          const wall = formatAthensWallClock(datetime);
+          showtimes.push({
+            dayLabel: wall.dayLabel,
+            timeLabel: wall.timeLabel,
+            datetime,
+            note: note || null,
+            summer_screening: summerScreening === true,
+            ...(hallName ? { hallName } : {}),
+          });
+        }
       }
     }
 
@@ -159,24 +275,45 @@ function moviesFromThessalonikiGuideHtml(html, { weekBounds = null } = {}) {
     }
     const unique = [...byKey.values()].sort((a, b) => a.datetime - b.datetime);
     if (!unique.length) continue;
-    showtimeCount += unique.length;
     movies.push({
       title,
       scheduleText: scheduleTextLines.join('\n'),
       showtimes: unique,
     });
-    textBlocks.push([title, 'Προβολές', ...scheduleTextLines, ''].join('\n'));
   }
 
-  movies.sort((a, b) => a.title.localeCompare(b.title, 'el'));
+  const warnings = [];
+  const hasWeek = Boolean(weekBounds?.start && weekBounds?.end);
+  const anyInWeek = hasWeek && movies.some((movie) => movie.showtimes.some((st) => showtimeInWeek(st.datetime, weekBounds)));
+  let picked = movies;
+  if (anyInWeek) {
+    picked = movies
+      .map((movie) => ({
+        ...movie,
+        showtimes: movie.showtimes.filter((st) => showtimeInWeek(st.datetime, weekBounds)),
+      }))
+      .filter((movie) => movie.showtimes.length);
+  } else if (hasWeek && movies.length) {
+    warnings.push(
+      'Οι προβολές της σελίδας είναι εκτός της επιλεγμένης εβδομάδας· εμφανίζεται το πρόγραμμα όπως είναι στη σελίδα.',
+    );
+  }
+
+  picked.sort((a, b) => a.title.localeCompare(b.title, 'el'));
+  const showtimeCount = picked.reduce((sum, movie) => sum + movie.showtimes.length, 0);
+  const textBlocks = picked.map((movie) =>
+    [movie.title, 'Προβολές', ...String(movie.scheduleText || '').split('\n').filter(Boolean), ''].join('\n'),
+  );
+
   return {
-    movies,
+    movies: picked,
     programText: textBlocks.join('\n').trim(),
+    warnings,
     stats: {
-      cardCount: movies.length,
+      cardCount: picked.length,
       scheduleLines,
       showtimeCount,
-      movieCount: movies.length,
+      movieCount: picked.length,
     },
   };
 }
@@ -223,7 +360,7 @@ async function scrapeThessalonikiGuideCinemaProgram(url, { weekBounds = null, ti
 
   const parsed = moviesFromThessalonikiGuideHtml(fetched.html, { weekBounds });
   const movies = parsed.movies.filter((m) => (m.showtimes || []).length > 0);
-  const warnings = [];
+  const warnings = [...(parsed.warnings || [])];
   if (movies.length) {
     warnings.push(
       `Thessaloniki Guide: ${parsed.stats.scheduleLines} γραμμές → ${parsed.stats.showtimeCount} προβολές σε ${movies.length} ταινίες.`,

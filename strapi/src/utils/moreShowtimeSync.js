@@ -3940,11 +3940,27 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     0,
   );
 
+  let programSourceReport = null;
+  if (runCinema) {
+    progress('Athinorama / Thessaloniki Guide: εκκρεμή σινεμά…');
+    const { syncPendingAthinoramaVenues } = require('./athinoramaShowtimeSync');
+    programSourceReport = await syncPendingAthinoramaVenues(strapi, {
+      now,
+      includeDrafts: true,
+      onProgress: progress,
+    });
+    if (programSourceReport?.message) progress(programSourceReport.message);
+  }
+
+  const programCreated = Number(programSourceReport?.createdTotal || 0);
+  const programAlreadyExists = Number(programSourceReport?.alreadyExists || 0);
+
   const createdFromBuckets =
     movieReport.createdFromMovies +
     movieReport.createdFromVenues +
     theaterReport.createdFromTheaterShows +
-    theaterReport.createdFromTheaterVenues;
+    theaterReport.createdFromTheaterVenues +
+    programCreated;
 
   // Ανεξάρτητη επαλήθευση: μέτρα όσες more_sync εγγραφές μπήκαν όντως στη βάση σε αυτό
   // το τρέξιμο (createdAt >= started). Αν η αναφορά υπολείπεται, εδώ θα φανεί η απόκλιση.
@@ -3954,11 +3970,13 @@ async function syncShowtimesFromMore(strapi, options = {}) {
   // ώστε το «Νέες» να μην υπολείπεται ποτέ των πραγματικά προστιθέμενων προβολών.
   const created = Math.max(createdFromBuckets, dbCreated.total);
 
-  if (createdFromBuckets !== dbCreated.total) {
+  const moreCreatedFromBuckets = createdFromBuckets - programCreated;
+  if (moreCreatedFromBuckets !== dbCreated.total) {
     strapi.log.warn(
-      `[more-showtime-sync] ασυμφωνία «Νέες»: μετρητές=${createdFromBuckets} ` +
+      `[more-showtime-sync] ασυμφωνία «Νέες»: μετρητές=${moreCreatedFromBuckets} ` +
         `(ταινίες=${movieReport.createdFromMovies} σινεμά_bundle=${movieReport.createdFromVenues} ` +
         `θέατρο=${theaterReport.createdFromTheaterShows} θέατρο_bundle=${theaterReport.createdFromTheaterVenues}) ` +
+        `· οδηγός/Athinorama=${programCreated} ` +
         `· πραγματικά_στη_βάση=${dbCreated.total} (showtimes=${dbCreated.showtimes} performances=${dbCreated.performances})`,
     );
   }
@@ -3989,7 +4007,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     createdCinemaVenues: movieReport.createdCinemaVenues,
     createdCinemaVenuesList: movieReport.createdCinemaVenuesList,
     venueUpdatedStatuses: movieReport.venueUpdatedStatuses,
-    alreadyExists: movieReport.alreadyExists + theaterReport.alreadyExists,
+    alreadyExists: movieReport.alreadyExists + theaterReport.alreadyExists + programAlreadyExists,
     dedupedSummerShowtimes: movieReport.dedupedSummerShowtimes || 0,
     updatedSoldOut: theaterReport.updatedSoldOut,
     skippedPast: movieReport.skippedPast + theaterReport.skippedPast,
@@ -4011,7 +4029,27 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     persistedEventIdCache: persistedEventIds.entries,
     persistedEventIdEntriesUpdated: persistedEventIds.persisted,
     skippedInvalidDate: movieReport.skippedInvalidDate + theaterReport.skippedInvalidDate,
-    errors: [...movieReport.errors, ...theaterReport.errors],
+    errors: [
+      ...movieReport.errors,
+      ...theaterReport.errors,
+      ...(programSourceReport?.results || [])
+        .filter((row) => row && row.ok === false)
+        .map((row) => `${row.venueName || row.venueId}: ${row.error || 'αποτυχία προγράμματος'}`),
+    ],
+    programSource: programSourceReport
+      ? {
+          pendingCount: programSourceReport.pendingCount,
+          synced: programSourceReport.synced,
+          failed: programSourceReport.failed,
+          created: programCreated,
+          alreadyExists: programAlreadyExists,
+          guidePending: programSourceReport.guidePending || 0,
+          guideSynced: programSourceReport.guideSynced || 0,
+          athinoramaPending: programSourceReport.athinoramaPending || 0,
+          athinoramaSynced: programSourceReport.athinoramaSynced || 0,
+          message: programSourceReport.message,
+        }
+      : null,
     byMovie: movieReport.byMovie,
     byVenue: movieReport.byVenue,
     byTheaterShow: theaterReport.byTheaterShow,
@@ -4031,7 +4069,7 @@ async function syncShowtimesFromMore(strapi, options = {}) {
     scopePrefix +
     `Νέες: ${created} (ταινίες: ${report.createdFromMovies} · σινεμά bundle: ${report.createdFromVenues}` +
     ` · θέατρο: ${report.createdFromTheaterShows} · θέατρο bundle: ${report.createdFromTheaterVenues})` +
-    (dbCreated.total !== createdFromBuckets
+    (dbCreated.total !== moreCreatedFromBuckets
       ? ` · στη βάση: ${dbCreated.total} (showtimes ${dbCreated.showtimes} · παραστάσεις ${dbCreated.performances})`
       : '') +
     ` · υπήρχαν: ${report.alreadyExists}` +
@@ -4068,6 +4106,9 @@ async function syncShowtimesFromMore(strapi, options = {}) {
       : '') +
     (report.scrapeTitleUnmatched
       ? ` · χωρίς ταύτιση τίτλου: ${report.scrapeTitleUnmatched}`
+      : '') +
+    (programSourceReport
+      ? ` · οδηγός/Athinorama: ${programSourceReport.synced || 0}/${programSourceReport.pendingCount || 0} · +${programCreated}`
       : '');
 
   strapi.log.info(
