@@ -535,6 +535,9 @@ export default function App() {
       const data = res?.data;
       if (!data?.ok) throw new Error(data?.error || 'Αποτυχία ανάλυσης');
       setPreview(data);
+      const creatable = Number(data.summary?.creatableShowtimes || 0);
+      const past = Number(data.summary?.pastShowtimes || 0);
+      setShowPastShowtimes(creatable === 0 && past > 0);
       if (mode === 'athinorama' && data?.athinorama?.programText) {
         setText(data.athinorama.programText);
         setInputMode('text');

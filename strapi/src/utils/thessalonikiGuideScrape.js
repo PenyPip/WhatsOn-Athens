@@ -284,13 +284,36 @@ function moviesFromThessalonikiGuideHtml(html, { weekBounds = null, now = new Da
 
   const warnings = [];
   const hasWeek = Boolean(weekBounds?.start && weekBounds?.end);
-  const anyInWeek = hasWeek && movies.some((movie) => movie.showtimes.some((st) => showtimeInWeek(st.datetime, weekBounds)));
+  const nowMs = (now instanceof Date ? now : new Date()).getTime();
+  const inWeek = (st) => showtimeInWeek(st.datetime, weekBounds);
+  const isFuture = (st) => st.datetime.getTime() >= nowMs;
+  const anyFutureInWeek =
+    hasWeek && movies.some((movie) => movie.showtimes.some((st) => inWeek(st) && isFuture(st)));
+  const anyInWeek = hasWeek && movies.some((movie) => movie.showtimes.some((st) => inWeek(st)));
   let picked = movies;
-  if (anyInWeek) {
+  if (anyFutureInWeek) {
     picked = movies
       .map((movie) => ({
         ...movie,
-        showtimes: movie.showtimes.filter((st) => showtimeInWeek(st.datetime, weekBounds)),
+        showtimes: movie.showtimes.filter((st) => inWeek(st)),
+      }))
+      .filter((movie) => movie.showtimes.length);
+  } else if (hasWeek && movies.some((movie) => movie.showtimes.some(isFuture))) {
+    // Η εβδομάδα του πίνακα έχει μόνο παρελθόν (π.χ. Φαργκάνη Τετάρτη). Κράτα και το «Προσεχώς».
+    picked = movies
+      .map((movie) => ({
+        ...movie,
+        showtimes: movie.showtimes.filter((st) => inWeek(st) || isFuture(st)),
+      }))
+      .filter((movie) => movie.showtimes.length);
+    warnings.push(
+      'Η επιλεγμένη εβδομάδα δεν έχει μελλοντικές προβολές· κρατήθηκε και το «Προσεχώς» της σελίδας.',
+    );
+  } else if (anyInWeek) {
+    picked = movies
+      .map((movie) => ({
+        ...movie,
+        showtimes: movie.showtimes.filter((st) => inWeek(st)),
       }))
       .filter((movie) => movie.showtimes.length);
   } else if (hasWeek && movies.length) {
@@ -301,6 +324,19 @@ function moviesFromThessalonikiGuideHtml(html, { weekBounds = null, now = new Da
 
   picked.sort((a, b) => a.title.localeCompare(b.title, 'el'));
   const showtimeCount = picked.reduce((sum, movie) => sum + movie.showtimes.length, 0);
+  const anyFuture = picked.some((movie) => movie.showtimes.some(isFuture));
+  if (picked.length && !anyFuture) {
+    const stamps = picked.flatMap((movie) => movie.showtimes.map((st) => st.datetime.getTime()));
+    const from = athensYmd(new Date(Math.min(...stamps)));
+    const to = athensYmd(new Date(Math.max(...stamps)));
+    const span =
+      from.day === to.day && from.month === to.month
+        ? `${from.day}/${from.month}`
+        : `${from.day}/${from.month}–${to.day}/${to.month}`;
+    warnings.push(
+      `Διαβάστηκαν ${showtimeCount} προβολές (${span}), αλλά έχουν ήδη παιχτεί. Η σελίδα δεν έχει επόμενο πρόγραμμα.`,
+    );
+  }
   const textBlocks = picked.map((movie) =>
     [movie.title, 'Προβολές', ...String(movie.scheduleText || '').split('\n').filter(Boolean), ''].join('\n'),
   );
