@@ -289,14 +289,18 @@ async function enrichTrackerWeekStatsFromCmsShowtimes(strapi, tracker, now = new
     venueIds.length > 0
       ? await strapi.entityService.findMany('api::venue.venue', {
           filters: { id: { $in: venueIds } },
-          fields: ['id', 'athinorama_link'],
+          fields: ['id', 'athinorama_link', 'thessalonikiguide_link'],
           publicationState: 'preview',
           pagination: { pageSize: Math.max(venueIds.length, 1) },
         })
       : [];
   const athinoramaIds = new Set(
     (Array.isArray(athinoramaRows) ? athinoramaRows : [])
-      .filter((row) => Boolean(String(row.athinorama_link || '').trim()))
+      .filter(
+        (row) =>
+          Boolean(String(row.athinorama_link || '').trim()) ||
+          Boolean(String(row.thessalonikiguide_link || '').trim()),
+      )
       .map((row) => row.id),
   );
 
@@ -390,7 +394,7 @@ async function applyCinemaVenueUpdatedStatuses(
   const venueIds = entries.map(([venueId]) => venueId);
   const existingRows = await strapi.entityService.findMany('api::venue.venue', {
     filters: { id: { $in: venueIds } },
-    fields: ['id', 'name', 'updated', 'athinorama_link'],
+    fields: ['id', 'name', 'updated', 'athinorama_link', 'thessalonikiguide_link'],
     publicationState: 'preview',
     pagination: { pageSize: Math.max(venueIds.length, 1) },
   });
@@ -403,7 +407,8 @@ async function applyCinemaVenueUpdatedStatuses(
   const athinoramaById = new Map(
     (Array.isArray(existingRows) ? existingRows : []).map((row) => [
       row.id,
-      Boolean(String(row.athinorama_link || '').trim()),
+      Boolean(String(row.athinorama_link || '').trim()) ||
+        Boolean(String(row.thessalonikiguide_link || '').trim()),
     ]),
   );
 
@@ -570,13 +575,15 @@ async function applyVenueUpdatedStatusFromProgramImport(
   if (!Number.isFinite(id)) return null;
 
   const venue = await strapi.entityService.findOne('api::venue.venue', id, {
-    fields: ['id', 'name', 'type', 'updated', 'athinorama_link'],
+    fields: ['id', 'name', 'type', 'updated', 'athinorama_link', 'thessalonikiguide_link'],
     publicationState: 'preview',
   });
   if (!venue || venue.type !== 'cinema') return null;
 
-  const hasAthinorama = Boolean(String(venue.athinorama_link || '').trim());
-  // Σινεμά Athinorama: complete μόνο από Athinorama sync (Πέμπτη) — όχι free-text / More.
+  const hasAthinorama =
+    Boolean(String(venue.athinorama_link || '').trim()) ||
+    Boolean(String(venue.thessalonikiguide_link || '').trim());
+  // Σινεμά Athinorama / Thessaloniki Guide: complete μόνο από το sync της πηγής — όχι free-text / More.
   if (hasAthinorama && !allowAthinoramaComplete) {
     const current = isVenueUpdatedStatus(venue.updated) ? venue.updated : VENUE_UPDATED_STATUS.NO_NEW;
     return {

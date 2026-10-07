@@ -80,6 +80,7 @@ async function findAllCinemaVenues(strapi, filters = {}) {
         'event_group_code',
         'venue_id',
         'athinorama_link',
+        'thessalonikiguide_link',
       ],
       populate: { more_event_groups: { fields: ['code'] } },
       publicationState: 'preview',
@@ -109,7 +110,8 @@ async function getUpdateQueues(strapi) {
   const unpublishedAutoCreated = unpublished.filter((row) => isAutoCreatedFromSync(row.info));
   const unpublishedOther = unpublished.filter((row) => !isAutoCreatedFromSync(row.info));
   const athinoramaPending = [...noNew, ...needsManual].filter((row) =>
-    Boolean(String(row.athinorama_link || '').trim()),
+    Boolean(String(row.athinorama_link || '').trim()) ||
+    Boolean(String(row.thessalonikiguide_link || '').trim()),
   );
 
   const noNewWithDiagnostics = [];

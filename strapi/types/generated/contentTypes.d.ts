@@ -1267,6 +1267,7 @@ export interface ApiVenueVenue extends Schema.CollectionType {
       'oneToMany',
       'api::theater-performance.theater-performance'
     >;
+    thessalonikiguide_link: Attribute.String;
     type: Attribute.Enumeration<['cinema', 'theater', 'other']> &
       Attribute.Required &
       Attribute.DefaultTo<'cinema'>;

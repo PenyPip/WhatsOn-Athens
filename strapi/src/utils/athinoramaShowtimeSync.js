@@ -8,6 +8,10 @@ const {
 } = require('./cinemaWeek');
 const { scrapeAthinoramaHallProgram, normalizeAthinoramaHallUrl } = require('./athinoramaHallScrape');
 const {
+  scrapeThessalonikiGuideCinemaProgram,
+  normalizeThessalonikiGuideCinemaUrl,
+} = require('./thessalonikiGuideScrape');
+const {
   findBestCmsMatchByPlayTitle,
   findTopCmsMatchesByPlayTitle,
   MIN_PLAY_TITLE_MATCH,
@@ -102,9 +106,21 @@ async function findPendingAthinoramaCinemas(
     const rows = await strapi.entityService.findMany('api::venue.venue', {
       filters: {
         type: 'cinema',
-        athinorama_link: { $notNull: true },
+        $or: [
+          { athinorama_link: { $notNull: true } },
+          { thessalonikiguide_link: { $notNull: true } },
+        ],
       },
-      fields: ['id', 'name', 'slug', 'updated', 'publishedAt', 'summer_outdoor', 'athinorama_link'],
+      fields: [
+        'id',
+        'name',
+        'slug',
+        'updated',
+        'publishedAt',
+        'summer_outdoor',
+        'athinorama_link',
+        'thessalonikiguide_link',
+      ],
       publicationState: 'preview',
       sort: { name: 'asc' },
       pagination: { page, pageSize: 100 },
@@ -116,8 +132,9 @@ async function findPendingAthinoramaCinemas(
   }
 
   const candidates = all.filter((row) => {
+    const guide = normalizeThessalonikiGuideCinemaUrl(row.thessalonikiguide_link);
     const link = normalizeAthinoramaHallUrl(row.athinorama_link);
-    if (!link) return false;
+    if (!guide && !link) return false;
     if (!includeDrafts && row.publishedAt == null) return false;
     return true;
   });
@@ -171,6 +188,7 @@ async function findPendingAthinoramaCinemas(
       updatedLabel: VENUE_UPDATED_LABELS[row.updated] || row.updated,
       summerOutdoor: row.summer_outdoor === true,
       athinoramaLink: normalizeAthinoramaHallUrl(row.athinorama_link),
+      guideLink: normalizeThessalonikiGuideCinemaUrl(row.thessalonikiguide_link),
       published: row.publishedAt != null,
       retryEmptyComplete: row.updated === VENUE_UPDATED_STATUS.COMPLETE,
     }));
@@ -220,23 +238,27 @@ function buildImportItemsFromScraped(scrapedMovies, cmsMovies, { summerDefault =
 
 async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new Date(), timeoutMs } = {}) {
   const weekBounds = getCurrentCinemaWeekBounds(now);
-  const link = venue.athinoramaLink || normalizeAthinoramaHallUrl(venue.athinorama_link);
+  const guideLink = venue.guideLink || normalizeThessalonikiGuideCinemaUrl(venue.thessalonikiguide_link);
+  const link = guideLink || venue.athinoramaLink || normalizeAthinoramaHallUrl(venue.athinorama_link);
+  const sourceLabel = guideLink ? 'Thessaloniki Guide' : 'Athinorama';
   if (!link) {
     return {
       ok: false,
       venueId: venue.id,
       venueName: venue.name,
-      error: 'Άκυρο Athinorama link',
+      error: 'Άκυρο Athinorama ή Thessaloniki Guide link',
     };
   }
 
-  const scraped = await scrapeAthinoramaHallProgram(link, { weekBounds, timeoutMs });
+  const scraped = guideLink
+    ? await scrapeThessalonikiGuideCinemaProgram(link, { weekBounds, timeoutMs })
+    : await scrapeAthinoramaHallProgram(link, { weekBounds, timeoutMs });
   if (!scraped.ok) {
     return {
       ok: false,
       venueId: venue.id,
       venueName: venue.name,
-      error: scraped.error || 'Δεν βρέθηκαν προβολές στο Athinorama',
+      error: scraped.error || `Δεν βρέθηκαν προβολές στο ${sourceLabel}`,
       warnings: scraped.warnings || [],
       athinoramaUrl: scraped.url || link,
       weekLabel: formatWeekLabel(weekBounds.start, weekBounds.end),
@@ -269,7 +291,7 @@ async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new 
     importMeta: { unmatchedMovies },
     now,
     weekMode: 'current',
-    importTracePrefix: `Athinorama sync · ${link}`,
+    importTracePrefix: `${sourceLabel} sync · ${link}`,
     applyVenueStatus,
     allowAthinoramaComplete: true,
   });
@@ -289,7 +311,7 @@ async function syncOneVenueFromAthinorama(strapi, venue, cmsMovies, { now = new 
   const warnings = [...(scraped.warnings || [])];
   if (createdCount === 0 && existsCount === 0 && (scraped.movies || []).length > 0) {
     warnings.push(
-      `Το Athinorama είχε ${(scraped.movies || []).length} ταινίες, αλλά δεν δημιουργήθηκε καμία προβολή` +
+      `Το ${sourceLabel} είχε ${(scraped.movies || []).length} ταινίες, αλλά δεν δημιουργήθηκε καμία προβολή` +
         (unmatchedMovies
           ? ` (${unmatchedMovies} χωρίς ταύτιση CMS).`
           : ' (πιθανόν όλες παρελθοντικές ή χωρίς movieId).'),
@@ -359,7 +381,17 @@ async function syncSingleCinemaVenueFromAthinorama(strapi, options = {}) {
   }
 
   const row = await strapi.entityService.findOne('api::venue.venue', venueId, {
-    fields: ['id', 'name', 'slug', 'updated', 'publishedAt', 'summer_outdoor', 'athinorama_link', 'type'],
+    fields: [
+      'id',
+      'name',
+      'slug',
+      'updated',
+      'publishedAt',
+      'summer_outdoor',
+      'athinorama_link',
+      'thessalonikiguide_link',
+      'type',
+    ],
     publicationState: 'preview',
   });
 
@@ -371,16 +403,18 @@ async function syncSingleCinemaVenueFromAthinorama(strapi, options = {}) {
     return emptyFail(`Ο χώρος #${venueId} «${row.name}» δεν είναι cinema (${row.type}).`);
   }
 
-  const link = normalizeAthinoramaHallUrl(row.athinorama_link);
+  const guideLink = normalizeThessalonikiGuideCinemaUrl(row.thessalonikiguide_link);
+  const link = guideLink || normalizeAthinoramaHallUrl(row.athinorama_link);
   if (!link) {
     return emptyFail(
-      `Ο χώρος #${venueId} «${row.name}» δεν έχει έγκυρο Athinorama link (athinorama.gr/cinema/halls/…).`,
+      `Ο χώρος #${venueId} «${row.name}» δεν έχει έγκυρο Athinorama link (athinorama.gr/cinema/halls/…) ούτε Thessaloniki Guide (/cinemas/…).`,
     );
   }
 
   const weekBounds = weekBoundsEarly;
   const weekLabel = weekLabelEarly;
-  progress(`Athinorama · «${row.name}» (#${venueId}) · εβδομάδα ${weekLabel}…`);
+  const sourceLabel = guideLink ? 'Thessaloniki Guide' : 'Athinorama';
+  progress(`${sourceLabel} · «${row.name}» (#${venueId}) · εβδομάδα ${weekLabel}…`);
 
   const cmsMovies = await findAllMovies(strapi);
   const venue = {
@@ -390,8 +424,10 @@ async function syncSingleCinemaVenueFromAthinorama(strapi, options = {}) {
     updated: row.updated,
     summerOutdoor: row.summer_outdoor === true,
     summer_outdoor: row.summer_outdoor === true,
-    athinoramaLink: link,
-    athinorama_link: link,
+    athinoramaLink: guideLink ? null : link,
+    athinorama_link: guideLink ? null : link,
+    guideLink,
+    thessalonikiguide_link: guideLink,
   };
 
   let result;

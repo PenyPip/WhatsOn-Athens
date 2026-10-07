@@ -29,6 +29,12 @@ function venueHasAthinoramaLink(row) {
   return Boolean(String(row?.athinorama_link || '').trim());
 }
 
+function venueHasProgramSourceLink(row) {
+  return (
+    venueHasAthinoramaLink(row) || Boolean(String(row?.thessalonikiguide_link || '').trim())
+  );
+}
+
 /**
  * Σάββατο 06:00 — όλα τα σινεμά → no_new, ΕΚΤΟΣ όσων έχουν athinorama_link
  * (αυτά μένουν μέχρι Δευτέρα · complete μόνο από Athinorama Πέμπτη).
@@ -39,15 +45,21 @@ async function resetCinemaManualCompleted(strapi) {
   const athinoramaIds = [];
   for (let page = 1; ; page += 1) {
     const rows = await strapi.entityService.findMany('api::venue.venue', {
-      filters: { type: 'cinema', athinorama_link: { $notNull: true } },
-      fields: ['id', 'athinorama_link'],
+      filters: {
+        type: 'cinema',
+        $or: [
+          { athinorama_link: { $notNull: true } },
+          { thessalonikiguide_link: { $notNull: true } },
+        ],
+      },
+      fields: ['id', 'athinorama_link', 'thessalonikiguide_link'],
       publicationState: 'preview',
       pagination: { page, pageSize: 200 },
     });
     const list = Array.isArray(rows) ? rows : [];
     if (!list.length) break;
     for (const row of list) {
-      if (venueHasAthinoramaLink(row)) athinoramaIds.push(row.id);
+      if (venueHasProgramSourceLink(row)) athinoramaIds.push(row.id);
     }
     if (list.length < 200) break;
   }
@@ -81,15 +93,21 @@ async function resetAthinoramaCinemaUpdatedToNoNew(strapi) {
   let count = 0;
   for (let page = 1; ; page += 1) {
     const rows = await strapi.entityService.findMany('api::venue.venue', {
-      filters: { type: 'cinema', athinorama_link: { $notNull: true } },
-      fields: ['id', 'athinorama_link', 'updated'],
+      filters: {
+        type: 'cinema',
+        $or: [
+          { athinorama_link: { $notNull: true } },
+          { thessalonikiguide_link: { $notNull: true } },
+        ],
+      },
+      fields: ['id', 'athinorama_link', 'thessalonikiguide_link', 'updated'],
       publicationState: 'preview',
       pagination: { page, pageSize: 200 },
     });
     const list = Array.isArray(rows) ? rows : [];
     if (!list.length) break;
     for (const row of list) {
-      if (!venueHasAthinoramaLink(row)) continue;
+      if (!venueHasProgramSourceLink(row)) continue;
       if (row.updated === VENUE_UPDATED_STATUS.NO_NEW) continue;
       await strapi.entityService.update('api::venue.venue', row.id, {
         data: { updated: VENUE_UPDATED_STATUS.NO_NEW },

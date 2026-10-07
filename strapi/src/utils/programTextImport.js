@@ -12,6 +12,10 @@ const {
 } = require('./cinemaWeek');
 const { scrapeAthinoramaHallProgram, normalizeAthinoramaHallUrl } = require('./athinoramaHallScrape');
 const {
+  scrapeThessalonikiGuideCinemaProgram,
+  normalizeThessalonikiGuideCinemaUrl,
+} = require('./thessalonikiGuideScrape');
+const {
   applyVenueUpdatedStatusFromProgramImport,
   VENUE_UPDATED_LABELS,
 } = require('../api/venue/services/venue-updated-status');
@@ -182,7 +186,7 @@ async function findAllCinemas(strapi) {
   while (page <= 20) {
     const batch = await strapi.entityService.findMany('api::venue.venue', {
       filters: { type: 'cinema' },
-      fields: ['id', 'name', 'slug', 'summer_outdoor', 'athinorama_link'],
+      fields: ['id', 'name', 'slug', 'summer_outdoor', 'athinorama_link', 'thessalonikiguide_link'],
       publicationState: 'preview',
       sort: { name: 'asc' },
       pagination: { page, pageSize },
@@ -199,6 +203,9 @@ async function findAllCinemas(strapi) {
     slug: row.slug,
     summerOutdoor: row.summer_outdoor === true,
     athinoramaLink: row.athinorama_link ? String(row.athinorama_link).trim() : null,
+    thessalonikiguideLink: row.thessalonikiguide_link
+      ? String(row.thessalonikiguide_link).trim()
+      : null,
   }));
 }
 
@@ -244,7 +251,7 @@ async function loadVenue(strapi, venueId) {
   const id = Number(venueId);
   if (!Number.isFinite(id)) return null;
   return strapi.entityService.findOne('api::venue.venue', id, {
-    fields: ['id', 'name', 'slug', 'type', 'summer_outdoor', 'athinorama_link'],
+    fields: ['id', 'name', 'slug', 'type', 'summer_outdoor', 'athinorama_link', 'thessalonikiguide_link'],
     publicationState: 'preview',
   });
 }
@@ -508,12 +515,46 @@ async function previewProgramTextImport(
   const imageList = Array.isArray(images) ? images.filter(Boolean) : [];
   const trimmed = String(text || '').trim();
   const fromAthinorama = source === 'athinorama' || source === 'athinorama_link';
+  const fromGuide = source === 'thessalonikiguide';
 
   let parsed;
   let inputKind = 'text';
   let athinoramaMeta = null;
+  let guideMeta = null;
 
-  if (fromAthinorama) {
+  if (fromGuide) {
+    const link = normalizeThessalonikiGuideCinemaUrl(venue.thessalonikiguide_link);
+    if (!link) {
+      return {
+        ok: false,
+        error:
+          'Λείπει ή είναι άκυρο το πεδίο Thessaloniki Guide στον χώρο (URL τύπου /cinemas/…).',
+      };
+    }
+    inputKind = 'thessalonikiguide';
+    const scraped = await scrapeThessalonikiGuideCinemaProgram(link, { weekBounds });
+    if (!scraped.ok) {
+      return {
+        ok: false,
+        error: scraped.error || 'Αποτυχία φόρτωσης Thessaloniki Guide.',
+        warnings: scraped.warnings,
+        parseSource: 'thessalonikiguide',
+        guideUrl: scraped.url || link,
+      };
+    }
+    parsed = {
+      header: venue.name,
+      dateRange: scraped.dateRange,
+      movies: scraped.movies,
+      warnings: scraped.warnings || [],
+      parseSource: 'thessalonikiguide',
+    };
+    guideMeta = {
+      url: scraped.url,
+      stats: scraped.stats,
+      programText: scraped.programText || '',
+    };
+  } else if (fromAthinorama) {
     const link = normalizeAthinoramaHallUrl(venue.athinorama_link);
     if (!link) {
       return {
@@ -561,7 +602,7 @@ async function previewProgramTextImport(
       weekBounds,
     });
   } else {
-    return { ok: false, error: 'Δώσε κείμενο, εικόνα ή φόρτωσε από Athinorama.' };
+    return { ok: false, error: 'Δώσε κείμενο, εικόνα ή φόρτωσε από Athinorama / Thessaloniki Guide.' };
   }
 
   if (!parsed.movies?.length) {
@@ -575,6 +616,7 @@ async function previewProgramTextImport(
       parseSource: parsed.parseSource,
       ocrPreview: parsed.ocrPreview,
       athinoramaUrl: athinoramaMeta?.url,
+      guideUrl: guideMeta?.url,
     };
   }
 
@@ -582,7 +624,7 @@ async function previewProgramTextImport(
     venue,
     parsed,
     inputKind,
-    programText: trimmed || athinoramaMeta?.programText || parsed.ocrPreview || '',
+    programText: trimmed || athinoramaMeta?.programText || guideMeta?.programText || parsed.ocrPreview || '',
     summerScreening: summerScreening === true,
   });
   return {
@@ -594,6 +636,7 @@ async function previewProgramTextImport(
       weekStart: formatLocalYmd(weekBounds.start),
     },
     athinorama: athinoramaMeta,
+    guide: guideMeta,
   };
 }
 

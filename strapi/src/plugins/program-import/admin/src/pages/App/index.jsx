@@ -155,6 +155,7 @@ function CinemaVenueSearchSelect({ cinemas, value, onChange, disabled, loading }
 
 function parseSourceLabel(source) {
   if (source === 'athinorama') return 'Athinorama';
+  if (source === 'thessalonikiguide') return 'Thessaloniki Guide';
   if (source === 'ai_vision') return 'AI (εικόνα)';
   if (source === 'ai_ocr') return 'AI (OCR εικόνας)';
   if (source === 'ai') return 'AI (κείμενο)';
@@ -512,13 +513,17 @@ export default function App() {
   const canParse =
     venueId && (inputMode === 'text' ? text.trim().length > 0 : images.length > 0);
   const athinoramaLink = selectedVenue?.athinoramaLink || null;
+  const guideLink = selectedVenue?.thessalonikiguideLink || null;
   const canLoadAthinorama = Boolean(venueId && athinoramaLink);
+  const canLoadGuide = Boolean(venueId && guideLink);
 
   const runPreview = useCallback(
     async ({ venueId: vId, mode, textValue, imageValues }) => {
       const payload = { venueId: Number(vId) };
       if (mode === 'athinorama') {
         payload.source = 'athinorama';
+      } else if (mode === 'thessalonikiguide') {
+        payload.source = 'thessalonikiguide';
       } else if (mode === 'image') {
         payload.images = imageValues.map((img) => img.dataUrl);
       } else {
@@ -532,6 +537,10 @@ export default function App() {
       setPreview(data);
       if (mode === 'athinorama' && data?.athinorama?.programText) {
         setText(data.athinorama.programText);
+        setInputMode('text');
+      }
+      if (mode === 'thessalonikiguide' && data?.guide?.programText) {
+        setText(data.guide.programText);
         setInputMode('text');
       }
       const initialApproved = {};
@@ -616,6 +625,42 @@ export default function App() {
       setParsing(false);
     }
   }, [athinoramaLink, runPreview, toggleNotification, venueId]);
+
+  const handleLoadGuide = useCallback(async () => {
+    if (!venueId) {
+      toggleNotification({ type: 'warning', message: 'Επίλεξε κινηματογράφο.' });
+      return;
+    }
+    if (!guideLink) {
+      toggleNotification({
+        type: 'warning',
+        message: 'Βάλε Thessaloniki Guide στο CMS του χώρου (URL /cinemas/…).',
+      });
+      return;
+    }
+    setParsing(true);
+    setPreview(null);
+    setManualMovieByTitle({});
+    setApprovedById({});
+    setSkippedMovieTitles({});
+    try {
+      const data = await runPreview({
+        venueId,
+        mode: 'thessalonikiguide',
+        textValue: '',
+        imageValues: [],
+      });
+      toggleNotification({
+        type: 'success',
+        message: `${data.summary.totalShowtimes} προβολές · Thessaloniki Guide`,
+      });
+    } catch (e) {
+      toggleNotification({ type: 'warning', message: e?.message || 'Αποτυχία Thessaloniki Guide' });
+    } finally {
+      setParsing(false);
+    }
+  }, [guideLink, runPreview, toggleNotification, venueId]);
+
   const handleFilesSelected = useCallback(
     async (event) => {
       const files = [...(event.target.files || [])];
@@ -1010,16 +1055,34 @@ export default function App() {
                 >
                   Φόρτωση από Athinorama
                 </Button>
+                <Button
+                  variant="secondary"
+                  onClick={handleLoadGuide}
+                  loading={parsing}
+                  disabled={!canLoadGuide || parsing}
+                  title={
+                    guideLink
+                      ? guideLink
+                      : 'Βάλε Thessaloniki Guide στο CMS του χώρου (Χώροι → επεξεργασία)'
+                  }
+                >
+                  Φόρτωση από Thessaloniki Guide
+                </Button>
               </Flex>
-              {venueId && !athinoramaLink ? (
+              {venueId && !athinoramaLink && !guideLink ? (
                 <Typography variant="pi" textColor="neutral500" paddingTop={2}>
-                  Για αυτόματη φόρτωση: στο CMS του χώρου βάλε πεδίο «Athinorama link» (URL
-                  /cinema/halls/…).
+                  Για αυτόματη φόρτωση: Athinorama link (/cinema/halls/…) ή, για Θεσσαλονίκη,
+                  Thessaloniki Guide (/cinemas/…).
                 </Typography>
               ) : null}
               {athinoramaLink ? (
                 <Typography variant="pi" textColor="neutral500" paddingTop={2}>
                   Athinorama: {athinoramaLink}
+                </Typography>
+              ) : null}
+              {guideLink ? (
+                <Typography variant="pi" textColor="neutral500" paddingTop={2}>
+                  Thessaloniki Guide: {guideLink}
                 </Typography>
               ) : null}
             </GridItem>
