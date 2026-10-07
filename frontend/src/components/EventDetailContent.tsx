@@ -1,7 +1,13 @@
 import type { ReactNode } from "react";
 import { ExternalLink, Globe, MapPin, Ticket } from "lucide-react";
 import type { StrapiEvent } from "@/lib/api";
-import { eventIsFree, eventLocationLabel, formatEventScheduleLine, formatEventTicketPrice } from "@/lib/eventLabels";
+import {
+  eventIsFree,
+  eventLocationLabel,
+  eventLocationMapsUrl,
+  formatEventScheduleLine,
+  formatEventTicketPrice,
+} from "@/lib/eventLabels";
 import EventFreeBadge from "@/components/EventFreeBadge";
 import { cn } from "@/lib/utils";
 
@@ -83,9 +89,9 @@ export default function EventDetailContent({
   const schedule = formatEventScheduleLine(event);
   const isFree = eventIsFree(event);
   const priceLabel = isFree ? null : formatEventTicketPrice(event.ticketPrice);
-  const venue = event.venue;
   const place = eventLocationLabel(event);
-  const hasWhere = Boolean(place || venue?.googleMapsUrl?.trim() || event.onlineLink?.trim());
+  const mapsUrl = eventLocationMapsUrl(event);
+  const hasWhere = Boolean(place || mapsUrl || event.onlineLink?.trim());
   const hasTickets = Boolean(isFree || priceLabel || event.ticketUrl?.trim());
   const hasMeta = Boolean(event.languageSubtitles?.trim());
   const hasSynopsis = Boolean(event.synopsisEl?.trim() || event.synopsisEn?.trim());
@@ -114,14 +120,24 @@ export default function EventDetailContent({
               label="Τοποθεσία"
               value={
                 <div className="space-y-2">
-                  {place ? (
+                  {place && mapsUrl ? (
+                    <a
+                      href={mapsUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      title="Άνοιγμα στο Google Maps"
+                      className="inline-flex items-start gap-1.5 font-medium underline decoration-[#7C2B76]/45 underline-offset-2 hover:decoration-[#7C2B76]"
+                    >
+                      <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#7C2B76]" aria-hidden />
+                      <span>{place}</span>
+                    </a>
+                  ) : place ? (
                     <p className="flex items-start gap-1.5 font-medium">
                       <MapPin className="mt-0.5 h-4 w-4 shrink-0 text-[#7C2B76]" aria-hidden />
                       <span>{place}</span>
                     </p>
-                  ) : null}
-                  {venue?.googleMapsUrl?.trim() ? (
-                    <ExternalHref href={venue.googleMapsUrl.trim()}>Χάρτης</ExternalHref>
+                  ) : mapsUrl ? (
+                    <ExternalHref href={mapsUrl}>Χάρτης</ExternalHref>
                   ) : null}
                   {event.onlineLink?.trim() ? (
                     <p className="flex items-center gap-1.5">

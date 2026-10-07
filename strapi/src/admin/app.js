@@ -35,6 +35,7 @@ const config = {
       'content-manager.enum.home.layout-section.section_key.theater_new': 'Νέες παραστάσεις / listings (θέατρο)',
       'content-manager.enum.home.layout-section.section_key.theater_week': 'Ξεκινάνε αυτή την εβδομάδα (θέατρο)',
       'content-manager.content-types.api::event.event.location': 'Τοποθεσία',
+      'content-manager.content-types.api::event.event.location_maps_url': 'Google Maps',
       'content-manager.content-types.api::event.event.venue': 'Σινεμά / θέατρο',
       'content-manager.enum.home.layout-section.section_key.events_today': 'Events σήμερα',
       'content-manager.enum.home.layout-section.section_key.weekend_events': 'Τι να κάνω το ΣΚ (events)',

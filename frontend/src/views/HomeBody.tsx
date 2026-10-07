@@ -1100,10 +1100,12 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                     <ul className="mt-6 grid list-none grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3" aria-label="Events">
                       {latestEvents.map((event, i) => (
                         <li key={`${event.id}-${event.slug}`}>
-                          <Link
-                            to={eventPath(event.slug)}
-                            className="group flex h-full gap-4 rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background"
-                          >
+                          <div className="group relative flex h-full gap-4 rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background">
+                            <Link
+                              to={eventPath(event.slug)}
+                              aria-label={eventDisplayTitle(event)}
+                              className="absolute inset-0 z-0 rounded-xl"
+                            />
                             {event.posterUrl ? (
                               <img
                                 src={event.posterThumbUrl || event.posterUrl}
@@ -1112,7 +1114,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                                 loading={i < 6 ? "eager" : "lazy"}
                               />
                             ) : null}
-                            <div className="min-w-0 flex-1">
+                            <div className="pointer-events-none relative z-10 min-w-0 flex-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
                                   {eventTypeLabels[event.eventType]}
@@ -1132,7 +1134,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                                 </p>
                               ) : null}
                             </div>
-                          </Link>
+                          </div>
                         </li>
                       ))}
                     </ul>
@@ -1180,10 +1182,12 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                   >
                     {todayEvents.map((event, i) => (
                       <li key={`today-${event.id}-${event.slug}`}>
-                        <Link
-                          to={eventPath(event.slug)}
-                          className="group flex h-full gap-4 rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background"
-                        >
+                        <div className="group relative flex h-full gap-4 rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background">
+                          <Link
+                            to={eventPath(event.slug)}
+                            aria-label={eventDisplayTitle(event)}
+                            className="absolute inset-0 z-0 rounded-xl"
+                          />
                           {event.posterUrl ? (
                             <img
                               src={event.posterThumbUrl || event.posterUrl}
@@ -1192,7 +1196,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               loading={i < 6 ? "eager" : "lazy"}
                             />
                           ) : null}
-                          <div className="min-w-0 flex-1">
+                          <div className="pointer-events-none relative z-10 min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
                                 {eventTypeLabels[event.eventType]}
@@ -1212,7 +1216,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               </p>
                             ) : null}
                           </div>
-                        </Link>
+                        </div>
                       </li>
                     ))}
                   </ul>
@@ -1262,10 +1266,12 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                   >
                     {weekendEvents.map((event, i) => (
                       <li key={`wk-${event.id}-${event.slug}`}>
-                        <Link
-                          to={eventPath(event.slug)}
-                          className="group flex h-full gap-4 rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background"
-                        >
+                        <div className="group relative flex h-full gap-4 rounded-xl border border-border/70 bg-background/85 p-4 transition-colors hover:border-border hover:bg-background">
+                          <Link
+                            to={eventPath(event.slug)}
+                            aria-label={eventDisplayTitle(event)}
+                            className="absolute inset-0 z-0 rounded-xl"
+                          />
                           {event.posterUrl ? (
                             <img
                               src={event.posterThumbUrl || event.posterUrl}
@@ -1274,7 +1280,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               loading={i < 6 ? "eager" : "lazy"}
                             />
                           ) : null}
-                          <div className="min-w-0 flex-1">
+                          <div className="pointer-events-none relative z-10 min-w-0 flex-1">
                             <div className="flex flex-wrap items-center gap-2">
                               <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
                                 {eventTypeLabels[event.eventType]}
@@ -1294,7 +1300,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                               </p>
                             ) : null}
                           </div>
-                        </Link>
+                        </div>
                       </li>
                     ))}
                   </ul>

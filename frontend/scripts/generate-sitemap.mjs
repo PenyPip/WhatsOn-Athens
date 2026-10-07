@@ -264,6 +264,7 @@ async function buildCrawlEnrichment() {
           "start_time",
           "end_time",
           "location",
+          "location_maps_url",
           "ticket_price",
           "ticket_url",
         ],
@@ -439,6 +440,7 @@ async function buildCrawlEnrichment() {
         const ticketUrl = pickString(a, "ticket_url");
         const venue = pickEventVenue(a);
         const location = pickString(a, "location");
+        const locationMapsUrl = pickString(a, "location_maps_url");
         return {
           path: `/events/${encodeURIComponent(slug)}`,
           slug,
@@ -451,6 +453,7 @@ async function buildCrawlEnrichment() {
           ...(startTime ? { startTime } : {}),
           ...(endTime ? { endTime } : {}),
           ...(location ? { location } : {}),
+          ...(locationMapsUrl ? { locationMapsUrl } : {}),
           ...(venue?.name ? { venueName: venue.name } : {}),
           ...(venue?.address ? { venueAddress: venue.address } : {}),
           ...(ticketPrice != null ? { ticketPrice } : {}),

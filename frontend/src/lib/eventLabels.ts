@@ -32,9 +32,21 @@ export function formatEventDateRange(event: Pick<StrapiEvent, "startDate" | "end
   return `${formatEventDateEl(start)} - ${formatEventDateEl(end)}`;
 }
 
-/** Ελεύθερη τοποθεσία. Αν λείπει, όνομα/διεύθυνση συνδεδεμένου σινεμά ή θεάτρου, αλλιώς Online. */
+function safeHttpUrl(raw: string | undefined): string {
+  const t = typeof raw === "string" ? raw.trim() : "";
+  if (!t) return "";
+  try {
+    const url = new URL(t);
+    if (url.protocol === "https:" || url.protocol === "http:") return url.toString();
+  } catch {
+    return "";
+  }
+  return "";
+}
+
+/** Ελεύθερη τοποθεσία. Αν λείπει, όνομα/διεύθυνση συνδεδεμένου σινεμά ή θεάτρου. */
 export function eventLocationLabel(
-  event: Pick<StrapiEvent, "location" | "venue" | "onlineLink">,
+  event: Pick<StrapiEvent, "location" | "venue">,
 ): string {
   const loc = event.location?.trim();
   if (loc) return loc;
@@ -43,8 +55,17 @@ export function eventLocationLabel(
   if (name && address && !name.includes(address)) return `${name} · ${address}`;
   if (name) return name;
   if (address) return address;
-  if (event.onlineLink?.trim()) return "Online";
   return "";
+}
+
+/** Σύνδεσμος πινέζας. Το πεδίο της τοποθεσίας· αν λείπει κείμενο τοποθεσίας, ο χάρτης του σινεμά/θεάτρου. */
+export function eventLocationMapsUrl(
+  event: Pick<StrapiEvent, "location" | "locationMapsUrl" | "venue">,
+): string {
+  const own = safeHttpUrl(event.locationMapsUrl);
+  if (own) return own;
+  if (event.location?.trim()) return "";
+  return safeHttpUrl(event.venue?.googleMapsUrl);
 }
 
 export function formatEventScheduleLine(

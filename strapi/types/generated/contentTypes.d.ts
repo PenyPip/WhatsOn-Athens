@@ -558,6 +558,7 @@ export interface ApiEventEvent extends Schema.CollectionType {
     featured: Attribute.Boolean & Attribute.DefaultTo<false>;
     language_subtitles: Attribute.String;
     location: Attribute.String;
+    location_maps_url: Attribute.String;
     meta_description: Attribute.String;
     online_link: Attribute.String;
     poster: Attribute.Media<'images'>;

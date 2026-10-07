@@ -48,14 +48,17 @@ export function buildEventOrganizer(venueName?: string): JsonLdObject {
 export function buildEventLocation(
   venueName?: string,
   venueAddress?: string,
+  mapsUrl?: string,
 ): JsonLdObject | undefined {
   const name = venueName?.trim();
   const address = venueAddress?.trim();
-  if (!name && !address) return undefined;
+  const hasMap = mapsUrl?.trim();
+  if (!name && !address && !hasMap) return undefined;
 
   const location: JsonLdObject = {
     "@type": "Place",
     name: name || address || "Αθήνα",
+    ...(hasMap ? { hasMap } : {}),
   };
   if (address) {
     location.address = {

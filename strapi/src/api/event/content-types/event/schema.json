@@ -65,6 +65,9 @@
     "location": {
       "type": "string"
     },
+    "location_maps_url": {
+      "type": "string"
+    },
     "venue": {
       "type": "relation",
       "relation": "manyToOne",

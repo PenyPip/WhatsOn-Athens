@@ -183,25 +183,36 @@ async function placeEventLocationField(strapi) {
   const edit = config?.layouts?.edit;
   if (!config || !Array.isArray(edit)) return;
 
-  const hasLocation = edit.some(
-    (row) => Array.isArray(row) && row.some((cell) => cell?.name === 'location'),
+  const besideMaps = edit.some(
+    (row) =>
+      Array.isArray(row) &&
+      row.some((cell) => cell?.name === 'location') &&
+      row.some((cell) => cell?.name === 'location_maps_url'),
   );
 
   let nextEdit = edit;
-  if (!hasLocation) {
+  if (!besideMaps) {
     const cleaned = edit
-      .map((row) => (Array.isArray(row) ? row.filter((cell) => cell?.name !== 'location') : row))
+      .map((row) =>
+        Array.isArray(row)
+          ? row.filter((cell) => cell?.name !== 'location' && cell?.name !== 'location_maps_url')
+          : row,
+      )
       .filter((row) => Array.isArray(row) && row.length > 0);
     const afterIdx = cleaned.findIndex((row) =>
       row.some((cell) => cell?.name === 'end_time' || cell?.name === 'start_time'),
     );
     const insertAt = afterIdx >= 0 ? afterIdx + 1 : cleaned.length;
-    cleaned.splice(insertAt, 0, [{ name: 'location', size: 12 }]);
+    cleaned.splice(insertAt, 0, [
+      { name: 'location', size: 6 },
+      { name: 'location_maps_url', size: 6 },
+    ]);
     nextEdit = cleaned;
   }
 
   const metadatas = { ...(config.metadatas || {}) };
   const current = metadatas.location || { edit: {}, list: {} };
+  const mapsMeta = metadatas.location_maps_url || { edit: {}, list: {} };
   const venueMeta = metadatas.venue || { edit: {}, list: {} };
   metadatas.location = {
     ...current,
@@ -217,6 +228,23 @@ async function placeEventLocationField(strapi) {
       ...(current.list || {}),
       label: 'Τοποθεσία',
       searchable: true,
+      sortable: false,
+    },
+  };
+  metadatas.location_maps_url = {
+    ...mapsMeta,
+    edit: {
+      ...(mapsMeta.edit || {}),
+      label: 'Google Maps',
+      description: '',
+      placeholder: '',
+      editable: true,
+      visible: true,
+    },
+    list: {
+      ...(mapsMeta.list || {}),
+      label: 'Google Maps',
+      searchable: false,
       sortable: false,
     },
   };

@@ -949,6 +949,7 @@ function mapEvent(raw: unknown): StrapiEvent {
     startTime: typeof r.start_time === "string" ? r.start_time : "",
     endTime: typeof r.end_time === "string" ? r.end_time : "",
     location: typeof r.location === "string" ? r.location.trim() : "",
+    locationMapsUrl: typeof r.location_maps_url === "string" ? r.location_maps_url.trim() : "",
     venue:
       mapEventVenue(r.venue) ??
       (legacyVenueName || legacyVenueAddress
@@ -1700,6 +1701,7 @@ export interface StrapiEvent {
   startTime: string;
   endTime: string;
   location: string;
+  locationMapsUrl: string;
   venue?: StrapiEventVenue;
   onlineLink: string;
   eventType: StrapiEventType;
@@ -1826,6 +1828,7 @@ const EVENT_SCALAR_FIELDS = [
   "start_time",
   "end_time",
   "location",
+  "location_maps_url",
   "online_link",
   "event_type",
   "ticket_price",

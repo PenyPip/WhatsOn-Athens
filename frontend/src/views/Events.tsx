@@ -33,21 +33,19 @@ function EventGrid({ events }: { events: StrapiEvent[] }) {
             className="animate-stagger-in"
             style={{ ["--stagger" as string]: Math.min(i, 8) }}
           >
-            <Link
-              to={eventPath(event.slug)}
-              className="group flex h-full flex-col overflow-hidden rounded-xl border border-border/70 bg-card transition-all hover:border-[#13143E]/25 hover:shadow-[0_8px_28px_rgba(28,29,98,0.1)]"
-            >
+            <div className="group relative flex h-full flex-col overflow-hidden rounded-xl border border-border/70 bg-card transition-all hover:border-[#13143E]/25 hover:shadow-[0_8px_28px_rgba(28,29,98,0.1)]">
+              <Link to={eventPath(event.slug)} aria-label={title} className="absolute inset-0 z-0 rounded-xl" />
               {event.posterUrl ? (
                 <img
                   src={event.posterUrl}
                   alt={title}
-                  className="aspect-[16/10] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
+                  className="pointer-events-none relative aspect-[16/10] w-full object-cover transition-transform duration-500 group-hover:scale-[1.02]"
                   loading="lazy"
                 />
               ) : (
-                <div className="aspect-[16/10] w-full bg-gradient-to-br from-[#13143E]/10 to-[#7C2B76]/15" />
+                <div className="pointer-events-none relative aspect-[16/10] w-full bg-gradient-to-br from-[#13143E]/10 to-[#7C2B76]/15" />
               )}
-              <div className="flex flex-1 flex-col p-4">
+              <div className="pointer-events-none relative z-10 flex flex-1 flex-col p-4">
                 <div className="flex flex-wrap items-center gap-2">
                   <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-muted-foreground">
                     {eventTypeLabels[event.eventType]}
@@ -68,7 +66,7 @@ function EventGrid({ events }: { events: StrapiEvent[] }) {
                   </p>
                 ) : null}
               </div>
-            </Link>
+            </div>
           </li>
         );
       })}

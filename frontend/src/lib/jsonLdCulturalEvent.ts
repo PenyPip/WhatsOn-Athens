@@ -28,7 +28,7 @@ export function buildCulturalEventJsonLd(
   const poster = ev.posterUrl ? resolvePublicAssetUrl(ev.posterUrl) : undefined;
   const placeName = ev.location?.trim() || ev.venueName;
   const placeAddress = ev.location?.trim() ? undefined : ev.venueAddress;
-  const location = buildEventLocation(placeName, placeAddress);
+  const location = buildEventLocation(placeName, placeAddress, ev.locationMapsUrl);
   const offers = buildEventOffers(ev.ticketUrl, ev.ticketPrice, pageUrl);
 
   return stripEventJsonLd({
