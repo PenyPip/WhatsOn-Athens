@@ -1383,7 +1383,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               alt={
                 isMovie && movie
                   ? posterAltForMovie(movie)
-                  : posterAltForTheater(theaterTitle?.title || theaterShow?.title ?? "")
+                  : posterAltForTheater(theaterTitle?.title || theaterShow?.title || "")
               }
               width={isMovie ? 1200 : 2000}
               height={isMovie ? 1800 : 1250}
