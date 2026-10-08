@@ -99,6 +99,8 @@ import { formatTheaterRunPeriod } from "@/lib/theaterRunDates";
 import { isTouringTheaterShow } from "@/lib/theaterTours";
 import { isKidsTheaterShow } from "@/lib/theaterKids";
 import { formatTheaterAgeRange, theaterCardSubtitle } from "@/lib/theaterShowMeta";
+import { theaterShowTitleParts } from "@/lib/theaterSeason";
+import TheaterSeasonMark from "@/components/TheaterSeasonMark";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import { movieGenreLinkItems } from "@/lib/movieGenreLinks";
 import { TheaterTicketHeroPreview } from "@/components/TheaterTicketPrices";
@@ -568,12 +570,13 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
         };
       }
       const show = event as StrapiTheaterShow;
+      const parts = theaterShowTitleParts(show);
       return {
-        title: show.title,
+        title: parts.title,
         description: theaterPageDescription(show),
         path: `/theater/${slug}`,
         image: show.posterUrl,
-        imageAlt: posterAltForTheater(show.title),
+        imageAlt: posterAltForTheater(parts.title),
         ogType: "article" as const,
       };
     }, [isLoading, event, type, slug, genreLabel, isMovieEarly, movieEarly, movieSeoHint]),
@@ -763,7 +766,8 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
 
   const showRateReminder = isAuthenticated && isSeen && !hasMyReview;
 
-  const headline = isMovie && movie ? movieTitleLines(movie) : { primary: event.title, secondary: undefined as string | undefined };
+  const theaterTitle = theaterShow ? theaterShowTitleParts(theaterShow) : null;
+  const headline = isMovie && movie ? movieTitleLines(movie) : { primary: theaterTitle?.title || event.title, secondary: undefined as string | undefined };
   const movieSeo =
     isMovie && movie ? movieDetailSeo(movie, genreLabel, movieSeoHint) : null;
 
@@ -1141,12 +1145,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   type="button"
                   onClick={() => setPosterLightboxOpen(true)}
                   className="block w-full cursor-zoom-in rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-                  aria-label={`Μεγέθυνση αφίσας - ${theaterShow.title}`}
+                  aria-label={`Μεγέθυνση αφίσας - ${theaterTitle?.title || theaterShow.title}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={theaterShow.posterUrl}
-                    alt={posterAltForTheater(theaterShow.title)}
+                    alt={posterAltForTheater(theaterTitle?.title || theaterShow.title)}
                     width={1040}
                     height={650}
                     fetchPriority="high"
@@ -1178,6 +1182,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             <h1 className="font-display font-bold text-white text-2xl md:text-4xl">
               {isMovie && movieSeo ? movieSeo.h1 : headline.primary}
             </h1>
+            {theaterTitle?.seasonYear ? <TheaterSeasonMark year={theaterTitle.seasonYear} tone="onDark" /> : null}
             {rottenTomatoes != null ? <RottenTomatoesBadge score={rottenTomatoes} tone="onDark" /> : null}
             </div>
             {isMovie && movie?.id ? (
@@ -1330,12 +1335,12 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   type="button"
                   onClick={() => setPosterLightboxOpen(true)}
                   className="block w-full cursor-zoom-in rounded-lg text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/60"
-                  aria-label={`Μεγέθυνση αφίσας - ${theaterShow.title}`}
+                  aria-label={`Μεγέθυνση αφίσας - ${theaterTitle?.title || theaterShow.title}`}
                 >
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={theaterShow.posterUrl}
-                    alt={posterAltForTheater(theaterShow.title)}
+                    alt={posterAltForTheater(theaterTitle?.title || theaterShow.title)}
                     width={1040}
                     height={650}
                     fetchPriority="high"
@@ -1362,7 +1367,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
             )}
           >
             <DialogTitle className="sr-only">
-              Αφίσα - {isMovie ? headline.primary : theaterShow?.title}
+              Αφίσα - {isMovie ? headline.primary : theaterTitle?.title || theaterShow?.title}
             </DialogTitle>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -1378,7 +1383,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
               alt={
                 isMovie && movie
                   ? posterAltForMovie(movie)
-                  : posterAltForTheater(theaterShow?.title ?? "")
+                  : posterAltForTheater(theaterTitle?.title || theaterShow?.title ?? "")
               }
               width={isMovie ? 1200 : 2000}
               height={isMovie ? 1800 : 1250}
@@ -1590,6 +1595,7 @@ const EventDetail = ({ type }: { type: "movie" | "theater" }) => {
                   <EventCard
                     slug={item.slug}
                     title={itemTl.primary}
+                    seasonYear={!isMovie ? (item as StrapiTheaterShow).seasonYear : undefined}
                     titleSecondary={itemTl.secondary}
                     subtitle={isMovie ? "" : theaterCardSubtitle(item as StrapiTheaterShow)}
                     genre={isMovie ? "" : theaterGenreLabel((item as StrapiTheaterShow).genre)}

@@ -146,6 +146,7 @@ export function TheaterHomeDarkScroll({
                   <EventCard
                     slug={show.slug}
                     title={show.title}
+                    seasonYear={show.seasonYear}
                     subtitle={theaterCardSubtitle(show)}
                     genre={theaterGenreLabel(show.genre)}
                     duration={show.duration ?? 0}

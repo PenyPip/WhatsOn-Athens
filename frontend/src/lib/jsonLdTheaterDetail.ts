@@ -1,5 +1,6 @@
 import type { StrapiTheaterShow } from "@/lib/api";
 import { theaterGenreLabel } from "@/lib/theaterGenre";
+import { theaterShowTitleParts } from "@/lib/theaterSeason";
 import { absolutePageUrl, resolvePublicAssetUrl } from "@/lib/siteMetadata";
 
 type JsonLdObject = Record<string, unknown>;
@@ -32,25 +33,27 @@ export type TheaterDetailJsonLdInput = {
 /** JSON-LD: BreadcrumbList + TheaterEvent (παράσταση). */
 export function buildTheaterDetailJsonLd(input: TheaterDetailJsonLdInput): JsonLdObject {
   const { show, slug, venueNames = [] } = input;
+  const parts = theaterShowTitleParts(show);
   const pageUrl = absolutePageUrl(`/theater/${slug}`);
   const poster = resolvePublicAssetUrl(show.posterUrl);
   const synopsis = (show.synopsis ?? "").trim();
+  const description = [parts.seasonLabel, synopsis].filter(Boolean).join(". ");
 
   const breadcrumbs: JsonLdObject = {
     "@type": "BreadcrumbList",
     itemListElement: [
       { "@type": "ListItem", position: 1, name: "Αρχική", item: absolutePageUrl("/") },
       { "@type": "ListItem", position: 2, name: "Θέατρο", item: absolutePageUrl("/theater") },
-      { "@type": "ListItem", position: 3, name: show.title, item: pageUrl },
+      { "@type": "ListItem", position: 3, name: parts.title, item: pageUrl },
     ],
   };
 
   const event: JsonLdObject = {
     "@type": "TheaterEvent",
     "@id": `${pageUrl}#event`,
-    name: show.title,
+    name: parts.title,
     url: pageUrl,
-    description: synopsis || undefined,
+    description: description || undefined,
     image: poster,
     inLanguage: "el",
     duration: durationIsoMinutes(show.duration),

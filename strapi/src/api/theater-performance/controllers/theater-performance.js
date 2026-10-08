@@ -31,7 +31,7 @@ function upcomingPerformanceFilters(now = new Date()) {
 
 const PERFORMANCE_POPULATE = {
   theater_show: {
-    fields: ['id', 'slug', 'title', 'sold_out', 'ticket_price', 'ticket_price_from', 'ticket_price_to'],
+    fields: ['id', 'slug', 'title', 'season_year', 'sold_out', 'ticket_price', 'ticket_price_from', 'ticket_price_to'],
     populate: { poster: { fields: ['url', 'formats'] } },
   },
   venue: {

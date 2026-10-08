@@ -64,16 +64,20 @@ function parentheticalParts(title) {
   return parts;
 }
 
-function playTitleVariants(playTitle) {
-  const s = String(playTitle || '').trim();
-  const variants = new Set([s, stripParenthetical(s), ...parentheticalParts(s)].filter(Boolean));
+function titleVariants(raw) {
+  const { splitTheaterSeasonTitle } = require('./theaterSeason');
+  const s = String(raw || '').trim();
+  const peeled = splitTheaterSeasonTitle(s).title;
+  const variants = new Set([s, peeled, stripParenthetical(s), stripParenthetical(peeled), ...parentheticalParts(s)].filter(Boolean));
   return [...variants];
 }
 
+function playTitleVariants(playTitle) {
+  return titleVariants(playTitle);
+}
+
 function cmsTitleVariants(cmsTitle) {
-  const s = String(cmsTitle || '').trim();
-  const variants = new Set([s, stripParenthetical(s), ...parentheticalParts(s)].filter(Boolean));
-  return [...variants];
+  return titleVariants(cmsTitle);
 }
 
 /**

@@ -270,6 +270,7 @@ const TheaterPage = () => {
                       key={show.id}
                       slug={show.slug}
                       title={show.title}
+                      seasonYear={show.seasonYear}
                       subtitle={theaterCardSubtitle(show)}
                       genre={
                         [

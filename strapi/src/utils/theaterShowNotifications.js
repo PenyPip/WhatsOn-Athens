@@ -1,6 +1,7 @@
 'use strict';
 
 const { sendMail, mailEnabled, mailStatus } = require('./sendMail');
+const { theaterShowName } = require('./theaterSeason');
 
 const ATHENS_TZ = 'Europe/Athens';
 const LOOKBACK_MS = 25 * 60 * 1000;
@@ -141,13 +142,14 @@ async function loadUserEmail(strapi, userId) {
   return { id: user.id, email, username: user.username || email };
 }
 
-function buildEmail({ showTitle, showSlug, lines }) {
+function buildEmail({ showTitle, showSlug, lines, seasonLabel = '' }) {
   const url = `${siteBaseUrl()}/theater/${encodeURIComponent(showSlug)}#theater-performances`;
+  const seasonBit = seasonLabel ? ` · ${seasonLabel}` : '';
   const subject = `Νέες ημερομηνίες — ${showTitle}`;
   const listText = lines.map((l) => `• ${l}`).join('\n');
   const text =
     `Γεια σου!\n\n` +
-    `Προστέθηκαν νέες ημερομηνίες για την παράσταση «${showTitle}»:\n\n` +
+    `Προστέθηκαν νέες ημερομηνίες για την παράσταση «${showTitle}»${seasonBit}:\n\n` +
     `${listText}\n\n` +
     `Δες το πρόγραμμα: ${url}\n\n` +
     `— 37°N Athens\n` +
@@ -156,7 +158,7 @@ function buildEmail({ showTitle, showSlug, lines }) {
   const listHtml = lines.map((l) => `<li>${escapeHtml(l)}</li>`).join('');
   const html =
     `<p>Γεια σου!</p>` +
-    `<p>Προστέθηκαν νέες ημερομηνίες για την παράσταση <strong>${escapeHtml(showTitle)}</strong>:</p>` +
+    `<p>Προστέθηκαν νέες ημερομηνίες για την παράσταση <strong>${escapeHtml(showTitle)}</strong>${seasonLabel ? ` · ${escapeHtml(seasonLabel)}` : ''}:</p>` +
     `<ul>${listHtml}</ul>` +
     `<p><a href="${escapeHtml(url)}">Δες το πρόγραμμα στο 37°N</a></p>` +
     `<p style="color:#666;font-size:12px">Για να σταματήσεις τα email, αφαίρεσε την παράσταση από τα αγαπημένα σου στο the37n.gr.</p>`;
@@ -262,7 +264,7 @@ async function getProfileNotifications(strapi, userId, { now = new Date() } = {}
     where: { user: uid, active: true, source: 'follow' },
     populate: {
       theater_show: {
-        fields: ['id', 'slug', 'title'],
+        fields: ['id', 'slug', 'title', 'season_year'],
         populate: { poster: { fields: ['url', 'formats'] } },
       },
     },
@@ -327,9 +329,11 @@ async function getProfileNotifications(strapi, userId, { now = new Date() } = {}
     if (!Number.isFinite(showId)) continue;
     subscribedShowIds.add(showId);
     const slug = show?.slug?.trim();
+    const named = theaterShowName(show);
     subscriptionMeta.set(showId, {
       showId,
-      showTitle: show?.title || 'Παράσταση',
+      showTitle: named.title || 'Παράσταση',
+      seasonYear: named.seasonYear,
       showSlug: slug || '',
       posterUrl: mapPosterUrl(show),
       href: slug ? `/theater/${encodeURIComponent(slug)}#theater-performances` : '/theater',
@@ -388,7 +392,7 @@ async function notifySubscribersForShow(strapi, theaterShowId, performanceIds, {
 
   const show = await strapi.db.query('api::theater-show.theater-show').findOne({
     where: { id: sid },
-    select: ['id', 'slug', 'title'],
+    select: ['id', 'slug', 'title', 'season_year'],
   });
   if (!show?.slug) return { sent: 0 };
 
@@ -412,8 +416,10 @@ async function notifySubscribersForShow(strapi, theaterShowId, performanceIds, {
   }
 
   const lines = upcoming.map(formatPerformanceLine);
+  const named = theaterShowName(show);
   const emailContent = buildEmail({
-    showTitle: show.title || 'Παράσταση',
+    showTitle: named.title || 'Παράσταση',
+    seasonLabel: named.seasonLabel,
     showSlug: show.slug,
     lines,
   });
@@ -486,7 +492,7 @@ async function notifyFavoriteVenueUsersForPerformances(
     fields: ['id', 'datetime', 'week_end', 'schedule_kind', 'import_source', 'createdAt'],
     populate: {
       venue: { fields: ['id', 'name', 'slug', 'type'] },
-      theater_show: { fields: ['id', 'title', 'slug'] },
+      theater_show: { fields: ['id', 'title', 'slug', 'season_year'] },
     },
     sort: { datetime: 'asc' },
     limit: 100,
@@ -548,9 +554,11 @@ async function notifyFavoriteVenueUsersForPerformances(
     }
 
     const lines = group.perfs.map((p) => {
-      const showTitle = p.theater_show?.title?.trim();
+      const named = theaterShowName(p.theater_show);
+      const showTitle = named.title?.trim();
       const base = formatPerformanceLine(p);
-      return showTitle ? `${showTitle} — ${base}` : base;
+      const seasonBit = named.seasonLabel ? ` · ${named.seasonLabel}` : '';
+      return showTitle ? `${showTitle}${seasonBit} — ${base}` : base;
     });
     const emailContent = buildVenueFavoriteEmail({
       venueName: group.venueName,

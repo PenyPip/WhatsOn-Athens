@@ -115,6 +115,7 @@ export type TheaterVenueShowGroup = {
   key: string;
   theaterShowSlug: string;
   theaterShowTitle: string;
+  theaterShowSeasonYear?: number;
   posterUrl?: string | null;
   soldOut?: boolean;
   slots: StrapiTheaterPerformance[];
@@ -147,6 +148,7 @@ export function groupPerformancesByShowAtVenue(
         key,
         theaterShowSlug: head.theaterShowSlug?.trim() || "",
         theaterShowTitle: head.theaterShowTitle?.trim() || "Παράσταση",
+        theaterShowSeasonYear: head.theaterShowSeasonYear,
         posterUrl: head.theaterShowPosterUrl ?? null,
         soldOut,
         slots: sorted,

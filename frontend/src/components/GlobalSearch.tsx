@@ -21,6 +21,8 @@ import type { StrapiMovie, StrapiTheaterShow, StrapiVenue } from "@/lib/api";
 import { movieTitleLines, movieTitlesSearchBlob } from "@/lib/movieTitles";
 import { enrichMoviesWithShowtimeGenre, showtimeIsUpcoming } from "@/lib/homeMovieFilters";
 import { theaterShowHasUpcomingPerformances } from "@/lib/theaterPerformances";
+import { theaterShowTitleParts } from "@/lib/theaterSeason";
+import TheaterSeasonMark from "@/components/TheaterSeasonMark";
 import { sortMoviesByCinemaCount } from "@/lib/movieCinemaSort";
 import { sortMoviesPrioritizingFavorites } from "@/lib/favoriteSort";
 import { useFavoriteIds } from "@/hooks/useFavoriteIds";
@@ -51,7 +53,8 @@ function cmpVenueNames(a: StrapiVenue, b: StrapiVenue): number {
 }
 
 function theaterShowMatches(show: StrapiTheaterShow, q: string): boolean {
-  const hay = [show.title ?? "", show.slug ?? "", show.director ?? "", show.author ?? "", show.genre ?? ""].join(" ");
+  const parts = theaterShowTitleParts(show);
+  const hay = [parts.title, parts.seasonLabel, show.title ?? "", show.slug ?? "", show.director ?? "", show.author ?? "", show.genre ?? ""].join(" ");
   return textMatchesSearch(hay, q);
 }
 
@@ -403,7 +406,9 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
           <section className="px-2 pb-1">
             <p className="px-2 py-1 text-xs font-medium uppercase tracking-wide text-white/45">Παραστάσεις</p>
             <ul>
-              {theaterHits.map((s) => (
+              {theaterHits.map((s) => {
+                const parts = theaterShowTitleParts(s);
+                return (
                 <li key={`theater-${s.id}`}>
                   <button
                     type="button"
@@ -417,7 +422,10 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                   >
                     <Theater className="mt-0.5 h-5 w-5 shrink-0 text-white/45" aria-hidden />
                     <span className="min-w-0 flex-1">
-                      <span className="block truncate font-medium">{s.title || "Παράσταση"}</span>
+                      <span className="flex min-w-0 items-center gap-2">
+                        <span className="truncate font-medium">{parts.title || "Παράσταση"}</span>
+                        <TheaterSeasonMark year={parts.seasonYear} tone="onDark" />
+                      </span>
                       {s.director || s.author ? (
                         <span className="mt-0.5 block truncate text-xs text-white/45">
                           {[s.author, s.director].filter(Boolean).join(" · ")}
@@ -426,7 +434,8 @@ export const NavSearch = forwardRef<NavSearchHandle, NavSearchProps>(function Na
                     </span>
                   </button>
                 </li>
-              ))}
+                );
+              })}
             </ul>
           </section>
         ) : null}

@@ -25,6 +25,7 @@ export type ProfileTheaterShow = {
   id: number;
   slug: string;
   title: string;
+  seasonYear?: number | null;
   posterUrl: string | null;
 };
 
@@ -64,6 +65,7 @@ export type ProfileVenueNotification = {
 export type ProfileTheaterShowNotification = {
   showId: number;
   showTitle: string;
+  seasonYear?: number | null;
   showSlug: string;
   posterUrl: string | null;
   href: string;
@@ -76,6 +78,7 @@ export type ProfileTheaterShowNotification = {
 export type ProfileWatchedShow = {
   showId: number;
   showTitle: string;
+  seasonYear?: number | null;
   showSlug: string;
   posterUrl: string | null;
   href: string;

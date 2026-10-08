@@ -24,6 +24,7 @@ const config = {
       'content-manager.enum.api::venue.venue.type.theater': 'Θέατρο',
       'content-manager.enum.api::venue.venue.type.other': 'Άλλο',
       'content-manager.content-types.api::theater-show.theater-show.title': 'Τίτλος',
+      'content-manager.content-types.api::theater-show.theater-show.season_year': 'Χρόνος',
       'content-manager.content-types.api::theater-show.theater-show.on_tour': 'Περιοδεία',
       'content-manager.content-types.api::theater-show.theater-show.is_kids': 'Παιδική παράσταση',
       'content-manager.content-types.api::theater-show.theater-show.director': 'Σκηνοθέτης',

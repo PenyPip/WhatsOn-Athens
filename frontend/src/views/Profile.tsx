@@ -8,6 +8,8 @@ import { staticPageSeo } from "@/lib/pageSeoCopy";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import EventCard from "@/components/EventCard";
+import TheaterSeasonMark from "@/components/TheaterSeasonMark";
+import { theaterShowTitleParts } from "@/lib/theaterSeason";
 import { movieTitleLines } from "@/lib/movieTitles";
 import { resolveImdbRating } from "@/lib/movieImdb";
 import { deleteMyReview } from "@/lib/userProfile";
@@ -337,7 +339,10 @@ const Profile = () => {
                             className="h-14 w-20 shrink-0 rounded object-cover"
                           />
                         ) : null}
-                        <span className="font-medium">{show.title}</span>
+                        <span className="flex min-w-0 items-center gap-2">
+                          <span className="font-medium">{theaterShowTitleParts(show).title}</span>
+                          <TheaterSeasonMark year={theaterShowTitleParts(show).seasonYear} />
+                        </span>
                       </Link>
                     </li>
                   ))}

@@ -1,4 +1,6 @@
 import { Link } from "react-router-dom";
+import TheaterSeasonMark from "@/components/TheaterSeasonMark";
+import { theaterShowTitleParts } from "@/lib/theaterSeason";
 import { Bell } from "lucide-react";
 import type { ProfileNotifications } from "@/lib/userProfile";
 
@@ -56,14 +58,17 @@ export default function ProfileNotificationsPanel({
             <div>
               <p className="text-sm font-semibold text-[#13143E]">Liked παραστάσεις</p>
               <ul className="mt-2 space-y-3">
-                {notifications.theaterShowUpdates.map((show) => (
+                {notifications.theaterShowUpdates.map((show) => {
+                  const parts = theaterShowTitleParts({ title: show.showTitle, seasonYear: show.seasonYear });
+                  return (
                   <li key={show.showId} className="text-sm">
                     <Link
                       to={show.href}
                       onClick={onNavigate}
-                      className="font-medium text-[#13143E] underline decoration-[#13143E]/25 underline-offset-2 hover:decoration-[#13143E]/60"
+                      className="inline-flex items-center gap-2 font-medium text-[#13143E] underline decoration-[#13143E]/25 underline-offset-2 hover:decoration-[#13143E]/60"
                     >
-                      {show.showTitle}
+                      <span>{parts.title}</span>
+                      <TheaterSeasonMark year={parts.seasonYear} />
                     </Link>
                     <span className="text-[#13143E]/65">
                       {" "}
@@ -77,7 +82,8 @@ export default function ProfileNotificationsPanel({
                       </ul>
                     ) : null}
                   </li>
-                ))}
+                  );
+                })}
               </ul>
             </div>
           ) : null}
@@ -94,17 +100,21 @@ export default function ProfileNotificationsPanel({
             Αγαπημένες χωρίς νέες ημερομηνίες
           </p>
           <ul className="mt-2 flex flex-wrap gap-2">
-            {notifications.subscriptions.map((show) => (
+            {notifications.subscriptions.map((show) => {
+              const parts = theaterShowTitleParts({ title: show.showTitle, seasonYear: show.seasonYear });
+              return (
               <li key={show.showId}>
                 <Link
                   to={show.href}
                   onClick={onNavigate}
-                  className="inline-flex max-w-[14rem] truncate rounded-full border border-border bg-background px-3 py-1 text-xs text-[#13143E] transition-colors hover:bg-muted"
+                  className="inline-flex max-w-[16rem] items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1 text-xs text-[#13143E] transition-colors hover:bg-muted"
                 >
-                  {show.showTitle}
+                  <span className="truncate">{parts.title}</span>
+                  <TheaterSeasonMark year={parts.seasonYear} />
                 </Link>
               </li>
-            ))}
+              );
+            })}
           </ul>
         </div>
       ) : null}

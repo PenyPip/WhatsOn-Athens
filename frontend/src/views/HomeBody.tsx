@@ -798,6 +798,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                             <EventCard
                               slug={show.slug}
                               title={show.title}
+                              seasonYear={show.seasonYear}
                               subtitle={theaterCardSubtitle(show)}
                               genre={theaterGenreLabel(show.genre)}
                               duration={show.duration ?? 0}
@@ -883,6 +884,7 @@ export default function HomeBody({ layout }: HomeBodyProps) {
                             <EventCard
                               slug={show.slug}
                               title={show.title}
+                              seasonYear={show.seasonYear}
                               subtitle={theaterCardSubtitle(show)}
                               genre={theaterGenreLabel(show.genre)}
                               duration={show.duration ?? 0}

@@ -8,10 +8,14 @@ import { cn } from "@/lib/utils";
 import GenreLinks from "@/components/GenreLinks";
 import type { GenreLinkItem } from "@/lib/movieGenreLinks";
 import { POSTER_BADGE_CORNER_TOP_LEFT, POSTER_BADGE_TOP_LEFT, POSTER_BADGE_TOP_LEFT_NEW } from "@/lib/posterBadges";
+import TheaterSeasonMark from "@/components/TheaterSeasonMark";
+import { theaterShowTitleParts } from "@/lib/theaterSeason";
 
 interface EventCardProps {
   slug: string;
   title: string;
+  /** Θέατρο: 2 = «2ος χρόνος». Αν λείπει, διαβάζεται και από τον τίτλο. */
+  seasonYear?: number | null;
   /** Δεύτερη γραμμή (π.χ. πρωτότυπος τίτλος όταν ο κύριος είναι ελληνικός). */
   titleSecondary?: string;
   subtitle: string;
@@ -65,6 +69,7 @@ interface EventCardProps {
 const EventCard = ({
   slug,
   title,
+  seasonYear,
   titleSecondary,
   subtitle,
   genre,
@@ -104,7 +109,6 @@ const EventCard = ({
     titleSecondary.trim().toLocaleLowerCase("el") !== title.trim().toLocaleLowerCase("el")
       ? titleSecondary.trim()
       : "";
-  const posterAlt = secondaryLine ? `${title} · ${secondaryLine}` : title;
   const showDuration = typeof duration === "number" && Number.isFinite(duration) && duration > 0;
   const genreTrimmed = typeof genre === "string" ? genre.trim() : "";
   const isMovie = type === "movie";
@@ -112,6 +116,9 @@ const EventCard = ({
   const isTheater = type === "theater";
   /** Αρχική (compact) + horizontal scroll: ποτέ native lazy - αλλιώς μένουν κενές αφίσες. */
   const useEagerPoster = posterPriority || posterEager || compactMovieMeta;
+  const theaterParts = isTheater ? theaterShowTitleParts({ title, seasonYear }) : null;
+  const displayTitle = theaterParts?.title || title;
+  const posterAlt = secondaryLine ? `${displayTitle} · ${secondaryLine}` : displayTitle;
   const soldOutBadge = typeof badge === "string" && badge.trim().toUpperCase() === "SOLD OUT";
   const newPerformancesBadge =
     typeof badge === "string" && badge.trim().toLocaleLowerCase("el") === "νέες παραστάσεις";
@@ -282,8 +289,11 @@ const EventCard = ({
                   (isMovie || uniformScrollCard) && "min-h-[2.5rem]",
                 )}
               >
-                {title}
+                {displayTitle}
               </h3>
+              {theaterParts?.seasonYear ? (
+                <TheaterSeasonMark year={theaterParts.seasonYear} className="mt-0.5" />
+              ) : null}
               {rottenScore != null ? (
                 <RottenTomatoesBadge score={rottenScore} className="mt-0.5" />
               ) : null}

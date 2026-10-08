@@ -1,4 +1,5 @@
 import { truncateDescription } from "@/lib/siteMetadata";
+import { theaterShowTitleParts } from "@/lib/theaterSeason";
 import type { StrapiMovie, StrapiTheaterShow } from "@/lib/api";
 import {
   movieDetailSeo,
@@ -87,17 +88,19 @@ export const staticPageSeo = {
 } as const;
 
 export function theaterPageDescription(show: StrapiTheaterShow): string {
+  const parts = theaterShowTitleParts(show);
   const bits: string[] = [];
+  if (parts.seasonLabel) bits.push(parts.seasonLabel);
   if (show.genre?.trim()) bits.push(show.genre.trim());
   const synopsis = (show.synopsis ?? "").trim();
   if (synopsis) {
     return truncateDescription(
-      bits.length ? `${show.title} - ${bits.join(" · ")}. ${synopsis}` : `${show.title}. ${synopsis}`,
+      bits.length ? `${parts.title} - ${bits.join(" · ")}. ${synopsis}` : `${parts.title}. ${synopsis}`,
     );
   }
   return truncateDescription(
     bits.length
-      ? `${show.title} - ${bits.join(" · ")}. Πληροφορίες και κριτικές.`
-      : `${show.title}. Πληροφορίες θεατρικής παράστασης.`,
+      ? `${parts.title} - ${bits.join(" · ")}. Πληροφορίες και κριτικές.`
+      : `${parts.title}. Πληροφορίες θεατρικής παράστασης.`,
   );
 }

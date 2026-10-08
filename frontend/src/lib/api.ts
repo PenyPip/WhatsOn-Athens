@@ -775,6 +775,7 @@ function mapTheaterShow(raw: unknown): StrapiTheaterShow {
     documentId: s.documentId,
     slug: s.slug,
     title: s.title,
+    seasonYear: parseOptionalInt(s.season_year),
     director: typeof s.director === "string" ? s.director : "",
     author: typeof s.author === "string" ? s.author.trim() : "",
     cast: normalizeCastFromStrapi(s.cast),
@@ -1301,6 +1302,7 @@ function mapTheaterPerformance(raw: unknown): StrapiTheaterPerformance[] {
     typeof tsAttrs?.slug === "string" && tsAttrs.slug.trim() ? tsAttrs.slug.trim() : undefined;
   const theaterShowTitle =
     typeof tsAttrs?.title === "string" && tsAttrs.title.trim() ? tsAttrs.title.trim() : undefined;
+  const theaterShowSeasonYear = parseOptionalInt(tsAttrs?.season_year);
   const theaterShowId = strapiRelationNumericId(s.theater_show as unknown);
   const soldOutRaw = tsAttrs?.sold_out;
   const theaterShowSoldOut = soldOutRaw === true || soldOutRaw === "true" || soldOutRaw === 1;
@@ -1343,6 +1345,7 @@ function mapTheaterPerformance(raw: unknown): StrapiTheaterPerformance[] {
     theaterShowId,
     theaterShowSlug,
     theaterShowTitle,
+    theaterShowSeasonYear,
     theaterShowPosterUrl,
     theaterShowSoldOut,
     createdAt:
@@ -1472,6 +1475,8 @@ export interface StrapiTheaterShow {
   documentId: string;
   slug: string;
   title: string;
+  /** 2 = «2ος χρόνος». Κενό τον πρώτο χρόνο. */
+  seasonYear?: number;
   /** Σκηνοθέτης. */
   director: string;
   /** Συγγραφέας / κείμενο του έργου. */
@@ -1668,6 +1673,7 @@ export interface StrapiTheaterPerformance {
   theaterShowId?: number;
   theaterShowSlug?: string;
   theaterShowTitle?: string;
+  theaterShowSeasonYear?: number;
   theaterShowPosterUrl?: string | null;
   theaterShowSoldOut?: boolean;
   /** Πότε μπήκε στο CMS - για σήμανση «Νέο» / «Νέες παραστάσεις» (7 ημέρες). */

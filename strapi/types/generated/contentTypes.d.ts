@@ -1084,6 +1084,7 @@ export interface ApiTheaterShowTheaterShow extends Schema.CollectionType {
     >;
     run_end: Attribute.Date;
     run_start: Attribute.Date;
+    season_year: Attribute.Integer;
     slug: Attribute.UID<'api::theater-show.theater-show', 'title'> &
       Attribute.Required;
     sold_out: Attribute.Boolean & Attribute.DefaultTo<false>;

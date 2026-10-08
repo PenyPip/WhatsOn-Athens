@@ -61,6 +61,7 @@ function mapTheaterShow(row) {
     id: row.id,
     slug: row.slug,
     title: row.title,
+    seasonYear: Number.isInteger(Number(row.season_year)) && Number(row.season_year) >= 2 ? Number(row.season_year) : null,
     posterUrl,
   };
 }

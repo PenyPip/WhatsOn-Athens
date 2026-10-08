@@ -105,6 +105,7 @@ function slimMoviesShowtimes(qc: QueryClient): void {
         id: s.id,
         slug: s.slug,
         title: s.title,
+        seasonYear: s.seasonYear,
         genre: s.genre,
         duration: s.duration,
         director: s.director,

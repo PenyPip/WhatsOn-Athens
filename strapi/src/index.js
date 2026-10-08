@@ -175,6 +175,90 @@ async function placeRottenTomatoesBesideTitle(strapi) {
   strapi.log.info('[whatson] Rotten Tomatoes δίπλα στον τίτλο στη φόρμα ταινίας.');
 }
 
+/** Φόρμα θεάτρου: ο χρόνος (2 = 2ος χρόνος) δίπλα στον τίτλο. */
+async function placeTheaterSeasonBesideTitle(strapi) {
+  const store = strapi.store({ type: 'plugin', name: 'content_manager' });
+  const key = 'configuration_content_types::api::theater-show.theater-show';
+  const config = await store.get({ key });
+  const edit = config?.layouts?.edit;
+  if (!config || !Array.isArray(edit)) return;
+
+  const besideTitle = edit.some(
+    (row) =>
+      Array.isArray(row) &&
+      row.some((cell) => cell?.name === 'title') &&
+      row.some((cell) => cell?.name === 'season_year'),
+  );
+
+  let nextEdit = edit;
+  if (!besideTitle) {
+    const cleaned = edit
+      .map((row) => (Array.isArray(row) ? row.filter((cell) => cell?.name !== 'season_year') : row))
+      .filter((row) => Array.isArray(row) && row.length > 0);
+    const titleIdx = cleaned.findIndex((row) => row.some((cell) => cell?.name === 'title'));
+    if (titleIdx >= 0) {
+      const row = cleaned[titleIdx];
+      const titleCell = row.find((cell) => cell?.name === 'title');
+      const rest = row.filter((cell) => cell?.name !== 'title');
+      cleaned[titleIdx] = [{ ...titleCell, size: 8 }, { name: 'season_year', size: 4 }];
+      if (rest.length) cleaned.splice(titleIdx + 1, 0, rest);
+      nextEdit = cleaned;
+    }
+  }
+
+  const metadatas = { ...(config.metadatas || {}) };
+  const current = metadatas.season_year || { edit: {}, list: {} };
+  metadatas.season_year = {
+    ...current,
+    edit: {
+      ...(current.edit || {}),
+      label: 'Χρόνος',
+      description: '2 = 2ος χρόνος, 3 = 3ος χρόνος. Κενό τον πρώτο χρόνο.',
+      placeholder: '',
+      editable: true,
+      visible: true,
+    },
+    list: {
+      ...(current.list || {}),
+      label: 'Χρόνος',
+      searchable: true,
+      sortable: true,
+    },
+  };
+
+  await store.set({
+    key,
+    value: {
+      ...config,
+      metadatas,
+      layouts: { ...config.layouts, edit: nextEdit },
+    },
+  });
+  strapi.log.info('[whatson] Χρόνος παράστασης δίπλα στον τίτλο στη φόρμα θεάτρου.');
+}
+
+/** Τίτλοι που έχουν ήδη «2ος χρόνος» κ.λπ. — το κείμενο πάει στο πεδίο. */
+async function peelTheaterSeasonFromTitles(strapi) {
+  const { splitTheaterSeasonTitle, normalizeSeasonYear } = require('./utils/theaterSeason');
+  const rows = await strapi.db.query('api::theater-show.theater-show').findMany({
+    select: ['id', 'title', 'season_year'],
+  });
+  let updated = 0;
+  for (const row of rows || []) {
+    const peeled = splitTheaterSeasonTitle(row?.title);
+    if (!peeled.seasonYear || !peeled.title || peeled.title === row.title) continue;
+    const season = normalizeSeasonYear(row.season_year) || peeled.seasonYear;
+    await strapi.db.query('api::theater-show.theater-show').update({
+      where: { id: row.id },
+      data: { title: peeled.title, season_year: season },
+    });
+    updated += 1;
+  }
+  if (updated) {
+    strapi.log.info(`[whatson] Θέατρο: ${updated} τίτλοι καθαρίστηκαν — ο χρόνος μπήκε στο πεδίο.`);
+  }
+}
+
 /** Φόρμα event: Τοποθεσία ορατή, μετά τις ημερομηνίες. */
 async function placeEventLocationField(strapi) {
   const store = strapi.store({ type: 'plugin', name: 'content_manager' });
@@ -417,6 +501,18 @@ module.exports = {
       await placeRottenTomatoesBesideTitle(strapi);
     } catch (e) {
       strapi.log.warn('[whatson bootstrap rotten tomatoes layout]', e);
+    }
+
+    try {
+      await placeTheaterSeasonBesideTitle(strapi);
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap theater season layout]', e);
+    }
+
+    try {
+      await peelTheaterSeasonFromTitles(strapi);
+    } catch (e) {
+      strapi.log.warn('[whatson bootstrap theater season titles]', e);
     }
 
     try {

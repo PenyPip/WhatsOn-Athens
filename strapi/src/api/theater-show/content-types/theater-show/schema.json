@@ -15,6 +15,12 @@
       "type": "string",
       "required": true
     },
+    "season_year": {
+      "type": "integer",
+      "min": 2,
+      "max": 30,
+      "description": "2 = «2ος χρόνος», 3 = «3ος χρόνος». Κενό τον πρώτο χρόνο. Δεν γράφεται στον τίτλο."
+    },
     "slug": {
       "type": "uid",
       "targetField": "title",

@@ -1,6 +1,8 @@
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
 import PosterPicture from "@/components/PosterPicture";
+import TheaterSeasonMark from "@/components/TheaterSeasonMark";
+import { theaterShowTitleParts } from "@/lib/theaterSeason";
 import ShowtimesExpandable from "@/components/ShowtimesExpandable";
 import ScheduleCompactRow from "@/components/ScheduleCompactRow";
 import VenueBookingLink from "@/components/VenueBookingLink";
@@ -80,7 +82,11 @@ export default function TheaterVenueProgramLayout({
             const detailHref = group.theaterShowSlug
               ? `/theater/${encodeURIComponent(group.theaterShowSlug)}`
               : null;
-            const title = show?.title?.trim() || group.theaterShowTitle;
+            const titleParts = theaterShowTitleParts({
+              title: show?.title?.trim() || group.theaterShowTitle,
+              seasonYear: show?.seasonYear ?? group.theaterShowSeasonYear,
+            });
+            const title = titleParts.title;
             const posterUrl = show?.posterUrl ?? group.posterUrl ?? undefined;
             const genre = show ? theaterGenreLabel(show.genre) : "";
             const soldOut = Boolean(show?.soldOut || group.soldOut);
@@ -118,6 +124,9 @@ export default function TheaterVenueProgramLayout({
                         {title}
                       </h3>
                     )}
+                    {titleParts.seasonYear ? (
+                      <TheaterSeasonMark year={titleParts.seasonYear} className="mt-1" />
+                    ) : null}
                     {show?.director?.trim() ? (
                       <p className="mt-1 text-xs text-muted-foreground">{show.director.trim()}</p>
                     ) : null}
