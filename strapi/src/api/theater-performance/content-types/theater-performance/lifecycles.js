@@ -6,7 +6,10 @@ function lifecyclePerformanceId(event) {
   return event?.result?.id ?? event?.params?.where?.id ?? null;
 }
 
-/** Μην στέλνουμε email για επεκτάσεις repeat_expand — μόνο νέες εγγραφές. */
+/**
+ * Νέα παράσταση: έλεγχος like και αγαπημένου θεάτρου αμέσως.
+ * Όχι cron. Οι επεκτάσεις repeat_expand δεν στέλνουν mail.
+ */
 function shouldNotifyImportSource(data) {
   const src = data?.import_source;
   return src !== 'repeat_expand';

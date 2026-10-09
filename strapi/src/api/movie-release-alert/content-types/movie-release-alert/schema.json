@@ -1,0 +1,28 @@
+{
+  "kind": "collectionType",
+  "collectionName": "movie_release_alerts",
+  "info": {
+    "singularName": "movie-release-alert",
+    "pluralName": "movie-release-alerts",
+    "displayName": "Movie release alert",
+    "description": "Μία ειδοποίηση ανά ταινία, τη στιγμή που εμφανίζεται η πρώτη μελλοντική προβολή."
+  },
+  "options": {
+    "draftAndPublish": false
+  },
+  "attributes": {
+    "movie_id": {
+      "type": "integer",
+      "required": true,
+      "unique": true
+    },
+    "done": {
+      "type": "boolean",
+      "default": false
+    },
+    "sent_count": {
+      "type": "integer",
+      "default": 0
+    }
+  }
+}

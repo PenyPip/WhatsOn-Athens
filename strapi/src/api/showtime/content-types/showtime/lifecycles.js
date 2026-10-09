@@ -2,6 +2,7 @@
 
 const { expandRepeatShowtimes } = require('../../services/showtime-repeat');
 const { isRepeatChildCreate } = require('../../services/repeat-context');
+const { scheduleMovieScreeningAlert } = require('../../../../utils/movieScreeningAlerts');
 
 function normalizeScheduleKind(raw) {
   return raw === 'week_block' ? 'week_block' : 'exact';
@@ -67,6 +68,12 @@ module.exports = {
     const id = lifecycleShowtimeId(event);
     if (!id) return;
     deferShowtimeSideEffects(strapi, id, 'afterCreate', lifecycleRepeatUntil(event));
+    // Νέα προβολή: αν είναι η πρώτη της ταινίας, ειδοποίησε όσους την έχουν ήδη στα αγαπημένα.
+    try {
+      await scheduleMovieScreeningAlert(strapi, id);
+    } catch (err) {
+      strapi.log.warn(`[movie-alert] claim id=${id}: ${err?.message || err}`);
+    }
   },
 
   async afterUpdate(event) {
