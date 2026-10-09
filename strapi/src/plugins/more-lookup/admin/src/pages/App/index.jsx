@@ -34,6 +34,7 @@ import {
 } from './syncUiShared';
 import { SyncReportPanel } from './SyncReportPanel';
 import { SyncProgressBanner } from './SyncProgressBanner';
+import { stopLookupTableKeys, useCmsRemoteSearch } from './useCmsRemoteSearch';
 
 
 function cmsTypeLabel(contentType) {
@@ -270,32 +271,45 @@ function catalogVenueOptionList(row, cmsVenueChoices = []) {
 function CatalogVenuePicker({ row, cmsVenueChoices, value, onChange, disabled, compact = false }) {
   const [showBrowse, setShowBrowse] = React.useState(false);
   const [filter, setFilter] = React.useState('');
-
-  if (!catalogVenueNeedsSetup(row)) return null;
-
+  const [pickedLabel, setPickedLabel] = React.useState('');
+  const needsSetup = catalogVenueNeedsSetup(row);
+  const venueType = row.category === 'theater' ? 'theater' : 'cinema';
+  const remote = useCmsRemoteSearch({
+    enabled: showBrowse && needsSetup,
+    contentType: 'venue',
+    venueType,
+    query: filter,
+  });
   const suggestions = React.useMemo(() => catalogVenueSuggestionOptions(row), [row]);
   const browseOptions = React.useMemo(() => {
-    if (!showBrowse) return [];
+    if (!showBrowse || !needsSetup) return [];
     const q = filter.trim().toLocaleLowerCase('el');
-    return cmsVenueChoicesForCatalogRow(row, cmsVenueChoices)
-      .filter((venue) => {
-        if (!q) return true;
-        return String(venue.title || '')
-          .toLocaleLowerCase('el')
-          .includes(q);
-      })
-      .slice(0, 60);
-  }, [showBrowse, filter, row, cmsVenueChoices]);
+    const suggestionIds = new Set(suggestions.map((opt) => opt.id));
+    const filteredSuggestions = q
+      ? suggestions.filter((opt) =>
+          String(opt.title || '')
+            .toLocaleLowerCase('el')
+            .includes(q),
+        )
+      : suggestions;
+    const fromRemote = remote.items.filter((item) => !suggestionIds.has(Number(item.id)));
+    return [...filteredSuggestions, ...fromRemote].slice(0, 36);
+  }, [showBrowse, needsSetup, filter, suggestions, remote.items]);
 
   const selectedId = value ? Number(value) : null;
   const selectedTitle = React.useMemo(() => {
     if (!Number.isFinite(selectedId)) return '';
+    if (pickedLabel) return pickedLabel;
     const fromList = catalogVenueOptionList(row, cmsVenueChoices).find((opt) => opt.id === selectedId);
-    return fromList?.title || `#${selectedId}`;
-  }, [selectedId, row, cmsVenueChoices]);
+    const fromRemote = remote.items.find((item) => Number(item.id) === selectedId);
+    return fromList?.title || fromRemote?.title || `#${selectedId}`;
+  }, [selectedId, pickedLabel, row, cmsVenueChoices, remote.items]);
 
-  const pickVenue = (id) => {
+  if (!needsSetup) return null;
+
+  const pickVenue = (id, title) => {
     onChange(String(id));
+    setPickedLabel(title || '');
     setShowBrowse(false);
     setFilter('');
   };
@@ -313,7 +327,7 @@ function CatalogVenuePicker({ row, cmsVenueChoices, value, onChange, disabled, c
           .filter(Boolean)
           .join(' ')}
         disabled={disabled}
-        onClick={() => pickVenue(opt.id)}
+        onClick={() => pickVenue(opt.id, opt.title)}
       >
         {opt.title}
         {score != null ? ` (Sc ${Number(score).toFixed(2)})` : ''}
@@ -337,7 +351,10 @@ function CatalogVenuePicker({ row, cmsVenueChoices, value, onChange, disabled, c
             size="S"
             variant="tertiary"
             disabled={disabled}
-            onClick={() => onChange('')}
+            onClick={() => {
+              onChange('');
+              setPickedLabel('');
+            }}
           >
             Ακύρωση
           </Button>
@@ -371,6 +388,9 @@ function CatalogVenuePicker({ row, cmsVenueChoices, value, onChange, disabled, c
             type="search"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
+            onKeyDown={stopLookupTableKeys}
+            onKeyUp={stopLookupTableKeys}
+            onClick={stopLookupTableKeys}
             disabled={disabled}
             placeholder="Αναζήτηση χώρου…"
             autoComplete="off"
@@ -380,13 +400,25 @@ function CatalogVenuePicker({ row, cmsVenueChoices, value, onChange, disabled, c
             role="listbox"
             aria-label="Όλοι οι χώροι CMS"
           >
-            {browseOptions.length > 0 ? (
-              browseOptions.map((venue) => renderVenueButton({ id: venue.id, title: venue.title }))
-            ) : (
+            {remote.loading ? (
               <Typography variant="pi" textColor="neutral500" padding={2}>
-                Δεν βρέθηκε χώρος
+                Αναζήτηση…
               </Typography>
-            )}
+            ) : null}
+            {remote.error ? (
+              <Typography variant="pi" textColor="danger600" padding={2}>
+                {remote.error}
+              </Typography>
+            ) : null}
+            {browseOptions.length > 0
+              ? browseOptions.map((venue) =>
+                  renderVenueButton({ id: venue.id, title: venue.title }),
+                )
+              : !remote.loading && !remote.error ? (
+                  <Typography variant="pi" textColor="neutral500" padding={2}>
+                    Δεν βρέθηκε χώρος
+                  </Typography>
+                ) : null}
           </div>
         </>
       ) : null}
@@ -598,7 +630,14 @@ function CatalogContentPanel({
 }) {
   const [showBrowse, setShowBrowse] = React.useState(false);
   const [filter, setFilter] = React.useState('');
+  const [pickedLabel, setPickedLabel] = React.useState('');
   const needsCreate = catalogContentNeedsCreate(row);
+  const contentType = catalogContentCmsType(row);
+  const remote = useCmsRemoteSearch({
+    enabled: showBrowse && needsCreate,
+    contentType,
+    query: filter,
+  });
   const codeKey = row.eventGroupCode || '';
   const linkBusy = busyKey === `content-link:${codeKey}`;
   const createBusy = busyKey === `content:${codeKey}`;
@@ -611,30 +650,27 @@ function CatalogContentPanel({
 
   const selectedTitle = React.useMemo(() => {
     if (!needsCreate || !Number.isFinite(selectedId)) return '';
+    if (pickedLabel) return pickedLabel;
     const fromList = catalogContentOptionList(row, cmsContentChoices).find(
       (opt) => opt.id === selectedId,
     );
-    return fromList?.title || `#${selectedId}`;
-  }, [needsCreate, selectedId, row, cmsContentChoices]);
+    const fromRemote = remote.items.find((item) => Number(item.id) === selectedId);
+    return fromList?.title || fromRemote?.title || `#${selectedId}`;
+  }, [needsCreate, selectedId, pickedLabel, row, cmsContentChoices, remote.items]);
 
   const browseOptions = React.useMemo(() => {
     if (!needsCreate || !showBrowse) return [];
     const q = filter.trim().toLocaleLowerCase('el');
     const suggestions = catalogContentSuggestionOptions(row);
     const suggestionIds = new Set(suggestions.map((s) => s.id));
-    const fromCms = cmsContentChoicesForCatalogRow(row, cmsContentChoices).filter((item) => {
-      if (suggestionIds.has(Number(item.id))) return false;
-      if (!q) return true;
-      const hay = `${item.title || ''} ${item.originalTitle || ''}`.toLocaleLowerCase('el');
-      return hay.includes(q);
-    });
     const filteredSuggestions = q
       ? suggestions.filter((s) =>
           `${s.title || ''} ${s.originalTitle || ''}`.toLocaleLowerCase('el').includes(q),
         )
       : suggestions;
-    return [...filteredSuggestions, ...fromCms].slice(0, 50);
-  }, [needsCreate, showBrowse, filter, row, cmsContentChoices]);
+    const fromRemote = remote.items.filter((item) => !suggestionIds.has(Number(item.id)));
+    return [...filteredSuggestions, ...fromRemote].slice(0, 36);
+  }, [needsCreate, showBrowse, filter, row, remote.items]);
 
   if (!needsCreate) {
     return (
@@ -644,8 +680,9 @@ function CatalogContentPanel({
     );
   }
 
-  const pickItem = (id) => {
+  const pickItem = (id, title) => {
     onPickChange(String(id));
+    setPickedLabel(title || '');
     setShowBrowse(false);
     setFilter('');
   };
@@ -707,7 +744,15 @@ function CatalogContentPanel({
           <Typography variant="pi" textColor="primary600" className="more-lookup-pick-label">
             {truncateLabel(selectedTitle, 32)}
           </Typography>
-          <Button size="S" variant="tertiary" disabled={anyBusy} onClick={() => onPickChange('')}>
+          <Button
+            size="S"
+            variant="tertiary"
+            disabled={anyBusy}
+            onClick={() => {
+              onPickChange('');
+              setPickedLabel('');
+            }}
+          >
             ✕
           </Button>
         </Flex>
@@ -720,6 +765,9 @@ function CatalogContentPanel({
             type="search"
             value={filter}
             onChange={(event) => setFilter(event.target.value)}
+            onKeyDown={stopLookupTableKeys}
+            onKeyUp={stopLookupTableKeys}
+            onClick={stopLookupTableKeys}
             disabled={anyBusy}
             placeholder={`Αναζήτηση ${typeLabel}…`}
             autoComplete="off"
@@ -729,10 +777,22 @@ function CatalogContentPanel({
             role="listbox"
             aria-label={`CMS ${typeLabel}`}
           >
+            {remote.loading ? (
+              <Typography variant="pi" textColor="neutral500" padding={2}>
+                Αναζήτηση…
+              </Typography>
+            ) : null}
+            {remote.error ? (
+              <Typography variant="pi" textColor="danger600" padding={2}>
+                {remote.error}
+              </Typography>
+            ) : null}
             {browseOptions.length > 0 ? (
               browseOptions.map((item) => {
                 const id = Number(item.id ?? item.cmsId);
                 const isSelected = selectedId === id;
+                const orig = String(item.originalTitle || '').trim();
+                const label = item.title || item.cmsTitle || `#${id}`;
                 return (
                   <button
                     key={id}
@@ -744,18 +804,21 @@ function CatalogContentPanel({
                       .filter(Boolean)
                       .join(' ')}
                     disabled={anyBusy}
-                    onClick={() => pickItem(id)}
+                    onClick={() => pickItem(id, label)}
                   >
-                    {item.title || item.cmsTitle || `#${id}`}
+                    {label}
+                    {orig && orig.toLocaleLowerCase('el') !== String(label).toLocaleLowerCase('el')
+                      ? ` · ${orig}`
+                      : ''}
                     {item.score != null ? ` · ${Number(item.score).toFixed(2)}` : ''}
                   </button>
                 );
               })
-            ) : (
+            ) : !remote.loading && !remote.error ? (
               <Typography variant="pi" textColor="neutral500" padding={2}>
                 Τίποτα
               </Typography>
-            )}
+            ) : null}
           </div>
         </Flex>
       ) : null}

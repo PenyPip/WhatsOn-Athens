@@ -1,7 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Box, Typography, Button, Flex } from '@strapi/design-system';
-import { useFetchClient } from '@strapi/helper-plugin';
 import { cmsDualTitleLabel, truncateLabel, unmatchedRowKey } from './syncUiShared';
+import { stopLookupTableKeys, useCmsRemoteSearch } from './useCmsRemoteSearch';
 
 function UnmatchedRow({
   row,
@@ -15,8 +15,6 @@ function UnmatchedRow({
   onToggleBrowse,
   filter,
   onFilterChange,
-  remoteOptions,
-  remoteLoading,
 }) {
   const key = unmatchedRowKey(row);
   const title = row.playTitle;
@@ -42,6 +40,11 @@ function UnmatchedRow({
   const draftBusy = busyKey === `unmatched-draft:${key}`;
   const anyBusy = Boolean(busyKey);
   const kind = row.kind === 'theater_show' ? 'theater_show' : 'movie';
+  const remote = useCmsRemoteSearch({
+    enabled: Boolean(showBrowse && canLink),
+    contentType: kind,
+    query: filter || '',
+  });
   const draftHint = canDraft
     ? `Νέο draft από More${row.eventGroupCode ? ` · ${row.eventGroupCode}` : ''}${
         row.catalogMatchScore != null ? ` · score ${Number(row.catalogMatchScore).toFixed(2)}` : ''
@@ -51,11 +54,11 @@ function UnmatchedRow({
   const pickedOpt = useMemo(() => {
     if (!pick) return null;
     return (
-      remoteOptions.find((c) => String(c.id) === String(pick)) ||
+      remote.items.find((c) => String(c.id) === String(pick)) ||
       suggestions.find((s) => String(s.cmsId ?? s.id) === String(pick)) ||
       null
     );
-  }, [pick, remoteOptions, suggestions]);
+  }, [pick, remote.items, suggestions]);
 
   const browseOptions = useMemo(() => {
     if (!showBrowse) return [];
@@ -68,9 +71,9 @@ function UnmatchedRow({
             .includes(q),
         )
       : suggestions;
-    const fromRemote = (remoteOptions || []).filter((c) => !sugIds.has(Number(c.id)));
+    const fromRemote = remote.items.filter((c) => !sugIds.has(Number(c.id)));
     return [...filteredSug, ...fromRemote].slice(0, 36);
-  }, [showBrowse, filter, suggestions, remoteOptions]);
+  }, [showBrowse, filter, suggestions, remote.items]);
 
   const whereLabel = venues.length
     ? venues.slice(0, 3).join(' · ') + (venues.length > 3 ? ` +${venues.length - 3}` : '')
@@ -173,6 +176,9 @@ function UnmatchedRow({
             placeholder="Αναζήτηση ελληνικού / original…"
             value={filter || ''}
             onChange={(e) => onFilterChange(e.target.value)}
+            onKeyDown={stopLookupTableKeys}
+            onKeyUp={stopLookupTableKeys}
+            onClick={stopLookupTableKeys}
             style={{
               padding: '4px 8px',
               borderRadius: 4,
@@ -181,9 +187,14 @@ function UnmatchedRow({
             }}
           />
           <Flex direction="column" gap={0} style={{ maxHeight: 160, overflowY: 'auto' }}>
-            {remoteLoading && !browseOptions.length ? (
+            {remote.loading ? (
               <Typography variant="pi" textColor="neutral500">
                 Αναζήτηση…
+              </Typography>
+            ) : null}
+            {remote.error ? (
+              <Typography variant="pi" textColor="danger600">
+                {remote.error}
               </Typography>
             ) : null}
             {browseOptions.map((opt) => {
@@ -216,7 +227,7 @@ function UnmatchedRow({
                 </button>
               );
             })}
-            {!remoteLoading && !browseOptions.length ? (
+            {!remote.loading && !remote.error && !browseOptions.length ? (
               <Typography variant="pi" textColor="neutral500">
                 Καμία εγγραφή — δοκίμασε άλλο όρο
               </Typography>
@@ -245,11 +256,8 @@ export function UnmatchedTitlesPanel({
   dropped = 0,
   titleMatchHint = null,
 }) {
-  const { get } = useFetchClient();
   const [filterByKey, setFilterByKey] = useState({});
   const [browseByKey, setBrowseByKey] = useState({});
-  const [remoteByKey, setRemoteByKey] = useState({});
-  const [loadingByKey, setLoadingByKey] = useState({});
 
   const rows = useMemo(
     () =>
@@ -262,45 +270,6 @@ export function UnmatchedTitlesPanel({
   const autoMin = Number(titleMatchHint?.autoMin ?? 0.85);
   const suggestionMin = Number(titleMatchHint?.suggestionMin ?? 0.45);
   const draftReady = rows.filter((r) => r?.canCreateDraft === true).length;
-
-  useEffect(() => {
-    let cancelled = false;
-    const timers = [];
-
-    for (const raw of rows.slice(0, 50)) {
-      const row = typeof raw === 'string' ? { playTitle: raw, kind: 'movie' } : raw;
-      const key = unmatchedRowKey(row);
-      if (browseByKey[key] !== true) continue;
-      const kind = row.kind === 'theater_show' ? 'theater_show' : 'movie';
-      const q = (filterByKey[key] || '').trim();
-
-      const timer = setTimeout(() => {
-        setLoadingByKey((prev) => ({ ...prev, [key]: true }));
-        get(
-          `/api/more-lookup/cms-search?q=${encodeURIComponent(q)}&contentType=${encodeURIComponent(kind)}&limit=36`,
-        )
-          .then((res) => {
-            if (cancelled) return;
-            const items = res?.data?.items || res?.items || [];
-            setRemoteByKey((prev) => ({ ...prev, [key]: items }));
-          })
-          .catch(() => {
-            if (cancelled) return;
-            setRemoteByKey((prev) => ({ ...prev, [key]: [] }));
-          })
-          .finally(() => {
-            if (cancelled) return;
-            setLoadingByKey((prev) => ({ ...prev, [key]: false }));
-          });
-      }, q ? 220 : 0);
-      timers.push(timer);
-    }
-
-    return () => {
-      cancelled = true;
-      for (const t of timers) clearTimeout(t);
-    };
-  }, [browseByKey, filterByKey, rows, get]);
 
   if (!rows.length && total <= 0) return null;
 
@@ -342,8 +311,6 @@ export function UnmatchedTitlesPanel({
               }
               filter={filterByKey[key] || ''}
               onFilterChange={(v) => setFilterByKey((prev) => ({ ...prev, [key]: v }))}
-              remoteOptions={remoteByKey[key] || []}
-              remoteLoading={loadingByKey[key] === true}
             />
           );
         })}

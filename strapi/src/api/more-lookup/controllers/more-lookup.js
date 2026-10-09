@@ -214,49 +214,81 @@ module.exports = {
   },
 
   async cmsSearch(ctx) {
-    const q = String(ctx.query?.q || '').trim();
+    const q = String(ctx.query?.q || '').trim().slice(0, 80);
+    const rawType = String(ctx.query?.contentType || 'movie');
     const contentType =
-      ctx.query?.contentType === 'theater_show' ? 'theater_show' : 'movie';
+      rawType === 'theater_show' || rawType === 'venue' ? rawType : 'movie';
+    const venueType = String(ctx.query?.venueType || '').trim();
     const limit = Math.min(50, Math.max(1, Number(ctx.query?.limit) || 36));
-    const uid =
-      contentType === 'theater_show'
-        ? 'api::theater-show.theater-show'
-        : 'api::movie.movie';
 
-    const filters = q
-      ? contentType === 'movie'
-        ? {
-            $or: [
-              { title: { $containsi: q } },
-              { original_title: { $containsi: q } },
-            ],
-          }
-        : { title: { $containsi: q } }
-      : {};
+    try {
+      if (contentType === 'venue') {
+        const and = [];
+        if (q) and.push({ name: { $containsi: q } });
+        if (venueType === 'cinema') and.push({ type: 'cinema' });
+        else if (venueType === 'theater') and.push({ type: { $in: ['theater', 'other'] } });
+        const rows = await strapi.entityService.findMany('api::venue.venue', {
+          filters: and.length ? { $and: and } : {},
+          fields: ['id', 'name', 'slug', 'type'],
+          publicationState: 'preview',
+          sort: { name: 'asc' },
+          limit,
+        });
+        ctx.body = {
+          ok: true,
+          contentType,
+          items: (Array.isArray(rows) ? rows : []).map((row) => ({
+            id: row.id,
+            title: row.name || `#${row.id}`,
+            originalTitle: '',
+            contentType,
+            venueType: row.type || '',
+          })),
+        };
+        return;
+      }
 
-    const fields =
-      contentType === 'movie'
-        ? ['id', 'title', 'original_title', 'slug']
-        : ['id', 'title', 'slug'];
+      const uid =
+        contentType === 'theater_show'
+          ? 'api::theater-show.theater-show'
+          : 'api::movie.movie';
+      const filters = q
+        ? contentType === 'movie'
+          ? {
+              $or: [
+                { title: { $containsi: q } },
+                { original_title: { $containsi: q } },
+              ],
+            }
+          : { title: { $containsi: q } }
+        : {};
+      const fields =
+        contentType === 'movie'
+          ? ['id', 'title', 'original_title', 'slug']
+          : ['id', 'title', 'slug'];
+      const rows = await strapi.entityService.findMany(uid, {
+        filters,
+        fields,
+        publicationState: 'preview',
+        sort: { title: 'asc' },
+        limit,
+      });
 
-    const rows = await strapi.entityService.findMany(uid, {
-      filters,
-      fields,
-      publicationState: 'preview',
-      sort: { title: 'asc' },
-      pagination: { page: 1, pageSize: limit },
-    });
-
-    ctx.body = {
-      ok: true,
-      contentType,
-      items: (Array.isArray(rows) ? rows : []).map((row) => ({
-        id: row.id,
-        title: row.title || `#${row.id}`,
-        originalTitle: row.original_title || '',
+      ctx.body = {
+        ok: true,
         contentType,
-      })),
-    };
+        items: (Array.isArray(rows) ? rows : []).map((row) => ({
+          id: row.id,
+          title: row.title || `#${row.id}`,
+          originalTitle: row.original_title || '',
+          contentType,
+        })),
+      };
+    } catch (e) {
+      strapi.log.error('[more-lookup] cms-search failed', e);
+      ctx.status = 500;
+      ctx.body = { ok: false, error: { message: e?.message || String(e) } };
+    }
   },
 
   async syncShowtimesReset(ctx) {
