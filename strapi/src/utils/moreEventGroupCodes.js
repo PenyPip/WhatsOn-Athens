@@ -260,6 +260,26 @@ function isMoreAuditoriumVenueName(name) {
 }
 
 /**
+ * Ετικέτα αίθουσας από More venueName («CINOBO ΟΠΕΡΑ - Αίθουσα 3» → «Αίθουσα 3»).
+ * Το Cineplex N γίνεται «Αίθουσα N». Άδειο αν το όνομα δεν είναι αίθουσα.
+ */
+function hallLabelFromMoreVenueName(raw) {
+  const name = String(raw || '').trim();
+  if (!name) return '';
+  const parts = name.split(/\s[-–]\s+/);
+  const tail = (parts.length >= 2 ? parts[parts.length - 1] : name).trim();
+  if (!isMoreAuditoriumHallLabel(tail)) return '';
+  const t = normalizeCatalogText(tail);
+  const numbered = t.match(
+    /^(?:αιθουσα|aithousa|hall|screen|auditorium)\s*(\d+)$/,
+  );
+  if (numbered) return `Αίθουσα ${numbered[1]}`;
+  const cineplex = t.match(/(?:^|\s)cineplex\s*(\d+)$/);
+  if (cineplex) return `Αίθουσα ${cineplex[1]}`;
+  return '';
+}
+
+/**
  * More event.venueId ↔ CMS venue. Σε bundle sync (evg_* χώρου) δεν φιλτράρουμε ανά αίθουσα.
  */
 function eventMatchesVenueForCmsVenue(event, venue, { bundleSync = false } = {}) {
@@ -316,6 +336,7 @@ module.exports = {
   isMoreAuditoriumHallLabel,
   isMoreAuditoriumVenueName,
   deriveParentVenueNameFromMoreEventName,
+  hallLabelFromMoreVenueName,
   isVenueBundleCode,
   classifyCinemaCatalogKind,
   looksLikeMovieCatalogTitle,

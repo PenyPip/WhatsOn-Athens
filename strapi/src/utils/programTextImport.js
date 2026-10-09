@@ -302,6 +302,27 @@ async function findShowtimesAtSlot(strapi, { movieId, venueId, datetime, hallId 
   return list.filter((row) => Number(row.hall?.id ?? row.hall) === want);
 }
 
+/** Ίδια ώρα χωρίς αίθουσα, ενώ υπάρχει ήδη η προβολή με αίθουσα — μένει ορατή η κενή. */
+async function deleteHallLessDuplicates(strapi, { movieId, venueId, datetime }) {
+  const bare = await findShowtimesAtSlot(strapi, {
+    movieId,
+    venueId,
+    datetime,
+    hallId: null,
+  });
+  let removed = 0;
+  for (const row of bare) {
+    if (row?.id == null) continue;
+    try {
+      await strapi.entityService.delete('api::showtime.showtime', row.id);
+      removed += 1;
+    } catch (e) {
+      strapi.log.warn(`[program-import] hall-less duplicate #${row.id}: ${e?.message || e}`);
+    }
+  }
+  return removed;
+}
+
 async function deleteOlderDuplicateShowtimes(strapi, rows) {
   if (!Array.isArray(rows) || rows.length <= 1) return 0;
   const sorted = [...rows].sort((a, b) => Number(b.id) - Number(a.id));
@@ -776,6 +797,13 @@ async function createProgramTextShowtimes(
     try {
       const slotKey = showtimeSlotKey(job.movieId, job.datetime, job.hallId);
       if (slotKey && existingKeys.has(slotKey)) {
+        if (job.hallId != null) {
+          await deleteHallLessDuplicates(strapi, {
+            movieId: job.movieId,
+            venueId: venue.id,
+            datetime: job.datetime,
+          });
+        }
         return { type: 'exists', inTargetWeek };
       }
 
@@ -820,6 +848,13 @@ async function createProgramTextShowtimes(
         let dedupedSummer = 0;
         if (venue.summer_outdoor === true && matches.length > 1) {
           dedupedSummer = await deleteOlderDuplicateShowtimes(strapi, matches);
+        }
+        if (job.hallId != null) {
+          await deleteHallLessDuplicates(strapi, {
+            movieId: job.movieId,
+            venueId: venue.id,
+            datetime: job.datetime,
+          });
         }
         if (slotKey) existingKeys.add(slotKey);
         return { type: 'exists', inTargetWeek, dedupedSummer };

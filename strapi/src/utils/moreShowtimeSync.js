@@ -14,6 +14,7 @@ const {
   moreVenueIdMatchesAllowList,
   deriveParentVenueNameFromMoreEventName,
   isMoreAuditoriumVenueName,
+  hallLabelFromMoreVenueName,
 } = require('./moreEventGroupCodes');
 const {
   createVenueScrapeCache,
@@ -1087,6 +1088,7 @@ async function findShowtimesAtSlot(strapi, { movieId, venueId, datetime }) {
       },
     },
     fields: ['id', 'datetime'],
+    populate: { hall: { fields: ['id'] } },
     sort: { id: 'desc' },
     limit: 50,
   });
@@ -1280,6 +1282,105 @@ async function expandCinemaEventIdIndexFromMovieCodes(index, movieCodeEntries, e
   return added;
 }
 
+const moreHallIdCache = new Map();
+
+/** Δημοσιευμένη αίθουσα του χώρου· ίδια κανονικοποίηση με το import προγράμματος. */
+async function ensureMoreShowtimeHallId(strapi, venueId, hallLabel) {
+  const { normalizeHallName } = require('./programTextParser');
+  const name = normalizeHallName(hallLabel);
+  if (!name || venueId == null) return null;
+  const key = `${venueId}|${name}`;
+  if (moreHallIdCache.has(key)) return moreHallIdCache.get(key);
+
+  const existing = await strapi.entityService.findMany('api::hall.hall', {
+    filters: { venue: { id: venueId }, name },
+    fields: ['id', 'name'],
+    publicationState: 'preview',
+    limit: 5,
+  });
+  const hit = Array.isArray(existing) ? existing[0] : null;
+  if (hit?.id != null) {
+    moreHallIdCache.set(key, hit.id);
+    return hit.id;
+  }
+
+  try {
+    const created = await strapi.entityService.create('api::hall.hall', {
+      data: {
+        name,
+        venue: venueId,
+        publishedAt: new Date().toISOString(),
+      },
+    });
+    const id = created?.id ?? null;
+    moreHallIdCache.set(key, id);
+    return id;
+  } catch (e) {
+    strapi.log.warn(`[more-showtime-sync] ensureHall «${name}»: ${e?.message || e}`);
+    moreHallIdCache.set(key, null);
+    return null;
+  }
+}
+
+async function deleteShowtimeRows(strapi, rows) {
+  let deleted = 0;
+  for (const row of rows || []) {
+    if (row?.id == null) continue;
+    try {
+      await strapi.entityService.delete('api::showtime.showtime', row.id);
+      deleted += 1;
+    } catch (e) {
+      strapi.log.warn(
+        `[more-showtime-sync] hall-less delete #${row.id} failed: ${e?.message || e}`,
+      );
+    }
+  }
+  return deleted;
+}
+
+/**
+ * Υπάρχουσα προβολή χωρίς αίθουσα παίρνει την αίθουσα του More venueName.
+ * Αν η ίδια ώρα είναι ήδη σε άλλη αίθουσα, δεν μετράει ως η ίδια προβολή.
+ * @returns {Promise<boolean>} true = μην δημιουργήσεις νέα εγγραφή
+ */
+async function settleMoreShowtimeHall(strapi, report, matches, hallId) {
+  if (!matches.length) return false;
+  if (hallId == null) return true;
+
+  const hallIdNum = Number(hallId);
+  const withHall = matches.filter((row) => Number(row.hall?.id ?? row.hall) === hallIdNum);
+  const bare = matches.filter((row) => (row.hall?.id ?? row.hall) == null);
+
+  if (withHall.length > 0) {
+    const removed = await deleteShowtimeRows(strapi, bare);
+    if (removed > 0) {
+      report.removedHallLessDuplicates = (report.removedHallLessDuplicates || 0) + removed;
+    }
+    return true;
+  }
+
+  if (bare.length > 0) {
+    const keep = bare[0];
+    try {
+      await strapi.entityService.update('api::showtime.showtime', keep.id, {
+        data: { hall: hallId },
+      });
+      report.hallsAttached = (report.hallsAttached || 0) + 1;
+    } catch (e) {
+      strapi.log.warn(
+        `[more-showtime-sync] hall attach #${keep.id}: ${e?.message || e}`,
+      );
+    }
+    const removed = await deleteShowtimeRows(strapi, bare.slice(1));
+    if (removed > 0) {
+      report.removedHallLessDuplicates = (report.removedHallLessDuplicates || 0) + removed;
+    }
+    return true;
+  }
+
+  return false;
+}
+
 async function upsertShowtimeFromEvent(strapi, report, {
   event,
   movieId,
@@ -1305,6 +1406,13 @@ async function upsertShowtimeFromEvent(strapi, report, {
   }
 
   const isSummerVenue = venue.summer_outdoor === true;
+  let hallId = null;
+  if (!isSummerVenue) {
+    const hallLabel = hallLabelFromMoreVenueName(event?.venueName);
+    if (hallLabel) {
+      hallId = await ensureMoreShowtimeHallId(strapi, venue.id, hallLabel);
+    }
+  }
 
   // Θερινό: αν υπάρχουν διπλότυπα (ίδια ταινία+χώρος+ώρα), κράτα την τελευταία.
   if (isSummerVenue) {
@@ -1326,7 +1434,7 @@ async function upsertShowtimeFromEvent(strapi, report, {
       if (statsTarget) statsTarget.alreadyExists += 1;
       return 'exists';
     }
-  } else {
+  } else if (hallId == null) {
     const exists = await showtimeExistsAt(
       strapi,
       {
@@ -1342,6 +1450,19 @@ async function upsertShowtimeFromEvent(strapi, report, {
       if (statsTarget) statsTarget.alreadyExists += 1;
       return 'exists';
     }
+  } else {
+    const matches = await findShowtimesAtSlot(strapi, {
+      movieId,
+      venueId: venue.id,
+      datetime,
+    });
+    const settled = await settleMoreShowtimeHall(strapi, report, matches, hallId);
+    if (settled) {
+      addShowtimeToExistenceIndex(showtimeExistenceIndex, movieId, venue.id, datetime);
+      report.alreadyExists += 1;
+      if (statsTarget) statsTarget.alreadyExists += 1;
+      return 'exists';
+    }
   }
 
   await strapi.entityService.create('api::showtime.showtime', {
@@ -1350,6 +1471,7 @@ async function upsertShowtimeFromEvent(strapi, report, {
       datetime: datetime.toISOString(),
       movie: movieId,
       venue: venue.id,
+      ...(hallId != null ? { hall: hallId } : {}),
       summer_screening: venue.summer_outdoor === true,
       import_source: 'more_sync',
       import_trace: buildMoreImportTrace({
